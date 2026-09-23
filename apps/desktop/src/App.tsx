@@ -5,6 +5,7 @@ import {NetlistViewport} from '@industrial-agent-harness/viewer-builtin/netlist'
 import {WaveformViewport} from '@industrial-agent-harness/viewer-builtin/waveform';
 import type {AgentEvent, BrokerResult, CapabilityDetail, DomainOption, OpenedViewer, ProjectBinding, ViewerArtifact} from '@industrial-agent-harness/viewer-builtin/api';
 import {AgentFlow} from './components/AgentFlow';
+import {BrokerCall} from './components/BrokerCall';
 import {TodoList} from './components/TodoList';
 import {ModelSettings} from './components/ModelSettings';
 import {ProjectDetails} from './components/ProjectDetails';
@@ -59,8 +60,16 @@ export function App() {
     });
     return window.viewerHost.onAgentEvent(event => {
       setAgentEvents(current => {
-        const last = current.at(-1);
-        if ((event.type === 'text' || event.type === 'thinking') && last?.type === event.type) return [...current.slice(0, -1), {...last, text: last.text + event.text}];
+        if (event.type === 'text' || event.type === 'thinking') {
+          let index = current.length - 1;
+          while (index >= 0 && (current[index].type === 'status' || current[index].type === 'step')) index--;
+          const previous = current[index];
+          if ((previous?.type === 'text' && event.type === 'text') || (previous?.type === 'thinking' && event.type === 'thinking')) {
+            const updated = [...current];
+            updated[index] = {...previous, text: previous.text + event.text};
+            return updated;
+          }
+        }
         return [...current, event];
       });
       if (event.type === 'tool-result') void window.viewerHost!.brokerTrace().then(trace => setBroker(current => current ? {...current, trace} : current));
@@ -199,7 +208,12 @@ export function App() {
         {page === 'project' && activeProject ? <ProjectDetails project={activeProject} domains={domains} busy={agentBusy} onDomainChange={setProjectDomain} onNewChat={newChat}/> : <>
         <div className="ia-chat-scroll">
           {!submittedTask && <div className="ia-chat-welcome"><span className="ia-welcome-icon"><Cpu size={22}/></span><h1>What are you working on?</h1><p>Describe a task in your project. Relevant capabilities and tools will appear as the work progresses.</p></div>}
-          {submittedTask && <><div className="ia-user-message">{submittedTask}</div>{brokerError && <div className="ia-flow-error">{brokerError}</div>}{broker && <section className="ia-broker-message"><div className="ia-message-label"><Activity size={14}/> Capability Broker <span>Scope {broker.scope.version.slice(0, 8)}</span></div><details className="ia-context-override"><summary>Context · {broker.scope.domain || 'Auto'}{broker.scope.stage ? ` / ${broker.scope.stage}` : ''}</summary><div>{broker.contexts.filter(context => !selectedDomain || context.domain === selectedDomain).map(context => <button key={`${context.domain}:${context.stage}`} onClick={() => void resolveTask(context)}>{context.domain} / {context.stage}</button>)}</div></details>{broker.matches.length ? <><p>Selected {broker.matches.length} capability{broker.matches.length === 1 ? '' : 'ies'} for {broker.scope.domain} / {broker.scope.stage}.</p>{broker.matches.map(item => <button className="ia-capability" key={item.id} onClick={() => void showDetail(item.id)}><span><b>{item.title}</b><small>{item.id}</small></span><ChevronRight size={14}/></button>)}<div className="ia-scope-summary"><span>{broker.scope.skills.length} skills</span><span>{broker.scope.tools.length} tools</span></div></> : <p>No domain capability selected. Kimi can continue with its standard project tools.</p>}</section>}{detail && <section className="ia-detail-message"><div className="ia-message-label">L3 · {detail.capability}</div>{detail.skills.map(item => <p key={item.id}><b>{item.id}</b><br/>{item.reference}</p>)}{detail.tools.map(item => <p key={item.id}><b>{item.id}</b> · {JSON.stringify(item.schema)}</p>)}</section>}{agentEvents.length > 0 && <AgentFlow events={agentEvents} running={agentBusy} debug={debug} approve={(id, decision) => void window.viewerHost!.approveAgent(id, decision)}/>}{debug && broker && <section className="ia-debug-flow"><div className="ia-message-label"><Bug size={14}/> Broker disclosure log</div>{broker.trace.map((entry, index) => <details key={index}><summary><code>{entry.level}</code> {entry.event}</summary><pre>{JSON.stringify(entry.detail, null, 2)}</pre></details>)}</section>}</>}
+          {submittedTask && <>
+            <div className="ia-user-message">{submittedTask}</div>
+            {brokerError && <div className="ia-flow-error">{brokerError}</div>}
+            {broker && <BrokerCall broker={broker} detail={detail} debug={debug} selectedDomain={selectedDomain} onContext={context => void resolveTask(context)} onDetail={id => void showDetail(id)}/>}
+            {agentEvents.length > 0 && <AgentFlow events={agentEvents} running={agentBusy} debug={debug} approve={(id, decision) => void window.viewerHost!.approveAgent(id, decision)}/>}
+          </>}
         </div>
         {todo?.type === 'todo' && <TodoList items={todo.items} running={agentBusy}/>}
         <div className="ia-composer-wrap"><div className="ia-composer"><textarea aria-label="Engineering task" placeholder="Ask about your project…" value={task} onChange={event => setTask(event.target.value)} onKeyDown={event => {if (event.key === 'Enter' && !event.shiftKey) {event.preventDefault(); void resolveTask();}}}/><div className="ia-composer-footer"><DomainPill domain={fixedDomain} domains={domains} label="Session domain"/><div className="ia-send-actions">{agentBusy && <button onClick={() => void window.viewerHost!.interruptAgent()} title="Stop agent"><Square size={14}/></button>}{Boolean(broker && agentStatus?.available && agentStatus.configured && agentStatus.projectDir) && <button onClick={() => void runAgent()} disabled={agentBusy || task !== submittedTask} title="Run with Kimi"><Play size={14}/></button>}<button className="ia-send" onClick={() => void resolveTask()} disabled={!task.trim()} title="Send task"><ChevronRight size={17}/></button></div></div></div><div className="ia-composer-hint">{!agentStatus?.available ? 'Kimi CLI unavailable · run pnpm setup:kimi' : !agentStatus.configured ? 'Configure the Model API in Settings to run Kimi' : !agentStatus.projectDir ? 'Choose a project to run Kimi' : 'Kimi ready'}</div></div>

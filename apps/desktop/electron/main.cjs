@@ -381,8 +381,23 @@ async function createWindow() {
     await window.webContents.executeJavaScript(`const area = document.querySelector('.ia-composer textarea'); Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(area, 'Inspect the netlist signals'); area.dispatchEvent(new Event('input', {bubbles:true})); document.querySelector('.ia-chat-actions button').click()`);
     await new Promise(resolve => setTimeout(resolve, 100));
     await window.webContents.executeJavaScript(`document.querySelector('.ia-send').click()`);
-    await waitFor(`document.body.innerText.includes('Broker disclosure log') && document.body.innerText.includes('chip.rtl.netlist.inspect')`);
+    await waitFor(`document.querySelector('.ia-broker-tool:not([open])')?.innerText.includes('chip / rtl')`);
     screenshots.push(await shot('debug'));
+    await window.webContents.executeJavaScript(`document.querySelector('.ia-broker-tool>summary').click()`);
+    await waitFor(`document.querySelector('.ia-broker-tool[open]')?.innerText.includes('chip.rtl.netlist.inspect') && document.querySelector('.ia-broker-trace')`);
+    await new Promise(resolve => setTimeout(resolve, 150));
+    if (!await window.webContents.executeJavaScript(`(() => {const item=document.querySelector('.ia-broker-tool');const child=item.querySelector('.ia-tool-detail');return item.open && child.getBoundingClientRect().height > 100 && getComputedStyle(child).display !== 'none'})()`)) throw Error('Expanded Broker details are not visible.');
+    screenshots.push(await shot('broker-detail'));
+    await window.webContents.executeJavaScript(`document.querySelector('.ia-broker-tool>summary').click()`);
+    window.webContents.send('agent:event', {type: 'thinking', text: 'First thought\nSecond thought\nThird thought\nFourth thought'});
+    window.webContents.send('agent:event', {type: 'tool', id: 'selftest-tool', name: 'read_file', arguments: '{"path":"README.md"}'});
+    window.webContents.send('agent:event', {type: 'tool-result', id: 'selftest-tool', error: false, message: 'Read complete', output: 'Project README'});
+    window.webContents.send('agent:event', {type: 'done', result: {status: 'completed'}});
+    await waitFor(`Boolean(document.querySelector('.ia-thinking')) && !document.querySelector('.ia-thinking p') && document.querySelectorAll('.ia-agent-flow>.ia-agent-tool').length === 1 && !document.querySelector('.ia-agent-flow>.ia-agent-tool[open]')`);
+    screenshots.push(await shot('compact-flow'));
+    await window.webContents.executeJavaScript(`document.querySelector('.ia-thinking-head').click(); document.querySelector('.ia-agent-flow>.ia-agent-tool summary').click()`);
+    await waitFor(`document.querySelector('.ia-thinking p')?.innerText.includes('Fourth thought') && Boolean(document.querySelector('.ia-agent-flow>.ia-agent-tool[open]'))`);
+    await window.webContents.executeJavaScript(`document.querySelector('.ia-thinking-head').click(); document.querySelector('.ia-agent-flow>.ia-agent-tool summary').click()`);
     for (const [kind, file] of [['layout', 'sobel_layout.gds'], ['waveform', 'sobel_wave.vcd']]) {
       await window.webContents.executeJavaScript(`document.querySelector('.ia-file-list button[title="outputs/${file}"]').click()`);
       await waitFor(`document.querySelector('.ia-viewer-footer')?.innerText.includes('${kind.toUpperCase()} · Ready')`, 120000);
