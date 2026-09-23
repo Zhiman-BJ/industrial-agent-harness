@@ -49,14 +49,16 @@ export interface ViewerHostApi {
   render(request: {token: string; box: number[]; width: number; height: number; visible: string[]; quality: string; theme?: string}): Promise<{png: string; box: number[]}>;
   netlist(request: {token: string; module: string; focus?: string}): Promise<NetlistData>;
   resolve(request: {task: string; artifactKind?: string; domain?: string; stage?: string}): Promise<BrokerResult>;
+  domains(): Promise<Array<{id: string; label: string}>>;
   detail(capabilityId: string): Promise<CapabilityDetail>;
   brokerTrace(): Promise<BrokerResult['trace']>;
   agentStatus(): Promise<{available: boolean; version: string; projectDir: string | null; configured: boolean}>;
   modelGet(): Promise<ModelProfileStatus>;
   modelSave(request: ModelProfile & {apiKey?: string; clearApiKey?: boolean}): Promise<ModelProfileStatus>;
   chooseProject(): Promise<string | null>;
-  projectBindings(): Promise<{projects: Array<{id: string; name: string; path: string}>; activeId: string | null; projectDir: string | null}>;
-  selectProject(id: string): Promise<{projects: Array<{id: string; name: string; path: string}>; activeId: string | null; projectDir: string | null}>;
+  projectBindings(): Promise<{projects: ProjectBinding[]; activeId: string | null; projectDir: string | null}>;
+  selectProject(id: string): Promise<{projects: ProjectBinding[]; activeId: string | null; projectDir: string | null}>;
+  setProjectDomain(domain: string | null): Promise<{projects: ProjectBinding[]; activeId: string | null; projectDir: string | null}>;
   newChat(): Promise<void>;
   projectFiles(): Promise<Array<{path: string; name: string; depth: number; directory: boolean}>>;
   readProjectFile(relative: string): Promise<{path: string; name: string; sizeBytes: number; viewer: 'layout' | 'netlist' | 'waveform' | null; content: string | null; truncated: boolean}>;
@@ -66,6 +68,8 @@ export interface ViewerHostApi {
   interruptAgent(): Promise<void>;
   onAgentEvent(callback: (event: AgentEvent) => void): () => void;
 }
+
+export interface ProjectBinding {id: string; name: string; path: string; domain?: string | null}
 
 export type AgentEvent =
   | {type: 'text'; text: string}

@@ -3,7 +3,7 @@ import {Activity, Bug, ChevronDown, ChevronRight, CircuitBoard, Cpu, File, FileP
 import {LayoutViewport} from '@industrial-agent-harness/viewer-builtin/layout';
 import {NetlistViewport} from '@industrial-agent-harness/viewer-builtin/netlist';
 import {WaveformViewport, type SignalRequest} from '@industrial-agent-harness/viewer-builtin/waveform';
-import type {AgentEvent, BrokerResult, CapabilityDetail, OpenedViewer, ViewerArtifact} from '@industrial-agent-harness/viewer-builtin/api';
+import type {AgentEvent, BrokerResult, CapabilityDetail, OpenedViewer, ProjectBinding, ViewerArtifact} from '@industrial-agent-harness/viewer-builtin/api';
 import {AgentFlow} from './components/AgentFlow';
 import {TodoList} from './components/TodoList';
 import {ModelSettings} from './components/ModelSettings';
@@ -17,7 +17,10 @@ export function App() {
   const [artifacts, setArtifacts] = useState<ViewerArtifact[]>([]);
   const [projectFiles, setProjectFiles] = useState<ProjectFile[]>([]);
   const [collapsedDirs, setCollapsedDirs] = useState<Set<string>>(() => new Set());
-  const [projects, setProjects] = useState<Array<{id: string; name: string; path: string}>>([]);
+  const [projects, setProjects] = useState<ProjectBinding[]>([]);
+  const [domains, setDomains] = useState<Array<{id: string; label: string}>>([]);
+  const [sessionDomain, setSessionDomain] = useState<string | null>(null);
+  const [domainMenuOpen, setDomainMenuOpen] = useState(false);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState('');
   const [sourceFile, setSourceFile] = useState<SourceFile>();
@@ -46,6 +49,7 @@ export function App() {
   useEffect(() => {
     if (!window.viewerHost) {setError('Open the Electron desktop app to inspect local files.'); return;}
     void window.viewerHost.list().then(setArtifacts).catch(reason => setError(String(reason)));
+    void window.viewerHost.domains().then(setDomains).catch(reason => setError(String(reason)));
     void Promise.all([window.viewerHost.agentStatus(), window.viewerHost.projectBindings()]).then(([status, bindings]) => {
       setAgentStatus(status); setProjects(bindings.projects); setActiveProjectId(bindings.activeId);
       if (status.projectDir) void window.viewerHost!.projectFiles().then(setProjectFiles);
@@ -70,6 +74,9 @@ export function App() {
 
   const selected = artifacts.find(item => item.id === selectedId);
   const projectName = projects.find(item => item.id === activeProjectId)?.name || 'No project selected';
+  const fixedDomain = projects.find(item => item.id === activeProjectId)?.domain || null;
+  const selectedDomain = fixedDomain || sessionDomain;
+  const domainLabel = domains.find(item => item.id === selectedDomain)?.label || selectedDomain || 'Auto';
   const activeName = sourceFile?.name || selected?.name;
   const todo = [...agentEvents].reverse().find(event => event.type === 'todo');
   const visibleProjectFiles = projectFiles.filter(item => ![...collapsedDirs].some(dir => item.path.replaceAll('\\', '/').startsWith(`${dir}/`)));
@@ -86,6 +93,7 @@ export function App() {
       if (projectDir === agentStatus?.projectDir) return;
       const bindings = await window.viewerHost!.projectBindings();
       setProjects(bindings.projects); setActiveProjectId(bindings.activeId);
+      setSessionDomain(null); setDomainMenuOpen(false);
       setAgentStatus(current => current ? {...current, projectDir} : current);
       setProjectFiles(await window.viewerHost!.projectFiles());
       setCollapsedDirs(new Set());
@@ -100,6 +108,7 @@ export function App() {
     try {
       const bindings = await window.viewerHost!.selectProject(id);
       setProjects(bindings.projects); setActiveProjectId(bindings.activeId);
+      setSessionDomain(null); setDomainMenuOpen(false);
       setAgentStatus(current => current ? {...current, projectDir: bindings.projectDir} : current);
       setProjectFiles(await window.viewerHost!.projectFiles());
       setCollapsedDirs(new Set());
@@ -132,6 +141,7 @@ export function App() {
   async function newChat() {
     try {
       await window.viewerHost!.newChat();
+      setSessionDomain(null); setDomainMenuOpen(false);
       setTask(''); setSubmittedTask(''); setBroker(undefined); setDetail(undefined); setBrokerError(''); setAgentEvents([]);
     } catch (reason) {setBrokerError(String(reason));}
   }
@@ -140,10 +150,17 @@ export function App() {
     setBrokerError(''); setBroker(undefined); setDetail(undefined); setSubmittedTask(task); setAgentEvents([]);
     try {
       const artifactKind = /\b(this|selected|current)\b|这个|当前|该|它/i.test(task) ? selected?.kind : undefined;
-      const result = await window.viewerHost!.resolve({task, artifactKind, ...context});
+      const result = await window.viewerHost!.resolve({task, artifactKind, domain: selectedDomain || context?.domain, stage: context?.domain === selectedDomain || !selectedDomain ? context?.stage : undefined});
       setBroker(result);
       if (agentStatus?.available && agentStatus.configured && agentStatus.projectDir) await runAgent(task);
     } catch (reason) {setBrokerError(String(reason));}
+  }
+  async function setProjectDomain(domain: string | null) {
+    try {
+      const bindings = await window.viewerHost!.setProjectDomain(domain);
+      setProjects(bindings.projects); setSessionDomain(null); setDomainMenuOpen(false);
+      setTask(''); setSubmittedTask(''); setBroker(undefined); setDetail(undefined); setBrokerError(''); setAgentEvents([]);
+    } catch (reason) {setError(String(reason));}
   }
   async function showDetail(id: string) {
     try {setDetail(await window.viewerHost!.detail(id)); const trace = await window.viewerHost!.brokerTrace(); setBroker(current => current ? {...current, trace} : current);}
@@ -166,16 +183,16 @@ export function App() {
         {submittedTask && <button className="ia-sidebar-chat" title={submittedTask}><Activity size={14}/><span>{submittedTask}</span></button>}
         <div className="ia-sidebar-spacer"/>
         <div className="ia-tree-bottom"><button className="ia-settings-button" onClick={() => setSettingsOpen(value => !value)}><Settings2 size={16}/> Settings <ChevronRight size={14}/></button></div>
-        {settingsOpen && <div className="ia-settings-popover"><div className="ia-settings-title"><b>Settings</b><button className="ia-icon" onClick={() => setSettingsOpen(false)}>×</button></div><div className="ia-settings-row"><span>Appearance</span><button onClick={() => setTheme(value => value === 'light' ? 'dark' : 'light')}>{theme === 'light' ? <Sun size={14}/> : <Moon size={14}/>} {theme === 'light' ? 'Light' : 'Dark'}</button></div><div className="ia-settings-row"><span>Debug logs</span><button onClick={() => setDebug(value => !value)}><Bug size={14}/> {debug ? 'On' : 'Off'}</button></div><div className="ia-settings-row"><span>Model API</span><button onClick={() => {setSettingsOpen(false); setModelSettingsOpen(true);}}>Configure</button></div><div className="ia-settings-note">Kimi CLI: {agentStatus?.available ? agentStatus.version || 'available' : 'unavailable'}</div></div>}
+        {settingsOpen && <div className="ia-settings-popover"><div className="ia-settings-title"><b>Settings</b><button className="ia-icon" onClick={() => setSettingsOpen(false)}>×</button></div><div className="ia-settings-row"><span>Appearance</span><button onClick={() => setTheme(value => value === 'light' ? 'dark' : 'light')}>{theme === 'light' ? <Sun size={14}/> : <Moon size={14}/>} {theme === 'light' ? 'Light' : 'Dark'}</button></div><div className="ia-settings-row"><span>Debug logs</span><button onClick={() => setDebug(value => !value)}><Bug size={14}/> {debug ? 'On' : 'Off'}</button></div><div className="ia-settings-row"><span>Project domain</span><select aria-label="Project domain" value={fixedDomain || ""} disabled={!activeProjectId || agentBusy} onChange={event => void setProjectDomain(event.target.value || null)}><option value="">Not fixed</option>{domains.map(item => <option key={item.id} value={item.id}>{item.label}</option>)}</select></div><div className="ia-settings-row"><span>Model API</span><button onClick={() => {setSettingsOpen(false); setModelSettingsOpen(true);}}>Configure</button></div><div className="ia-settings-note">Kimi CLI: {agentStatus?.available ? agentStatus.version || 'available' : 'unavailable'}</div></div>}
       </aside>}
       <main className="ia-chat">
         <header className="ia-chat-header"><div>{!leftOpen && <button className="ia-icon" onClick={() => setLeftOpen(true)} title="Show sidebar"><PanelLeftOpen size={16}/></button>}<Folder size={14}/><b>{projectName}</b></div><div className="ia-chat-actions"><button className={debug ? 'active' : ''} onClick={() => setDebug(value => !value)} title="Toggle debug logs"><Bug size={15}/></button><button onClick={() => setRightOpen(value => !value)} title={rightOpen ? 'Hide workspace' : 'Show workspace'}>{rightOpen ? <PanelRightClose size={16}/> : <PanelRightOpen size={16}/>}</button></div></header>
         <div className="ia-chat-scroll">
           {!submittedTask && <div className="ia-chat-welcome"><span className="ia-welcome-icon"><Cpu size={22}/></span><h1>What are you working on?</h1><p>Describe a task in your project. Relevant capabilities and tools will appear as the work progresses.</p></div>}
-          {submittedTask && <><div className="ia-user-message">{submittedTask}</div>{brokerError && <div className="ia-flow-error">{brokerError}</div>}{broker && <section className="ia-broker-message"><div className="ia-message-label"><Activity size={14}/> Capability Broker <span>Scope {broker.scope.version.slice(0, 8)}</span></div><details className="ia-context-override"><summary>Context · {broker.scope.domain || 'Auto'}{broker.scope.stage ? ` / ${broker.scope.stage}` : ''}</summary><div>{broker.contexts.map(context => <button key={`${context.domain}:${context.stage}`} onClick={() => void resolveTask(context)}>{context.domain} / {context.stage}</button>)}</div></details>{broker.matches.length ? <><p>Selected {broker.matches.length} capability{broker.matches.length === 1 ? '' : 'ies'} for {broker.scope.domain} / {broker.scope.stage}.</p>{broker.matches.map(item => <button className="ia-capability" key={item.id} onClick={() => void showDetail(item.id)}><span><b>{item.title}</b><small>{item.id}</small></span><ChevronRight size={14}/></button>)}<div className="ia-scope-summary"><span>{broker.scope.skills.length} skills</span><span>{broker.scope.tools.length} tools</span></div></> : <p>No domain capability selected. Kimi can continue with its standard project tools.</p>}</section>}{detail && <section className="ia-detail-message"><div className="ia-message-label">L3 · {detail.capability}</div>{detail.skills.map(item => <p key={item.id}><b>{item.id}</b><br/>{item.reference}</p>)}{detail.tools.map(item => <p key={item.id}><b>{item.id}</b> · {JSON.stringify(item.schema)}</p>)}</section>}{agentEvents.length > 0 && <AgentFlow events={agentEvents} running={agentBusy} debug={debug} approve={(id, decision) => void window.viewerHost!.approveAgent(id, decision)}/>}{debug && broker && <section className="ia-debug-flow"><div className="ia-message-label"><Bug size={14}/> Broker disclosure log</div>{broker.trace.map((entry, index) => <details key={index}><summary><code>{entry.level}</code> {entry.event}</summary><pre>{JSON.stringify(entry.detail, null, 2)}</pre></details>)}</section>}</>}
+          {submittedTask && <><div className="ia-user-message">{submittedTask}</div>{brokerError && <div className="ia-flow-error">{brokerError}</div>}{broker && <section className="ia-broker-message"><div className="ia-message-label"><Activity size={14}/> Capability Broker <span>Scope {broker.scope.version.slice(0, 8)}</span></div><details className="ia-context-override"><summary>Context · {broker.scope.domain || 'Auto'}{broker.scope.stage ? ` / ${broker.scope.stage}` : ''}</summary><div>{broker.contexts.filter(context => !selectedDomain || context.domain === selectedDomain).map(context => <button key={`${context.domain}:${context.stage}`} onClick={() => void resolveTask(context)}>{context.domain} / {context.stage}</button>)}</div></details>{broker.matches.length ? <><p>Selected {broker.matches.length} capability{broker.matches.length === 1 ? '' : 'ies'} for {broker.scope.domain} / {broker.scope.stage}.</p>{broker.matches.map(item => <button className="ia-capability" key={item.id} onClick={() => void showDetail(item.id)}><span><b>{item.title}</b><small>{item.id}</small></span><ChevronRight size={14}/></button>)}<div className="ia-scope-summary"><span>{broker.scope.skills.length} skills</span><span>{broker.scope.tools.length} tools</span></div></> : <p>No domain capability selected. Kimi can continue with its standard project tools.</p>}</section>}{detail && <section className="ia-detail-message"><div className="ia-message-label">L3 · {detail.capability}</div>{detail.skills.map(item => <p key={item.id}><b>{item.id}</b><br/>{item.reference}</p>)}{detail.tools.map(item => <p key={item.id}><b>{item.id}</b> · {JSON.stringify(item.schema)}</p>)}</section>}{agentEvents.length > 0 && <AgentFlow events={agentEvents} running={agentBusy} debug={debug} approve={(id, decision) => void window.viewerHost!.approveAgent(id, decision)}/>}{debug && broker && <section className="ia-debug-flow"><div className="ia-message-label"><Bug size={14}/> Broker disclosure log</div>{broker.trace.map((entry, index) => <details key={index}><summary><code>{entry.level}</code> {entry.event}</summary><pre>{JSON.stringify(entry.detail, null, 2)}</pre></details>)}</section>}</>}
         </div>
         {todo?.type === 'todo' && <TodoList items={todo.items} running={agentBusy}/>}
-        <div className="ia-composer-wrap"><div className="ia-composer"><textarea aria-label="Engineering task" placeholder="Ask about your project…" value={task} onChange={event => setTask(event.target.value)} onKeyDown={event => {if (event.key === 'Enter' && !event.shiftKey) {event.preventDefault(); void resolveTask();}}}/><div className="ia-composer-footer"><span className="ia-auto-context"><Activity size={13}/> Agent</span><div className="ia-send-actions">{agentBusy && <button onClick={() => void window.viewerHost!.interruptAgent()} title="Stop agent"><Square size={14}/></button>}{Boolean(broker && agentStatus?.available && agentStatus.configured && agentStatus.projectDir) && <button onClick={() => void runAgent()} disabled={agentBusy || task !== submittedTask} title="Run with Kimi"><Play size={14}/></button>}<button className="ia-send" onClick={() => void resolveTask()} disabled={!task.trim()} title="Send task"><ChevronRight size={17}/></button></div></div></div><div className="ia-composer-hint">{!agentStatus?.available ? 'Kimi CLI unavailable · run pnpm setup:kimi' : !agentStatus.configured ? 'Configure the Model API in Settings to run Kimi' : !agentStatus.projectDir ? 'Choose a project to run Kimi' : 'Kimi ready'}</div></div>
+        <div className="ia-composer-wrap"><div className="ia-composer"><textarea aria-label="Engineering task" placeholder="Ask about your project…" value={task} onChange={event => setTask(event.target.value)} onKeyDown={event => {if (event.key === 'Enter' && !event.shiftKey) {event.preventDefault(); void resolveTask();}}}/><div className="ia-composer-footer"><div className="ia-domain-control"><button type="button" className="ia-domain-pill" aria-label="Session domain" aria-expanded={domainMenuOpen} title={fixedDomain ? "This project has a fixed domain" : submittedTask ? "Start a new chat to change domain" : "Choose a domain for this chat"} disabled={Boolean(fixedDomain || submittedTask || agentBusy)} onClick={() => setDomainMenuOpen(value => !value)}><Activity size={13}/> {domainLabel}{fixedDomain ? <span className="ia-domain-lock">Project</span> : !submittedTask && <ChevronDown size={12}/>}</button>{domainMenuOpen && !fixedDomain && !submittedTask && <div className="ia-domain-menu" role="menu"><button role="menuitemradio" aria-checked={!sessionDomain} onClick={() => {setSessionDomain(null); setDomainMenuOpen(false);}}>Auto <small>Let the broker infer</small></button>{domains.map(item => <button key={item.id} role="menuitemradio" aria-checked={sessionDomain === item.id} onClick={() => {setSessionDomain(item.id); setDomainMenuOpen(false);}}>{item.label}</button>)}</div>}</div><div className="ia-send-actions">{agentBusy && <button onClick={() => void window.viewerHost!.interruptAgent()} title="Stop agent"><Square size={14}/></button>}{Boolean(broker && agentStatus?.available && agentStatus.configured && agentStatus.projectDir) && <button onClick={() => void runAgent()} disabled={agentBusy || task !== submittedTask} title="Run with Kimi"><Play size={14}/></button>}<button className="ia-send" onClick={() => void resolveTask()} disabled={!task.trim()} title="Send task"><ChevronRight size={17}/></button></div></div></div><div className="ia-composer-hint">{!agentStatus?.available ? 'Kimi CLI unavailable · run pnpm setup:kimi' : !agentStatus.configured ? 'Configure the Model API in Settings to run Kimi' : !agentStatus.projectDir ? 'Choose a project to run Kimi' : 'Kimi ready'}</div></div>
       </main>
       {rightOpen && <section className="ia-viewer ia-workspace">
         <header className="ia-viewer-header"><div><File size={14}/><b>{activeName || 'Workspace'}</b>{activeName && <button className="ia-icon" onClick={() => {setSourceFile(undefined); setSelectedId('');}} title="Close file"><X size={13}/></button>}</div><div className="ia-workspace-actions"><button onClick={() => setFileTreeOpen(value => !value)} title={fileTreeOpen ? 'Hide file tree' : 'Show file tree'}>{fileTreeOpen ? <PanelRightClose size={15}/> : <PanelRightOpen size={15}/>}</button><button onClick={() => setRightOpen(false)} title="Hide workspace"><X size={15}/></button></div></header>

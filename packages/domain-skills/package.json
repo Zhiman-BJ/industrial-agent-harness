@@ -1,5 +1,6 @@
 {
   "name": "@industrial-agent-harness/domain-skills",
   "version": "0.0.0",
-  "private": true
+  "private": true,
+  "scripts": {"test": "node --test src/*.test.cjs"}
 }

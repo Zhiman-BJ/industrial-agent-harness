@@ -9,6 +9,7 @@ const {renderNetlist} = require('../../../packages/viewer-builtin/src/netlist/ne
 const {createViewerProtocol} = require('../../../packages/viewer-builtin/src/waveform/protocol.cjs');
 const {resolve, discloseDetail} = require('../../../packages/capability-broker/src/index.cjs');
 const capabilities = require('../../../packages/domain-skills/src/capabilities.cjs');
+const {listDomains} = require('../../../packages/domain-skills/src/domains.cjs');
 const {KimiSession} = require('../../../packages/agent-kimi/src/index.cjs');
 const {readProfile, saveProfile, validateProfile, writeCliConfig, sessionEnv} = require('./model-config.cjs');
 const {readBindings, addBinding, saveBindings} = require('./project-bindings.cjs');
@@ -126,9 +127,14 @@ function getRaster() {
 }
 
 function registerHandlers() {
+  ipcMain.handle('broker:domains', () => listDomains(capabilities));
   ipcMain.handle('broker:resolve', (_event, request) => {
+    const fixedDomain = activeProject()?.domain;
+    const domains = listDomains(capabilities);
+    if (fixedDomain && request.domain && request.domain !== fixedDomain) throw Error(`This project is fixed to the ${fixedDomain} domain.`);
+    if (request.domain && !domains.some(item => item.id === request.domain)) throw Error('Unknown domain.');
     if (agent?.turn) void agent.interrupt();
-    const result = resolve(request, capabilities, brokerScope);
+    const result = resolve({...request, domain: fixedDomain || request.domain}, capabilities, brokerScope);
     brokerScope = result.scope;
     brokerTrace = result.trace;
     return result;
@@ -168,6 +174,18 @@ function registerHandlers() {
     return {available, version: available ? result.stdout.split('\n')[0].trim() : '', projectDir: projectDir || null, configured: Boolean(readApiKey())};
   });
   ipcMain.handle('project:bindings', () => projectSnapshot());
+  ipcMain.handle('project:set-domain', async (_event, domain) => {
+    if (agent?.turn) throw Error('Stop the current turn before changing the project domain.');
+    if (domain !== null && !listDomains(capabilities).some(item => item.id === domain)) throw Error('Unknown domain.');
+    const project = activeProject();
+    if (!project) throw Error('Choose a project first.');
+    if (project.domain === domain) return projectSnapshot();
+    await agent?.close(); agent = undefined;
+    project.domain = domain;
+    brokerScope = undefined; brokerTrace = [];
+    saveBindings(projectConfigDir(), projectBindings);
+    return projectSnapshot();
+  });
   ipcMain.handle('project:select', async (_event, id) => {
     if (agent?.turn) throw Error('Stop the current turn before switching projects.');
     const item = projectBindings.projects.find(candidate => candidate.id === id);
@@ -316,6 +334,23 @@ async function createWindow() {
       return filename;
     };
     await waitFor(`Boolean(document.querySelector('.ia-project-list button.selected')) && !document.querySelector('.ia-workspace')`);
+    await waitFor(`document.querySelector('.ia-domain-pill')?.innerText.includes('Chip') && document.querySelector('.ia-domain-pill')?.disabled`);
+    if (!await window.webContents.executeJavaScript(`window.viewerHost.resolve({task: 'PCB board', domain: 'pcb'}).then(() => false, () => true)`)) throw Error('A fixed project accepted a different domain.');
+    await window.webContents.executeJavaScript(`document.querySelector('.ia-settings-button').click()`);
+    await waitFor(`Boolean(document.querySelector('select[aria-label="Project domain"]'))`);
+    await window.webContents.executeJavaScript(`(() => {const domain = document.querySelector('select[aria-label="Project domain"]'); domain.value = ''; domain.dispatchEvent(new Event('change', {bubbles: true}));})()`);
+    await waitFor(`!document.querySelector('.ia-domain-pill')?.disabled`);
+    await window.webContents.executeJavaScript(`document.querySelector('.ia-domain-pill').click()`);
+    await waitFor(`Array.from(document.querySelectorAll('.ia-domain-menu button')).some(button => button.innerText.includes('PCB'))`);
+    await window.webContents.executeJavaScript(`Array.from(document.querySelectorAll('.ia-domain-menu button')).find(button => button.innerText.includes('PCB')).click()`);
+    await waitFor(`document.querySelector('.ia-domain-pill')?.innerText.includes('PCB')`);
+    await window.webContents.executeJavaScript(`(() => {const area = document.querySelector('.ia-composer textarea'); Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(area, 'Inspect the PCB board'); area.dispatchEvent(new Event('input', {bubbles:true}));})()`);
+    await window.webContents.executeJavaScript(`document.querySelector('.ia-send').click()`);
+    await waitFor(`document.querySelector('.ia-context-override summary')?.innerText.includes('pcb')`);
+    await window.webContents.executeJavaScript(`(() => {const domain = document.querySelector('select[aria-label="Project domain"]'); domain.value = 'chip'; domain.dispatchEvent(new Event('change', {bubbles: true}));})()`);
+    await waitFor(`document.querySelector('.ia-domain-pill')?.disabled && document.querySelector('.ia-domain-pill')?.innerText.includes('Chip')`);
+    await window.webContents.executeJavaScript(`document.querySelector('.ia-settings-button').click()`);
+    await waitFor(`!document.querySelector('.ia-settings-popover')`);
     const screenshots = [await shot('initial')];
     await window.webContents.executeJavaScript(`document.querySelector('.ia-chat-actions button:last-child').click()`);
     await waitFor(`Boolean(document.querySelector('.ia-workspace')) && !document.querySelector('.ia-workspace-tree')`);

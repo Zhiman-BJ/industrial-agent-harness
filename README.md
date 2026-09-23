@@ -29,6 +29,8 @@ pnpm dev
 
 左侧 Projects 可绑定多个本地目录；首次启动会显示从 EDA Harness demo 提取的精简 Sobel 芯片示例。右侧工作区和其中的文件树默认收起，按需打开；文件树随当前项目切换，普通文件直接预览源码，专用工程格式使用相应 Viewer。
 
+新会话的输入框左下角可选择 Domain，也可保留 Auto 让 Broker 根据任务识别。列表随已注册的领域能力更新。项目可在 Settings → Project domain 中固定所属领域；固定后会话显示该领域，无法单独切换。Sobel 示例默认固定为 Chip。
+
 ## 文档
 
 从 [文档目录](doc/README.md) 开始阅读架构、Capability Broker、Viewer 层、领域扩展和开发阶段。仓库开发规则见 [AGENTS.md](AGENTS.md)。
