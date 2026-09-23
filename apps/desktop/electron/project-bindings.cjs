@@ -14,12 +14,18 @@ function readBindings(directory, sampleDirectory) {
   }
 }
 
-function addBinding(state, directory) {
+function addBinding(state, directory, domain, name) {
   const actual = fs.realpathSync(directory);
   if (!fs.statSync(actual).isDirectory()) throw Error('Choose a directory.');
-  const existing = state.projects.find(item => item.path === actual);
-  const project = existing || {id: crypto.randomUUID(), name: path.basename(actual), path: actual};
-  return {projects: existing ? state.projects : [...state.projects, project], activeId: project.id};
+  if (state.projects.some(item => {
+    try {return fs.realpathSync(item.path) === actual;}
+    catch {return item.path === actual;}
+  })) throw Error('This directory already belongs to a project.');
+  if (typeof domain !== 'string' || !domain) throw Error('Choose a project domain.');
+  const projectName = typeof name === 'string' ? name.trim() : path.basename(actual);
+  if (!projectName || projectName.length > 100) throw Error('Enter a project name (up to 100 characters).');
+  const project = {id: crypto.randomUUID(), name: projectName, path: actual, domain};
+  return {projects: [...state.projects, project], activeId: project.id};
 }
 
 function saveBindings(directory, state) {

@@ -9,6 +9,7 @@
 | [Viewer 层](viewer-layer.md) | 内置查看、关键产物预览、外部打开与证据边界 |
 | [Domain Pack](domain-pack.md) | 芯片与 PCB 等领域的扩展方式和最小契约 |
 | [开发计划](development-plan.md) | 阶段顺序、首批验收场景、验证方法与待确认问题 |
+| [产品决策记录](product-decisions.md) | 已确认的用户交互与项目模型决定，包括 Project、目录、Domain 和 Session 的关系 |
 | [架构决策记录](decisions.md) | 已确定的决定、提案间的差异和需要验证的接口 |
 | [Agent 聊天 UI 来源](agent-ui-provenance.md) | EDA Harness demo 的思考、Todo、工具呈现如何接入实时 SDK 事件 |
 

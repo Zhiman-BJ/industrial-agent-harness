@@ -130,6 +130,7 @@ function registerHandlers() {
   ipcMain.handle('broker:domains', () => listDomains(capabilities));
   ipcMain.handle('broker:resolve', (_event, request) => {
     const fixedDomain = activeProject()?.domain;
+    if (activeProject() && !fixedDomain) throw Error('Set this project’s domain before starting a session.');
     const domains = listDomains(capabilities);
     if (fixedDomain && request.domain && request.domain !== fixedDomain) throw Error(`This project is fixed to the ${fixedDomain} domain.`);
     if (request.domain && !domains.some(item => item.id === request.domain)) throw Error('Unknown domain.');
@@ -174,11 +175,13 @@ function registerHandlers() {
     return {available, version: available ? result.stdout.split('\n')[0].trim() : '', projectDir: projectDir || null, configured: Boolean(readApiKey())};
   });
   ipcMain.handle('project:bindings', () => projectSnapshot());
-  ipcMain.handle('project:set-domain', async (_event, domain) => {
+  ipcMain.handle('project:set-domain', async (_event, request) => {
     if (agent?.turn) throw Error('Stop the current turn before changing the project domain.');
-    if (domain !== null && !listDomains(capabilities).some(item => item.id === domain)) throw Error('Unknown domain.');
-    const project = activeProject();
-    if (!project) throw Error('Choose a project first.');
+    const {id, domain} = request || {};
+    if (!listDomains(capabilities).some(item => item.id === domain)) throw Error('Unknown domain.');
+    const project = projectBindings.projects.find(item => item.id === id);
+    if (!project) throw Error('Unknown project.');
+    if (id !== projectBindings.activeId) throw Error('Open this project before changing its domain.');
     if (project.domain === domain) return projectSnapshot();
     await agent?.close(); agent = undefined;
     project.domain = domain;
@@ -199,17 +202,22 @@ function registerHandlers() {
     saveBindings(projectConfigDir(), projectBindings);
     return projectSnapshot();
   });
-  ipcMain.handle('agent:choose-project', async () => {
-    if (agent?.turn) throw Error('Stop the current turn before switching projects.');
+  ipcMain.handle('project:choose-directory', async () => {
     const result = await dialog.showOpenDialog({title: 'Choose engineering project', properties: ['openDirectory']});
-    if (result.canceled) return projectDir || null;
+    return result.canceled ? null : fs.realpathSync(result.filePaths[0]);
+  });
+  ipcMain.handle('project:create', async (_event, request) => {
+    if (agent?.turn) throw Error('Stop the current turn before creating a project.');
+    if (!request || !listDomains(capabilities).some(item => item.id === request.domain)) throw Error('Choose a valid project domain.');
+    if (typeof request.directory !== 'string' || typeof request.name !== 'string') throw Error('Invalid project details.');
+    const next = addBinding(projectBindings, request.directory, request.domain, request.name);
     await agent?.close(); agent = undefined;
-    projectBindings = addBinding(projectBindings, result.filePaths[0]);
+    projectBindings = next;
     projectDir = activeProject().path;
     brokerScope = undefined; brokerTrace = [];
     clearProjectArtifacts();
     saveBindings(projectConfigDir(), projectBindings);
-    return projectDir;
+    return projectSnapshot();
   });
   ipcMain.handle('agent:new', async () => {
     if (agent?.turn) throw Error('Stop the current turn before starting a new chat.');
@@ -336,22 +344,41 @@ async function createWindow() {
     await waitFor(`Boolean(document.querySelector('.ia-project-list button.selected')) && !document.querySelector('.ia-workspace')`);
     await waitFor(`document.querySelector('.ia-domain-pill')?.innerText.includes('Chip') && document.querySelector('.ia-domain-pill')?.disabled`);
     if (!await window.webContents.executeJavaScript(`window.viewerHost.resolve({task: 'PCB board', domain: 'pcb'}).then(() => false, () => true)`)) throw Error('A fixed project accepted a different domain.');
-    await window.webContents.executeJavaScript(`document.querySelector('.ia-settings-button').click()`);
-    await waitFor(`Boolean(document.querySelector('select[aria-label="Project domain"]'))`);
-    await window.webContents.executeJavaScript(`(() => {const domain = document.querySelector('select[aria-label="Project domain"]'); domain.value = ''; domain.dispatchEvent(new Event('change', {bubbles: true}));})()`);
-    await waitFor(`!document.querySelector('.ia-domain-pill')?.disabled`);
-    await window.webContents.executeJavaScript(`document.querySelector('.ia-domain-pill').click()`);
-    await waitFor(`Array.from(document.querySelectorAll('.ia-domain-menu button')).some(button => button.innerText.includes('PCB'))`);
-    await window.webContents.executeJavaScript(`Array.from(document.querySelectorAll('.ia-domain-menu button')).find(button => button.innerText.includes('PCB')).click()`);
-    await waitFor(`document.querySelector('.ia-domain-pill')?.innerText.includes('PCB')`);
-    await window.webContents.executeJavaScript(`(() => {const area = document.querySelector('.ia-composer textarea'); Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(area, 'Inspect the PCB board'); area.dispatchEvent(new Event('input', {bubbles:true}));})()`);
-    await window.webContents.executeJavaScript(`document.querySelector('.ia-send').click()`);
-    await waitFor(`document.querySelector('.ia-context-override summary')?.innerText.includes('pcb')`);
+    await window.webContents.executeJavaScript(`document.querySelector('.ia-project-list button.selected').click()`);
+    await waitFor(`document.querySelector('.ia-project-page') && document.querySelector('select[aria-label="Project domain"]')?.value === 'chip'`);
+    await new Promise(resolve => setTimeout(resolve, 150));
+    const projectScreenshot = await shot('project');
+    await window.webContents.executeJavaScript(`(() => {const domain = document.querySelector('select[aria-label="Project domain"]'); domain.value = 'pcb'; domain.dispatchEvent(new Event('change', {bubbles: true}));})()`);
+    await waitFor(`!document.querySelector('.ia-project-domain-edit button')?.disabled`);
+    await window.webContents.executeJavaScript(`document.querySelector('.ia-project-domain-edit button').click()`);
+    await waitFor(`document.querySelector('select[aria-label="Project domain"]')?.value === 'pcb' && document.querySelector('.ia-project-domain-edit button')?.disabled`);
+    await window.webContents.executeJavaScript(`document.querySelector('.ia-project-start').click()`);
+    await waitFor(`document.querySelector('.ia-domain-pill')?.disabled && document.querySelector('.ia-domain-pill')?.innerText.includes('PCB')`);
+    await window.webContents.executeJavaScript(`document.querySelector('.ia-project-list button.selected').click()`);
+    await waitFor(`document.querySelector('select[aria-label="Project domain"]')?.value === 'pcb'`);
     await window.webContents.executeJavaScript(`(() => {const domain = document.querySelector('select[aria-label="Project domain"]'); domain.value = 'chip'; domain.dispatchEvent(new Event('change', {bubbles: true}));})()`);
+    await waitFor(`!document.querySelector('.ia-project-domain-edit button')?.disabled`);
+    await window.webContents.executeJavaScript(`document.querySelector('.ia-project-domain-edit button').click()`);
+    await waitFor(`document.querySelector('select[aria-label="Project domain"]')?.value === 'chip' && document.querySelector('.ia-project-domain-edit button')?.disabled`);
+    await window.webContents.executeJavaScript(`document.querySelector('.ia-project-start').click()`);
     await waitFor(`document.querySelector('.ia-domain-pill')?.disabled && document.querySelector('.ia-domain-pill')?.innerText.includes('Chip')`);
-    await window.webContents.executeJavaScript(`document.querySelector('.ia-settings-button').click()`);
-    await waitFor(`!document.querySelector('.ia-settings-popover')`);
-    const screenshots = [await shot('initial')];
+    const newProjectDirectory = path.join(app.getPath('userData'), 'new-board-project');
+    fs.mkdirSync(newProjectDirectory);
+    const showOpenDialog = dialog.showOpenDialog;
+    dialog.showOpenDialog = async () => ({canceled: false, filePaths: [newProjectDirectory]});
+    try {
+      await window.webContents.executeJavaScript(`Array.from(document.querySelectorAll('.ia-project-list button')).find(button => button.innerText.includes('Add local project')).click()`);
+      await waitFor(`Boolean(document.querySelector('.ia-create-project')) && document.querySelector('.ia-create-project button.primary')?.disabled`);
+      await window.webContents.executeJavaScript(`(() => {const domain = document.querySelector('select[aria-label="New project domain"]'); domain.value = 'pcb'; domain.dispatchEvent(new Event('change', {bubbles: true}));})()`);
+      await waitFor(`!document.querySelector('.ia-create-project button.primary')?.disabled`);
+      await window.webContents.executeJavaScript(`document.querySelector('.ia-create-project button.primary').click()`);
+      await waitFor(`document.querySelector('.ia-project-page h1')?.innerText === 'new-board-project' && document.querySelector('select[aria-label="Project domain"]')?.value === 'pcb'`);
+    } finally {dialog.showOpenDialog = showOpenDialog;}
+    await window.webContents.executeJavaScript(`Array.from(document.querySelectorAll('.ia-project-list button')).find(button => button.innerText.includes('Sobel')).click()`);
+    await waitFor(`document.querySelector('select[aria-label="Project domain"]')?.value === 'chip'`);
+    await window.webContents.executeJavaScript(`document.querySelector('.ia-project-start').click()`);
+    await waitFor(`document.querySelector('.ia-domain-pill')?.innerText.includes('Chip')`);
+    const screenshots = [projectScreenshot, await shot('initial')];
     await window.webContents.executeJavaScript(`document.querySelector('.ia-chat-actions button:last-child').click()`);
     await waitFor(`Boolean(document.querySelector('.ia-workspace')) && !document.querySelector('.ia-workspace-tree')`);
     await window.webContents.executeJavaScript(`document.querySelector('.ia-workspace-actions button').click()`);

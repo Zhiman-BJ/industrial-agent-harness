@@ -55,10 +55,11 @@ export interface ViewerHostApi {
   agentStatus(): Promise<{available: boolean; version: string; projectDir: string | null; configured: boolean}>;
   modelGet(): Promise<ModelProfileStatus>;
   modelSave(request: ModelProfile & {apiKey?: string; clearApiKey?: boolean}): Promise<ModelProfileStatus>;
-  chooseProject(): Promise<string | null>;
+  chooseProjectDirectory(): Promise<string | null>;
+  createProject(request: {directory: string; name: string; domain: string}): Promise<{projects: ProjectBinding[]; activeId: string | null; projectDir: string | null}>;
   projectBindings(): Promise<{projects: ProjectBinding[]; activeId: string | null; projectDir: string | null}>;
   selectProject(id: string): Promise<{projects: ProjectBinding[]; activeId: string | null; projectDir: string | null}>;
-  setProjectDomain(domain: string | null): Promise<{projects: ProjectBinding[]; activeId: string | null; projectDir: string | null}>;
+  setProjectDomain(id: string, domain: string): Promise<{projects: ProjectBinding[]; activeId: string | null; projectDir: string | null}>;
   newChat(): Promise<void>;
   projectFiles(): Promise<Array<{path: string; name: string; depth: number; directory: boolean}>>;
   readProjectFile(relative: string): Promise<{path: string; name: string; sizeBytes: number; viewer: 'layout' | 'netlist' | 'waveform' | null; content: string | null; truncated: boolean}>;

@@ -2,6 +2,8 @@
 
 本页区分当前已确定的方向、两份计划中的建议和仍需实测的接口。计划材料是设计输入，不是对现有实现的描述。
 
+Project、Domain 和 Session 的用户交互决定见[产品决策记录](product-decisions.md)。
+
 ## 已确定
 
 | 决定 | 当前落实情况 |
@@ -14,7 +16,6 @@
 | 产品支持多个工业场景，首批以 Chip 和 PCB 验证 | 有 Chip/PCB 首批 Capability 声明；PCB 真实工具尚未接入 |
 | 建立独立 Viewer 层 | KLayout、netlistsvg、Surfer 三组 Viewer 位于正式产品路径并已接入桌面 MVP |
 | 通用聊天与文件工作区 | 输入区不固定 Chip/PCB 阶段；Broker 根据任务识别上下文，右侧默认预览普通文件，专用格式启用 Viewer |
-| 会话与项目 Domain | 新会话可从注册表生成的领域列表选 Domain，或使用 Auto；项目可绑定固定领域，固定后会话选择锁定，Broker 在主进程强制该约束 |
 
 ## 两份提案的差异及当前取舍
 

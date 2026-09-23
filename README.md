@@ -16,7 +16,7 @@ Industrial Agent Harness 是面向工业设计与工程任务的桌面工作台�
 
 工作台由桌面 UI、Kimi Code 接入、Industrial Capability Broker、工业运行时、Viewer 层和 Domain Packs 组成。Kimi Code 负责 Agent 会话与工具调用；Broker 根据项目状态和任务选择适用能力；工业运行时执行专业动作并记录产物与验证结果。Viewer 在工作台内展示适合直接查看的工程产物；对于 CAD、Godot 等复杂软件，重点展示关键产物，完整编辑仍在专业软件中完成。芯片和 PCB 将作为最早的参考领域。
 
-目前的 MVP 已有可运行的 Electron 工作台：左侧是项目与会话，中间是 Agent 聊天，右侧是文件工作区。普通文件显示源码；GDS/OAS 版图、Yosys JSON 网表和 VCD/FST/GHW 波形按格式启用专用 Viewer。输入工程任务后，Capability Broker 自动识别适用领域与阶段并渐进披露 Skill 和工具。Debug 模式展示 L0–L3 决策日志。工作台通过 Kimi Agent SDK 启动真实会话，并在聊天区展示思考、Todo、工具和审批事件。模型端点、名称与 API Key 可在左下角 Settings → Model API 中配置。
+目前的 MVP 已有可运行的 Electron 工作台：左侧是项目与会话，中间是 Agent 聊天，右侧是文件工作区。普通文件显示源码；GDS/OAS 版图、Yosys JSON 网表和 VCD/FST/GHW 波形按格式启用专用 Viewer。输入工程任务后，Capability Broker 在项目所属领域内识别适用能力与阶段，并渐进披露 Skill 和工具。Debug 模式展示 L0–L3 决策日志。工作台通过 Kimi Agent SDK 启动真实会话，并在聊天区展示思考、Todo、工具和审批事件。模型端点、名称与 API Key 可在左下角 Settings → Model API 中配置。
 
 ```bash
 pnpm install
@@ -29,7 +29,7 @@ pnpm dev
 
 左侧 Projects 可绑定多个本地目录；首次启动会显示从 EDA Harness demo 提取的精简 Sobel 芯片示例。右侧工作区和其中的文件树默认收起，按需打开；文件树随当前项目切换，普通文件直接预览源码，专用工程格式使用相应 Viewer。
 
-新会话的输入框左下角可选择 Domain，也可保留 Auto 让 Broker 根据任务识别。列表随已注册的领域能力更新。项目可在 Settings → Project domain 中固定所属领域；固定后会话显示该领域，无法单独切换。Sobel 示例默认固定为 Chip。
+一个本地目录对应一个 Project。添加目录时需为 Project 选择 Domain；点击左侧项目可打开详情页，查看目录并修改该项目的 Domain。新 Session 在输入框左下角以只读小按钮显示所属 Domain。Sobel 示例默认属于 Chip；领域列表随已注册能力更新。
 
 ## 文档
 

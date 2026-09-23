@@ -10,20 +10,22 @@ test('projects keep distinct directory bindings across restarts', t => {
   t.after(() => fs.rmSync(root, {recursive: true, force: true}));
   const sample = path.join(root, 'sample');
   const second = path.join(root, 'second');
-  fs.mkdirSync(sample); fs.mkdirSync(second);
+  const third = path.join(root, 'third');
+  fs.mkdirSync(sample); fs.mkdirSync(second); fs.mkdirSync(third);
   let state = readBindings(path.join(root, 'config'), sample);
   assert.equal(state.projects.length, 1);
   assert.equal(state.projects[0].domain, 'chip');
-  state = addBinding(state, second);
+  state = addBinding(state, second, 'pcb', 'Board project');
   assert.equal(state.projects.length, 2);
-  assert.equal(state.projects[1].domain, undefined);
-  state.projects[1].domain = 'pcb';
+  assert.equal(state.projects[1].domain, 'pcb');
+  assert.equal(state.projects[1].name, 'Board project');
   saveBindings(path.join(root, 'config'), state);
   assert.deepEqual(readBindings(path.join(root, 'config'), sample), state);
-  assert.equal(addBinding(state, sample).projects.length, 2);
+  assert.throws(() => addBinding(state, sample, 'chip'), /already belongs/);
+  assert.throws(() => addBinding(state, third, ''), /Choose a project domain/);
 });
 
-test('existing sample bindings acquire a fixed domain while explicit unpinning persists', t => {
+test('existing sample bindings acquire a domain while legacy unset values remain editable', t => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'industrial-project-domain-'));
   t.after(() => fs.rmSync(root, {recursive: true, force: true}));
   const sample = path.join(root, 'sample');
