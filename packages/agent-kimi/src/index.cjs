@@ -10,7 +10,7 @@ const canonicalNames = {
 
 function externalTools(getScope, lookupArtifact, disclose) {
   const scope = getScope();
-  if (!scope) return [];
+  if (!scope?.capabilityIds.length) return [];
   const tools = [createExternalTool({
     name: 'industrial_capability_detail',
     description: 'Read the detailed skill reference and tool schema for one selected industrial capability.',
@@ -66,7 +66,9 @@ class KimiSession {
       this.scopeVersion = scope.version;
       this.runtimeRevision = runtime.revision;
     }
-    const context = `Industrial Context (current Broker scope): ${JSON.stringify({domain: scope.domain, stage: scope.stage, capabilities: scope.capabilityIds, skills: scope.skills, tools: scope.tools})}. Use industrial_capability_detail to load details when needed. Artifact metadata tools are read-only. Treat viewer output as inspection, not engineering verification.`;
+    const context = scope.capabilityIds.length
+      ? `Industrial Context (current Broker scope): ${JSON.stringify({domain: scope.domain, stage: scope.stage, capabilities: scope.capabilityIds, skills: scope.skills, tools: scope.tools})}. Use industrial_capability_detail to load details when needed. Artifact metadata tools are read-only. Treat viewer output as inspection, not engineering verification.`
+      : 'No industrial capability was selected for this task. Work within the chosen project using standard Kimi tools.';
     try {
       const turn = this.session.prompt(`${context}\n\nUser task: ${task}`);
       this.turn = turn;

@@ -11,6 +11,7 @@ const {resolve, discloseDetail} = require('../../../packages/capability-broker/s
 const capabilities = require('../../../packages/domain-skills/src/capabilities.cjs');
 const {KimiSession} = require('../../../packages/agent-kimi/src/index.cjs');
 const {readProfile, saveProfile, validateProfile, writeCliConfig, sessionEnv} = require('./model-config.cjs');
+const {readBindings, addBinding, saveBindings} = require('./project-bindings.cjs');
 
 protocol.registerSchemesAsPrivileged([{scheme: 'app', privileges: {standard: true, secure: true, supportFetchAPI: true, corsEnabled: true}}]);
 if (process.argv.includes('--viewer-selftest')) app.setPath('userData', fs.mkdtempSync(path.join(os.tmpdir(), 'industrial-harness-selftest-')));
@@ -32,11 +33,19 @@ let brokerScope;
 let brokerTrace = [];
 let agent;
 let projectDir;
+let projectBindings = {projects: [], activeId: null};
 let mainWindow;
 let sessionApiKey = '';
 let modelRevision = 0;
 
 function configDir() {return path.join(app.getPath('userData'), 'model');}
+function projectConfigDir() {return path.join(app.getPath('userData'), 'workspace');}
+function activeProject() {return projectBindings.projects.find(item => item.id === projectBindings.activeId) || null;}
+function projectSnapshot() {return {...projectBindings, projectDir: projectDir || null};}
+function clearProjectArtifacts() {
+  for (const id of artifacts.keys()) if (!id.startsWith('reference-')) artifacts.delete(id);
+  netlistSessions.clear(); activeLayoutToken = undefined;
+}
 function keyFile() {return path.join(configDir(), 'api-key.bin');}
 function canPersistKey() {return safeStorage.isEncryptionAvailable() && (process.platform !== 'linux' || safeStorage.getSelectedStorageBackend() !== 'basic_text');}
 function readApiKey() {
@@ -60,8 +69,20 @@ function kindFor(file) {
   const ext = path.extname(file).toLowerCase();
   if (['.gds', '.gdsii', '.oas', '.oasis'].includes(ext)) return 'layout';
   if (['.vcd', '.fst', '.ghw'].includes(ext)) return 'waveform';
-  if (ext === '.json') return 'netlist';
+  if (ext === '.json') {
+    const stat = fs.statSync(file);
+    if (stat.size <= 20 * 1024 * 1024) {
+      try {if (JSON.parse(fs.readFileSync(file, 'utf8'))?.modules) return 'netlist';} catch {}
+    }
+  }
   throw Error('This Viewer currently supports GDS/OAS, Yosys JSON, and VCD/FST/GHW.');
+}
+
+function projectFile(relative) {
+  if (!projectDir || typeof relative !== 'string') throw Error('Choose a project first.');
+  const file = fs.realpathSync(path.resolve(projectDir, relative));
+  if (!file.startsWith(projectDir + path.sep) || !fs.statSync(file).isFile()) throw Error('File is outside the selected project.');
+  return file;
 }
 
 async function digest(file) {
@@ -146,12 +167,36 @@ function registerHandlers() {
     const available = !result.error && result.status === 0 && help?.status === 0 && help.stdout.includes('--wire');
     return {available, version: available ? result.stdout.split('\n')[0].trim() : '', projectDir: projectDir || null, configured: Boolean(readApiKey())};
   });
+  ipcMain.handle('project:bindings', () => projectSnapshot());
+  ipcMain.handle('project:select', async (_event, id) => {
+    if (agent?.turn) throw Error('Stop the current turn before switching projects.');
+    const item = projectBindings.projects.find(candidate => candidate.id === id);
+    if (!item) throw Error('Unknown project.');
+    const actual = fs.realpathSync(item.path);
+    if (!fs.statSync(actual).isDirectory()) throw Error('Project directory is unavailable.');
+    await agent?.close(); agent = undefined;
+    projectBindings.activeId = id; projectDir = actual;
+    brokerScope = undefined; brokerTrace = [];
+    clearProjectArtifacts();
+    saveBindings(projectConfigDir(), projectBindings);
+    return projectSnapshot();
+  });
   ipcMain.handle('agent:choose-project', async () => {
+    if (agent?.turn) throw Error('Stop the current turn before switching projects.');
     const result = await dialog.showOpenDialog({title: 'Choose engineering project', properties: ['openDirectory']});
     if (result.canceled) return projectDir || null;
     await agent?.close(); agent = undefined;
-    projectDir = fs.realpathSync(result.filePaths[0]);
+    projectBindings = addBinding(projectBindings, result.filePaths[0]);
+    projectDir = activeProject().path;
+    brokerScope = undefined; brokerTrace = [];
+    clearProjectArtifacts();
+    saveBindings(projectConfigDir(), projectBindings);
     return projectDir;
+  });
+  ipcMain.handle('agent:new', async () => {
+    if (agent?.turn) throw Error('Stop the current turn before starting a new chat.');
+    await agent?.close(); agent = undefined;
+    brokerScope = undefined; brokerTrace = [];
   });
   ipcMain.handle('project:list', () => {
     if (!projectDir) return [];
@@ -172,15 +217,25 @@ function registerHandlers() {
     return output;
   });
   ipcMain.handle('project:open', async (_event, relative) => {
-    if (!projectDir || typeof relative !== 'string') throw Error('Choose a project first.');
-    const file = fs.realpathSync(path.resolve(projectDir, relative));
-    if (!file.startsWith(projectDir + path.sep)) throw Error('File is outside the selected project.');
+    const file = projectFile(relative);
     return registerArtifact({id: crypto.randomUUID(), kind: kindFor(file), name: path.basename(file), design: path.basename(projectDir), file});
+  });
+  ipcMain.handle('project:read', (_event, relative) => {
+    const file = projectFile(relative);
+    const sizeBytes = fs.statSync(file).size;
+    let viewer = null;
+    try {viewer = kindFor(file);} catch {}
+    if (viewer) return {path: relative, name: path.basename(file), sizeBytes, viewer, content: null, truncated: false};
+    const limit = 2 * 1024 * 1024;
+    const fd = fs.openSync(file, 'r');
+    const buffer = Buffer.alloc(Math.min(sizeBytes, limit));
+    try {fs.readSync(fd, buffer, 0, buffer.length, 0);} finally {fs.closeSync(fd);}
+    return {path: relative, name: path.basename(file), sizeBytes, viewer: null, content: buffer.includes(0) ? null : buffer.toString('utf8'), truncated: sizeBytes > limit};
   });
   ipcMain.handle('agent:run', (_event, task) => {
     if (!projectDir) throw Error('Choose an engineering project first.');
     if (typeof task !== 'string' || !task.trim()) throw Error('Describe the task first.');
-    if (!brokerScope) throw Error('Resolve capabilities first.');
+    if (!brokerScope) throw Error('Resolve the task scope first.');
     agent ||= new KimiSession(projectDir, () => brokerScope, async id => (await checked(id)).artifact, loadDetail, event => mainWindow?.webContents.send('agent:event', event), runtimeConfig);
     void agent.run(task).catch(error => mainWindow?.webContents.send('agent:event', {type: 'error', message: String(error)}));
     return {started: true};
@@ -230,6 +285,8 @@ function registerHandlers() {
 }
 
 async function createWindow() {
+  projectBindings = readBindings(projectConfigDir(), path.resolve(desktopRoot, '../../examples/chip-sobel'));
+  projectDir = activeProject()?.path;
   viewerProtocol = createViewerProtocol(desktopRoot);
   protocol.handle('app', viewerProtocol.handle);
   registerHandlers();
@@ -242,59 +299,58 @@ async function createWindow() {
   if (process.env.INDUSTRIAL_DEV_URL) await window.loadURL(process.env.INDUSTRIAL_DEV_URL);
   else await window.loadURL('app://viewer/index.html');
   if (process.argv.includes('--viewer-selftest')) {
-    async function waitFor(text, timeout = 20000) {
+    async function waitFor(script, timeout = 30000) {
       const end = Date.now() + timeout;
       while (Date.now() < end) {
-        if (await window.webContents.executeJavaScript(`document.body.innerText.includes(${JSON.stringify(text)})`)) return;
+        try {if (await window.webContents.executeJavaScript(script)) return;}
+        catch (error) {fs.writeFileSync('/tmp/industrial-workspace-failure.png', await window.webContents.capturePage().then(image => image.toPNG())); throw Error(`${script}: ${error}`);}
         await new Promise(resolve => setTimeout(resolve, 250));
       }
-      throw Error(`Desktop UI did not show ${text}.`);
+      fs.writeFileSync('/tmp/industrial-workspace-failure.png', await window.webContents.capturePage().then(image => image.toPNG()));
+      throw Error(`Desktop UI condition timed out: ${script}`);
     }
-    async function waitForViewer(kind) {
-      const end = Date.now() + 30000;
-      while (Date.now() < end) {
-        const state = await window.webContents.executeJavaScript(`({ready: document.querySelector('.ia-viewer-header span')?.innerText, active: document.querySelector('.ia-viewer-tabs button.active')?.innerText})`);
-        if (state.ready === 'Ready' && state.active === kind) return;
-        await new Promise(resolve => setTimeout(resolve, 250));
-      }
-      const state = await window.webContents.executeJavaScript(`({ready: document.querySelector('.ia-viewer-header span')?.innerText, active: document.querySelector('.ia-viewer-tabs button.active')?.innerText, error: document.querySelector('.rp-empty p')?.innerText})`);
-      throw Error(`Viewer ${kind} did not become ready: ${JSON.stringify(state)}`);
-    }
-    await waitForViewer('Netlist');
     const output = process.env.VIEWER_SELFTEST_SCREENSHOT || path.join(app.getPath('temp'), 'industrial-viewer-selftest.png');
-    fs.writeFileSync(output, await window.webContents.capturePage().then(image => image.toPNG()));
-    await window.webContents.executeJavaScript(`document.querySelector('.ia-suggestions button').click(); document.querySelector('.ia-chat-actions button').click()`);
+    const shot = async suffix => {
+      const filename = suffix ? output.replace(/\.png$/, `-${suffix}.png`) : output;
+      fs.writeFileSync(filename, await window.webContents.capturePage().then(image => image.toPNG()));
+      return filename;
+    };
+    await waitFor(`Boolean(document.querySelector('.ia-project-list button.selected')) && !document.querySelector('.ia-workspace')`);
+    const screenshots = [await shot('initial')];
+    await window.webContents.executeJavaScript(`document.querySelector('.ia-chat-actions button:last-child').click()`);
+    await waitFor(`Boolean(document.querySelector('.ia-workspace')) && !document.querySelector('.ia-workspace-tree')`);
+    await window.webContents.executeJavaScript(`document.querySelector('.ia-workspace-actions button').click()`);
+    await waitFor(`Boolean(document.querySelector('.ia-file-list button[title="README.md"]'))`);
+    await window.webContents.executeJavaScript(`document.querySelector('.ia-file-list button[title="README.md"]').click()`);
+    await waitFor(`Boolean(document.querySelector('.ia-source-panel pre')?.innerText.includes('Sobel chip design sample'))`);
+    screenshots.push(await shot('source'));
+    await window.webContents.executeJavaScript(`document.querySelector('.ia-workspace-actions button').click()`);
+    await waitFor(`Boolean(document.querySelector('.ia-example-list'))`);
+    await window.webContents.executeJavaScript(`Array.from(document.querySelectorAll('.ia-example-list button')).find(button => button.innerText.includes('netlist')).click()`);
+    await waitFor(`document.querySelector('.ia-viewer-footer')?.innerText.includes('Ready')`);
+    screenshots.push(await shot('netlist'));
+    await window.webContents.executeJavaScript(`const area = document.querySelector('.ia-composer textarea'); Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(area, 'Inspect the netlist signals'); area.dispatchEvent(new Event('input', {bubbles:true})); document.querySelector('.ia-chat-actions button').click()`);
     await new Promise(resolve => setTimeout(resolve, 100));
     await window.webContents.executeJavaScript(`document.querySelector('.ia-send').click()`);
-    await waitFor('Broker disclosure log');
-    await waitFor('chip.rtl.netlist.inspect');
-    await new Promise(resolve => setTimeout(resolve, 120));
-    const debugOutput = output.replace(/\.png$/, '-debug.png');
-    fs.writeFileSync(debugOutput, await window.webContents.capturePage().then(image => image.toPNG()));
-    for (const kind of ['Layout', 'Waveform']) {
-      await window.webContents.executeJavaScript(`Array.from(document.querySelectorAll('.ia-viewer-tabs button')).find(button => button.innerText === ${JSON.stringify(kind)}).click()`);
-      await waitForViewer(kind);
-      const kindOutput = output.replace(/\.png$/, `-${kind.toLowerCase()}.png`);
-      fs.writeFileSync(kindOutput, await window.webContents.capturePage().then(image => image.toPNG()));
+    await waitFor(`document.body.innerText.includes('Broker disclosure log') && document.body.innerText.includes('chip.rtl.netlist.inspect')`);
+    screenshots.push(await shot('debug'));
+    for (const kind of ['layout', 'waveform']) {
+      await window.webContents.executeJavaScript(`document.querySelector('.ia-workspace-actions button').click()`);
+      await waitFor(`Boolean(document.querySelector('.ia-example-list'))`);
+      await window.webContents.executeJavaScript(`Array.from(document.querySelectorAll('.ia-example-list button')).find(button => button.innerText.toLowerCase().includes(${JSON.stringify(kind)})).click()`);
+      await waitFor(`document.querySelector('.ia-viewer-footer')?.innerText.includes('Ready')`, 90000);
+      screenshots.push(await shot(kind));
     }
     await window.webContents.executeJavaScript(`document.querySelector('.ia-settings-button').click()`);
-    await new Promise(resolve => setTimeout(resolve, 50));
+    await waitFor(`Boolean(document.querySelector('.ia-settings-row button'))`);
     await window.webContents.executeJavaScript(`document.querySelector('.ia-settings-row button').click()`);
-    const dark = await window.webContents.executeJavaScript(`document.querySelector('.ia-app').classList.contains('theme-dark')`);
-    if (!dark) throw Error('Dark theme did not activate.');
-    await new Promise(resolve => setTimeout(resolve, 180));
-    const darkOutput = output.replace(/\.png$/, '-dark.png');
-    fs.writeFileSync(darkOutput, await window.webContents.capturePage().then(image => image.toPNG()));
+    await waitFor(`document.querySelector('.ia-app').classList.contains('theme-dark')`);
     await window.webContents.executeJavaScript(`Array.from(document.querySelectorAll('.ia-settings-row')).find(row => row.innerText.includes('Model API')).querySelector('button').click()`);
-    await waitFor('API base URL');
-    const settingsOutput = output.replace(/\.png$/, '-model-settings.png');
-    fs.writeFileSync(settingsOutput, await window.webContents.capturePage().then(image => image.toPNG()));
-    await window.webContents.executeJavaScript(`document.querySelector('.ia-model-modal header button').click()`);
-    await window.webContents.executeJavaScript(`document.querySelector('.ia-top-left button').click(); document.querySelector('.ia-top-right button').click()`);
-    await new Promise(resolve => setTimeout(resolve, 50));
-    const collapsed = await window.webContents.executeJavaScript(`!document.querySelector('.ia-tree') && !document.querySelector('.ia-viewer')`);
-    if (!collapsed) throw Error('Sidebars did not collapse.');
-    console.log(JSON.stringify({ok: true, screenshots: [output, debugOutput, output.replace(/\.png$/, '-layout.png'), output.replace(/\.png$/, '-waveform.png'), darkOutput, settingsOutput]}));
+    await waitFor(`Boolean(document.querySelector('.ia-model-modal'))`);
+    screenshots.push(await shot('settings'));
+    await window.webContents.executeJavaScript(`document.querySelector('.ia-model-modal header button').click(); document.querySelector('.ia-sidebar-brand .ia-icon').click(); document.querySelector('.ia-chat-actions button:last-child').click()`);
+    await waitFor(`!document.querySelector('.ia-sidebar') && !document.querySelector('.ia-workspace')`);
+    console.log(JSON.stringify({ok: true, screenshots}));
     app.quit();
   }
 }

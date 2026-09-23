@@ -20,3 +20,16 @@ test('scope changes replace old capabilities', () => {
   assert.equal(next.trace.find(item => item.event === 'scope.replace').detail.previous, first.scope.version);
   assert.throws(() => discloseDetail(next.scope, registry, 'chip.rtl.netlist.inspect'), /outside/);
 });
+
+test('automatic context resolves from task or selected artifact', () => {
+  const pcb = resolve({task: 'Inspect the PCB board routing'}, registry);
+  assert.equal(pcb.scope.domain, 'pcb');
+  assert.equal(pcb.scope.stage, 'layout');
+  assert.deepEqual(pcb.scope.capabilityIds, ['pcb.layout.inspect']);
+  assert.ok(pcb.contexts.some(item => item.domain === 'chip' && item.stage === 'physical'));
+  const waveform = resolve({task: 'Inspect this artifact', artifactKind: 'waveform'}, registry);
+  assert.deepEqual(waveform.scope.capabilityIds, ['chip.verification.waveform.inspect']);
+  const unknown = resolve({task: 'Plan an unrelated activity'}, registry);
+  assert.deepEqual(unknown.scope.capabilityIds, []);
+  assert.equal(unknown.scope.domain, null);
+});

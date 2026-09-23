@@ -31,7 +31,7 @@ Read `doc/README.md` before changing architecture or module boundaries. The repo
 
 ## Working in this repository
 
-- The MVP desktop layout is project tree | agent chat flow | viewer. Keep the left and right panels collapsible, put settings at the lower left, and support light and dark themes.
+- The MVP desktop layout is project/chat sidebar | agent chat flow | file workspace. Keep the left and right panels collapsible, put settings at the lower left, and support light and dark themes. The workspace and its file tree start closed. The workspace previews ordinary source files; registered specialized formats activate a Viewer in the file canvas. Do not put hardcoded domain/stage selectors in the generic composer.
 - Do not reintroduce trajectory replay into the MVP. Debug mode shows actual Broker disclosure and agent events, including scope replacement and detailed skill/tool loading.
 - Keep package READMEs and `doc/` aligned with implemented boundaries. Mark proposed APIs and milestones as proposals until exercised.
 - Add meaningful contract and integration tests when behavior is implemented. Verify SDK events, permissions, interruption, recovery, and dynamic disclosure against the pinned version before claiming support.

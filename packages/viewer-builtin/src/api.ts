@@ -48,14 +48,18 @@ export interface ViewerHostApi {
   open(request: {artifactId: string}): Promise<OpenedViewer>;
   render(request: {token: string; box: number[]; width: number; height: number; visible: string[]; quality: string; theme?: string}): Promise<{png: string; box: number[]}>;
   netlist(request: {token: string; module: string; focus?: string}): Promise<NetlistData>;
-  resolve(request: {domain: string; stage: string; task: string}): Promise<BrokerResult>;
+  resolve(request: {task: string; artifactKind?: string; domain?: string; stage?: string}): Promise<BrokerResult>;
   detail(capabilityId: string): Promise<CapabilityDetail>;
   brokerTrace(): Promise<BrokerResult['trace']>;
   agentStatus(): Promise<{available: boolean; version: string; projectDir: string | null; configured: boolean}>;
   modelGet(): Promise<ModelProfileStatus>;
   modelSave(request: ModelProfile & {apiKey?: string; clearApiKey?: boolean}): Promise<ModelProfileStatus>;
   chooseProject(): Promise<string | null>;
+  projectBindings(): Promise<{projects: Array<{id: string; name: string; path: string}>; activeId: string | null; projectDir: string | null}>;
+  selectProject(id: string): Promise<{projects: Array<{id: string; name: string; path: string}>; activeId: string | null; projectDir: string | null}>;
+  newChat(): Promise<void>;
   projectFiles(): Promise<Array<{path: string; name: string; depth: number; directory: boolean}>>;
+  readProjectFile(relative: string): Promise<{path: string; name: string; sizeBytes: number; viewer: 'layout' | 'netlist' | 'waveform' | null; content: string | null; truncated: boolean}>;
   openProjectFile(relative: string): Promise<ViewerArtifact>;
   runAgent(task: string): Promise<{started: boolean}>;
   approveAgent(id: string, response: 'approve' | 'approve_for_session' | 'reject'): Promise<void>;
@@ -80,8 +84,9 @@ export interface ModelProfile {provider: 'kimi' | 'openai_legacy'; endpoint: str
 export interface ModelProfileStatus extends ModelProfile {hasApiKey: boolean; keyPersisted: boolean}
 
 export interface BrokerResult {
-  scope: {version: string; domain: string; stage: string; capabilityIds: string[]; skills: string[]; tools: string[]};
+  scope: {version: string; domain: string | null; stage: string | null; capabilityIds: string[]; skills: string[]; tools: string[]};
   matches: Array<{id: string; title: string}>;
+  contexts: Array<{domain: string; stage: string}>;
   trace: Array<{level: string; event: string; detail: unknown}>;
 }
 

@@ -16,7 +16,7 @@ Industrial Agent Harness 是面向工业设计与工程任务的桌面工作台�
 
 工作台由桌面 UI、Kimi Code 接入、Industrial Capability Broker、工业运行时、Viewer 层和 Domain Packs 组成。Kimi Code 负责 Agent 会话与工具调用；Broker 根据项目状态和任务选择适用能力；工业运行时执行专业动作并记录产物与验证结果。Viewer 在工作台内展示适合直接查看的工程产物；对于 CAD、Godot 等复杂软件，重点展示关键产物，完整编辑仍在专业软件中完成。芯片和 PCB 将作为最早的参考领域。
 
-目前的 MVP 已有可运行的 Electron 工作台：可查看 GDS/OAS 版图、Yosys JSON 网表及 VCD/FST/GHW 波形，输入工程任务并由 Capability Broker 按领域和阶段披露相关 Skill 与工具。Debug 模式展示 Broker 的 L0–L3 决策日志。工作台通过 Kimi Agent SDK 启动真实会话，并在聊天区展示思考、Todo、工具和审批事件。模型端点、名称与 API Key 可在左下角 Settings → Model API 中配置。
+目前的 MVP 已有可运行的 Electron 工作台：左侧是项目与会话，中间是 Agent 聊天，右侧是文件工作区。普通文件显示源码；GDS/OAS 版图、Yosys JSON 网表和 VCD/FST/GHW 波形按格式启用专用 Viewer。输入工程任务后，Capability Broker 自动识别适用领域与阶段并渐进披露 Skill 和工具。Debug 模式展示 L0–L3 决策日志。工作台通过 Kimi Agent SDK 启动真实会话，并在聊天区展示思考、Todo、工具和审批事件。模型端点、名称与 API Key 可在左下角 Settings → Model API 中配置。
 
 ```bash
 pnpm install
@@ -26,6 +26,8 @@ pnpm dev
 ```
 
 版图 Viewer 需要 KLayout Python；也可通过 `KLAYOUT_PYTHON` 指向已有环境。启动后选择工程目录，在设置中填写模型 API 信息，再发送任务。执行 `pnpm build && pnpm start` 可运行构建后的桌面应用。现阶段桌面链路在 macOS 实测，Linux 与 Windows 发行包仍在开发中。
+
+左侧 Projects 可绑定多个本地目录；首次启动会显示从 EDA Harness demo 提取的精简 Sobel 芯片示例。右侧工作区和其中的文件树默认收起，按需打开；文件树随当前项目切换，普通文件直接预览源码，专用工程格式使用相应 Viewer。
 
 ## 文档
 
