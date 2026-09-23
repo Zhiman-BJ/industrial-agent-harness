@@ -1,0 +1,20 @@
+name: Repository structure
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  structure:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check scaffold
+        run: |
+          test -f README.md
+          test -f AGENTS.md
+          test -f pnpm-workspace.yaml
+          for dir in apps/desktop packages/agent-kimi packages/contracts packages/domain-skills packages/domain-runtime packages/domain-mcp; do
+            test -f "$dir/README.md"
+            test -f "$dir/package.json"
+          done
