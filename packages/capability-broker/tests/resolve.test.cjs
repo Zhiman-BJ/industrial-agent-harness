@@ -1,0 +1,22 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const {resolve, discloseDetail, assertToolAllowed} = require('../src/index.cjs');
+const registry = require('../../domain-skills/src/capabilities.cjs');
+
+test('progressive disclosure selects only matching domain and stage', () => {
+  const result = resolve({domain: 'chip', stage: 'rtl', task: 'Inspect the netlist signals'}, registry);
+  assert.deepEqual(result.scope.capabilityIds, ['chip.rtl.netlist.inspect']);
+  assert.deepEqual(result.scope.tools, ['eda.netlist.inspect']);
+  assert.deepEqual(result.trace.map(item => item.level), ['L0', 'L1', 'L1', 'L2', 'L2', 'L2', 'L3']);
+  assert.equal(result.trace.find(item => item.event === 'detail.deferred').detail.toolSchemas, 1);
+  assert.throws(() => assertToolAllowed(result.scope, 'pcb.board.inspect'), /outside/);
+  assert.equal(discloseDetail(result.scope, registry, result.matches[0].id).tools[0].schema.artifactId, 'string');
+});
+
+test('scope changes replace old capabilities', () => {
+  const first = resolve({domain: 'chip', stage: 'rtl', task: 'netlist'}, registry);
+  const next = resolve({domain: 'pcb', stage: 'layout', task: 'Inspect PCB board'}, registry, first.scope);
+  assert.deepEqual(next.scope.tools, ['pcb.board.inspect']);
+  assert.equal(next.trace.find(item => item.event === 'scope.replace').detail.previous, first.scope.version);
+  assert.throws(() => discloseDetail(next.scope, registry, 'chip.rtl.netlist.inspect'), /outside/);
+});

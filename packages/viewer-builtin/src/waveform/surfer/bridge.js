@@ -2,7 +2,7 @@
 import init, {inject_message,id_of_name,get_state,waves_loaded} from './surfer.js';
 const requestedOrigin=new URLSearchParams(location.search).get('host_origin');
 const origin=requestedOrigin && /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(requestedOrigin) ? requestedOrigin : 'app://viewer';
-const notify=data=>parent.postMessage({channel:'silicon-surfer',...data},origin);
+const notify=data=>parent.postMessage({channel:'industrial-surfer',...data},origin);
 window.on_surfer_error=message=>{
  document.getElementById('error_container').hidden=false;
  document.getElementById('error_message').textContent=message;
@@ -12,7 +12,7 @@ window.__surfer_host_api={postMessage:data=>notify({event:'surfer-event',data})}
 try{
  await init({module_or_path:new URL('./surfer_bg.wasm',import.meta.url)});
  window.addEventListener('message',async event=>{
-  if(event.source!==parent||event.origin!==origin||event.data?.channel!=='silicon-host')return;
+  if(event.source!==parent||event.origin!==origin||event.data?.channel!=='industrial-host')return;
   const {id,action,payload}=event.data;
   try{
    let result=true;

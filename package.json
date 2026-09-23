@@ -3,5 +3,11 @@
   "version": "0.0.0",
   "private": true,
   "packageManager": "pnpm@11.1.3",
-  "description": "Cross-platform industrial agent harness monorepo scaffold"
+  "description": "Cross-platform industrial agent harness monorepo scaffold",
+  "scripts": {
+    "dev": "pnpm --filter @industrial-agent-harness/desktop dev",
+    "build": "pnpm --filter @industrial-agent-harness/desktop build",
+    "start": "pnpm --filter @industrial-agent-harness/desktop start",
+    "test": "pnpm --filter @industrial-agent-harness/capability-broker test && pnpm --filter @industrial-agent-harness/agent-kimi test && pnpm --filter @industrial-agent-harness/viewer-builtin test"
+  }
 }

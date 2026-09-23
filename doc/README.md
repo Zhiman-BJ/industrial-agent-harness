@@ -1,6 +1,6 @@
 # 文档目录
 
-这里记录 Industrial Agent Harness 的产品架构与开发计划。当前仓库只有工程骨架；文档中的模块、接口、目录与验收项，除明确标为“已落实”的事项外，均为设计提案。
+这里记录 Industrial Agent Harness 的产品架构与开发计划。桌面 MVP、三种内置 EDA Viewer、确定性 Broker 和 Kimi SDK 接口已落地；完整 Domain Runtime、Domain MCP、真实工业动作及三平台发行包仍在开发中。文档中的其余接口与验收项，除明确标为“已落实”的事项外，均为设计提案。
 
 | 文档 | 内容 |
 | --- | --- |

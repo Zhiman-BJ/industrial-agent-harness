@@ -33,7 +33,7 @@ export function LayoutViewport({meta,onReady,onError}: {meta:LayoutMeta;onReady:
       if(disposed||busy||!dirty)return;
       busy=true;dirty=false;const version=revision,style=styleRevision;
       try{
-        const result=await window.replayApi!.render({token:meta.token,box:box(),width:surface.width,height:surface.height,visible:keys,theme:themeName,quality:performance.now()-lastInput<150?'fast':'fine'});
+        const result=await window.viewerHost!.render({token:meta.token,box:box(),width:surface.width,height:surface.height,visible:keys,theme:themeName,quality:performance.now()-lastInput<150?'fast':'fine'});
         const bytes=Uint8Array.from(atob(result.png),c=>c.charCodeAt(0));
         const image=await createImageBitmap(new Blob([bytes],{type:'image/png'}));
         if(disposed||style!==styleRevision){image.close();return;}

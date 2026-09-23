@@ -6,13 +6,13 @@
 
 | 决定 | 当前落实情况 |
 | --- | --- |
-| Electron 桌面端面向 Linux、macOS、Windows | 已建立 `apps/desktop` 工作区；尚未打包 |
-| 第一阶段使用 Kimi Code，不自研 Coding Agent | `packages/agent-kimi` 已精确依赖官方 `@moonshot-ai/kimi-agent-sdk@0.1.8`；尚未接线 |
+| Electron 桌面端面向 Linux、macOS、Windows | macOS 桌面 MVP 已运行；三平台打包尚未验证 |
+| 第一阶段使用 Kimi Code，不自研 Coding Agent | `packages/agent-kimi` 精确依赖官方 SDK `0.1.8` 并接入桌面；本机无 Kimi CLI，真实会话尚未验证 |
 | Kimi 接入尽量非侵入 | 不把上游整仓作为 submodule；优先使用公开接口 |
-| Monorepo 分离 UI、领域 Skill、领域 Runtime、MCP 等职责 | 已建立相应工作区；实现仍待开发 |
-| Skill 和 Domain MCP 均采用渐进式披露 | 设计契约已记录；运行验证待完成 |
-| 产品支持多个工业场景，首批以 Chip 和 PCB 验证 | Domain Pack 设计已记录；尚无 Pack 实现 |
-| 建立独立 Viewer 层 | 已建立 Viewer Core、内置 Viewer 和桌面 Host 骨架；迁入 KLayout、netlistsvg、Surfer 三组 EDA 示例，产品接入待实现 |
+| Monorepo 分离 UI、领域 Skill、领域 Runtime、MCP 等职责 | UI、Viewer、Broker、Kimi 和首批 Skill 声明已实现；Runtime/MCP 仍是边界模块 |
+| Skill 和 Domain MCP 均采用渐进式披露 | Broker 已披露 Skill 和 Tool Scope；Kimi 外部工具按 Scope 注册。独立 Domain MCP 服务尚未接入 |
+| 产品支持多个工业场景，首批以 Chip 和 PCB 验证 | 有 Chip/PCB 首批 Capability 声明；PCB 真实工具尚未接入 |
+| 建立独立 Viewer 层 | KLayout、netlistsvg、Surfer 三组 Viewer 位于正式产品路径并已接入桌面 MVP |
 
 ## 两份提案的差异及当前取舍
 

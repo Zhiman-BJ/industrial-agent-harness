@@ -1,5 +1,7 @@
 # Desktop
 
-Electron application workspace. Owns windows, preload, narrow IPC, UI, and platform packaging. It consumes shared contracts and adapters; it does not implement the coding agent or domain execution semantics.
+Electron MVP 工作台采用项目树、Agent 对话、Viewer 三列布局。左右栏可收起，左下角 Settings 可切换明暗主题与 Debug 日志。启动后可打开内置参考产物或用户选择的 GDS/OAS、Yosys JSON、VCD/FST/GHW 文件，查看原始文件哈希。对话区输入任务并解析 Capability；Debug 开关展示候选、筛选、Scope 替换和详细信息加载日志。
 
-Status: boundary placeholder; no application code yet.
+Kimi Code 会话需要本机 `kimi` CLI。界面会检测其可用性；选择工程目录、解析能力后即可运行任务，并查看文本、工具事件和审批请求。当前 Agent 工具是按 Scope 提供的只读产物元数据工具；完整工业执行与验证链路尚未接入。
+
+运行 `pnpm dev` 或从仓库根目录运行 `pnpm build && pnpm start`。版图渲染可先运行 `pnpm setup:layout`，或设置 `KLAYOUT_PYTHON`。

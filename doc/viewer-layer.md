@@ -1,6 +1,6 @@
 # Viewer 层设计与约束
 
-Viewer 层让用户在 Harness 内直接检查工程产物，并保持产物来源、运行状态和验证结论可追溯。它服务于人工理解与跨视图分析，不替代专业软件的完整工作台。本文定义 Viewer Core、内置渲染器和 Electron Viewer Host 的边界；当前仓库已有 EDA 参考渲染器，但它们尚未接入新桌面端。
+Viewer 层让用户在 Harness 内直接检查工程产物，并保持产物来源、运行状态和验证结论可追溯。它服务于人工理解与跨视图分析，不替代专业软件的完整工作台。本文定义 Viewer Core、内置渲染器和 Electron Viewer Host 的边界；三种 EDA Viewer 已接入桌面 MVP。
 
 ## 展示策略
 
@@ -32,7 +32,7 @@ flowchart LR
 - **Domain Pack** 声明本领域的产物类型、配套输入和 Viewer 贡献，但不能向 Electron Renderer 注入任意 HTML 或脚本。
 - **Bridge** 负责连接正在运行的专业软件；外部应用启动也是受控动作。两者均不被内置 Viewer 隐式执行。
 
-`packages/viewer-core` 已有初始类型契约，`packages/viewer-builtin` 已有 EDA 示例，`apps/desktop/viewer-host` 仍是结构占位。具体 API 与产品运行方式在首个真实产物链路中冻结。
+`packages/viewer-core` 已有初始类型契约，`packages/viewer-builtin/src` 是三种 EDA Viewer 的正式代码路径。`apps/desktop/viewer-host` 承载桌面接入。具体 API 会在真实产物链路中继续稳定。
 
 ## 最小查看契约
 
@@ -60,6 +60,6 @@ Viewer 描述至少说明：稳定 ID、可处理的产物类型、所需配套�
 
 ## 已迁入的 EDA 参考实现
 
-[EDA Viewer examples](../packages/viewer-builtin/examples/eda/README.md) 保存了既有版图、网表和波形三条代码路径：KLayout `LayoutView` 按视口渲染，netlistsvg 对 Yosys JSON 生成 SVG，Surfer WASM 在隔离的本地页面中加载 VCD。它们带有 React 视图、渲染适配、最小 fixture 和来源说明，供新领域接入时参考。
+[EDA Viewer 参考实现](viewer-eda-reference.md) 介绍正式代码路径中的版图、网表和波形 Viewer：KLayout `LayoutView` 按视口渲染，netlistsvg 对 Yosys JSON 生成 SVG，Surfer WASM 在隔离的本地页面中加载 VCD。三者作为实际使用的内置 Viewer，也为新领域接入提供参考。
 
-示例现在可以验证渲染后端，但仍使用旧 demo 的 `replayApi` 形状，未接入本仓库的 Artifact registry 或 Electron Viewer Host。迁入产品前，必须把文件路径入口替换为带项目和 Run/State 身份的 Artifact 引用，并在 UI 显示真实来源。Surfer 的底层 WASM 是未修改的官方站点快照；示例桥接使用的部分消息命令被上游标为不稳定接口，升级时需单独验证。
+桌面 Host 目前将内置或用户选择的文件登记为 Artifact ID，计算并显示 SHA-256，打开时复核内容哈希。项目、Run、State 的持久绑定及完整来源链仍待 Domain Runtime 接入。Surfer 的底层 WASM 是未修改的官方站点快照；桥接使用的部分消息命令被上游标为不稳定接口，升级时需单独验证。

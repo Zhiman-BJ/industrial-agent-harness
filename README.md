@@ -16,7 +16,15 @@ Industrial Agent Harness 是面向工业设计与工程任务的桌面工作台�
 
 工作台由桌面 UI、Kimi Code 接入、Industrial Capability Broker、工业运行时、Viewer 层和 Domain Packs 组成。Kimi Code 负责 Agent 会话与工具调用；Broker 根据项目状态和任务选择适用能力；工业运行时执行专业动作并记录产物与验证结果。Viewer 在工作台内展示适合直接查看的工程产物；对于 CAD、Godot 等复杂软件，重点展示关键产物，完整编辑仍在专业软件中完成。芯片和 PCB 将作为最早的参考领域。
 
-当前仓库处于架构与工程骨架阶段，尚无可运行的桌面应用。Kimi Agent SDK 已固定为 `0.1.8`；具体接入和跨平台打包仍在后续开发范围内。
+目前的 MVP 已有可运行的 Electron 工作台：可查看 GDS/OAS 版图、Yosys JSON 网表及 VCD/FST/GHW 波形，输入工程任务并由 Capability Broker 按领域和阶段披露相关 Skill 与工具。Debug 模式展示 Broker 的 L0–L3 决策日志。Kimi Agent SDK 固定为 `0.1.8`；本机安装并登录 Kimi CLI 后，可选择工程目录，从界面启动会话。
+
+```bash
+pnpm install
+pnpm --filter @industrial-agent-harness/desktop setup:layout
+pnpm dev
+```
+
+版图 Viewer 需要 KLayout Python；也可通过 `KLAYOUT_PYTHON` 指向已有环境。执行 `pnpm build && pnpm start` 可运行构建后的桌面应用。现阶段桌面链路在 macOS 实测，Linux 与 Windows 发行包仍在开发中。
 
 ## 文档
 

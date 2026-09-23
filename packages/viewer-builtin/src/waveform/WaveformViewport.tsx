@@ -16,7 +16,7 @@ export function WaveformViewport({data,onReady,onError,signal}:{data:WaveData;on
       const id=++sequence.current;
       const timer=setTimeout(()=>{pending.current.delete(id);reject(Error('Waveform viewer did not respond.'));},15000);
       pending.current.set(id,{resolve,reject,timer});
-      frame.current?.contentWindow?.postMessage({channel:'silicon-host',id,action,payload},'app://surfer');
+      frame.current?.contentWindow?.postMessage({channel:'industrial-host',id,action,payload},'app://surfer');
     });
   }
   function fail(message:string){if(!loadedRef.current&&attempt===0){setLoaded(false);setAttempt(1);return;}setError(message);callbacks.current.onError(message);}
@@ -25,7 +25,7 @@ export function WaveformViewport({data,onReady,onError,signal}:{data:WaveData;on
     const timer=setTimeout(()=>{if(!loadedRef.current&&!ended)fail('Waveform loading exceeded 60 seconds.');},60000);
     console.info('WAVE start',data.url,attempt,frame.current?.getBoundingClientRect().width);
     const listener=(event:MessageEvent)=>{
-      if(event.source!==frame.current?.contentWindow||event.origin!=='app://surfer'||event.data?.channel!=='silicon-surfer')return;
+      if(event.source!==frame.current?.contentWindow||event.origin!=='app://surfer'||event.data?.channel!=='industrial-surfer')return;
       const message=event.data;if(message.event)console.info('WAVE event',message.event,attempt,frame.current?.getBoundingClientRect().width);
       if(message.event==='ready'){
         available.current=true;
@@ -38,7 +38,7 @@ export function WaveformViewport({data,onReady,onError,signal}:{data:WaveData;on
     };
     window.addEventListener('message',listener);
     // Reconcile state even if an iframe's one-shot ready/loaded notification was missed.
-    const poll=setInterval(()=>{if(!loadedRef.current)frame.current?.contentWindow?.postMessage({channel:'silicon-host',id:0,action:'status'},'app://surfer');},1000);
+    const poll=setInterval(()=>{if(!loadedRef.current)frame.current?.contentWindow?.postMessage({channel:'industrial-host',id:0,action:'status'},'app://surfer');},1000);
     return()=>{ended=true;clearInterval(poll);clearTimeout(timer);window.removeEventListener('message',listener);available.current=false;for(const p of pending.current.values()){clearTimeout(p.timer);p.reject(Error('Waveform changed.'));}pending.current.clear();};
   },[data.url,attempt]);
   useEffect(()=>{

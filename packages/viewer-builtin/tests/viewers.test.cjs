@@ -5,8 +5,8 @@ const os = require('node:os');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const {spawn} = require('node:child_process');
-const {renderNetlist} = require('../netlist/netlist.cjs');
-const {createViewerProtocol} = require('../waveform/protocol.cjs');
+const {renderNetlist} = require('../src/netlist/netlist.cjs');
+const {createViewerProtocol} = require('../src/waveform/protocol.cjs');
 const root = path.resolve(__dirname, '..');
 
 test('Yosys JSON renders real net connectivity through netlistsvg', async () => {
@@ -18,7 +18,7 @@ test('Yosys JSON renders real net connectivity through netlistsvg', async () => 
 });
 
 test('waveform assets retain the upstream snapshot hashes', () => {
-  const dir = path.join(root, 'waveform/surfer');
+  const dir = path.join(root, 'src/waveform/surfer');
   const manifest = JSON.parse(fs.readFileSync(path.join(dir, 'ASSET-MANIFEST.json')));
   for (const asset of manifest.assets) {
     const bytes = fs.readFileSync(path.join(dir, asset.file));
@@ -51,7 +51,7 @@ test('KLayout LayoutView renders a bounded GDS viewport when available', {skip: 
   const fixture = path.join(temp, 'layout.gds');
   const make = spawn(process.env.KLAYOUT_PYTHON, ['-c', `import klayout.db as db; l=db.Layout(); l.dbu=0.001; c=l.create_cell('TOP'); layer=l.layer(1,0); c.shapes(layer).insert(db.Box(0,0,1000,1000)); l.write(${JSON.stringify(fixture)})`]);
   assert.equal(await new Promise(resolve => make.on('exit', resolve)), 0);
-  const {RasterService} = require('../layout/raster.cjs');
+  const {RasterService} = require('../src/layout/raster.cjs');
   const service = new RasterService(process.env.KLAYOUT_PYTHON);
   t.after(() => service.close());
   const loaded = await service.call({op: 'load', path: fixture, token: 'fixture'});

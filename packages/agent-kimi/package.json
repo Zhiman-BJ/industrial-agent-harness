@@ -2,7 +2,10 @@
   "name": "@industrial-agent-harness/agent-kimi",
   "version": "0.0.0",
   "private": true,
+  "main": "src/index.cjs",
+  "scripts": {"test": "node --test tests/*.test.cjs"},
   "dependencies": {
-    "@moonshot-ai/kimi-agent-sdk": "0.1.8"
+    "@moonshot-ai/kimi-agent-sdk": "0.1.8",
+    "zod": "4.6.5"
   }
 }

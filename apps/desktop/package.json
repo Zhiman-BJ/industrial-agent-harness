@@ -1,5 +1,29 @@
 {
   "name": "@industrial-agent-harness/desktop",
   "version": "0.0.0",
-  "private": true
+  "private": true,
+  "main": "electron/main.cjs",
+  "scripts": {
+    "dev": "node scripts/dev.cjs",
+    "build": "tsc --noEmit && vite build",
+    "start": "electron .",
+    "test": "node --test electron/*.test.cjs",
+    "setup:layout": "node scripts/setup-layout.cjs"
+  },
+  "dependencies": {
+    "@industrial-agent-harness/agent-kimi": "workspace:*",
+    "@industrial-agent-harness/viewer-builtin": "workspace:*",
+    "lucide-react": "1.37.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.5",
+    "@vitejs/plugin-react": "6.1.1",
+    "electron": "44.0.0",
+    "typescript": "7.0.2",
+    "vite": "8.2.2"
+  },
+  "type": "module"
 }

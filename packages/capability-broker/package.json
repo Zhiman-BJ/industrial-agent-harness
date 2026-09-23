@@ -1,0 +1,7 @@
+{
+  "name": "@industrial-agent-harness/capability-broker",
+  "version": "0.0.0",
+  "private": true,
+  "main": "src/index.cjs",
+  "scripts": {"test": "node --test tests/*.test.cjs"}
+}

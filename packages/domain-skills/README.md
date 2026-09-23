@@ -2,4 +2,4 @@
 
 Registry and on-demand loading for domain guidance. Discovery returns a compact index; detailed skill content is loaded only when relevant to the current task. Skill text does not determine execution success.
 
-Status: boundary placeholder; no domain skills bundled yet.
+当前 `src/capabilities.cjs` 含 Chip 网表、波形、版图与 PCB 板图的首批声明。Broker 先披露摘要，选中能力后才读取详细参考内容。这些声明用于 MVP 的发现与查看流程，PCB 专业工具执行尚未接入。

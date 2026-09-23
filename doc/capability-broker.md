@@ -56,6 +56,8 @@ Broker 可以先作为独立本地 Sidecar 实现，再与控制面和 MCP Gatew
 
 ## Trace 与评估
 
+桌面 MVP 已实现确定性关键词匹配的首批 Chip/PCB Capability Registry，并记录 L0 领域索引、L1 候选和匹配、L2 Scope/Skill/Tool 披露、L3 延迟详情加载。Debug 模式展示这些真实决策事件。当前工具 Scope 作用于交给 Kimi SDK 的 Harness 外部工具，工具处理器在调用时再核验 Scope；Domain MCP Gateway 和 Kimi 内建工具的统一执行策略仍需后续验证。
+
 每次解析至少记录任务、Domain State、候选和选中的 Capability、披露的 Skill/Tool、Scope 版本与决策原因。工具调用后关联实际调用、结果、Action、Artifact 和 Verification。Trace 不应把未验证的工具返回包装为成功结论。
 
 评估同时比较完整暴露与渐进式披露：任务成功率、工具选择准确率、无效调用、输入 token、Agent 步数、延迟和上下文大小。减少 token 只是其中一个指标；降低跨领域误选同样重要。

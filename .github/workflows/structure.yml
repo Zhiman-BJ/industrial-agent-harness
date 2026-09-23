@@ -23,8 +23,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Check migrated viewer examples
+      - name: Build and test MVP
         run: |
           npm install -g pnpm@11.1.3
           pnpm install --frozen-lockfile
-          pnpm --filter @industrial-agent-harness/viewer-builtin test:examples
+          pnpm build
+          pnpm test
