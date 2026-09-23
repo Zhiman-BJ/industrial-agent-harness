@@ -1,19 +1,34 @@
-# Repository instructions
+# Industrial Agent Harness repository instructions
 
-This repository is an early architecture scaffold for Industrial Agent Harness.
+Read `doc/README.md` before changing architecture or module boundaries. The repository is currently a scaffold; documentation marked as proposed is not implemented behavior.
 
-## Boundaries
+## Architecture boundaries
 
-- Keep the Electron application, Kimi adapter, domain skills, domain runtime, domain MCP, and shared contracts in their respective workspaces.
-- Use `@moonshot-ai/kimi-agent-sdk` at the exact declared version as the coding agent. Commit the pnpm lockfile. Do not implement a second agent loop or patch/fork the SDK unless a verified integration gap requires an explicit architecture decision.
-- Keep `domain-runtime` independent of Electron, Kimi, and MCP. The MCP package exposes domain capabilities; it does not own execution truth.
-- Make skill and MCP disclosure progressive. Return a compact index first, fetch detailed instructions and schemas on demand, and register only relevant tools for a task.
-- Keep project paths, permissions, and tool execution behind a narrow Electron main/preload boundary. Do not give the renderer unrestricted Node or filesystem access.
-- Record concrete inputs, run identity, artifacts, diagnostics, and acceptance evidence. Never present process exit or a demo fixture as verified domain success.
+- Kimi Code is the selected agent kernel for the first stage. Use the exact declared `@moonshot-ai/kimi-agent-sdk` version and committed pnpm lockfile. Keep Kimi-specific code in `packages/agent-kimi` or a future Kimi integration workspace.
+- Do not recreate Kimi's agent loop, session persistence, compaction, subagent runtime, skill runtime, or tool loop. Do not modify or fork upstream Kimi Code without a documented, verified integration gap and an explicit architecture decision.
+- Keep industrial state, artifacts, actions, verification, checkpoints, trajectories, capability resolution, and policy in Harness-owned modules. Core modules must not import Kimi Code or a concrete domain.
+- Do not introduce a lowest-common-denominator adapter for multiple agent products during the Kimi-focused first stage. Keep the industrial contracts independent so another integration remains possible later.
+- Domain-specific behavior belongs in Domain Packs, configuration, or plugins. Do not hardcode Chip, PCB, or another domain in the broker or core.
+- Distinguish Tool, Bridge, Viewer, and Verifier. A Tool performs an action; a Bridge connects to software; a Viewer presents state or artifacts; a Verifier evaluates results.
 
-## Changes
+## Capability and disclosure
 
-- Update the relevant package README when changing a module boundary or public contract.
-- Add meaningful contract or integration tests when behavior is implemented; do not write tests that merely mirror declarations.
-- Do not claim Linux, macOS, or Windows support until the corresponding build and runtime flow has been exercised.
-- Treat the existing demo and EDA Harness as reference implementations; copy code only with deliberate provenance and license review.
+- Resolve capabilities from the current Domain State and task. Capabilities bind relevant Skill batches, canonical Tool IDs, viewers, verification, dependencies, and conflicts.
+- Skill and MCP tool disclosure must be progressive. Expose a compact discovery surface first; load detailed skill content and tool schemas only for a selected capability. Replace stale session scope when the domain stage changes.
+- Keep canonical Tool IDs separate from MCP provider names and transport-specific tool names. Enforce the resulting tool allowlist at the execution boundary, not solely in prompts.
+- Make resolver decisions deterministic and testable in V1. Record candidates, selected capabilities, disclosed skills and tools, scope changes, and execution outcomes in a disclosure trace.
+- Keep conversation history and compaction under Kimi's control. Harness supplies a bounded, structured Industrial Context.
+
+## Execution and safety
+
+- Keep Electron renderer access behind narrow preload and main-process IPC. Bind calls to the selected project and apply explicit permissions to mutating actions.
+- Local services should bind to `127.0.0.1` by default. A failed broker or Domain Pack must not corrupt Kimi configuration or bring down unrelated domains.
+- Record actual inputs, run identity, state changes, artifact provenance, diagnostics, and verification evidence. Process success and demo fixtures are not proof of engineering acceptance.
+- Every industrial action must be observable; critical actions require explicit verification. Preserve historical states and avoid silently replacing evidence after inputs change.
+
+## Working in this repository
+
+- Keep package READMEs and `doc/` aligned with implemented boundaries. Mark proposed APIs and milestones as proposals until exercised.
+- Add meaningful contract and integration tests when behavior is implemented. Verify SDK events, permissions, interruption, recovery, and dynamic disclosure against the pinned version before claiming support.
+- Do not claim Linux, macOS, or Windows support until the corresponding packaged runtime flow is exercised.
+- Treat the existing demo and EDA Harness as references. Copy code only after checking provenance and license terms.

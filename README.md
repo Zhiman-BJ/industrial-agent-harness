@@ -1,39 +1,25 @@
 # Industrial Agent Harness
 
-面向工业领域任务的跨平台 Agent 工作台。项目从现有 Silicon Lens Electron demo 与 EDA Harness 的经验出发，建立独立的 monorepo；当前仓库是架构骨架，尚无可运行应用。
+Industrial Agent Harness 是面向工业设计与工程任务的桌面工作台。它把 AI 协作、专业软件、项目状态和可核验的工程结果连接起来，让用户能在同一处提出目标、执行工作、查看产物，并理解结果是否满足要求。
 
-## 已确定的边界
+项目从芯片设计和 PCB 设计起步，架构面向更多工业场景扩展，例如机械 CAD、CAE 仿真和其他依赖专业工具与验证流程的领域。每个领域以独立的 Domain Pack 提供能力、知识、工具、查看方式和验证方法；工作台保持一致的交互体验。
 
-- 桌面端采用 Electron，目标平台为 Linux、macOS、Windows。
-- 底层 coding agent 使用官方 Node 包 `@moonshot-ai/kimi-agent-sdk`，当前精确固定为 `0.1.8`，并提交 `pnpm-lock.yaml`。本仓库只实现接入适配，不另造 agent loop；优先使用公开接口，避免修改或 fork SDK。
-- UI、domain skill、domain runtime、domain MCP 分层维护。跨层数据通过共享契约传递，不让 UI 直接依赖领域工具实现。
-- domain skill 与 domain MCP 必须渐进式披露：先给出简短能力索引，按任务需要再加载具体说明、参数 schema 与工具；不能在启动时把全部领域知识和工具定义注入模型上下文。
-- 领域执行结果应保留输入、运行、产物和验证证据；进程成功退出本身不等于任务验收通过。
+## 产品目标
 
-## 仓库结构
+- 在 Linux、macOS 和 Windows 上提供统一的 Electron 桌面体验。
+- 让用户围绕真实项目与产物协作：从当前状态出发，选择能力、执行动作、检查结果，再继续下一步。
+- 把芯片、PCB 等领域的专业工作流接入同一个平台，同时允许领域能力独立扩展。
+- 让 Agent 按当前任务获取相关知识与工具，使大量领域能力仍然易于发现和使用。
+- 保留工程过程与结果的关联，方便查看、复现、比较和后续评估。
 
-| 目录 | 职责 |
-| --- | --- |
-| `apps/desktop` | Electron 主进程、preload、安全 IPC 和 UI |
-| `packages/agent-kimi` | Kimi Agent SDK 的薄适配、会话与事件映射 |
-| `packages/contracts` | 模块间共享的数据与事件契约 |
-| `packages/domain-skills` | 领域 skill 索引、按需加载与版本管理 |
-| `packages/domain-runtime` | 确定性任务执行、状态、证据与产物管理 |
-| `packages/domain-mcp` | 领域能力发现与 MCP 接口，按需披露工具 |
-| `.github` | 仓库协作模板和基础检查 |
+## 项目组成
 
-依赖方向：`desktop → contracts / agent-kimi / domain-mcp`；`domain-mcp → contracts / domain-runtime`；`domain-skills → contracts`。`domain-runtime` 不依赖 Electron、Kimi 或 MCP。具体接口在实现时以契约测试确定。
+工作台由桌面 UI、Kimi Code 接入、Industrial Capability Broker、工业运行时和 Domain Packs 组成。Kimi Code 负责 Agent 会话与工具调用；Broker 根据项目状态和任务选择适用能力；工业运行时执行专业动作并记录产物与验证结果。芯片和 PCB 将作为最早的参考领域。
 
-## 渐进式披露约定
+当前仓库处于架构与工程骨架阶段，尚无可运行的桌面应用。Kimi Agent SDK 已固定为 `0.1.8`；具体接入和跨平台打包仍在后续开发范围内。
 
-1. **发现**：只返回领域、能力名称、简短用途和稳定标识。
-2. **展开**：选中能力后读取相应 skill 内容、适用条件和工具 schema。
-3. **执行**：仅将本次任务需要的工具接入会话；返回有界结果和证据引用，大型产物单独读取。
+## 文档
 
-发现、展开和执行都应受项目上下文与权限边界约束。skill 文本提供指导，实际执行与验收以 runtime 记录为准。
+从 [文档目录](doc/README.md) 开始阅读架构、Capability Broker、领域扩展和开发阶段。仓库开发规则见 [AGENTS.md](AGENTS.md)。
 
-## 当前状态与下一步
-
-当前已建立仓库和模块边界，并固定 Kimi Agent SDK 依赖；尚无可运行应用。下一步先验证该 SDK 的会话、流式事件、工具/MCP 注册、审批、中断和恢复接口，再实现一条最小的端到端链路。目标平台的打包与真实领域流程需要分别验证。
-
-参考项目：[Silicon Lens demo](https://github.com/Zhiman-BJ/silicon-lens-harness)、[EDA Harness](https://github.com/Zhiman-BJ/eda-harness)。这两个仓库的代码与产物没有复制进来。
+项目参考了现有 [Silicon Lens demo](https://github.com/Zhiman-BJ/silicon-lens-harness) 和 [EDA Harness](https://github.com/Zhiman-BJ/eda-harness) 的实践。
