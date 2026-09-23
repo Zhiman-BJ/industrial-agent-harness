@@ -49,7 +49,7 @@ class KimiSession {
     const scope = this.getScope();
     if (!scope) throw Error('Resolve capabilities before starting the agent.');
     const runtime = this.getRuntime();
-    if (!runtime.apiKey) throw Error('Configure an API key in Settings.');
+    if (!runtime.apiKey) throw Error('Set a model API key before running Kimi.');
     if (!this.session || this.scopeVersion !== scope.version || this.runtimeRevision !== runtime.revision) {
       await this.session?.close();
       this.session = createSession({

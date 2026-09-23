@@ -13,6 +13,8 @@
   },
   "dependencies": {
     "@industrial-agent-harness/agent-kimi": "workspace:*",
+    "@industrial-agent-harness/harness-core": "workspace:*",
+    "@industrial-agent-harness/domain-skills": "workspace:*",
     "@industrial-agent-harness/viewer-builtin": "workspace:*",
     "lucide-react": "1.37.0",
     "react": "19.2.8",

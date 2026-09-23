@@ -49,7 +49,7 @@ export interface ViewerHostApi {
   render(request: {token: string; box: number[]; width: number; height: number; visible: string[]; quality: string; theme?: string}): Promise<{png: string; box: number[]}>;
   netlist(request: {token: string; module: string; focus?: string}): Promise<NetlistData>;
   resolve(request: {task: string; artifactKind?: string; domain?: string; stage?: string}): Promise<BrokerResult>;
-  domains(): Promise<Array<{id: string; label: string}>>;
+  domains(): Promise<DomainOption[]>;
   detail(capabilityId: string): Promise<CapabilityDetail>;
   brokerTrace(): Promise<BrokerResult['trace']>;
   agentStatus(): Promise<{available: boolean; version: string; projectDir: string | null; configured: boolean}>;
@@ -71,6 +71,7 @@ export interface ViewerHostApi {
 }
 
 export interface ProjectBinding {id: string; name: string; path: string; domain?: string | null}
+export interface DomainOption {id: string; label: string; emoji: string}
 
 export type AgentEvent =
   | {type: 'text'; text: string}

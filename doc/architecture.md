@@ -1,12 +1,13 @@
 # 系统架构
 
-Industrial Agent Harness 的稳定部分是工业环境：项目与领域状态、能力、动作、产物、验证和历史轨迹。第一阶段使用 Kimi Code 作为指定 Agent Kernel，由 Electron 提供桌面工作台。芯片与 PCB 是首批参考领域，后续领域通过 Domain Pack 扩展。
+Industrial Agent Harness 的稳定部分是工业环境：项目与领域状态、能力、动作、产物、验证和历史轨迹。第一阶段使用 Kimi Code 作为指定 Agent Kernel。Electron 提供桌面工作台，独立 CLI 提供无界面的任务运行入口，供 Domain Task bench 调用。芯片与 PCB 是首批参考领域，后续领域通过 Domain Pack 扩展。
 
 ## 总体关系
 
 ```mermaid
 flowchart TD
   UI[Electron 桌面端<br/>对话、项目、状态与查看器] --> Control[本地控制面<br/>服务生命周期与事件]
+  CLI[Headless CLI<br/>Domain Task bench] --> Control
   Control --> Broker[Capability Broker<br/>状态、能力、Scope、Trace]
   Control --> Kimi[Kimi Integration<br/>SDK 与运行时接入]
   Broker --> Kimi
@@ -41,8 +42,11 @@ flowchart TD
 | Domain Pack | 某领域的状态提供者、能力声明、skills、tools、verifiers、viewers 与 bridges |
 | Viewer Core 与内置 Viewer | 按产物身份选择显示方式、生成派生显示数据；在桌面端展示关键工程产物 |
 | Electron 桌面端 | 用户交互、项目选择、对话和工程证据的展示；通过受限 IPC 访问本地服务 |
+| Headless CLI | 以命令行和机器可读事件调用同一套 Broker、Kimi Integration 与工业运行时；不依赖 Electron 和 Viewer UI |
 
 Kimi Integration 可以使用 Kimi 专属事件和会话语义。工业侧的契约保持独立，不把 Kimi 类型传入 Core，也不把芯片或 PCB 规则写入 Core。当前不建设跨 Agent 的通用运行时适配层；将来增加其他 Agent 时，再为其建立独立接入。
+
+UI 与 CLI 是两个入口，不能互相调用对方实现。可复用的任务解析、Scope、Agent 会话、工业动作和事件契约应下沉到无界面的包。桌面端只负责呈现、交互和 Electron IPC；CLI 只负责参数、进程生命周期和结构化输出。bench 不应通过渲染器或 Electron 主进程驱动任务。
 
 ## 工业任务闭环
 
@@ -63,6 +67,6 @@ Harness 提供结构化的 Industrial Context，例如领域、阶段、当前�
 
 ## 仓库映射
 
-已落实的目录：`apps/desktop`、`packages/agent-kimi`、`packages/contracts`、`packages/domain-skills`、`packages/domain-runtime`、`packages/domain-mcp`、`packages/viewer-core`、`packages/viewer-builtin`。Viewer Core 已有初始类型契约；三组 EDA Viewer 已接入桌面端。Kimi SDK 固定为 `0.1.8`，开发环境 CLI 固定为 `1.51.0`，模型连接参数通过桌面设置传入。Domain Runtime 与 Domain MCP 目录目前主要是边界声明。`apps/desktop/viewer-host` 是桌面 Viewer 容器的结构占位。
+已落实的目录：`apps/desktop`、`apps/cli`、`packages/harness-core`、`packages/agent-kimi`、`packages/contracts`、`packages/domain-skills`、`packages/domain-runtime`、`packages/domain-mcp`、`packages/viewer-core`、`packages/viewer-builtin`。CLI 与桌面端共用 Broker、项目 Domain 约束、Capability Registry 和 Kimi Integration；CLI 的无模型 Scope 路径已验证，真实模型任务仍需 bench 环境验证。Viewer Core 已有初始类型契约；三组 EDA Viewer 已接入桌面端。Kimi SDK 固定为 `0.1.8`，开发环境 Kimi CLI 固定为 `1.51.0`。Domain Runtime 与 Domain MCP 目录目前主要是边界声明。`apps/desktop/viewer-host` 是桌面 Viewer 容器的结构占位。
 
-计划新增的职责包括本地控制面、Capability Broker、Domain Pack SDK、Bridge/Verifier 扩展点、参考领域和打包流水线。具体拆包以实现时的依赖边界为准，不为匹配一张目录图提前建立空包。
+计划新增的职责包括完整本地控制面、Domain Pack SDK、Bridge/Verifier 扩展点、参考领域和打包流水线。桌面主进程仍包含部分项目与会话编排逻辑，后续应继续下沉到共享的无界面层；CLI 不通过这些 Electron 代码调用任务。具体拆包以实现时的依赖边界为准。

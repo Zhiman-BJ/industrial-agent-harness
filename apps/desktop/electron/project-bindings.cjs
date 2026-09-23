@@ -6,10 +6,10 @@ function readBindings(directory, sampleDirectory) {
   try {
     const saved = JSON.parse(fs.readFileSync(path.join(directory, 'projects.json'), 'utf8'));
     if (!Array.isArray(saved.projects)) throw Error('Invalid project bindings.');
-    const projects = saved.projects.filter(item => typeof item.id === 'string' && typeof item.name === 'string' && typeof item.path === 'string').map(item => ({...item, domain: typeof item.domain === 'string' ? item.domain : item.id === 'chip-sobel-example' && item.domain === undefined ? 'chip' : null}));
+    const projects = saved.projects.filter(item => typeof item.id === 'string' && typeof item.name === 'string' && typeof item.path === 'string').map(item => ({...item, name: item.id === 'chip-sobel-example' && item.name === 'Chip · Sobel example' ? 'Sobel example' : item.name, domain: typeof item.domain === 'string' ? item.domain : item.id === 'chip-sobel-example' && item.domain === undefined ? 'chip' : null}));
     return {projects, activeId: projects.some(item => item.id === saved.activeId) ? saved.activeId : null};
   } catch {
-    const projects = fs.existsSync(sampleDirectory) ? [{id: 'chip-sobel-example', name: 'Chip · Sobel example', path: fs.realpathSync(sampleDirectory), domain: 'chip'}] : [];
+    const projects = fs.existsSync(sampleDirectory) ? [{id: 'chip-sobel-example', name: 'Sobel example', path: fs.realpathSync(sampleDirectory), domain: 'chip'}] : [];
     return {projects, activeId: projects[0]?.id || null};
   }
 }

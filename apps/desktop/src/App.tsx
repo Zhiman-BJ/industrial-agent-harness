@@ -1,14 +1,15 @@
 import {useEffect, useState} from 'react';
-import {Activity, Bug, ChevronDown, ChevronRight, CircuitBoard, Cpu, File, FilePlus2, Folder, FolderOpen, Layers3, Moon, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Play, Settings2, Square, Sun, Waves, X} from 'lucide-react';
+import {Activity, Bug, ChevronDown, ChevronRight, CircuitBoard, Cpu, File, FilePlus2, Folder, FolderOpen, Layers3, Moon, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Play, Plus, Settings2, Square, Sun, Waves, X} from 'lucide-react';
 import {LayoutViewport} from '@industrial-agent-harness/viewer-builtin/layout';
 import {NetlistViewport} from '@industrial-agent-harness/viewer-builtin/netlist';
 import {WaveformViewport, type SignalRequest} from '@industrial-agent-harness/viewer-builtin/waveform';
-import type {AgentEvent, BrokerResult, CapabilityDetail, OpenedViewer, ProjectBinding, ViewerArtifact} from '@industrial-agent-harness/viewer-builtin/api';
+import type {AgentEvent, BrokerResult, CapabilityDetail, DomainOption, OpenedViewer, ProjectBinding, ViewerArtifact} from '@industrial-agent-harness/viewer-builtin/api';
 import {AgentFlow} from './components/AgentFlow';
 import {TodoList} from './components/TodoList';
 import {ModelSettings} from './components/ModelSettings';
 import {ProjectDetails} from './components/ProjectDetails';
 import {CreateProjectModal} from './components/CreateProjectModal';
+import {DomainPill} from './components/DomainPill';
 
 type Theme = 'light' | 'dark';
 type ProjectFile = {path: string; name: string; depth: number; directory: boolean};
@@ -20,7 +21,7 @@ export function App() {
   const [projectFiles, setProjectFiles] = useState<ProjectFile[]>([]);
   const [collapsedDirs, setCollapsedDirs] = useState<Set<string>>(() => new Set());
   const [projects, setProjects] = useState<ProjectBinding[]>([]);
-  const [domains, setDomains] = useState<Array<{id: string; label: string}>>([]);
+  const [domains, setDomains] = useState<DomainOption[]>([]);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [page, setPage] = useState<'chat' | 'project'>('chat');
   const [projectDraft, setProjectDraft] = useState<{directory: string; name: string; domain: string} | null>(null);
@@ -81,7 +82,7 @@ export function App() {
   const projectName = activeProject?.name || 'No project selected';
   const fixedDomain = activeProject?.domain || null;
   const selectedDomain = fixedDomain;
-  const domainLabel = domains.find(item => item.id === selectedDomain)?.label || selectedDomain || 'Auto';
+  const domainFor = (id?: string | null) => domains.find(item => item.id === id);
   const activeName = sourceFile?.name || selected?.name;
   const todo = [...agentEvents].reverse().find(event => event.type === 'todo');
   const visibleProjectFiles = projectFiles.filter(item => ![...collapsedDirs].some(dir => item.path.replaceAll('\\', '/').startsWith(`${dir}/`)));
@@ -91,16 +92,19 @@ export function App() {
   }
 
   function selectArtifact(id: string) {setSourceFile(undefined); setSelectedId(id); setRightOpen(true); setFileTreeOpen(false);}
-  async function chooseProject() {
-    setError('');
+  function chooseProject() {
+    setProjectError('');
+    setProjectDraft({directory: '', name: '', domain: ''});
+  }
+  async function chooseProjectDirectory() {
+    setProjectError('');
     try {
       const directory = await window.viewerHost!.chooseProjectDirectory();
       if (!directory) return;
       const existing = projects.find(item => item.path === directory);
-      if (existing) {await selectProject(existing.id); return;}
-      setProjectError('');
-      setProjectDraft({directory, name: directory.split(/[\\/]/).at(-1) || 'New project', domain: ''});
-    } catch (reason) {setError(String(reason));}
+      if (existing) {setProjectDraft(null); await selectProject(existing.id); return;}
+      setProjectDraft(current => current ? {...current, directory, name: current.name || directory.split(/[\\/]/).at(-1) || 'New project'} : current);
+    } catch (reason) {setProjectError(String(reason));}
   }
   async function createProject(request: {directory: string; name: string; domain: string}) {
     try {
@@ -191,8 +195,8 @@ export function App() {
       {leftOpen && <aside className="ia-tree ia-sidebar">
         <div className="ia-sidebar-brand"><span className="ia-product-mark"><Cpu size={16}/></span><b>Industrial Harness</b><button className="ia-icon" onClick={() => setLeftOpen(false)} title="Hide sidebar"><PanelLeftClose size={16}/></button></div>
         <button className="ia-new-chat" onClick={() => void newChat()} disabled={agentBusy || Boolean(activeProject && !activeProject.domain)}><FilePlus2 size={15}/> New chat</button>
-        <div className="ia-tree-section">PROJECTS</div>
-        <div className="ia-project-list">{projects.map(item => <button key={item.id} className={item.id === activeProjectId ? 'selected' : ''} onClick={() => void selectProject(item.id)} title={item.path}><FolderOpen size={15}/><span>{item.name}</span></button>)}<button onClick={() => void chooseProject()} disabled={agentBusy}><FilePlus2 size={15}/><span>Add local project…</span></button></div>
+        <div className="ia-projects-heading"><span>PROJECTS</span><button onClick={chooseProject} disabled={agentBusy} aria-label="New project" title="New project"><Plus size={15}/></button></div>
+        <div className="ia-project-list">{projects.map(item => {const domain = domainFor(item.domain); return <button key={item.id} className={item.id === activeProjectId ? 'selected' : ''} onClick={() => void selectProject(item.id)} title={item.path}><FolderOpen size={15}/><span className="ia-project-row-name">{item.name}</span>{domain && <span className="ia-project-domain-badge" title={domain.label}><span aria-hidden="true">{domain.emoji}</span>{domain.label}</span>}</button>;})}</div>
         {error && <p className="ia-sidebar-error">{error}</p>}
         {submittedTask && <button className="ia-sidebar-chat" title={submittedTask} onClick={() => setPage('chat')}><Activity size={14}/><span>{submittedTask}</span></button>}
         <div className="ia-sidebar-spacer"/>
@@ -207,7 +211,7 @@ export function App() {
           {submittedTask && <><div className="ia-user-message">{submittedTask}</div>{brokerError && <div className="ia-flow-error">{brokerError}</div>}{broker && <section className="ia-broker-message"><div className="ia-message-label"><Activity size={14}/> Capability Broker <span>Scope {broker.scope.version.slice(0, 8)}</span></div><details className="ia-context-override"><summary>Context · {broker.scope.domain || 'Auto'}{broker.scope.stage ? ` / ${broker.scope.stage}` : ''}</summary><div>{broker.contexts.filter(context => !selectedDomain || context.domain === selectedDomain).map(context => <button key={`${context.domain}:${context.stage}`} onClick={() => void resolveTask(context)}>{context.domain} / {context.stage}</button>)}</div></details>{broker.matches.length ? <><p>Selected {broker.matches.length} capability{broker.matches.length === 1 ? '' : 'ies'} for {broker.scope.domain} / {broker.scope.stage}.</p>{broker.matches.map(item => <button className="ia-capability" key={item.id} onClick={() => void showDetail(item.id)}><span><b>{item.title}</b><small>{item.id}</small></span><ChevronRight size={14}/></button>)}<div className="ia-scope-summary"><span>{broker.scope.skills.length} skills</span><span>{broker.scope.tools.length} tools</span></div></> : <p>No domain capability selected. Kimi can continue with its standard project tools.</p>}</section>}{detail && <section className="ia-detail-message"><div className="ia-message-label">L3 · {detail.capability}</div>{detail.skills.map(item => <p key={item.id}><b>{item.id}</b><br/>{item.reference}</p>)}{detail.tools.map(item => <p key={item.id}><b>{item.id}</b> · {JSON.stringify(item.schema)}</p>)}</section>}{agentEvents.length > 0 && <AgentFlow events={agentEvents} running={agentBusy} debug={debug} approve={(id, decision) => void window.viewerHost!.approveAgent(id, decision)}/>}{debug && broker && <section className="ia-debug-flow"><div className="ia-message-label"><Bug size={14}/> Broker disclosure log</div>{broker.trace.map((entry, index) => <details key={index}><summary><code>{entry.level}</code> {entry.event}</summary><pre>{JSON.stringify(entry.detail, null, 2)}</pre></details>)}</section>}</>}
         </div>
         {todo?.type === 'todo' && <TodoList items={todo.items} running={agentBusy}/>}
-        <div className="ia-composer-wrap"><div className="ia-composer"><textarea aria-label="Engineering task" placeholder="Ask about your project…" value={task} onChange={event => setTask(event.target.value)} onKeyDown={event => {if (event.key === 'Enter' && !event.shiftKey) {event.preventDefault(); void resolveTask();}}}/><div className="ia-composer-footer"><div className="ia-domain-control"><button type="button" className="ia-domain-pill" aria-label="Session domain" title={fixedDomain ? "This project has a fixed domain" : "Choose a project domain in project details"} disabled><Activity size={13}/> {domainLabel}{fixedDomain && <span className="ia-domain-lock">Project</span>}</button></div><div className="ia-send-actions">{agentBusy && <button onClick={() => void window.viewerHost!.interruptAgent()} title="Stop agent"><Square size={14}/></button>}{Boolean(broker && agentStatus?.available && agentStatus.configured && agentStatus.projectDir) && <button onClick={() => void runAgent()} disabled={agentBusy || task !== submittedTask} title="Run with Kimi"><Play size={14}/></button>}<button className="ia-send" onClick={() => void resolveTask()} disabled={!task.trim()} title="Send task"><ChevronRight size={17}/></button></div></div></div><div className="ia-composer-hint">{!agentStatus?.available ? 'Kimi CLI unavailable · run pnpm setup:kimi' : !agentStatus.configured ? 'Configure the Model API in Settings to run Kimi' : !agentStatus.projectDir ? 'Choose a project to run Kimi' : 'Kimi ready'}</div></div>
+        <div className="ia-composer-wrap"><div className="ia-composer"><textarea aria-label="Engineering task" placeholder="Ask about your project…" value={task} onChange={event => setTask(event.target.value)} onKeyDown={event => {if (event.key === 'Enter' && !event.shiftKey) {event.preventDefault(); void resolveTask();}}}/><div className="ia-composer-footer"><DomainPill domain={fixedDomain} domains={domains} label="Session domain"/><div className="ia-send-actions">{agentBusy && <button onClick={() => void window.viewerHost!.interruptAgent()} title="Stop agent"><Square size={14}/></button>}{Boolean(broker && agentStatus?.available && agentStatus.configured && agentStatus.projectDir) && <button onClick={() => void runAgent()} disabled={agentBusy || task !== submittedTask} title="Run with Kimi"><Play size={14}/></button>}<button className="ia-send" onClick={() => void resolveTask()} disabled={!task.trim()} title="Send task"><ChevronRight size={17}/></button></div></div></div><div className="ia-composer-hint">{!agentStatus?.available ? 'Kimi CLI unavailable · run pnpm setup:kimi' : !agentStatus.configured ? 'Configure the Model API in Settings to run Kimi' : !agentStatus.projectDir ? 'Choose a project to run Kimi' : 'Kimi ready'}</div></div>
         </>}
       </main>
       {rightOpen && <section className="ia-viewer ia-workspace">
@@ -215,10 +219,10 @@ export function App() {
         <div className="ia-workspace-body"><div className="ia-workspace-content"><div className="ia-workspace-breadcrumb">{sourceFile?.path || (selected ? `${selected.design} / ${selected.name}` : projectName)}</div>
           {sourceFile ? <div className="ia-source-panel">{sourceFile.content == null ? <p>Binary file · no text preview available.</p> : <pre>{sourceFile.content}</pre>}{sourceFile.truncated && <small>Preview limited to the first 2 MB.</small>}</div> : selected ? <div className="rp-stage ia-viewer-stage">{opened?.kind === 'layout' && <LayoutViewport key={selectedId} meta={opened.data} onReady={() => setReady(true)} onError={setError}/ >}{opened?.kind === 'netlist' && <NetlistViewport key={selectedId} data={opened.data} onReady={() => setReady(true)} onError={setError} onSignal={showSignal} signalMap={selectedId === 'reference-netlist' ? {count: 'tb.dut.count', enable: 'tb.dut.enable'} : {}}/>}{opened?.kind === 'waveform' && <WaveformViewport key={selectedId} data={opened.data} onReady={() => setReady(true)} onError={setError} signal={signal}/ >}{!opened && <div className="ia-workspace-empty">{error || (loading ? 'Opening viewer…' : 'Preparing viewer…')}</div>}</div> : <div className="ia-workspace-empty">{error || 'Open the file tree to browse this project.'}</div>}
           {selected && <footer className="ia-viewer-footer">{selected.kind.toUpperCase()} · {ready ? 'Ready' : loading ? 'Loading' : error ? 'Error' : 'Preparing'} · SHA-256 {selected.sha256.slice(0, 16)}…</footer>}
-        </div>{fileTreeOpen && <aside className="ia-workspace-tree"><div className="ia-file-search">FILES</div><button className="ia-file-root" onClick={() => void chooseProject()}><ChevronDown size={13}/><FolderOpen size={14}/><span>{projectName}</span></button><div className="ia-file-list">{visibleProjectFiles.map(item => <button key={item.path} className={sourceFile?.path === item.path ? 'selected' : ''} style={{paddingLeft: 11 + item.depth * 13}} onClick={() => item.directory ? toggleDirectory(item.path) : void selectProjectFile(item.path)} title={item.path}>{item.directory ? collapsedDirs.has(item.path.replaceAll('\\', '/')) ? <ChevronRight size={12}/> : <ChevronDown size={12}/> : <File size={13}/>}<span>{item.name}</span></button>)}{!projectFiles.length && <p className="ia-file-hint">Choose a project to browse its files.</p>}</div><div className="ia-file-examples">VIEWER EXAMPLES</div><div className="ia-file-list ia-example-list">{artifacts.map(item => {const Icon = icons[item.kind]; return <button key={item.id} className={selectedId === item.id ? 'selected' : ''} onClick={() => selectArtifact(item.id)}><Icon size={13}/><span>{item.name}</span></button>;})}</div><button className="ia-open-artifact" onClick={() => void chooseFile()}><FilePlus2 size={13}/> Open artifact…</button></aside>}</div>
+        </div>{fileTreeOpen && <aside className="ia-workspace-tree"><div className="ia-file-search">FILES</div><button className="ia-file-root" onClick={() => setPage('project')}><ChevronDown size={13}/><FolderOpen size={14}/><span>{projectName}</span></button><div className="ia-file-list">{visibleProjectFiles.map(item => <button key={item.path} className={sourceFile?.path === item.path ? 'selected' : ''} style={{paddingLeft: 11 + item.depth * 13}} onClick={() => item.directory ? toggleDirectory(item.path) : void selectProjectFile(item.path)} title={item.path}>{item.directory ? collapsedDirs.has(item.path.replaceAll('\\', '/')) ? <ChevronRight size={12}/> : <ChevronDown size={12}/> : <File size={13}/>}<span>{item.name}</span></button>)}{!projectFiles.length && <p className="ia-file-hint">Choose a project to browse its files.</p>}</div><div className="ia-file-examples">VIEWER EXAMPLES</div><div className="ia-file-list ia-example-list">{artifacts.map(item => {const Icon = icons[item.kind]; return <button key={item.id} className={selectedId === item.id ? 'selected' : ''} onClick={() => selectArtifact(item.id)}><Icon size={13}/><span>{item.name}</span></button>;})}</div><button className="ia-open-artifact" onClick={() => void chooseFile()}><FilePlus2 size={13}/> Open artifact…</button></aside>}</div>
       </section>}
     </div>
-    {projectDraft && <CreateProjectModal draft={projectDraft} domains={domains} error={projectError} onChange={setProjectDraft} onClose={() => setProjectDraft(null)} onCreate={createProject}/>}
+    {projectDraft && <CreateProjectModal draft={projectDraft} domains={domains} error={projectError} onChange={setProjectDraft} onChooseDirectory={chooseProjectDirectory} onClose={() => setProjectDraft(null)} onCreate={createProject}/>}
     {modelSettingsOpen && <ModelSettings onClose={() => setModelSettingsOpen(false)} onSaved={() => void window.viewerHost!.agentStatus().then(setAgentStatus)}/>}
   </div>;
 }

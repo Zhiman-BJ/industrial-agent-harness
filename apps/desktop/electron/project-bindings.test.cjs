@@ -39,3 +39,13 @@ test('existing sample bindings acquire a domain while legacy unset values remain
   saveBindings(config, migrated);
   assert.equal(readBindings(config, sample).projects[0].domain, null);
 });
+
+test('the sample name no longer duplicates its domain badge', t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'industrial-sample-name-'));
+  t.after(() => fs.rmSync(root, {recursive: true, force: true}));
+  const sample = path.join(root, 'sample');
+  const config = path.join(root, 'config');
+  fs.mkdirSync(sample); fs.mkdirSync(config);
+  fs.writeFileSync(path.join(config, 'projects.json'), JSON.stringify({projects: [{id: 'chip-sobel-example', name: 'Chip · Sobel example', path: sample, domain: 'chip'}], activeId: 'chip-sobel-example'}));
+  assert.equal(readBindings(config, sample).projects[0].name, 'Sobel example');
+});

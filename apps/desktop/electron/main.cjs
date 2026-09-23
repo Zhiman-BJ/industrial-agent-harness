@@ -8,8 +8,8 @@ const {RasterService} = require('../../../packages/viewer-builtin/src/layout/ras
 const {renderNetlist} = require('../../../packages/viewer-builtin/src/netlist/netlist.cjs');
 const {createViewerProtocol} = require('../../../packages/viewer-builtin/src/waveform/protocol.cjs');
 const {resolve, discloseDetail} = require('../../../packages/capability-broker/src/index.cjs');
-const capabilities = require('../../../packages/domain-skills/src/capabilities.cjs');
-const {listDomains} = require('../../../packages/domain-skills/src/domains.cjs');
+const {resolveProjectTask} = require('@industrial-agent-harness/harness-core');
+const {capabilities, listDomains} = require('@industrial-agent-harness/domain-skills');
 const {KimiSession} = require('../../../packages/agent-kimi/src/index.cjs');
 const {readProfile, saveProfile, validateProfile, writeCliConfig, sessionEnv} = require('./model-config.cjs');
 const {readBindings, addBinding, saveBindings} = require('./project-bindings.cjs');
@@ -131,11 +131,8 @@ function registerHandlers() {
   ipcMain.handle('broker:resolve', (_event, request) => {
     const fixedDomain = activeProject()?.domain;
     if (activeProject() && !fixedDomain) throw Error('Set this project’s domain before starting a session.');
-    const domains = listDomains(capabilities);
-    if (fixedDomain && request.domain && request.domain !== fixedDomain) throw Error(`This project is fixed to the ${fixedDomain} domain.`);
-    if (request.domain && !domains.some(item => item.id === request.domain)) throw Error('Unknown domain.');
     if (agent?.turn) void agent.interrupt();
-    const result = resolve({...request, domain: fixedDomain || request.domain}, capabilities, brokerScope);
+    const result = fixedDomain ? resolveProjectTask(fixedDomain, request, brokerScope) : resolve(request, capabilities, brokerScope);
     brokerScope = result.scope;
     brokerTrace = result.trace;
     return result;
@@ -342,7 +339,8 @@ async function createWindow() {
       return filename;
     };
     await waitFor(`Boolean(document.querySelector('.ia-project-list button.selected')) && !document.querySelector('.ia-workspace')`);
-    await waitFor(`document.querySelector('.ia-domain-pill')?.innerText.includes('Chip') && document.querySelector('.ia-domain-pill')?.disabled`);
+    await waitFor(`document.querySelector('.ia-domain-pill')?.innerText.includes('Chip') && document.querySelector('.ia-domain-pill')?.getAttribute('role') === 'status'`);
+    await waitFor(`document.querySelector('.ia-project-list button.selected .ia-project-domain-badge')?.innerText.includes('Chip')`);
     if (!await window.webContents.executeJavaScript(`window.viewerHost.resolve({task: 'PCB board', domain: 'pcb'}).then(() => false, () => true)`)) throw Error('A fixed project accepted a different domain.');
     await window.webContents.executeJavaScript(`document.querySelector('.ia-project-list button.selected').click()`);
     await waitFor(`document.querySelector('.ia-project-page') && document.querySelector('select[aria-label="Project domain"]')?.value === 'chip'`);
@@ -353,7 +351,7 @@ async function createWindow() {
     await window.webContents.executeJavaScript(`document.querySelector('.ia-project-domain-edit button').click()`);
     await waitFor(`document.querySelector('select[aria-label="Project domain"]')?.value === 'pcb' && document.querySelector('.ia-project-domain-edit button')?.disabled`);
     await window.webContents.executeJavaScript(`document.querySelector('.ia-project-start').click()`);
-    await waitFor(`document.querySelector('.ia-domain-pill')?.disabled && document.querySelector('.ia-domain-pill')?.innerText.includes('PCB')`);
+    await waitFor(`document.querySelector('.ia-domain-pill')?.innerText.includes('PCB') && document.querySelector('.ia-domain-pill')?.getAttribute('role') === 'status'`);
     await window.webContents.executeJavaScript(`document.querySelector('.ia-project-list button.selected').click()`);
     await waitFor(`document.querySelector('select[aria-label="Project domain"]')?.value === 'pcb'`);
     await window.webContents.executeJavaScript(`(() => {const domain = document.querySelector('select[aria-label="Project domain"]'); domain.value = 'chip'; domain.dispatchEvent(new Event('change', {bubbles: true}));})()`);
@@ -361,16 +359,23 @@ async function createWindow() {
     await window.webContents.executeJavaScript(`document.querySelector('.ia-project-domain-edit button').click()`);
     await waitFor(`document.querySelector('select[aria-label="Project domain"]')?.value === 'chip' && document.querySelector('.ia-project-domain-edit button')?.disabled`);
     await window.webContents.executeJavaScript(`document.querySelector('.ia-project-start').click()`);
-    await waitFor(`document.querySelector('.ia-domain-pill')?.disabled && document.querySelector('.ia-domain-pill')?.innerText.includes('Chip')`);
+    await waitFor(`document.querySelector('.ia-domain-pill')?.innerText.includes('Chip')`);
     const newProjectDirectory = path.join(app.getPath('userData'), 'new-board-project');
     fs.mkdirSync(newProjectDirectory);
     const showOpenDialog = dialog.showOpenDialog;
+    let createScreenshot;
     dialog.showOpenDialog = async () => ({canceled: false, filePaths: [newProjectDirectory]});
     try {
-      await window.webContents.executeJavaScript(`Array.from(document.querySelectorAll('.ia-project-list button')).find(button => button.innerText.includes('Add local project')).click()`);
+      await window.webContents.executeJavaScript(`document.querySelector('.ia-projects-heading button').click()`);
       await waitFor(`Boolean(document.querySelector('.ia-create-project')) && document.querySelector('.ia-create-project button.primary')?.disabled`);
-      await window.webContents.executeJavaScript(`(() => {const domain = document.querySelector('select[aria-label="New project domain"]'); domain.value = 'pcb'; domain.dispatchEvent(new Event('change', {bubbles: true}));})()`);
+      await window.webContents.executeJavaScript(`document.querySelector('.ia-create-project .ia-folder-picker').click()`);
+      await waitFor(`document.querySelector('.ia-folder-picker')?.innerText.includes('new-board-project')`);
+      await waitFor(`Array.from(document.querySelectorAll('.ia-create-project .ia-domain-choice')).some(button => button.innerText.includes('PCB'))`);
+      await window.webContents.executeJavaScript(`Array.from(document.querySelectorAll('.ia-create-project .ia-domain-choice')).find(button => button.innerText.includes('PCB')).click()`);
+      await waitFor(`document.querySelector('.ia-create-project .ia-domain-choice[aria-pressed="true"]')?.innerText.includes('PCB')`);
       await waitFor(`!document.querySelector('.ia-create-project button.primary')?.disabled`);
+      await new Promise(resolve => setTimeout(resolve, 120));
+      createScreenshot = await shot('create');
       await window.webContents.executeJavaScript(`document.querySelector('.ia-create-project button.primary').click()`);
       await waitFor(`document.querySelector('.ia-project-page h1')?.innerText === 'new-board-project' && document.querySelector('select[aria-label="Project domain"]')?.value === 'pcb'`);
     } finally {dialog.showOpenDialog = showOpenDialog;}
@@ -378,7 +383,7 @@ async function createWindow() {
     await waitFor(`document.querySelector('select[aria-label="Project domain"]')?.value === 'chip'`);
     await window.webContents.executeJavaScript(`document.querySelector('.ia-project-start').click()`);
     await waitFor(`document.querySelector('.ia-domain-pill')?.innerText.includes('Chip')`);
-    const screenshots = [projectScreenshot, await shot('initial')];
+    const screenshots = [projectScreenshot, createScreenshot, await shot('initial')];
     await window.webContents.executeJavaScript(`document.querySelector('.ia-chat-actions button:last-child').click()`);
     await waitFor(`Boolean(document.querySelector('.ia-workspace')) && !document.querySelector('.ia-workspace-tree')`);
     await window.webContents.executeJavaScript(`document.querySelector('.ia-workspace-actions button').click()`);

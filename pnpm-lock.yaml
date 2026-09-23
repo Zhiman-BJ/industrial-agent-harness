@@ -8,11 +8,32 @@ importers:
 
   .: {}
 
+  apps/cli:
+    dependencies:
+      '@industrial-agent-harness/agent-kimi':
+        specifier: workspace:*
+        version: link:../../packages/agent-kimi
+      '@industrial-agent-harness/capability-broker':
+        specifier: workspace:*
+        version: link:../../packages/capability-broker
+      '@industrial-agent-harness/domain-skills':
+        specifier: workspace:*
+        version: link:../../packages/domain-skills
+      '@industrial-agent-harness/harness-core':
+        specifier: workspace:*
+        version: link:../../packages/harness-core
+
   apps/desktop:
     dependencies:
       '@industrial-agent-harness/agent-kimi':
         specifier: workspace:*
         version: link:../../packages/agent-kimi
+      '@industrial-agent-harness/domain-skills':
+        specifier: workspace:*
+        version: link:../../packages/domain-skills
+      '@industrial-agent-harness/harness-core':
+        specifier: workspace:*
+        version: link:../../packages/harness-core
       '@industrial-agent-harness/viewer-builtin':
         specifier: workspace:*
         version: link:../../packages/viewer-builtin
@@ -63,6 +84,15 @@ importers:
   packages/domain-runtime: {}
 
   packages/domain-skills: {}
+
+  packages/harness-core:
+    dependencies:
+      '@industrial-agent-harness/capability-broker':
+        specifier: workspace:*
+        version: link:../capability-broker
+      '@industrial-agent-harness/domain-skills':
+        specifier: workspace:*
+        version: link:../domain-skills
 
   packages/viewer-builtin:
     dependencies:
