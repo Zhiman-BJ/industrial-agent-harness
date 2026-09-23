@@ -5,7 +5,7 @@
 ## 已确定的边界
 
 - 桌面端采用 Electron，目标平台为 Linux、macOS、Windows。
-- 底层 coding agent 使用 `kimicode-sdk`。本仓库只实现接入适配，不另造 agent loop；优先使用公开接口，避免修改或 fork SDK。
+- 底层 coding agent 使用官方 Node 包 `@moonshot-ai/kimi-agent-sdk`，当前精确固定为 `0.1.8`，并提交 `pnpm-lock.yaml`。本仓库只实现接入适配，不另造 agent loop；优先使用公开接口，避免修改或 fork SDK。
 - UI、domain skill、domain runtime、domain MCP 分层维护。跨层数据通过共享契约传递，不让 UI 直接依赖领域工具实现。
 - domain skill 与 domain MCP 必须渐进式披露：先给出简短能力索引，按任务需要再加载具体说明、参数 schema 与工具；不能在启动时把全部领域知识和工具定义注入模型上下文。
 - 领域执行结果应保留输入、运行、产物和验证证据；进程成功退出本身不等于任务验收通过。
@@ -15,7 +15,7 @@
 | 目录 | 职责 |
 | --- | --- |
 | `apps/desktop` | Electron 主进程、preload、安全 IPC 和 UI |
-| `packages/agent-kimi` | `kimicode-sdk` 的薄适配、会话与事件映射 |
+| `packages/agent-kimi` | Kimi Agent SDK 的薄适配、会话与事件映射 |
 | `packages/contracts` | 模块间共享的数据与事件契约 |
 | `packages/domain-skills` | 领域 skill 索引、按需加载与版本管理 |
 | `packages/domain-runtime` | 确定性任务执行、状态、证据与产物管理 |
@@ -34,6 +34,6 @@
 
 ## 当前状态与下一步
 
-此提交只建立仓库和模块边界。下一步先验证 `kimicode-sdk` 的会话、流式事件、工具/MCP 注册、审批、中断和恢复接口，再实现一条最小的端到端链路。目标平台的打包与真实领域流程需要分别验证。
+当前已建立仓库和模块边界，并固定 Kimi Agent SDK 依赖；尚无可运行应用。下一步先验证该 SDK 的会话、流式事件、工具/MCP 注册、审批、中断和恢复接口，再实现一条最小的端到端链路。目标平台的打包与真实领域流程需要分别验证。
 
 参考项目：[Silicon Lens demo](https://github.com/Zhiman-BJ/silicon-lens-harness)、[EDA Harness](https://github.com/Zhiman-BJ/eda-harness)。这两个仓库的代码与产物没有复制进来。

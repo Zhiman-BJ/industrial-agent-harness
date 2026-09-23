@@ -1,5 +1,8 @@
 {
   "name": "@industrial-agent-harness/agent-kimi",
   "version": "0.0.0",
-  "private": true
+  "private": true,
+  "dependencies": {
+    "@moonshot-ai/kimi-agent-sdk": "0.1.8"
+  }
 }

@@ -5,7 +5,7 @@ This repository is an early architecture scaffold for Industrial Agent Harness.
 ## Boundaries
 
 - Keep the Electron application, Kimi adapter, domain skills, domain runtime, domain MCP, and shared contracts in their respective workspaces.
-- Use `kimicode-sdk` as the coding agent. Do not implement a second agent loop or patch/fork the SDK unless a verified integration gap requires an explicit architecture decision.
+- Use `@moonshot-ai/kimi-agent-sdk` at the exact declared version as the coding agent. Commit the pnpm lockfile. Do not implement a second agent loop or patch/fork the SDK unless a verified integration gap requires an explicit architecture decision.
 - Keep `domain-runtime` independent of Electron, Kimi, and MCP. The MCP package exposes domain capabilities; it does not own execution truth.
 - Make skill and MCP disclosure progressive. Return a compact index first, fetch detailed instructions and schemas on demand, and register only relevant tools for a task.
 - Keep project paths, permissions, and tool execution behind a narrow Electron main/preload boundary. Do not give the renderer unrestricted Node or filesystem access.
