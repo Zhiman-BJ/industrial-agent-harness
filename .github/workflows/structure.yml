@@ -23,9 +23,21 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Build and test MVP
+      - name: Install dependencies
         run: |
           npm install -g pnpm@11.1.3
           pnpm install --frozen-lockfile
+      - name: Architecture boundaries
+        run: pnpm test:architecture
+      - name: Build and test MVP
+        run: |
           pnpm build
           pnpm test
+      - name: Industrial Core vertical slice gate when implemented
+        run: |
+          if test -f tests/integration/domain-mcp-scope.test.cjs; then
+            node --test tests/integration/domain-mcp-scope.test.cjs
+          fi
+          if test -f tests/integration/industrial-core-vertical-slice.test.cjs; then
+            node --test tests/integration/industrial-core-vertical-slice.test.cjs
+          fi

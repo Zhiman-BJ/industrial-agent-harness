@@ -34,6 +34,13 @@ Project、Domain 和 Session 的用户交互决定见[产品决策记录](produc
 - 决定：Skill 文件留在 `packages/domain-skills/skills/`，MCP 提供者声明留在 `packages/domain-mcp`。Project 持久化禁用 ID，CLI 使用对应参数。Broker 先按 Project 策略过滤 Skill/Tool，再解析 Scope；Kimi 会话的 `extra_skill_dirs` 只追加当前 Scope 的仓库 Skill，保留 Kimi 原有的项目/用户 Skill 搜索路径。独立会话目录中的 `mcp.json` 只写入已选中的服务器，不修改用户的 Kimi 全局配置。
 - 执行边界：MCP 声明必须绑定 Domain 和完整 canonical Tool ID 集合；一个服务器只有在其全部声明工具都处于当前 Scope 且未禁用时才能进入会话。现有 Harness 外部工具仍在处理器再次校验 Scope。对于 MCP 服务实际暴露工具超出声明的情况，直连无法提供执行级 allowlist；接入首个默认服务器前必须验证其固定工具面，或经由受控 Gateway 代理。
 
+## ADR-003：Industrial Core Vertical Slice 作为当前里程碑
+
+- 日期：2026-09-23
+- 状态：方向已确定；Vertical Slice 尚未实现
+- 决定：以 Project → StateProvider → DomainState → Broker → Kimi → scoped Tool → Domain Runtime → Action → Artifact → Verifier → new DomainState → Checkpoint 的真实链路作为晋级 Gate。最小持久化位于首条 E2E 之前；失败 Action 可有空产物集合，但必须保留诊断与未通过的验证状态。只有真实集成测试通过后才称为 Industrial Harness Core v0.1。
+- 约束：现有 MVP 硬编码和内存状态列入 `prototype-register.json`，架构 CI 冻结其扩展。新的具体领域 Tool、Viewer 或执行路径不能继续添加到这些上层捷径中。详细 DoD 见 `04-definition-of-done-and-architecture-tests.md`。
+
 ## 两份提案的差异及当前取舍
 
 - **Agent 适配**：Broker Plan 描述可替换的通用 `AgentRuntimeAdapter`；架构 Plan 明确第一阶段专精 Kimi。当前选择 Kimi 专属 Integration，不以假定通用性压缩 Kimi 原生能力。工业契约保持独立，为未来新接入留出边界。

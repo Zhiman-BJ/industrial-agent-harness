@@ -1,6 +1,23 @@
 # Industrial Agent Harness repository instructions
 
-Read `doc/README.md` before changing architecture or module boundaries. The repository is currently a scaffold; documentation marked as proposed is not implemented behavior.
+Read `doc/README.md` before changing architecture or module boundaries. The repository is a working Workbench MVP, not yet Industrial Harness Core. Documentation marked as proposed is not implemented behavior.
+
+## Current milestone: Industrial Core Vertical Slice
+
+The next milestone is one real, persistent Project → StateProvider → DomainState → Broker → Kimi → scoped Tool → Domain Runtime → Action → Artifact → Verifier → new DomainState → Checkpoint path shared by Desktop and CLI. Until its integration test passes, prioritize this path over new UX, Viewers, capability demos, domains, trajectory replay UI, or a generic multi-agent adapter. The current milestone and bounded MVP shortcuts are recorded in `doc/prototype-register.json`.
+
+## Non-negotiable invariants
+
+- User prompts express intent. Engineering facts require a DomainState source, artifact, verification result, or explicitly attributed user input. Do not turn a keyword guess into a trusted stage or metric.
+- Every industrial Action enters Domain Runtime. Desktop, CLI, MCP, and agent adapters must not directly run industrial executables. A mutating attempt records Run/Action identity, real inputs, diagnostics, an explicit artifact set (possibly empty on failure), and a VerificationResult. Process exit code alone never means engineering acceptance.
+- `packages/contracts` owns the canonical industrial Artifact, State, Run, Action, Verification, Tool, and Checkpoint contracts. Other layers may define display views but must not create competing engineering facts.
+- `harness-core`, `capability-broker`, `agent-kimi`, `viewer-core`, and `contracts` must not gain concrete domain IDs. Kimi consumes ToolDescriptors, and the execution boundary rechecks the Broker allowlist. MCP disclosure alone is not permission.
+- Viewer selection belongs in Viewer Core/Registry and remains read-only display. A Viewer result cannot update verification or DomainState.
+- The existing MVP shortcuts listed in `doc/prototype-register.json` are frozen exceptions, not patterns to copy. If a lower-level abstraction is needed, implement it below the adapters and remove its old bypass path.
+
+## Definition of Done
+
+Mark a core module implemented only when production code has a real consumer, a real-path integration test, tested failure behavior, a removed or registered bypass, and documentation matching exercised behavior. `pnpm test:architecture` is a CI gate; it does not replace the vertical-slice E2E. See `doc/04-definition-of-done-and-architecture-tests.md`.
 
 ## Architecture boundaries
 

@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "milestone": "workbench-mvp",
+  "nextMilestone": "industrial-core-v0.1",
+  "verticalSliceTest": "tests/integration/industrial-core-vertical-slice.test.cjs",
+  "prototypes": [
+    {
+      "id": "desktop-in-memory-artifacts",
+      "path": "apps/desktop/electron/main.cjs",
+      "signature": "const artifacts = new Map();",
+      "replacement": "Persistent Artifact Registry in packages/domain-runtime"
+    },
+    {
+      "id": "cli-in-memory-artifact-manifest",
+      "path": "apps/cli/src/main.cjs",
+      "signature": "const artifacts = new Map();",
+      "replacement": "Shared Artifact Registry in packages/domain-runtime"
+    },
+    {
+      "id": "prompt-keyword-context",
+      "path": "packages/capability-broker/src/index.cjs",
+      "signature": "const scored = candidates.map(item => {",
+      "replacement": "StateProvider-backed DomainState hard filters plus task intent matching"
+    },
+    {
+      "id": "kimi-domain-tool-map",
+      "path": "packages/agent-kimi/src/index.cjs",
+      "signature": "const canonicalNames = {",
+      "allowedCanonicalToolIds": [
+        "eda.netlist.inspect",
+        "eda.waveform.inspect",
+        "eda.layout.inspect",
+        "pcb.board.inspect"
+      ],
+      "replacement": "ToolDescriptor registry consumed by agent-kimi"
+    },
+    {
+      "id": "electron-viewer-dispatch",
+      "path": "apps/desktop/src/App.tsx",
+      "signature": "opened?.kind === 'layout'",
+      "allowedViewerKinds": ["layout", "netlist", "waveform"],
+      "replacement": "Viewer Registry discovery through viewer-core"
+    },
+    {
+      "id": "electron-viewer-host-dispatch",
+      "path": "apps/desktop/electron/main.cjs",
+      "signature": "if (artifact.kind === 'layout')",
+      "replacement": "Viewer Host resolves ViewerDescriptor from viewer-core"
+    },
+    {
+      "id": "static-capability-registry",
+      "path": "packages/domain-skills/src/capabilities.cjs",
+      "signature": "chip.rtl.netlist.inspect",
+      "allowedCapabilityIds": [
+        "chip.rtl.netlist.inspect",
+        "chip.verification.waveform.inspect",
+        "chip.physical.layout.inspect",
+        "pcb.layout.inspect"
+      ],
+      "allowedToolIds": [
+        "eda.netlist.inspect",
+        "eda.waveform.inspect",
+        "eda.layout.inspect",
+        "pcb.board.inspect"
+      ],
+      "replacement": "Validated Domain Pack loader"
+    }
+  ]
+}

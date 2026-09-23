@@ -1,5 +1,7 @@
 # 开发计划
 
+> 此页是早期两份 Plan 的阶段性整理。当前实施顺序与里程碑 Gate 以 [`03-implementation-roadmap.md`](03-implementation-roadmap.md) 为准；本页保留作为场景与验证背景，不用于宣称模块已完成。
+
 当前已完成仓库骨架、桌面 MVP、三种 EDA Viewer、首批确定性 Broker 与 `@moonshot-ai/kimi-agent-sdk@0.1.8` 的接口接入。以下阶段将两份计划材料整理为可验证的实施顺序；表中多数验收条件仍待完成。
 
 ## 阶段与验收
