@@ -15,6 +15,7 @@ test('projects keep distinct directory bindings across restarts', t => {
   let state = readBindings(path.join(root, 'config'), sample);
   assert.equal(state.projects.length, 1);
   assert.equal(state.projects[0].domain, 'chip');
+  state.projects[0].disabledSkills = ['chip.netlist.inspect'];
   state = addBinding(state, second, 'pcb', 'Board project');
   assert.equal(state.projects.length, 2);
   assert.equal(state.projects[1].domain, 'pcb');

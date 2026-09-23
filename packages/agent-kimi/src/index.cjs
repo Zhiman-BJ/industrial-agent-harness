@@ -1,5 +1,10 @@
 const {createSession, createExternalTool} = require('@moonshot-ai/kimi-agent-sdk');
 const {z} = require('zod');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const {materializeSkills} = require('@industrial-agent-harness/domain-skills');
+const {selectMcpServers, writeMcpConfig} = require('@industrial-agent-harness/domain-mcp');
 
 const canonicalNames = {
   'eda.netlist.inspect': 'eda_netlist_inspect',
@@ -7,6 +12,18 @@ const canonicalNames = {
   'eda.layout.inspect': 'eda_layout_inspect',
   'pcb.board.inspect': 'pcb_board_inspect',
 };
+
+function prepareSessionFiles(scope, runtime) {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'industrial-kimi-session-'));
+  fs.chmodSync(directory, 0o700);
+  try {
+    const skillsDir = materializeSkills(scope, directory);
+    const modelConfig = fs.readFileSync(path.join(runtime.shareDir, 'config.toml'), 'utf8');
+    fs.writeFileSync(path.join(directory, 'config.toml'), `extra_skill_dirs = [${JSON.stringify(skillsDir)}]\n${modelConfig}`, {mode: 0o600});
+    writeMcpConfig(directory, selectMcpServers(scope, runtime.disabledMcpServers));
+    return directory;
+  } catch (error) {fs.rmSync(directory, {recursive: true, force: true}); throw error;}
+}
 
 function externalTools(getScope, lookupArtifact, disclose) {
   const scope = getScope();
@@ -52,10 +69,12 @@ class KimiSession {
     if (!runtime.apiKey) throw Error('Set a model API key before running Kimi.');
     if (!this.session || this.scopeVersion !== scope.version || this.runtimeRevision !== runtime.revision) {
       await this.session?.close();
+      if (this.sessionConfigDir) fs.rmSync(this.sessionConfigDir, {recursive: true, force: true});
+      this.sessionConfigDir = prepareSessionFiles(scope, runtime);
       this.session = createSession({
         workDir: this.workDir,
         executable: runtime.executable,
-        shareDir: runtime.shareDir,
+        shareDir: this.sessionConfigDir,
         model: 'industrial',
         thinking: runtime.profile.thinking,
         env: runtime.env,
@@ -94,7 +113,7 @@ class KimiSession {
   }
   approve(id, response) {if (!this.turn) throw Error('No active turn.'); return this.turn.approve(id, response);}
   interrupt() {return this.turn?.interrupt();}
-  async close() {await this.session?.close(); this.session = undefined;}
+  async close() {await this.session?.close(); this.session = undefined; if (this.sessionConfigDir) fs.rmSync(this.sessionConfigDir, {recursive: true, force: true}); this.sessionConfigDir = undefined;}
 }
 
-module.exports = {KimiSession, externalTools};
+module.exports = {KimiSession, externalTools, prepareSessionFiles};

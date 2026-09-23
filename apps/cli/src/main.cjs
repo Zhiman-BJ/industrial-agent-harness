@@ -4,7 +4,7 @@ const path = require('node:path');
 const os = require('node:os');
 const crypto = require('node:crypto');
 const {parseArgs} = require('./args.cjs');
-const {resolveProjectTask} = require('@industrial-agent-harness/harness-core');
+const {resolveProjectTask, effectiveCapabilities, resourceCatalog} = require('@industrial-agent-harness/harness-core');
 const {capabilities} = require('@industrial-agent-harness/domain-skills');
 const {discloseDetail} = require('@industrial-agent-harness/capability-broker');
 const {KimiSession} = require('@industrial-agent-harness/agent-kimi');
@@ -23,6 +23,8 @@ Options:
   --kimi-executable PATH       Kimi CLI executable (or set KIMI_EXECUTABLE)
   --approval POLICY            reject (default), approve, approve_for_session
   --artifact-manifest FILE     JSON array of {id, kind, path} inside the project
+  --disable-skill ID          Disable a repository skill for this run (repeatable)
+  --disable-mcp ID            Disable a repository MCP server for this run (repeatable)
   --timeout-ms N               Interrupt a turn after N milliseconds
 
 Output is JSON Lines on stdout. API keys are read only from the environment.\n`;
@@ -57,7 +59,11 @@ async function run(options, output = process.stdout, environment = process.env, 
   if (!fs.statSync(projectDir).isDirectory()) throw Error('Project path must be a directory.');
   const runId = crypto.randomUUID();
   const send = event => emit(output, {runId, ...event});
-  const broker = resolveProjectTask(options.domain, {task: options.task});
+  const disabled = {skills: options.disabledSkills || [], mcpServers: options.disabledMcpServers || []};
+  const catalog = resourceCatalog(options.domain);
+  for (const id of disabled.skills) if (!catalog.skills.some(item => item.id === id)) throw Error(`Unknown project skill: ${id}`);
+  for (const id of disabled.mcpServers) if (!catalog.mcpServers.some(item => item.id === id)) throw Error(`Unknown project MCP: ${id}`);
+  const broker = resolveProjectTask(options.domain, {task: options.task}, undefined, capabilities, disabled);
   const scope = broker.scope;
   send({type: 'scope', projectDir, scope, matches: broker.matches, trace: broker.trace});
   if (options.scopeOnly) {send({type: 'result', status: 'scoped'}); return 0;}
@@ -91,13 +97,13 @@ async function run(options, output = process.stdout, environment = process.env, 
   const onSigint = () => onInterrupt('SIGINT');
   const onSigterm = () => onInterrupt('SIGTERM');
   try {
-    const runtime = {profile, apiKey, revision: 0, executable: options.kimiExecutable || environment.KIMI_EXECUTABLE || 'kimi', shareDir: writeCliConfig(configDir, profile), env: sessionEnv(profile, apiKey)};
+    const runtime = {profile, apiKey, revision: 0, executable: options.kimiExecutable || environment.KIMI_EXECUTABLE || 'kimi', shareDir: writeCliConfig(configDir, profile), env: sessionEnv(profile, apiKey), disabledMcpServers: disabled.mcpServers};
     session = new Session(projectDir, () => scope, async id => {
       const item = artifacts.get(id);
       if (!item || await digest(item.file) !== item.sha256) throw Error('Artifact is unavailable or changed.');
       return item.metadata;
     }, id => {
-      const detail = discloseDetail(scope, capabilities, id);
+      const detail = discloseDetail(scope, effectiveCapabilities(capabilities, disabled), id);
       send({type: 'disclosure', level: 'L3', capabilityId: id, skills: detail.skills.map(item => item.id), tools: detail.tools.map(item => item.id)});
       return detail;
     }, event => {

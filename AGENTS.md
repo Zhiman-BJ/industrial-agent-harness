@@ -17,6 +17,7 @@ Read `doc/README.md` before changing architecture or module boundaries. The repo
 
 - Resolve capabilities from the current Domain State and task. Capabilities bind relevant Skill batches, canonical Tool IDs, viewers, verification, dependencies, and conflicts.
 - Skill and MCP tool disclosure must be progressive. Expose a compact discovery surface first; load detailed skill content and tool schemas only for a selected capability. Replace stale session scope when the domain stage changes.
+- Declare default Skill files in `packages/domain-skills` and default Domain MCP providers in `packages/domain-mcp`. Store only disabled resource IDs per Project; desktop and CLI must apply the same effective policy before Broker resolution. Do not expose an MCP server with undeclared or out-of-scope tools.
 - Keep canonical Tool IDs separate from MCP provider names and transport-specific tool names. Enforce the resulting tool allowlist at the execution boundary, not solely in prompts.
 - Make resolver decisions deterministic and testable in V1. Record candidates, selected capabilities, disclosed skills and tools, scope changes, and execution outcomes in a disclosure trace.
 - Keep conversation history and compaction under Kimi's control. Harness supplies a bounded, structured Industrial Context.

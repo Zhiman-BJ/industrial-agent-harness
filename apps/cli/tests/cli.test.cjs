@@ -30,6 +30,17 @@ test('CLI requires one task source and a known domain', async t => {
   await assert.rejects(run({projectDir, domain: 'unknown', task: 'Inspect netlist', scopeOnly: true}, new Writable({write(_chunk, _encoding, callback) {callback();}})), /valid project domain/);
 });
 
+test('CLI disable flag removes a repository skill from the resolved scope', async t => {
+  const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'industrial-cli-disabled-'));
+  t.after(() => fs.rmSync(projectDir, {recursive: true, force: true}));
+  const rows = [];
+  const output = new Writable({write(chunk, _encoding, callback) {rows.push(...String(chunk).trim().split('\n').map(JSON.parse)); callback();}});
+  const options = parseArgs(['run', '--project-dir', projectDir, '--domain', 'chip', '--task', 'Inspect netlist signals', '--scope-only', '--disable-skill', 'chip.netlist.inspect']);
+  assert.equal(await run(options, output, {}), 0);
+  assert.deepEqual(rows[0].scope.skills, []);
+  await assert.rejects(run({...options, disabledSkills: ['unknown']}, output, {}), /Unknown project skill/);
+});
+
 test('artifact manifest cannot reference files outside its project', async t => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'industrial-cli-artifact-'));
   t.after(() => fs.rmSync(root, {recursive: true, force: true}));

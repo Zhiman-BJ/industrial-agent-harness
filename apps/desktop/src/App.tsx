@@ -3,7 +3,7 @@ import {Activity, Bug, ChevronDown, ChevronRight, Cpu, File, FilePlus2, Folder, 
 import {LayoutViewport} from '@industrial-agent-harness/viewer-builtin/layout';
 import {NetlistViewport} from '@industrial-agent-harness/viewer-builtin/netlist';
 import {WaveformViewport} from '@industrial-agent-harness/viewer-builtin/waveform';
-import type {AgentEvent, BrokerResult, CapabilityDetail, DomainOption, OpenedViewer, ProjectBinding, ViewerArtifact} from '@industrial-agent-harness/viewer-builtin/api';
+import type {AgentEvent, BrokerResult, CapabilityDetail, DomainOption, OpenedViewer, ProjectBinding, ResourceCatalog, ViewerArtifact} from '@industrial-agent-harness/viewer-builtin/api';
 import {AgentFlow} from './components/AgentFlow';
 import {BrokerCall} from './components/BrokerCall';
 import {TodoList} from './components/TodoList';
@@ -22,6 +22,7 @@ export function App() {
   const [collapsedDirs, setCollapsedDirs] = useState<Set<string>>(() => new Set());
   const [projects, setProjects] = useState<ProjectBinding[]>([]);
   const [domains, setDomains] = useState<DomainOption[]>([]);
+  const [resources, setResources] = useState<ResourceCatalog>({skills: [], mcpServers: []});
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [page, setPage] = useState<'chat' | 'project'>('chat');
   const [projectDraft, setProjectDraft] = useState<{directory: string; name: string; domain: string} | null>(null);
@@ -76,6 +77,10 @@ export function App() {
       if (event.type === 'done' || event.type === 'error') setAgentBusy(false);
     });
   }, []);
+  useEffect(() => {
+    if (!window.viewerHost) return;
+    void window.viewerHost.resourceCatalog().then(setResources).catch(reason => setError(String(reason)));
+  }, [activeProjectId, projects.find(item => item.id === activeProjectId)?.domain]);
   useEffect(() => {
     if (!selectedId) {setOpened(undefined); setLoading(false); return;}
     let cancelled = false;
@@ -180,6 +185,11 @@ export function App() {
       setTask(''); setSubmittedTask(''); setBroker(undefined); setDetail(undefined); setBrokerError(''); setAgentEvents([]);
     } catch (reason) {throw reason;}
   }
+  async function setProjectResource(id: string, kind: 'skill' | 'mcp', resourceId: string, enabled: boolean) {
+    const bindings = await window.viewerHost!.setProjectResource(id, kind, resourceId, enabled);
+    setProjects(bindings.projects);
+    setTask(''); setSubmittedTask(''); setBroker(undefined); setDetail(undefined); setBrokerError(''); setAgentEvents([]);
+  }
   async function showDetail(id: string) {
     try {setDetail(await window.viewerHost!.detail(id)); const trace = await window.viewerHost!.brokerTrace(); setBroker(current => current ? {...current, trace} : current);}
     catch (reason) {setBrokerError(String(reason));}
@@ -205,7 +215,7 @@ export function App() {
       </aside>}
       <main className="ia-chat">
         <header className="ia-chat-header"><div>{!leftOpen && <button className="ia-icon" onClick={() => setLeftOpen(true)} title="Show sidebar"><PanelLeftOpen size={16}/></button>}<Folder size={14}/><b>{projectName}</b></div><div className="ia-chat-actions"><button className={debug ? 'active' : ''} onClick={() => setDebug(value => !value)} title="Toggle debug logs"><Bug size={15}/></button><button onClick={() => setRightOpen(value => !value)} title={rightOpen ? 'Hide workspace' : 'Show workspace'}>{rightOpen ? <PanelRightClose size={16}/> : <PanelRightOpen size={16}/>}</button></div></header>
-        {page === 'project' && activeProject ? <ProjectDetails project={activeProject} domains={domains} busy={agentBusy} onDomainChange={setProjectDomain} onNewChat={newChat}/> : <>
+        {page === 'project' && activeProject ? <ProjectDetails project={activeProject} domains={domains} resources={resources} busy={agentBusy} onDomainChange={setProjectDomain} onResourceChange={setProjectResource} onNewChat={newChat}/> : <>
         <div className="ia-chat-scroll">
           {!submittedTask && <div className="ia-chat-welcome"><span className="ia-welcome-icon"><Cpu size={22}/></span><h1>What are you working on?</h1><p>Describe a task in your project. Relevant capabilities and tools will appear as the work progresses.</p></div>}
           {submittedTask && <>

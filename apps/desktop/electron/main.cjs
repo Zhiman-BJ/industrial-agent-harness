@@ -9,7 +9,7 @@ const {renderNetlist} = require('../../../packages/viewer-builtin/src/netlist/ne
 const {createViewerProtocol} = require('../../../packages/viewer-builtin/src/waveform/protocol.cjs');
 const {initialVcdSignals} = require('../../../packages/viewer-builtin/src/waveform/signals.cjs');
 const {resolve, discloseDetail} = require('../../../packages/capability-broker/src/index.cjs');
-const {resolveProjectTask} = require('@industrial-agent-harness/harness-core');
+const {resolveProjectTask, effectiveCapabilities, resourceCatalog} = require('@industrial-agent-harness/harness-core');
 const {capabilities, listDomains} = require('@industrial-agent-harness/domain-skills');
 const {KimiSession} = require('../../../packages/agent-kimi/src/index.cjs');
 const {readProfile, saveProfile, validateProfile, writeCliConfig, sessionEnv} = require('./model-config.cjs');
@@ -57,7 +57,7 @@ function modelStatus() {return {...readProfile(configDir()), hasApiKey: Boolean(
 function runtimeConfig() {
   const profile = readProfile(configDir());
   const apiKey = readApiKey();
-  return {profile, apiKey, revision: modelRevision, executable: kimiExecutable(), shareDir: writeCliConfig(configDir(), profile), env: sessionEnv(profile, apiKey)};
+  return {profile, apiKey, revision: modelRevision, executable: kimiExecutable(), shareDir: writeCliConfig(configDir(), profile), env: sessionEnv(profile, apiKey), disabledMcpServers: activeProject()?.disabledMcpServers || []};
 }
 
 function kindFor(file) {
@@ -122,17 +122,21 @@ function getRaster() {
 
 function registerHandlers() {
   ipcMain.handle('broker:domains', () => listDomains(capabilities));
+  ipcMain.handle('resource:catalog', () => resourceCatalog(activeProject()?.domain));
   ipcMain.handle('broker:resolve', (_event, request) => {
     const fixedDomain = activeProject()?.domain;
     if (activeProject() && !fixedDomain) throw Error('Set this project’s domain before starting a session.');
     if (agent?.turn) void agent.interrupt();
-    const result = fixedDomain ? resolveProjectTask(fixedDomain, request, brokerScope) : resolve(request, capabilities, brokerScope);
+    const project = activeProject();
+    const disabled = {skills: project?.disabledSkills || [], mcpServers: project?.disabledMcpServers || []};
+    const result = fixedDomain ? resolveProjectTask(fixedDomain, request, brokerScope, capabilities, disabled) : resolve(request, capabilities, brokerScope);
     brokerScope = result.scope;
     brokerTrace = result.trace;
     return result;
   });
   function loadDetail(capabilityId) {
-    const detail = discloseDetail(brokerScope, capabilities, capabilityId);
+    const project = activeProject();
+    const detail = discloseDetail(brokerScope, effectiveCapabilities(capabilities, {skills: project?.disabledSkills || [], mcpServers: project?.disabledMcpServers || []}), capabilityId);
     brokerTrace.push({level: 'L3', event: 'detail.load', detail: {capabilityId, skills: detail.skills.map(item => item.id), tools: detail.tools.map(item => item.id)}});
     return detail;
   }
@@ -176,6 +180,23 @@ function registerHandlers() {
     if (project.domain === domain) return projectSnapshot();
     await agent?.close(); agent = undefined;
     project.domain = domain;
+    brokerScope = undefined; brokerTrace = [];
+    saveBindings(projectConfigDir(), projectBindings);
+    return projectSnapshot();
+  });
+  ipcMain.handle('project:set-resource', async (_event, request) => {
+    if (agent?.turn) throw Error('Stop the current turn before changing project resources.');
+    const project = activeProject();
+    if (!project || request?.projectId !== project.id) throw Error('Open this project before changing its resources.');
+    const key = request.kind === 'skill' ? 'disabledSkills' : request.kind === 'mcp' ? 'disabledMcpServers' : null;
+    if (!key || typeof request.id !== 'string' || typeof request.enabled !== 'boolean') throw Error('Invalid project resource change.');
+    const catalog = resourceCatalog(project.domain);
+    const entries = request.kind === 'skill' ? catalog.skills : catalog.mcpServers;
+    if (!entries.some(item => item.id === request.id)) throw Error('Unknown project resource.');
+    const disabled = new Set(project[key] || []);
+    if (request.enabled) disabled.delete(request.id); else disabled.add(request.id);
+    await agent?.close(); agent = undefined;
+    project[key] = [...disabled].sort();
     brokerScope = undefined; brokerTrace = [];
     saveBindings(projectConfigDir(), projectBindings);
     return projectSnapshot();
@@ -328,6 +349,11 @@ async function createWindow() {
     await waitFor(`document.querySelector('.ia-project-page') && document.querySelector('select[aria-label="Project domain"]')?.value === 'chip'`);
     await new Promise(resolve => setTimeout(resolve, 150));
     const projectScreenshot = await shot('project');
+    await waitFor(`document.querySelectorAll('.ia-project-resources input[type="checkbox"]').length === 3`);
+    await window.webContents.executeJavaScript(`document.querySelector('.ia-project-resources input[type="checkbox"]').click()`);
+    await waitFor(`!document.querySelector('.ia-project-resources input[type="checkbox"]').checked && window.viewerHost.projectBindings().then(state => state.projects.find(item => item.id === state.activeId)?.disabledSkills.includes('chip.netlist.inspect'))`);
+    await window.webContents.executeJavaScript(`document.querySelector('.ia-project-resources input[type="checkbox"]').click()`);
+    await waitFor(`document.querySelector('.ia-project-resources input[type="checkbox"]').checked && window.viewerHost.projectBindings().then(state => !state.projects.find(item => item.id === state.activeId)?.disabledSkills.includes('chip.netlist.inspect'))`);
     await window.webContents.executeJavaScript(`(() => {const domain = document.querySelector('select[aria-label="Project domain"]'); domain.value = 'pcb'; domain.dispatchEvent(new Event('change', {bubbles: true}));})()`);
     await waitFor(`!document.querySelector('.ia-project-domain-edit button')?.disabled`);
     await window.webContents.executeJavaScript(`document.querySelector('.ia-project-domain-edit button').click()`);

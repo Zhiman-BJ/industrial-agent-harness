@@ -1,18 +1,20 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const valueFlags = new Set(['project-dir', 'domain', 'task', 'task-file', 'provider', 'endpoint', 'model', 'context-size', 'approval', 'api-key-env', 'kimi-executable', 'artifact-manifest', 'timeout-ms']);
+const valueFlags = new Set(['project-dir', 'domain', 'task', 'task-file', 'provider', 'endpoint', 'model', 'context-size', 'approval', 'api-key-env', 'kimi-executable', 'artifact-manifest', 'timeout-ms', 'disable-skill', 'disable-mcp']);
 
 function parseArgs(argv) {
   if (argv[0] === '--help' || argv[0] === '-h' || (argv[0] === 'run' && (argv[1] === '--help' || argv[1] === '-h'))) return {help: true};
   if (argv[0] !== 'run') throw Error('Expected the run command. Use --help for usage.');
-  const options = {scopeOnly: false, thinking: true};
+  const options = {scopeOnly: false, thinking: true, disabledSkills: [], disabledMcpServers: []};
   for (let index = 1; index < argv.length; index++) {
     const flag = argv[index];
     if (flag === '--scope-only') {options.scopeOnly = true; continue;}
     if (flag === '--no-thinking') {options.thinking = false; continue;}
     if (!flag.startsWith('--') || !valueFlags.has(flag.slice(2))) throw Error(`Unknown option: ${flag}`);
     if (!argv[index + 1] || argv[index + 1].startsWith('--')) throw Error(`Missing value for ${flag}.`);
+    if (flag === '--disable-skill') {options.disabledSkills.push(argv[++index]); continue;}
+    if (flag === '--disable-mcp') {options.disabledMcpServers.push(argv[++index]); continue;}
     const key = flag.slice(2).replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
     if (options[key] !== undefined) throw Error(`Duplicate option: ${flag}`);
     options[key] = argv[++index];

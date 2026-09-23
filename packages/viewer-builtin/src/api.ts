@@ -48,6 +48,7 @@ export interface ViewerHostApi {
   netlist(request: {token: string; module: string; focus?: string}): Promise<NetlistData>;
   resolve(request: {task: string; artifactKind?: string; domain?: string; stage?: string}): Promise<BrokerResult>;
   domains(): Promise<DomainOption[]>;
+  resourceCatalog(): Promise<ResourceCatalog>;
   detail(capabilityId: string): Promise<CapabilityDetail>;
   brokerTrace(): Promise<BrokerResult['trace']>;
   agentStatus(): Promise<{available: boolean; version: string; projectDir: string | null; configured: boolean}>;
@@ -58,6 +59,7 @@ export interface ViewerHostApi {
   projectBindings(): Promise<{projects: ProjectBinding[]; activeId: string | null; projectDir: string | null}>;
   selectProject(id: string): Promise<{projects: ProjectBinding[]; activeId: string | null; projectDir: string | null}>;
   setProjectDomain(id: string, domain: string): Promise<{projects: ProjectBinding[]; activeId: string | null; projectDir: string | null}>;
+  setProjectResource(projectId: string, kind: 'skill' | 'mcp', id: string, enabled: boolean): Promise<{projects: ProjectBinding[]; activeId: string | null; projectDir: string | null}>;
   newChat(): Promise<void>;
   projectFiles(): Promise<Array<{path: string; name: string; depth: number; directory: boolean}>>;
   readProjectFile(relative: string): Promise<{path: string; name: string; sizeBytes: number; viewer: 'layout' | 'netlist' | 'waveform' | null; content: string | null; truncated: boolean}>;
@@ -68,8 +70,9 @@ export interface ViewerHostApi {
   onAgentEvent(callback: (event: AgentEvent) => void): () => void;
 }
 
-export interface ProjectBinding {id: string; name: string; path: string; domain?: string | null}
+export interface ProjectBinding {id: string; name: string; path: string; domain?: string | null; disabledSkills?: string[]; disabledMcpServers?: string[]}
 export interface DomainOption {id: string; label: string; emoji: string}
+export interface ResourceCatalog {skills: Array<{id: string; domain: string; title: string; enabledByDefault: boolean}>; mcpServers: Array<{id: string; domain: string; title: string; enabledByDefault: boolean}>}
 
 export type AgentEvent =
   | {type: 'text'; text: string}

@@ -68,6 +68,12 @@ importers:
 
   packages/agent-kimi:
     dependencies:
+      '@industrial-agent-harness/domain-mcp':
+        specifier: workspace:*
+        version: link:../domain-mcp
+      '@industrial-agent-harness/domain-skills':
+        specifier: workspace:*
+        version: link:../domain-skills
       '@moonshot-ai/kimi-agent-sdk':
         specifier: 0.1.8
         version: 0.1.8(zod@4.6.5)
@@ -90,6 +96,9 @@ importers:
       '@industrial-agent-harness/capability-broker':
         specifier: workspace:*
         version: link:../capability-broker
+      '@industrial-agent-harness/domain-mcp':
+        specifier: workspace:*
+        version: link:../domain-mcp
       '@industrial-agent-harness/domain-skills':
         specifier: workspace:*
         version: link:../domain-skills

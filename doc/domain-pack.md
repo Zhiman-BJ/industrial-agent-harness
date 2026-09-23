@@ -38,3 +38,5 @@ domain-packs/<domain>/
 ## 安装与发现
 
 桌面安装包最终应携带 Broker、Kimi 运行时及默认 Pack；额外 Pack 可独立安装。Broker 先读取 Pack 元数据和能力索引，再按项目状态加载所需详细内容。错误的声明需给出可定位诊断，不能静默跳过，也不能破坏已安装领域。安装格式、签名、资源下载和升级策略仍待设计。
+
+当前仓库默认 Skill 以稳定 ID 映射到 `packages/domain-skills/skills/*/SKILL.md`；默认 Domain MCP 在 `packages/domain-mcp` 注册。Project 仅保存禁用 ID，保留仓库声明作为可追踪的默认来源。MCP 服务声明需列出固定工具面；真实服务器及 Gateway 尚未接入。

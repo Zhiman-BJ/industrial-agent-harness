@@ -8,6 +8,8 @@ pnpm cli run --project-dir ./examples/chip-sobel --domain chip --task 'Inspect t
 
 `--scope-only` 只输出能力 Scope 和披露 Trace，无须模型密钥。运行 Agent 时，先通过环境变量配置模型密钥及 Kimi 可执行文件：
 
+可重复传入 `--disable-skill chip.netlist.inspect` 或 `--disable-mcp SERVER_ID`，在该次 Bench 运行中应用与 Project 详情页相同的资源策略。未知资源 ID 会报错；默认 MCP 服务器列表目前为空。
+
 ```bash
 KIMI_API_KEY=... KIMI_EXECUTABLE=/path/to/kimi pnpm cli run \
   --project-dir ./examples/chip-sobel --domain chip \

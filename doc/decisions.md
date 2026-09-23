@@ -17,6 +17,7 @@ Project、Domain 和 Session 的用户交互决定见[产品决策记录](produc
 | 建立独立 Viewer 层 | KLayout、netlistsvg、Surfer 三组 Viewer 位于正式产品路径并已接入桌面 MVP |
 | 通用聊天与文件工作区 | 输入区不固定 Chip/PCB 阶段；Broker 根据任务识别上下文，右侧默认预览普通文件，专用格式启用 Viewer |
 | 桌面 UI 与 Headless CLI 分离 | `apps/desktop` 与 `apps/cli` 是两个入口；共用 Broker、Project Domain 约束、Capability Registry 和 Kimi Integration；CLI 不依赖 Electron 或 Viewer UI，供 Domain Task bench 调用 |
+| 默认 Skill/MCP 由仓库声明，Project 可禁用 | 四个检查 Skill 已作为仓库文件接入；Project 只存禁用 ID，Broker 与 Kimi 会话使用有效配置。Domain MCP 注册与会话配置入口已建立，当前尚无可用的默认服务器 |
 
 ## ADR-001：CLI 作为独立评测入口
 
@@ -25,6 +26,13 @@ Project、Domain 和 Session 的用户交互决定见[产品决策记录](produc
 - 原因：Domain Task bench 需要自动运行任务、收集事件与结果，不应依赖桌面渲染和人工操作。
 - 决定：UI 与 CLI 分属独立应用，任务 Scope 与 Agent 接入复用无界面包。CLI 每次绑定一个项目目录与 Domain，提供机器可读事件输出；模型密钥仅从环境读取。桌面专属的 IPC、窗口和 Viewer 代码不得进入 CLI 依赖图。
 - 当前边界：Scope 解析、跨领域拒绝和 JSON Lines 输出已通过无 Electron 测试。桌面主进程仍持有部分项目/会话编排，后续继续下沉；真实模型执行、审批与超时路径需在 bench 中验证。
+
+## ADR-002：仓库默认资源与 Project 覆盖
+
+- 日期：2026-09-23
+- 状态：Skill 路径已实现；MCP 注册入口已实现，首个真实服务器待选定与验证
+- 决定：Skill 文件留在 `packages/domain-skills/skills/`，MCP 提供者声明留在 `packages/domain-mcp`。Project 持久化禁用 ID，CLI 使用对应参数。Broker 先按 Project 策略过滤 Skill/Tool，再解析 Scope；Kimi 会话的 `extra_skill_dirs` 只追加当前 Scope 的仓库 Skill，保留 Kimi 原有的项目/用户 Skill 搜索路径。独立会话目录中的 `mcp.json` 只写入已选中的服务器，不修改用户的 Kimi 全局配置。
+- 执行边界：MCP 声明必须绑定 Domain 和完整 canonical Tool ID 集合；一个服务器只有在其全部声明工具都处于当前 Scope 且未禁用时才能进入会话。现有 Harness 外部工具仍在处理器再次校验 Scope。对于 MCP 服务实际暴露工具超出声明的情况，直连无法提供执行级 allowlist；接入首个默认服务器前必须验证其固定工具面，或经由受控 Gateway 代理。
 
 ## 两份提案的差异及当前取舍
 
