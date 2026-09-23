@@ -27,7 +27,7 @@ export interface ViewerArtifact {
   design: string;
   sizeBytes: number;
   sha256: string;
-  source: 'reference fixture' | 'user selected file';
+  source: 'project file';
 }
 
 export interface WaveformData {
@@ -43,8 +43,6 @@ export type OpenedViewer =
   | {kind: 'waveform'; artifact: ViewerArtifact; data: WaveformData};
 
 export interface ViewerHostApi {
-  list(): Promise<ViewerArtifact[]>;
-  choose(): Promise<ViewerArtifact | null>;
   open(request: {artifactId: string}): Promise<OpenedViewer>;
   render(request: {token: string; box: number[]; width: number; height: number; visible: string[]; quality: string; theme?: string}): Promise<{png: string; box: number[]}>;
   netlist(request: {token: string; module: string; focus?: string}): Promise<NetlistData>;

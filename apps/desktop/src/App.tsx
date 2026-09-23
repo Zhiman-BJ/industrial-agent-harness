@@ -1,8 +1,8 @@
 import {useEffect, useState} from 'react';
-import {Activity, Bug, ChevronDown, ChevronRight, CircuitBoard, Cpu, File, FilePlus2, Folder, FolderOpen, Layers3, Moon, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Play, Plus, Settings2, Square, Sun, Waves, X} from 'lucide-react';
+import {Activity, Bug, ChevronDown, ChevronRight, Cpu, File, FilePlus2, Folder, FolderOpen, Moon, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Play, Plus, Settings2, Square, Sun, X} from 'lucide-react';
 import {LayoutViewport} from '@industrial-agent-harness/viewer-builtin/layout';
 import {NetlistViewport} from '@industrial-agent-harness/viewer-builtin/netlist';
-import {WaveformViewport, type SignalRequest} from '@industrial-agent-harness/viewer-builtin/waveform';
+import {WaveformViewport} from '@industrial-agent-harness/viewer-builtin/waveform';
 import type {AgentEvent, BrokerResult, CapabilityDetail, DomainOption, OpenedViewer, ProjectBinding, ViewerArtifact} from '@industrial-agent-harness/viewer-builtin/api';
 import {AgentFlow} from './components/AgentFlow';
 import {TodoList} from './components/TodoList';
@@ -14,7 +14,6 @@ import {DomainPill} from './components/DomainPill';
 type Theme = 'light' | 'dark';
 type ProjectFile = {path: string; name: string; depth: number; directory: boolean};
 type SourceFile = {path: string; name: string; sizeBytes: number; content: string | null; truncated: boolean};
-const icons = {layout: Layers3, netlist: CircuitBoard, waveform: Waves};
 
 export function App() {
   const [artifacts, setArtifacts] = useState<ViewerArtifact[]>([]);
@@ -27,6 +26,7 @@ export function App() {
   const [projectDraft, setProjectDraft] = useState<{directory: string; name: string; domain: string} | null>(null);
   const [projectError, setProjectError] = useState('');
   const [selectedId, setSelectedId] = useState('');
+  const [selectedProjectFile, setSelectedProjectFile] = useState('');
   const [sourceFile, setSourceFile] = useState<SourceFile>();
   const [opened, setOpened] = useState<OpenedViewer>();
   const [loading, setLoading] = useState(false);
@@ -39,7 +39,6 @@ export function App() {
   const [modelSettingsOpen, setModelSettingsOpen] = useState(false);
   const [theme, setTheme] = useState<Theme>(() => localStorage.getItem('ia-theme') === 'dark' ? 'dark' : 'light');
   const [debug, setDebug] = useState(false);
-  const [signal, setSignal] = useState<SignalRequest>();
   const [task, setTask] = useState('');
   const [submittedTask, setSubmittedTask] = useState('');
   const [broker, setBroker] = useState<BrokerResult>();
@@ -52,7 +51,6 @@ export function App() {
   useEffect(() => {localStorage.setItem('ia-theme', theme);}, [theme]);
   useEffect(() => {
     if (!window.viewerHost) {setError('Open the Electron desktop app to inspect local files.'); return;}
-    void window.viewerHost.list().then(setArtifacts).catch(reason => setError(String(reason)));
     void window.viewerHost.domains().then(setDomains).catch(reason => setError(String(reason)));
     void Promise.all([window.viewerHost.agentStatus(), window.viewerHost.projectBindings()]).then(([status, bindings]) => {
       setAgentStatus(status); setProjects(bindings.projects); setActiveProjectId(bindings.activeId);
@@ -91,7 +89,7 @@ export function App() {
     setCollapsedDirs(current => {const next = new Set(current); if (next.has(key)) next.delete(key); else next.add(key); return next;});
   }
 
-  function selectArtifact(id: string) {setSourceFile(undefined); setSelectedId(id); setRightOpen(true); setFileTreeOpen(false);}
+  function selectArtifact(id: string) {setSourceFile(undefined); setSelectedId(id); setRightOpen(true);}
   function chooseProject() {
     setProjectError('');
     setProjectDraft({directory: '', name: '', domain: ''});
@@ -113,8 +111,8 @@ export function App() {
       setAgentStatus(current => current ? {...current, projectDir: bindings.projectDir} : current);
       setProjectFiles(await window.viewerHost!.projectFiles());
       setCollapsedDirs(new Set());
-      setArtifacts(current => current.filter(item => item.id.startsWith('reference-')));
-      setSourceFile(undefined); setSelectedId(''); setOpened(undefined); setRightOpen(false); setFileTreeOpen(false);
+      setArtifacts([]);
+      setSourceFile(undefined); setSelectedId(''); setSelectedProjectFile(''); setOpened(undefined); setRightOpen(false); setFileTreeOpen(false);
       setSubmittedTask(''); setBroker(undefined); setDetail(undefined); setAgentEvents([]);
       setProjectDraft(null); setPage('project');
     } catch (reason) {setProjectError(String(reason));}
@@ -128,16 +126,17 @@ export function App() {
       setAgentStatus(current => current ? {...current, projectDir: bindings.projectDir} : current);
       setProjectFiles(await window.viewerHost!.projectFiles());
       setCollapsedDirs(new Set());
-      setArtifacts(current => current.filter(item => item.id.startsWith('reference-')));
-      setSourceFile(undefined); setSelectedId(''); setOpened(undefined); setRightOpen(false); setFileTreeOpen(false);
+      setArtifacts([]);
+      setSourceFile(undefined); setSelectedId(''); setSelectedProjectFile(''); setOpened(undefined); setRightOpen(false); setFileTreeOpen(false);
       setSubmittedTask(''); setBroker(undefined); setDetail(undefined); setAgentEvents([]);
       setPage('project');
     } catch (reason) {setError(String(reason));}
   }
   async function selectProjectFile(relative: string) {
-    setError(''); setRightOpen(true); setFileTreeOpen(false);
+    setError(''); setRightOpen(true);
     try {
       const file = await window.viewerHost!.readProjectFile(relative);
+      setSelectedProjectFile(relative);
       if (file.viewer) {
         const item = await window.viewerHost!.openProjectFile(relative);
         setArtifacts(current => [...current, item]);
@@ -146,14 +145,6 @@ export function App() {
         setSelectedId(''); setOpened(undefined); setSourceFile(file);
       }
     } catch (reason) {setError(String(reason));}
-  }
-  async function chooseFile() {
-    try {const item = await window.viewerHost!.choose(); if (item) {setArtifacts(current => [...current, item]); selectArtifact(item.id);}}
-    catch (reason) {setError(String(reason));}
-  }
-  function showSignal(name: string) {
-    if (selectedId !== 'reference-netlist') return;
-    setSignal({name, id: Date.now()}); selectArtifact('reference-waveform');
   }
   async function newChat() {
     if (activeProject && !activeProject.domain) {setPage('project'); return;}
@@ -215,11 +206,11 @@ export function App() {
         </>}
       </main>
       {rightOpen && <section className="ia-viewer ia-workspace">
-        <header className="ia-viewer-header"><div><File size={14}/><b>{activeName || 'Workspace'}</b>{activeName && <button className="ia-icon" onClick={() => {setSourceFile(undefined); setSelectedId('');}} title="Close file"><X size={13}/></button>}</div><div className="ia-workspace-actions"><button onClick={() => setFileTreeOpen(value => !value)} title={fileTreeOpen ? 'Hide file tree' : 'Show file tree'}>{fileTreeOpen ? <PanelRightClose size={15}/> : <PanelRightOpen size={15}/>}</button><button onClick={() => setRightOpen(false)} title="Hide workspace"><X size={15}/></button></div></header>
-        <div className="ia-workspace-body"><div className="ia-workspace-content"><div className="ia-workspace-breadcrumb">{sourceFile?.path || (selected ? `${selected.design} / ${selected.name}` : projectName)}</div>
-          {sourceFile ? <div className="ia-source-panel">{sourceFile.content == null ? <p>Binary file · no text preview available.</p> : <pre>{sourceFile.content}</pre>}{sourceFile.truncated && <small>Preview limited to the first 2 MB.</small>}</div> : selected ? <div className="rp-stage ia-viewer-stage">{opened?.kind === 'layout' && <LayoutViewport key={selectedId} meta={opened.data} onReady={() => setReady(true)} onError={setError}/ >}{opened?.kind === 'netlist' && <NetlistViewport key={selectedId} data={opened.data} onReady={() => setReady(true)} onError={setError} onSignal={showSignal} signalMap={selectedId === 'reference-netlist' ? {count: 'tb.dut.count', enable: 'tb.dut.enable'} : {}}/>}{opened?.kind === 'waveform' && <WaveformViewport key={selectedId} data={opened.data} onReady={() => setReady(true)} onError={setError} signal={signal}/ >}{!opened && <div className="ia-workspace-empty">{error || (loading ? 'Opening viewer…' : 'Preparing viewer…')}</div>}</div> : <div className="ia-workspace-empty">{error || 'Open the file tree to browse this project.'}</div>}
+        <header className="ia-viewer-header"><div><File size={14}/><b>{activeName || 'Workspace'}</b>{activeName && <button className="ia-icon" onClick={() => {setSourceFile(undefined); setSelectedId(''); setSelectedProjectFile('');}} title="Close file"><X size={13}/></button>}</div><div className="ia-workspace-actions"><button onClick={() => setFileTreeOpen(value => !value)} title={fileTreeOpen ? 'Hide file tree' : 'Show file tree'}>{fileTreeOpen ? <PanelRightClose size={15}/> : <PanelRightOpen size={15}/>}</button><button onClick={() => setRightOpen(false)} title="Hide workspace"><X size={15}/></button></div></header>
+        <div className="ia-workspace-body"><div className="ia-workspace-content"><div className="ia-workspace-breadcrumb">{sourceFile?.path || selectedProjectFile || projectName}</div>
+          {sourceFile ? <div className="ia-source-panel">{sourceFile.content == null ? <p>Binary file · no text preview available.</p> : <pre>{sourceFile.content}</pre>}{sourceFile.truncated && <small>Preview limited to the first 2 MB.</small>}</div> : selected ? <div className="rp-stage ia-viewer-stage">{opened?.kind === 'layout' && <LayoutViewport key={selectedId} meta={opened.data} onReady={() => setReady(true)} onError={setError}/ >}{opened?.kind === 'netlist' && <NetlistViewport key={selectedId} data={opened.data} onReady={() => setReady(true)} onError={setError}/>}{opened?.kind === 'waveform' && <WaveformViewport key={selectedId} data={opened.data} onReady={() => setReady(true)} onError={setError} / >}{!opened && <div className="ia-workspace-empty">{error || (loading ? 'Opening viewer…' : 'Preparing viewer…')}</div>}</div> : <div className="ia-workspace-empty">{error || 'Open the file tree to browse this project.'}</div>}
           {selected && <footer className="ia-viewer-footer">{selected.kind.toUpperCase()} · {ready ? 'Ready' : loading ? 'Loading' : error ? 'Error' : 'Preparing'} · SHA-256 {selected.sha256.slice(0, 16)}…</footer>}
-        </div>{fileTreeOpen && <aside className="ia-workspace-tree"><div className="ia-file-search">FILES</div><button className="ia-file-root" onClick={() => setPage('project')}><ChevronDown size={13}/><FolderOpen size={14}/><span>{projectName}</span></button><div className="ia-file-list">{visibleProjectFiles.map(item => <button key={item.path} className={sourceFile?.path === item.path ? 'selected' : ''} style={{paddingLeft: 11 + item.depth * 13}} onClick={() => item.directory ? toggleDirectory(item.path) : void selectProjectFile(item.path)} title={item.path}>{item.directory ? collapsedDirs.has(item.path.replaceAll('\\', '/')) ? <ChevronRight size={12}/> : <ChevronDown size={12}/> : <File size={13}/>}<span>{item.name}</span></button>)}{!projectFiles.length && <p className="ia-file-hint">Choose a project to browse its files.</p>}</div><div className="ia-file-examples">VIEWER EXAMPLES</div><div className="ia-file-list ia-example-list">{artifacts.map(item => {const Icon = icons[item.kind]; return <button key={item.id} className={selectedId === item.id ? 'selected' : ''} onClick={() => selectArtifact(item.id)}><Icon size={13}/><span>{item.name}</span></button>;})}</div><button className="ia-open-artifact" onClick={() => void chooseFile()}><FilePlus2 size={13}/> Open artifact…</button></aside>}</div>
+        </div>{fileTreeOpen && <aside className="ia-workspace-tree"><div className="ia-file-search">FILES</div><button className="ia-file-root" onClick={() => setPage('project')}><ChevronDown size={13}/><FolderOpen size={14}/><span>{projectName}</span></button><div className="ia-file-list">{visibleProjectFiles.map(item => <button key={item.path} className={selectedProjectFile === item.path ? 'selected' : ''} style={{paddingLeft: 11 + item.depth * 13}} onClick={() => item.directory ? toggleDirectory(item.path) : void selectProjectFile(item.path)} title={item.path}>{item.directory ? collapsedDirs.has(item.path.replaceAll('\\', '/')) ? <ChevronRight size={12}/> : <ChevronDown size={12}/> : <File size={13}/>}<span>{item.name}</span></button>)}{!projectFiles.length && <p className="ia-file-hint">Choose a project to browse its files.</p>}</div></aside>}</div>
       </section>}
     </div>
     {projectDraft && <CreateProjectModal draft={projectDraft} domains={domains} error={projectError} onChange={setProjectDraft} onChooseDirectory={chooseProjectDirectory} onClose={() => setProjectDraft(null)} onCreate={createProject}/>}

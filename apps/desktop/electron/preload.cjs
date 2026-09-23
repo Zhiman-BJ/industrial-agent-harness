@@ -1,8 +1,6 @@
 const {contextBridge, ipcRenderer} = require('electron');
 
 const api = {
-  list: () => ipcRenderer.invoke('viewer:list'),
-  choose: () => ipcRenderer.invoke('viewer:choose'),
   open: request => ipcRenderer.invoke('viewer:open', request),
   render: request => ipcRenderer.invoke('viewer:render', request),
   netlist: request => ipcRenderer.invoke('viewer:netlist', request),

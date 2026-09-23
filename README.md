@@ -29,7 +29,7 @@ pnpm dev
 
 无界面任务入口可先用 `pnpm cli run --project-dir ./examples/chip-sobel --domain chip --task 'Inspect netlist signals' --scope-only` 查看能力 Scope 与披露 Trace；Agent 执行参数及 JSON Lines 输出见 [CLI 文档](apps/cli/README.md)。
 
-左侧 Projects 可绑定多个本地目录；首次启动会显示从 EDA Harness demo 提取的精简 Sobel 芯片示例。右侧工作区和其中的文件树默认收起，按需打开；文件树随当前项目切换，普通文件直接预览源码，专用工程格式使用相应 Viewer。
+左侧 Projects 可绑定多个本地目录；首次启动会显示从 EDA Harness demo 提取的精简 Sobel 芯片示例。右侧工作区和其中的文件树默认收起，按需打开；文件树随当前项目切换。点击普通文件预览源码，点击项目内的 GDS、Yosys JSON 或 VCD 等工程产物会自动打开对应 Viewer。Sobel 示例中附有同一设计的网表、波形和版图产物。
 
 一个本地目录对应一个 Project。点击左侧 Projects 标题旁的「＋」可填写项目名称、选择目录和 Domain；点击已有项目可打开详情页，查看目录并修改该项目的 Domain。Domain 在创建时用带 emoji 的圆角按钮选择，在项目列表和新 Session 的输入框中只读显示。Sobel 示例默认属于 Chip；领域列表随已注册能力更新。
 

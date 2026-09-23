@@ -10,7 +10,7 @@
 
 这些实现来自先前 Silicon Lens / EDA Harness demo 的 Viewer 链路。保留了按视口渲染、独立 worker、iframe 隔离、输入界限和明确加载状态等做法。源代码迁移说明见 [来源记录](viewer-provenance.md)。
 
-`fixtures/counter.json` 与 `counter.vcd` 用于网表和波形检查；版图检查使用 KLayout 临时生成的小 GDS。另有一份真实 FIFO GDS 随桌面端提供演示预览。它与 counter 网表、波形是不同设计，界面必须分开标识，不能建立虚假的跨视图映射。
+`fixtures/counter.json` 与 `counter.vcd` 用于模块测试；版图检查使用 KLayout 临时生成的小 GDS。它们不会出现在产品文件树。桌面端通过项目目录里的真实文件进入 Viewer；内置 Sobel 项目的 `outputs/` 提供同一设计的网表、波形和版图用于端到端检查。其他项目则直接查看各自目录中的产物，不显示全局示例菜单。
 
 ```bash
 pnpm --filter @industrial-agent-harness/viewer-builtin test

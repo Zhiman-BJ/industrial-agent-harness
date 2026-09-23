@@ -7,6 +7,7 @@ const {spawnSync} = require('node:child_process');
 const {RasterService} = require('../../../packages/viewer-builtin/src/layout/raster.cjs');
 const {renderNetlist} = require('../../../packages/viewer-builtin/src/netlist/netlist.cjs');
 const {createViewerProtocol} = require('../../../packages/viewer-builtin/src/waveform/protocol.cjs');
+const {initialVcdSignals} = require('../../../packages/viewer-builtin/src/waveform/signals.cjs');
 const {resolve, discloseDetail} = require('../../../packages/capability-broker/src/index.cjs');
 const {resolveProjectTask} = require('@industrial-agent-harness/harness-core');
 const {capabilities, listDomains} = require('@industrial-agent-harness/domain-skills');
@@ -18,13 +19,6 @@ protocol.registerSchemesAsPrivileged([{scheme: 'app', privileges: {standard: tru
 if (process.argv.includes('--viewer-selftest')) app.setPath('userData', fs.mkdtempSync(path.join(os.tmpdir(), 'industrial-harness-selftest-')));
 
 const desktopRoot = path.resolve(__dirname, '..');
-const fixtureRoot = path.join(desktopRoot, 'fixtures');
-const viewerFixtureRoot = path.resolve(desktopRoot, '../../packages/viewer-builtin/fixtures');
-const fixtures = [
-  {id: 'reference-layout', kind: 'layout', name: 'FIFO physical layout', design: 'sync_fifo · SKY130', file: path.join(fixtureRoot, 'sync_fifo.gds')},
-  {id: 'reference-netlist', kind: 'netlist', name: 'Counter logical netlist', design: 'counter · Yosys', file: path.join(viewerFixtureRoot, 'counter.json')},
-  {id: 'reference-waveform', kind: 'waveform', name: 'Counter simulation waveform', design: 'counter · VCD', file: path.join(viewerFixtureRoot, 'counter.vcd')},
-];
 const artifacts = new Map();
 const netlistSessions = new Map();
 let activeLayoutToken;
@@ -44,7 +38,7 @@ function projectConfigDir() {return path.join(app.getPath('userData'), 'workspac
 function activeProject() {return projectBindings.projects.find(item => item.id === projectBindings.activeId) || null;}
 function projectSnapshot() {return {...projectBindings, projectDir: projectDir || null};}
 function clearProjectArtifacts() {
-  for (const id of artifacts.keys()) if (!id.startsWith('reference-')) artifacts.delete(id);
+  artifacts.clear();
   netlistSessions.clear(); activeLayoutToken = undefined;
 }
 function keyFile() {return path.join(configDir(), 'api-key.bin');}
@@ -99,7 +93,7 @@ async function registerArtifact(entry) {
   const artifact = {
     id: entry.id, kind: entry.kind, name: entry.name, design: entry.design,
     sizeBytes: stat.size, sha256: await digest(file),
-    source: entry.id.startsWith('reference-') ? 'reference fixture' : 'user selected file',
+    source: 'project file',
   };
   artifacts.set(entry.id, {artifact, file});
   return artifact;
@@ -265,18 +259,6 @@ function registerHandlers() {
   });
   ipcMain.handle('agent:approve', (_event, {id, response}) => agent?.approve(id, response));
   ipcMain.handle('agent:interrupt', () => agent?.interrupt());
-  ipcMain.handle('viewer:list', async () => {
-    if (!artifacts.size) await Promise.all(fixtures.map(registerArtifact));
-    return [...artifacts.values()].map(item => item.artifact);
-  });
-  ipcMain.handle('viewer:choose', async () => {
-    const result = await dialog.showOpenDialog({title: 'Open engineering artifact', properties: ['openFile'], filters: [
-      {name: 'Viewable artifacts', extensions: ['gds', 'gdsii', 'oas', 'oasis', 'json', 'vcd', 'fst', 'ghw']},
-    ]});
-    if (result.canceled) return null;
-    const file = fs.realpathSync(result.filePaths[0]);
-    return registerArtifact({id: crypto.randomUUID(), kind: kindFor(file), name: path.basename(file), design: 'Selected file', file});
-  });
   ipcMain.handle('viewer:open', async (_event, {artifactId}) => {
     const {artifact, file} = await checked(artifactId);
     if (artifact.kind === 'layout') {
@@ -293,7 +275,7 @@ function registerHandlers() {
     }
     return {artifact, kind: 'waveform', data: {
       url: viewerProtocol.registerWave(file), name: artifact.name,
-      defaultSignals: artifactId === 'reference-waveform' ? ['tb.dut.count', 'tb.dut.enable'] : [],
+      defaultSignals: initialVcdSignals(file),
     }};
   });
   ipcMain.handle('viewer:render', (_event, request) => {
@@ -388,24 +370,23 @@ async function createWindow() {
     await waitFor(`Boolean(document.querySelector('.ia-workspace')) && !document.querySelector('.ia-workspace-tree')`);
     await window.webContents.executeJavaScript(`document.querySelector('.ia-workspace-actions button').click()`);
     await waitFor(`Boolean(document.querySelector('.ia-file-list button[title="README.md"]'))`);
+    if (await window.webContents.executeJavaScript(`document.body.innerText.includes('VIEWER EXAMPLES')`)) throw Error('Reference Viewer fixtures appeared in the project file tree.');
     await window.webContents.executeJavaScript(`document.querySelector('.ia-file-list button[title="README.md"]').click()`);
     await waitFor(`Boolean(document.querySelector('.ia-source-panel pre')?.innerText.includes('Sobel chip design sample'))`);
     screenshots.push(await shot('source'));
-    await window.webContents.executeJavaScript(`document.querySelector('.ia-workspace-actions button').click()`);
-    await waitFor(`Boolean(document.querySelector('.ia-example-list'))`);
-    await window.webContents.executeJavaScript(`Array.from(document.querySelectorAll('.ia-example-list button')).find(button => button.innerText.includes('netlist')).click()`);
-    await waitFor(`document.querySelector('.ia-viewer-footer')?.innerText.includes('Ready')`);
+    await waitFor(`Boolean(document.querySelector('.ia-file-list button[title="outputs/sobel_netlist.json"]'))`);
+    await window.webContents.executeJavaScript(`document.querySelector('.ia-file-list button[title="outputs/sobel_netlist.json"]').click()`);
+    await waitFor(`document.querySelector('.ia-viewer-footer')?.innerText.includes('NETLIST · Ready')`, 120000);
     screenshots.push(await shot('netlist'));
     await window.webContents.executeJavaScript(`const area = document.querySelector('.ia-composer textarea'); Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(area, 'Inspect the netlist signals'); area.dispatchEvent(new Event('input', {bubbles:true})); document.querySelector('.ia-chat-actions button').click()`);
     await new Promise(resolve => setTimeout(resolve, 100));
     await window.webContents.executeJavaScript(`document.querySelector('.ia-send').click()`);
     await waitFor(`document.body.innerText.includes('Broker disclosure log') && document.body.innerText.includes('chip.rtl.netlist.inspect')`);
     screenshots.push(await shot('debug'));
-    for (const kind of ['layout', 'waveform']) {
-      await window.webContents.executeJavaScript(`document.querySelector('.ia-workspace-actions button').click()`);
-      await waitFor(`Boolean(document.querySelector('.ia-example-list'))`);
-      await window.webContents.executeJavaScript(`Array.from(document.querySelectorAll('.ia-example-list button')).find(button => button.innerText.toLowerCase().includes(${JSON.stringify(kind)})).click()`);
-      await waitFor(`document.querySelector('.ia-viewer-footer')?.innerText.includes('Ready')`, 90000);
+    for (const [kind, file] of [['layout', 'sobel_layout.gds'], ['waveform', 'sobel_wave.vcd']]) {
+      await window.webContents.executeJavaScript(`document.querySelector('.ia-file-list button[title="outputs/${file}"]').click()`);
+      await waitFor(`document.querySelector('.ia-viewer-footer')?.innerText.includes('${kind.toUpperCase()} · Ready')`, 120000);
+      if (kind === 'waveform') await waitFor(`document.querySelector('.rp-surfer iframe')?.getAttribute('data-signals-ready') === '6'`);
       screenshots.push(await shot(kind));
     }
     await window.webContents.executeJavaScript(`document.querySelector('.ia-settings-button').click()`);
