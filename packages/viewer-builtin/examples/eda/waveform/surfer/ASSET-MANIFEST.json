@@ -1,0 +1,26 @@
+{
+  "retrieved": "2026-09-16",
+  "source": "https://gitlab.com/surfer-project/surfer",
+  "license": "EUPL-1.2",
+  "official_html_sri_verified": true,
+  "assets": [
+    {
+      "file": "surfer.js",
+      "url": "https://app.surfer-project.org/surfer.js",
+      "sha256": "67901c9d07bd9df81ebd48f8369f30dfe3c632fe104cfc9989e0b0034aa1822c",
+      "bytes": 97585
+    },
+    {
+      "file": "surfer_bg.wasm",
+      "url": "https://app.surfer-project.org/surfer_bg.wasm",
+      "sha256": "ef5cdf6c1c8d0e75791ba581a303065297159efe47b0f3e62a995464f0188d04",
+      "bytes": 14936943
+    },
+    {
+      "file": "integration.js",
+      "url": "https://app.surfer-project.org/integration.js",
+      "sha256": "29a667d482e12799c987c5c1986395cbf5bb2ffc67087b988dcc21bf8038deb2",
+      "bytes": 2045
+    }
+  ]
+}

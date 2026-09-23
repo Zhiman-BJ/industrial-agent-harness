@@ -6,6 +6,7 @@
 | --- | --- |
 | [系统架构](architecture.md) | Kimi Code、桌面端、Broker、工业运行时与领域包的职责和数据流 |
 | [Capability Broker](capability-broker.md) | Capability 解析、skill 与 MCP 工具的渐进式披露、Scope 和 Trace |
+| [Viewer 层](viewer-layer.md) | 内置查看、关键产物预览、外部打开与证据边界 |
 | [Domain Pack](domain-pack.md) | 芯片与 PCB 等领域的扩展方式和最小契约 |
 | [开发计划](development-plan.md) | 阶段顺序、首批验收场景、验证方法与待确认问题 |
 | [架构决策记录](decisions.md) | 已确定的决定、提案间的差异和需要验证的接口 |

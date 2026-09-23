@@ -10,6 +10,8 @@ Read `doc/README.md` before changing architecture or module boundaries. The repo
 - Do not introduce a lowest-common-denominator adapter for multiple agent products during the Kimi-focused first stage. Keep the industrial contracts independent so another integration remains possible later.
 - Domain-specific behavior belongs in Domain Packs, configuration, or plugins. Do not hardcode Chip, PCB, or another domain in the broker or core.
 - Distinguish Tool, Bridge, Viewer, and Verifier. A Tool performs an action; a Bridge connects to software; a Viewer presents state or artifacts; a Verifier evaluates results.
+- Keep Viewer Core independent of Kimi, MCP, Electron, and concrete domains. Built-in viewers consume registered artifacts through a bounded read-only interface; UI view state and display caches never become execution or verification facts.
+- Offer full in-app viewing only for formats whose parser, performance, license, and target-platform behavior have been verified. For complex CAD/Godot workspaces, show key artifacts without recreating the full editor. External app launch uses a separate authorized path.
 
 ## Capability and disclosure
 
@@ -24,6 +26,7 @@ Read `doc/README.md` before changing architecture or module boundaries. The repo
 - Keep Electron renderer access behind narrow preload and main-process IPC. Bind calls to the selected project and apply explicit permissions to mutating actions.
 - Local services should bind to `127.0.0.1` by default. A failed broker or Domain Pack must not corrupt Kimi configuration or bring down unrelated domains.
 - Record actual inputs, run identity, state changes, artifact provenance, diagnostics, and verification evidence. Process success and demo fixtures are not proof of engineering acceptance.
+- Bind viewer requests to artifact IDs and explicit project/run/state context. Verify source and companion hashes, limit parsing resources, and prevent untrusted artifact or plugin content from running scripts in the renderer. Rendered or launched does not mean verified.
 - Every industrial action must be observable; critical actions require explicit verification. Preserve historical states and avoid silently replacing evidence after inputs change.
 
 ## Working in this repository

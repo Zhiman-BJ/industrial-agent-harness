@@ -1,0 +1,11 @@
+{
+  "name": "@industrial-agent-harness/viewer-builtin",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "test:examples": "node --test examples/eda/tests/*.test.cjs"
+  },
+  "dependencies": {
+    "netlistsvg": "1.0.2"
+  }
+}

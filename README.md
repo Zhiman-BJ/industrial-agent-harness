@@ -14,12 +14,12 @@ Industrial Agent Harness 是面向工业设计与工程任务的桌面工作台�
 
 ## 项目组成
 
-工作台由桌面 UI、Kimi Code 接入、Industrial Capability Broker、工业运行时和 Domain Packs 组成。Kimi Code 负责 Agent 会话与工具调用；Broker 根据项目状态和任务选择适用能力；工业运行时执行专业动作并记录产物与验证结果。芯片和 PCB 将作为最早的参考领域。
+工作台由桌面 UI、Kimi Code 接入、Industrial Capability Broker、工业运行时、Viewer 层和 Domain Packs 组成。Kimi Code 负责 Agent 会话与工具调用；Broker 根据项目状态和任务选择适用能力；工业运行时执行专业动作并记录产物与验证结果。Viewer 在工作台内展示适合直接查看的工程产物；对于 CAD、Godot 等复杂软件，重点展示关键产物，完整编辑仍在专业软件中完成。芯片和 PCB 将作为最早的参考领域。
 
 当前仓库处于架构与工程骨架阶段，尚无可运行的桌面应用。Kimi Agent SDK 已固定为 `0.1.8`；具体接入和跨平台打包仍在后续开发范围内。
 
 ## 文档
 
-从 [文档目录](doc/README.md) 开始阅读架构、Capability Broker、领域扩展和开发阶段。仓库开发规则见 [AGENTS.md](AGENTS.md)。
+从 [文档目录](doc/README.md) 开始阅读架构、Capability Broker、Viewer 层、领域扩展和开发阶段。仓库开发规则见 [AGENTS.md](AGENTS.md)。
 
 项目参考了现有 [Silicon Lens demo](https://github.com/Zhiman-BJ/silicon-lens-harness) 和 [EDA Harness](https://github.com/Zhiman-BJ/eda-harness) 的实践。

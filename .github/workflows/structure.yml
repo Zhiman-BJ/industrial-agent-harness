@@ -14,7 +14,17 @@ jobs:
           test -f README.md
           test -f AGENTS.md
           test -f pnpm-workspace.yaml
-          for dir in apps/desktop packages/agent-kimi packages/contracts packages/domain-skills packages/domain-runtime packages/domain-mcp; do
+          for dir in apps/desktop packages/agent-kimi packages/contracts packages/domain-skills packages/domain-runtime packages/domain-mcp packages/viewer-core packages/viewer-builtin; do
             test -f "$dir/README.md"
             test -f "$dir/package.json"
           done
+          test -f apps/desktop/viewer-host/README.md
+          test -f doc/viewer-layer.md
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Check migrated viewer examples
+        run: |
+          npm install -g pnpm@11.1.3
+          pnpm install --frozen-lockfile
+          pnpm --filter @industrial-agent-harness/viewer-builtin test:examples

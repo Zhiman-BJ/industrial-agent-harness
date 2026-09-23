@@ -12,6 +12,7 @@
 | Monorepo 分离 UI、领域 Skill、领域 Runtime、MCP 等职责 | 已建立相应工作区；实现仍待开发 |
 | Skill 和 Domain MCP 均采用渐进式披露 | 设计契约已记录；运行验证待完成 |
 | 产品支持多个工业场景，首批以 Chip 和 PCB 验证 | Domain Pack 设计已记录；尚无 Pack 实现 |
+| 建立独立 Viewer 层 | 已建立 Viewer Core、内置 Viewer 和桌面 Host 骨架；迁入 KLayout、netlistsvg、Surfer 三组 EDA 示例，产品接入待实现 |
 
 ## 两份提案的差异及当前取舍
 
@@ -27,5 +28,6 @@
 3. 本地控制面、Broker、Gateway 与 Kimi 分进程或同进程时，哪种形态更可靠且便于三平台打包？
 4. Domain Pack 的 schema、安装格式、资源校验和版本兼容边界如何冻结？
 5. 芯片与 PCB 的首批真实动作分别由哪个工具和验证器承担？
+6. 各领域哪些格式适合内置渲染？首批解析器的许可证、性能和跨平台限制是什么？
 
 上述问题应先通过探针、契约测试和真实流程记录结论，再将提案升级为正式 ADR。
