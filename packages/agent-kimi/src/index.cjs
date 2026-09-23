@@ -36,40 +36,63 @@ function externalTools(getScope, lookupArtifact, disclose) {
 }
 
 class KimiSession {
-  constructor(workDir, getScope, lookupArtifact, disclose, emit) {
+  constructor(workDir, getScope, lookupArtifact, disclose, emit, getRuntime) {
     this.workDir = workDir;
     this.getScope = getScope;
     this.lookupArtifact = lookupArtifact;
     this.disclose = disclose;
     this.emit = emit;
+    this.getRuntime = getRuntime;
   }
   async run(task) {
     if (this.turn) throw Error('A Kimi turn is already running.');
     const scope = this.getScope();
     if (!scope) throw Error('Resolve capabilities before starting the agent.');
-    if (!this.session || this.scopeVersion !== scope.version) {
+    const runtime = this.getRuntime();
+    if (!runtime.apiKey) throw Error('Configure an API key in Settings.');
+    if (!this.session || this.scopeVersion !== scope.version || this.runtimeRevision !== runtime.revision) {
       await this.session?.close();
-      this.session = createSession({workDir: this.workDir, executable: process.env.KIMI_EXECUTABLE || 'kimi', yoloMode: false, externalTools: externalTools(this.getScope, this.lookupArtifact, this.disclose), clientInfo: {name: 'industrial-agent-harness', version: '0.0.0'}});
+      this.session = createSession({
+        workDir: this.workDir,
+        executable: runtime.executable,
+        shareDir: runtime.shareDir,
+        model: 'industrial',
+        thinking: runtime.profile.thinking,
+        env: runtime.env,
+        yoloMode: false,
+        externalTools: externalTools(this.getScope, this.lookupArtifact, this.disclose),
+        clientInfo: {name: 'industrial-agent-harness', version: '0.0.0'},
+      });
       this.scopeVersion = scope.version;
+      this.runtimeRevision = runtime.revision;
     }
     const context = `Industrial Context (current Broker scope): ${JSON.stringify({domain: scope.domain, stage: scope.stage, capabilities: scope.capabilityIds, skills: scope.skills, tools: scope.tools})}. Use industrial_capability_detail to load details when needed. Artifact metadata tools are read-only. Treat viewer output as inspection, not engineering verification.`;
-    const turn = this.session.prompt(`${context}\n\nUser task: ${task}`);
-    this.turn = turn;
     try {
-      for await (const event of turn) {
-        if (event.type === 'ContentPart' && event.payload.type === 'text') this.emit({type: 'text', text: event.payload.text});
-        else if (event.type === 'ApprovalRequest') this.emit({type: 'approval', id: event.payload.id, description: event.payload.description, action: event.payload.action});
-        else if (event.type === 'ToolCall') this.emit({type: 'tool', name: event.payload.function.name});
-        else if (event.type === 'ToolResult') this.emit({type: 'tool-result', error: event.payload.return_value.is_error, message: event.payload.return_value.message});
-        else if (event.type === 'StepBegin') this.emit({type: 'step', number: event.payload.n});
-      }
+      const turn = this.session.prompt(`${context}\n\nUser task: ${task}`);
+      this.turn = turn;
+      for await (const event of turn) this.emitEvent(event);
       this.emit({type: 'done', result: await turn.result});
     } catch (error) {this.emit({type: 'error', message: String(error)});}
     finally {this.turn = undefined;}
   }
+  emitEvent(event) {
+    if (event.type === 'ContentPart') {
+      if (event.payload.type === 'text') this.emit({type: 'text', text: event.payload.text});
+      else if (event.payload.type === 'think') this.emit({type: 'thinking', text: event.payload.think});
+    } else if (event.type === 'ApprovalRequest') this.emit({type: 'approval', id: event.payload.id, description: event.payload.description, action: event.payload.action});
+    else if (event.type === 'ToolCall') this.emit({type: 'tool', id: event.payload.id, name: event.payload.function.name, arguments: event.payload.function.arguments || ''});
+    else if (event.type === 'ToolResult') {
+      const value = event.payload.return_value;
+      this.emit({type: 'tool-result', id: event.payload.tool_call_id, error: value.is_error, message: value.message, output: typeof value.output === 'string' ? value.output.slice(0, 12000) : ''});
+      for (const block of value.display || []) if (block.type === 'todo' && Array.isArray(block.items)) this.emit({type: 'todo', items: block.items});
+    } else if (event.type === 'StepBegin') this.emit({type: 'step', number: event.payload.n});
+    else if (event.type === 'StatusUpdate') this.emit({type: 'status', contextUsage: event.payload.context_usage ?? null, tokenUsage: event.payload.token_usage ?? null});
+    else if (event.type === 'CompactionBegin') this.emit({type: 'compaction', state: 'begin'});
+    else if (event.type === 'CompactionEnd') this.emit({type: 'compaction', state: 'end'});
+  }
   approve(id, response) {if (!this.turn) throw Error('No active turn.'); return this.turn.approve(id, response);}
   interrupt() {return this.turn?.interrupt();}
-  async close() {await this.session?.close();}
+  async close() {await this.session?.close(); this.session = undefined;}
 }
 
 module.exports = {KimiSession, externalTools};

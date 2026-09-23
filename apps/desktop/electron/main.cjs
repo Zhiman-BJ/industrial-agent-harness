@@ -1,4 +1,4 @@
-const {app, BrowserWindow, dialog, ipcMain, protocol} = require('electron');
+const {app, BrowserWindow, dialog, ipcMain, protocol, safeStorage} = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
@@ -10,6 +10,7 @@ const {createViewerProtocol} = require('../../../packages/viewer-builtin/src/wav
 const {resolve, discloseDetail} = require('../../../packages/capability-broker/src/index.cjs');
 const capabilities = require('../../../packages/domain-skills/src/capabilities.cjs');
 const {KimiSession} = require('../../../packages/agent-kimi/src/index.cjs');
+const {readProfile, saveProfile, validateProfile, writeCliConfig, sessionEnv} = require('./model-config.cjs');
 
 protocol.registerSchemesAsPrivileged([{scheme: 'app', privileges: {standard: true, secure: true, supportFetchAPI: true, corsEnabled: true}}]);
 if (process.argv.includes('--viewer-selftest')) app.setPath('userData', fs.mkdtempSync(path.join(os.tmpdir(), 'industrial-harness-selftest-')));
@@ -32,6 +33,28 @@ let brokerTrace = [];
 let agent;
 let projectDir;
 let mainWindow;
+let sessionApiKey = '';
+let modelRevision = 0;
+
+function configDir() {return path.join(app.getPath('userData'), 'model');}
+function keyFile() {return path.join(configDir(), 'api-key.bin');}
+function canPersistKey() {return safeStorage.isEncryptionAvailable() && (process.platform !== 'linux' || safeStorage.getSelectedStorageBackend() !== 'basic_text');}
+function readApiKey() {
+  if (sessionApiKey) return sessionApiKey;
+  if (!canPersistKey() || !fs.existsSync(keyFile())) return '';
+  try {return safeStorage.decryptString(fs.readFileSync(keyFile()));} catch {return '';}
+}
+function kimiExecutable() {
+  if (process.env.KIMI_EXECUTABLE) return process.env.KIMI_EXECUTABLE;
+  const local = path.join(desktopRoot, '.venv-kimi', process.platform === 'win32' ? 'Scripts/kimi.exe' : 'bin/kimi');
+  return fs.existsSync(local) ? local : 'kimi';
+}
+function modelStatus() {return {...readProfile(configDir()), hasApiKey: Boolean(readApiKey()), keyPersisted: canPersistKey() && fs.existsSync(keyFile())};}
+function runtimeConfig() {
+  const profile = readProfile(configDir());
+  const apiKey = readApiKey();
+  return {profile, apiKey, revision: modelRevision, executable: kimiExecutable(), shareDir: writeCliConfig(configDir(), profile), env: sessionEnv(profile, apiKey)};
+}
 
 function kindFor(file) {
   const ext = path.extname(file).toLowerCase();
@@ -96,10 +119,32 @@ function registerHandlers() {
   }
   ipcMain.handle('broker:detail', (_event, capabilityId) => loadDetail(capabilityId));
   ipcMain.handle('broker:trace', () => brokerTrace);
+  ipcMain.handle('model:get', () => modelStatus());
+  ipcMain.handle('model:save', async (_event, request) => {
+    if (agent?.turn) throw Error('Stop the current Kimi turn before changing the model.');
+    const profile = validateProfile(request);
+    if (request.apiKey !== undefined && (typeof request.apiKey !== 'string' || request.apiKey.length > 8192)) throw Error('Invalid API key.');
+    await agent?.close(); agent = undefined;
+    saveProfile(configDir(), profile);
+    if (request.apiKey) {
+      sessionApiKey = request.apiKey.trim();
+      if (canPersistKey()) {
+        fs.mkdirSync(configDir(), {recursive: true, mode: 0o700});
+        fs.writeFileSync(keyFile(), safeStorage.encryptString(sessionApiKey), {mode: 0o600});
+        fs.chmodSync(keyFile(), 0o600);
+      }
+    }
+    if (request.clearApiKey) {sessionApiKey = ''; fs.rmSync(keyFile(), {force: true});}
+    writeCliConfig(configDir(), profile);
+    modelRevision++;
+    return modelStatus();
+  });
   ipcMain.handle('agent:status', () => {
-    const executable = process.env.KIMI_EXECUTABLE || 'kimi';
+    const executable = kimiExecutable();
     const result = spawnSync(executable, ['--version'], {encoding: 'utf8', timeout: 3000});
-    return {available: !result.error && result.status === 0, version: result.status === 0 ? result.stdout.trim() : '', projectDir: projectDir || null};
+    const help = result.status === 0 ? spawnSync(executable, ['--help'], {encoding: 'utf8', timeout: 3000}) : null;
+    const available = !result.error && result.status === 0 && help?.status === 0 && help.stdout.includes('--wire');
+    return {available, version: available ? result.stdout.split('\n')[0].trim() : '', projectDir: projectDir || null, configured: Boolean(readApiKey())};
   });
   ipcMain.handle('agent:choose-project', async () => {
     const result = await dialog.showOpenDialog({title: 'Choose engineering project', properties: ['openDirectory']});
@@ -136,7 +181,7 @@ function registerHandlers() {
     if (!projectDir) throw Error('Choose an engineering project first.');
     if (typeof task !== 'string' || !task.trim()) throw Error('Describe the task first.');
     if (!brokerScope) throw Error('Resolve capabilities first.');
-    agent ||= new KimiSession(projectDir, () => brokerScope, async id => (await checked(id)).artifact, loadDetail, event => mainWindow?.webContents.send('agent:event', event));
+    agent ||= new KimiSession(projectDir, () => brokerScope, async id => (await checked(id)).artifact, loadDetail, event => mainWindow?.webContents.send('agent:event', event), runtimeConfig);
     void agent.run(task).catch(error => mainWindow?.webContents.send('agent:event', {type: 'error', message: String(error)}));
     return {started: true};
   });
@@ -212,7 +257,8 @@ async function createWindow() {
         if (state.ready === 'Ready' && state.active === kind) return;
         await new Promise(resolve => setTimeout(resolve, 250));
       }
-      throw Error(`Viewer ${kind} did not become ready.`);
+      const state = await window.webContents.executeJavaScript(`({ready: document.querySelector('.ia-viewer-header span')?.innerText, active: document.querySelector('.ia-viewer-tabs button.active')?.innerText, error: document.querySelector('.rp-empty p')?.innerText})`);
+      throw Error(`Viewer ${kind} did not become ready: ${JSON.stringify(state)}`);
     }
     await waitForViewer('Netlist');
     const output = process.env.VIEWER_SELFTEST_SCREENSHOT || path.join(app.getPath('temp'), 'industrial-viewer-selftest.png');
@@ -239,11 +285,16 @@ async function createWindow() {
     await new Promise(resolve => setTimeout(resolve, 180));
     const darkOutput = output.replace(/\.png$/, '-dark.png');
     fs.writeFileSync(darkOutput, await window.webContents.capturePage().then(image => image.toPNG()));
+    await window.webContents.executeJavaScript(`Array.from(document.querySelectorAll('.ia-settings-row')).find(row => row.innerText.includes('Model API')).querySelector('button').click()`);
+    await waitFor('API base URL');
+    const settingsOutput = output.replace(/\.png$/, '-model-settings.png');
+    fs.writeFileSync(settingsOutput, await window.webContents.capturePage().then(image => image.toPNG()));
+    await window.webContents.executeJavaScript(`document.querySelector('.ia-model-modal header button').click()`);
     await window.webContents.executeJavaScript(`document.querySelector('.ia-top-left button').click(); document.querySelector('.ia-top-right button').click()`);
     await new Promise(resolve => setTimeout(resolve, 50));
     const collapsed = await window.webContents.executeJavaScript(`!document.querySelector('.ia-tree') && !document.querySelector('.ia-viewer')`);
     if (!collapsed) throw Error('Sidebars did not collapse.');
-    console.log(JSON.stringify({ok: true, screenshots: [output, debugOutput, output.replace(/\.png$/, '-layout.png'), output.replace(/\.png$/, '-waveform.png'), darkOutput]}));
+    console.log(JSON.stringify({ok: true, screenshots: [output, debugOutput, output.replace(/\.png$/, '-layout.png'), output.replace(/\.png$/, '-waveform.png'), darkOutput, settingsOutput]}));
     app.quit();
   }
 }

@@ -16,18 +16,19 @@ Industrial Agent Harness 是面向工业设计与工程任务的桌面工作台�
 
 工作台由桌面 UI、Kimi Code 接入、Industrial Capability Broker、工业运行时、Viewer 层和 Domain Packs 组成。Kimi Code 负责 Agent 会话与工具调用；Broker 根据项目状态和任务选择适用能力；工业运行时执行专业动作并记录产物与验证结果。Viewer 在工作台内展示适合直接查看的工程产物；对于 CAD、Godot 等复杂软件，重点展示关键产物，完整编辑仍在专业软件中完成。芯片和 PCB 将作为最早的参考领域。
 
-目前的 MVP 已有可运行的 Electron 工作台：可查看 GDS/OAS 版图、Yosys JSON 网表及 VCD/FST/GHW 波形，输入工程任务并由 Capability Broker 按领域和阶段披露相关 Skill 与工具。Debug 模式展示 Broker 的 L0–L3 决策日志。Kimi Agent SDK 固定为 `0.1.8`；本机安装并登录 Kimi CLI 后，可选择工程目录，从界面启动会话。
+目前的 MVP 已有可运行的 Electron 工作台：可查看 GDS/OAS 版图、Yosys JSON 网表及 VCD/FST/GHW 波形，输入工程任务并由 Capability Broker 按领域和阶段披露相关 Skill 与工具。Debug 模式展示 Broker 的 L0–L3 决策日志。工作台通过 Kimi Agent SDK 启动真实会话，并在聊天区展示思考、Todo、工具和审批事件。模型端点、名称与 API Key 可在左下角 Settings → Model API 中配置。
 
 ```bash
 pnpm install
 pnpm --filter @industrial-agent-harness/desktop setup:layout
+pnpm --filter @industrial-agent-harness/desktop setup:kimi
 pnpm dev
 ```
 
-版图 Viewer 需要 KLayout Python；也可通过 `KLAYOUT_PYTHON` 指向已有环境。执行 `pnpm build && pnpm start` 可运行构建后的桌面应用。现阶段桌面链路在 macOS 实测，Linux 与 Windows 发行包仍在开发中。
+版图 Viewer 需要 KLayout Python；也可通过 `KLAYOUT_PYTHON` 指向已有环境。启动后选择工程目录，在设置中填写模型 API 信息，再发送任务。执行 `pnpm build && pnpm start` 可运行构建后的桌面应用。现阶段桌面链路在 macOS 实测，Linux 与 Windows 发行包仍在开发中。
 
 ## 文档
 
 从 [文档目录](doc/README.md) 开始阅读架构、Capability Broker、Viewer 层、领域扩展和开发阶段。仓库开发规则见 [AGENTS.md](AGENTS.md)。
 
-项目参考了现有 [Silicon Lens demo](https://github.com/Zhiman-BJ/silicon-lens-harness) 和 [EDA Harness](https://github.com/Zhiman-BJ/eda-harness) 的实践。
+Viewer 代码源自 [Silicon Lens demo](https://github.com/Zhiman-BJ/silicon-lens-harness)；聊天区的思考与 Todo 呈现参考了带轨迹回放的 [EDA Harness demo](https://github.com/Zhiman-BJ/eda-harness-demo)，产品使用实时 SDK 事件。

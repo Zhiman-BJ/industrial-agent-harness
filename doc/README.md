@@ -10,5 +10,6 @@
 | [Domain Pack](domain-pack.md) | 芯片与 PCB 等领域的扩展方式和最小契约 |
 | [开发计划](development-plan.md) | 阶段顺序、首批验收场景、验证方法与待确认问题 |
 | [架构决策记录](decisions.md) | 已确定的决定、提案间的差异和需要验证的接口 |
+| [Agent 聊天 UI 来源](agent-ui-provenance.md) | EDA Harness demo 的思考、Todo、工具呈现如何接入实时 SDK 事件 |
 
 来源：用户提供的《Industrial Harness 架构与开发 Plan》（2026-09-23，v0.1 提案）和《Industrial Capability Broker 开发 Plan》。本目录提炼两份材料供仓库实施使用，不把计划中的示例接口当成已经存在的实现。

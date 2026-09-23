@@ -63,6 +63,6 @@ Harness 提供结构化的 Industrial Context，例如领域、阶段、当前�
 
 ## 仓库映射
 
-已落实的目录：`apps/desktop`、`packages/agent-kimi`、`packages/contracts`、`packages/domain-skills`、`packages/domain-runtime`、`packages/domain-mcp`、`packages/viewer-core`、`packages/viewer-builtin`。Viewer Core 已有初始类型契约；viewer-builtin 已迁入三组 EDA 参考实现，尚未接入新桌面端。其他目录主要是说明文件和包声明，Kimi SDK 已固定为 `0.1.8`。`apps/desktop/viewer-host` 是桌面 Viewer 容器的结构占位。
+已落实的目录：`apps/desktop`、`packages/agent-kimi`、`packages/contracts`、`packages/domain-skills`、`packages/domain-runtime`、`packages/domain-mcp`、`packages/viewer-core`、`packages/viewer-builtin`。Viewer Core 已有初始类型契约；三组 EDA Viewer 已接入桌面端。Kimi SDK 固定为 `0.1.8`，开发环境 CLI 固定为 `1.51.0`，模型连接参数通过桌面设置传入。Domain Runtime 与 Domain MCP 目录目前主要是边界声明。`apps/desktop/viewer-host` 是桌面 Viewer 容器的结构占位。
 
 计划新增的职责包括本地控制面、Capability Broker、Domain Pack SDK、Bridge/Verifier 扩展点、参考领域和打包流水线。具体拆包以实现时的依赖边界为准，不为匹配一张目录图提前建立空包。

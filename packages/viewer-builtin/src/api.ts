@@ -51,7 +51,9 @@ export interface ViewerHostApi {
   resolve(request: {domain: string; stage: string; task: string}): Promise<BrokerResult>;
   detail(capabilityId: string): Promise<CapabilityDetail>;
   brokerTrace(): Promise<BrokerResult['trace']>;
-  agentStatus(): Promise<{available: boolean; version: string; projectDir: string | null}>;
+  agentStatus(): Promise<{available: boolean; version: string; projectDir: string | null; configured: boolean}>;
+  modelGet(): Promise<ModelProfileStatus>;
+  modelSave(request: ModelProfile & {apiKey?: string; clearApiKey?: boolean}): Promise<ModelProfileStatus>;
   chooseProject(): Promise<string | null>;
   projectFiles(): Promise<Array<{path: string; name: string; depth: number; directory: boolean}>>;
   openProjectFile(relative: string): Promise<ViewerArtifact>;
@@ -63,12 +65,19 @@ export interface ViewerHostApi {
 
 export type AgentEvent =
   | {type: 'text'; text: string}
+  | {type: 'thinking'; text: string}
   | {type: 'approval'; id: string; description: string; action: string}
-  | {type: 'tool'; name: string}
-  | {type: 'tool-result'; error: boolean; message: string}
+  | {type: 'tool'; id: string; name: string; arguments: string}
+  | {type: 'tool-result'; id: string; error: boolean; message: string; output: string}
+  | {type: 'todo'; items: Array<{title: string; status: 'pending' | 'in_progress' | 'done'}>}
+  | {type: 'status'; contextUsage: number | null; tokenUsage: {input_other: number; output: number; input_cache_read: number; input_cache_creation: number} | null}
+  | {type: 'compaction'; state: 'begin' | 'end'}
   | {type: 'step'; number: number}
   | {type: 'done'; result: {status: string}}
   | {type: 'error'; message: string};
+
+export interface ModelProfile {provider: 'kimi' | 'openai_legacy'; endpoint: string; model: string; contextSize: number; thinking: boolean}
+export interface ModelProfileStatus extends ModelProfile {hasApiKey: boolean; keyPersisted: boolean}
 
 export interface BrokerResult {
   scope: {version: string; domain: string; stage: string; capabilityIds: string[]; skills: string[]; tools: string[]};
