@@ -15,3 +15,5 @@
 - 这是**独立 Domain Pack**，目前没有自动装入无 UI Core 的 Capability Broker，也不受其动态 Scope allowlist 管理。需要先测试芯片场景时，可以直接使用此包和 Kimi 的原生 MCP 配置；不能据此宣称 Industrial Core 的垂直闭环已完成。
 - Release 包含 MCP 源码和安装方法，**不包含预构建 EDA 工具镜像、PDK 或项目输入**。真实仿真、综合和物理流程需先构建镜像并配置项目；CI 只验证 MCP 和适配器，不宣称这些工业动作在所有平台通过。
 - Kimi SDK 位于独立的 Headless Core Release；此包安装 Kimi CLI，与 Core Broker 尚未接通。
+
+[Headless Core v0.1.0-preview.1](https://github.com/Zhiman-BJ/industrial-agent-harness/releases/tag/headless-v0.1.0-preview.1) 单独提供 Broker 与 Kimi SDK 接入；当前 Chip Pack 的 MCP 应按本页作为独立服务使用。

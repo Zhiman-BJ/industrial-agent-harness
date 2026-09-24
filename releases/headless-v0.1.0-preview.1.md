@@ -19,3 +19,5 @@ Agent 会话、模型调用及原生 Agent 工具循环仍由 Kimi Code 负责�
 - 没有默认 Domain MCP provider，也没有真实工业 Tool 的 MCP Gateway。
 - DomainState、工业 Action Runtime、Artifact/Verification 持久化与 Checkpoint 闭环尚未落地。RTL 验证请求目前不能选中 `chip.rtl.simulate`。
 - 发布流水线在 Linux 解压并完成 Scope 场景烟测；这不构成工业执行或其他平台的支持声明。
+
+完整芯片 MCP 另以 [Chip Pack v0.6.0-preview.1](https://github.com/Zhiman-BJ/industrial-agent-harness/releases/tag/chip-v0.6.0-preview.1) 独立发布。两包尚未通过 Core Broker Gateway 连接。
