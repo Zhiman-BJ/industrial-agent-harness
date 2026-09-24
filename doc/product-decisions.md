@@ -86,3 +86,13 @@
 ### 决定
 
 仓库声明默认 Skill 和 Domain MCP；每个 Project 独立保存禁用项，而不是修改仓库默认声明或全局 Settings。项目详情页显示该 Domain 的资源及开关。变更资源后清空当前会话 Scope，下一次任务重新解析。CLI 以显式禁用参数表达同一策略，便于 Bench 固定实验条件。
+
+## PD-007：无 UI Harness 通过 GitHub Release 分发
+
+- 日期：2026-09-24
+- 状态：已确定
+- 来源：场景测试需要其他人可下载的无 UI 包，而非开发者机器上的目录
+
+### 决定
+
+通过公开 GitHub Release 提供无 UI Harness 下载包、SHA-256 校验文件与安装步骤。Release 包含 Broker、Skill、Domain MCP 接入和 Kimi SDK 集成；清楚标明尚未实现的 Domain Runtime 与默认 MCP 服务器。先作为预发布版本供场景测试，不以 Scope 烟测代替工业闭环验收。

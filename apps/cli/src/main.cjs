@@ -8,6 +8,7 @@ const {resolveProjectTask, effectiveCapabilities, resourceCatalog} = require('@i
 const {capabilities} = require('@industrial-agent-harness/domain-skills');
 const {discloseDetail} = require('@industrial-agent-harness/capability-broker');
 const {KimiSession} = require('@industrial-agent-harness/agent-kimi');
+const {runBench} = require('./bench.cjs');
 const {defaults, validateProfile, sessionEnv, writeCliConfig} = require('@industrial-agent-harness/agent-kimi/src/model-config.cjs');
 
 const usage = `industrial-harness run --project-dir DIR --domain DOMAIN (--task TEXT | --task-file FILE) [options]
@@ -133,6 +134,10 @@ async function run(options, output = process.stdout, environment = process.env, 
 
 async function main() {
   try {
+    if (process.argv[2] === 'bench') {
+      process.exitCode = await runBench(process.argv.slice(3));
+      return;
+    }
     const options = parseArgs(process.argv.slice(2));
     if (options.help) {process.stdout.write(usage); return;}
     process.exitCode = await run(options);
@@ -142,5 +147,5 @@ async function main() {
   }
 }
 
+module.exports = {main, run, loadArtifacts, usage};
 if (require.main === module) void main();
-module.exports = {run, loadArtifacts, usage};

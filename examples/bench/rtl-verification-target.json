@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "scenarios": [
+    {
+      "id": "rtl-verification",
+      "projectDir": "../chip-sobel",
+      "domain": "chip",
+      "task": "Run RTL verification and find failing assertions",
+      "scopeOnly": true,
+      "expected": {
+        "status": "scoped",
+        "capabilityIds": ["chip.rtl.simulate"]
+      }
+    }
+  ]
+}

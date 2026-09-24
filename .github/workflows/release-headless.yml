@@ -1,0 +1,54 @@
+name: Release headless harness
+
+on:
+  push:
+    tags:
+      - 'headless-v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install dependencies
+        run: |
+          npm install -g pnpm@11.1.3
+          pnpm install --frozen-lockfile
+      - name: Verify headless code and boundaries
+        run: |
+          pnpm test:architecture
+          pnpm --filter @industrial-agent-harness/cli test
+      - name: Package and smoke test extracted asset
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/package-headless.cjs
+          mkdir -p release /tmp/industrial-headless-release-smoke
+          asset="industrial-agent-harness-headless-${GITHUB_REF_NAME}.tar.gz"
+          tar -czf "release/$asset" -C dist headless
+          tar -xzf "release/$asset" -C /tmp/industrial-headless-release-smoke
+          (
+            cd /tmp/industrial-headless-release-smoke
+            node headless/industrial-harness.cjs bench \
+              --suite "$GITHUB_WORKSPACE/examples/bench/scope-smoke.json" \
+              --output-dir "$RUNNER_TEMP/headless-bench-results"
+          )
+          (
+            cd release
+            sha256sum "$asset" > "$asset.sha256"
+          )
+      - name: Publish GitHub prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" release/* \
+            --verify-tag \
+            --prerelease \
+            --title "Industrial Agent Harness headless $GITHUB_REF_NAME" \
+            --notes-file doc/headless-release-notes.md

@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "scenarios": [
+    {
+      "id": "chip-netlist",
+      "projectDir": "../chip-sobel",
+      "domain": "chip",
+      "task": "Inspect netlist signals",
+      "scopeOnly": true,
+      "expected": {
+        "status": "scoped",
+        "capabilityIds": ["chip.rtl.netlist.inspect"],
+        "skills": ["chip.netlist.inspect"],
+        "tools": ["eda.netlist.inspect"],
+        "mcpServers": []
+      }
+    },
+    {
+      "id": "chip-skill-disabled",
+      "projectDir": "../chip-sobel",
+      "domain": "chip",
+      "task": "Inspect netlist signals",
+      "scopeOnly": true,
+      "disabledSkills": ["chip.netlist.inspect"],
+      "expected": {
+        "status": "scoped",
+        "capabilityIds": ["chip.rtl.netlist.inspect"],
+        "skills": [],
+        "tools": ["eda.netlist.inspect"],
+        "mcpServers": []
+      }
+    },
+    {
+      "id": "chip-verification-request",
+      "projectDir": "../chip-sobel",
+      "domain": "chip",
+      "task": "Run RTL verification and find failing assertions",
+      "scopeOnly": true,
+      "expected": {
+        "status": "scoped",
+        "capabilityIds": [],
+        "skills": [],
+        "tools": [],
+        "mcpServers": []
+      }
+    }
+  ]
+}
