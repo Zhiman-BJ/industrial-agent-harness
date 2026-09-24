@@ -29,6 +29,8 @@ node dist/headless/industrial-harness.cjs bench --suite examples/bench/scope-smo
 
 打包目录包含 CLI、Broker、仓库 Skill 文件、MCP 注册表和 Kimi SDK 接入；不包含 Electron、Kimi CLI 或工业可执行文件。当前默认 MCP 服务器注册表为空，所以打包只保留 MCP 接入机制，不能据此声称已能运行实际 Domain MCP Tool。真实 Agent 场景还需配置 `KIMI_EXECUTABLE` 和模型 API Key。
 
+每个 `headless-v*` Release 正文都列出该版**相比原生 Kimi Code 实际集成的 Harness 能力**及尚未集成的部分；发布时使用仓库中与标签同名的 `releases/<tag>.md`，不复用上一版说明。
+
 `examples/bench/rtl-verification-target.json` 是目标场景断言，现阶段预期失败：Broker 没有 `chip.rtl.simulate` 能力。它用于追踪首条真实 RTL 验证闭环的进度，不应作为已通过的 CI gate。
 
 ```bash

@@ -13,6 +13,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Require version-specific integration notes
+        run: |
+          notes="releases/${GITHUB_REF_NAME}.md"
+          test -f "$notes"
+          grep -q '^## 相比原生 Kimi Code 集成了什么' "$notes"
+          grep -q '^## 尚未集成' "$notes"
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -51,4 +57,4 @@ jobs:
             --verify-tag \
             --prerelease \
             --title "Industrial Agent Harness headless $GITHUB_REF_NAME" \
-            --notes-file doc/headless-release-notes.md
+            --notes-file "releases/${GITHUB_REF_NAME}.md"
