@@ -96,3 +96,13 @@
 ### 决定
 
 通过公开 GitHub Release 提供无 UI Harness 下载包、SHA-256 校验文件与安装步骤。Release 包含 Broker、Skill、Domain MCP 接入和 Kimi SDK 集成；清楚标明尚未实现的 Domain Runtime 与默认 MCP 服务器。先作为预发布版本供场景测试，不以 Scope 烟测代替工业闭环验收。
+
+## PD-008：Core 与领域包分别发布
+
+- 日期：2026-09-24
+- 状态：已确定
+- 来源：Broker 完成前需先测试完整芯片 MCP 场景
+
+### 决定
+
+无 UI Core 与 Chip Pack 使用不同 GitHub Release 标签。Chip Pack 独立提供固定版本的 EDA Harness MCP、Skill、Kimi 适配和工具镜像构建说明；它可以先用于芯片场景测试。Core Release 不宣称已装入 Chip Pack，也不把独立 MCP 的执行结果计作 Core Broker/Domain Runtime 垂直闭环验收。未来完成 Broker Gateway 后再增加两包的兼容性与 Scope 集成测试。

@@ -1,0 +1,399 @@
+{
+  "captured_at": "2026-09-07T16:34:11.639174+00:00",
+  "image_id": "sha256:762243617db82e1882e933fc5fe47996d814b11b6103d10538c79e0e07628397",
+  "inventory": {
+    "tools": {
+      "verilator": {
+        "path": "/usr/local/bin/verilator",
+        "available": true,
+        "version": "Verilator 5.026 2024-06-15 rev v5.026",
+        "exit_code": 0
+      },
+      "yosys": {
+        "path": "/usr/local/bin/yosys",
+        "available": true,
+        "version": "Yosys 0.68 (git sha1 38e001a6f, Release, GNU /usr/local/bin/wrapped-cc/g++ 11.4.0)",
+        "exit_code": 0
+      },
+      "openroad": {
+        "path": "/OpenROAD-flow-scripts/tools/install/OpenROAD/bin/openroad",
+        "available": true,
+        "version": "26Q3-1867-g84e3ff1eb2",
+        "exit_code": 0
+      },
+      "klayout": {
+        "path": "/usr/bin/klayout",
+        "available": true,
+        "version": "KLayout 0.30.7",
+        "exit_code": 0
+      },
+      "magic": {
+        "path": "/usr/bin/magic",
+        "available": true,
+        "version": "8.3.105",
+        "exit_code": 0
+      },
+      "netgen": {
+        "path": "/usr/local/bin/netgen",
+        "available": true,
+        "version": "Netgen 1.5.133 compiled on Tue Dec  7 23:15:53 UTC 2021",
+        "exit_code": 0
+      },
+      "gtkwave": {
+        "path": "/usr/local/bin/gtkwave",
+        "available": true,
+        "version": "GTKWave Analyzer v3.3.104 (w)1999-2020 BSI",
+        "exit_code": 0
+      }
+    },
+    "ready": true,
+    "platform": "linux/amd64",
+    "nangate45": true
+  },
+  "container_contract": {
+    "status": "PASS",
+    "concurrency": 2,
+    "evidence": "/var/folders/z0/8fqzv4jn6zb32j82pxz8mw2r0000gn/T/eda-image-contract-e8dhp_cj",
+    "concurrent_outputs": [
+      "/var/folders/z0/8fqzv4jn6zb32j82pxz8mw2r0000gn/T/eda-counter-d88_hhyu",
+      "/var/folders/z0/8fqzv4jn6zb32j82pxz8mw2r0000gn/T/eda-counter-t_ijkqao"
+    ]
+  },
+  "processing": {
+    "magic_extraction": true,
+    "netgen": {
+      "match": true,
+      "wrong-width": false,
+      "shorted-gate": false
+    },
+    "gtkwave_load_save_reopen": true,
+    "fst_roundtrip": true,
+    "scope": "SCMOS fixture; not Nangate45 signoff"
+  },
+  "harness": [
+    {
+      "case": "positive",
+      "run_id": "R101e2f23e53d4c7a",
+      "state_id": "S40c80a3d5242412c",
+      "status": "SUCCESS",
+      "design_status": "PASS",
+      "steps": [
+        {
+          "action": "layout.extract",
+          "artifacts": [
+            "A55dc9326779040bb",
+            "A90fc8abbfcd84ea2"
+          ],
+          "cache_hit": false,
+          "design_status": "INCOMPLETE",
+          "executions": [
+            {
+              "argv": [
+                "docker",
+                "run",
+                "--rm",
+                "--name",
+                "eda-r101e2f23e53d4c7a-0",
+                "--network",
+                "none",
+                "--cpus",
+                "2",
+                "--memory",
+                "2.0g",
+                "--cap-drop",
+                "ALL",
+                "--security-opt",
+                "no-new-privileges",
+                "--mount",
+                "type=bind,src=/Users/roger/code/eda-harness/.validation/verification-final-accepted/.eda/runs/R101e2f23e53d4c7a/inputs,dst=/inputs,readonly",
+                "--mount",
+                "type=bind,src=/Users/roger/code/eda-harness/.validation/verification-final-accepted/.eda/runs/R101e2f23e53d4c7a/00-layout.extract/deps,dst=/deps,readonly",
+                "--mount",
+                "type=bind,src=/Users/roger/code/eda-harness/.validation/verification-final-accepted/.eda/runs/R101e2f23e53d4c7a/00-layout.extract/work,dst=/work",
+                "--workdir",
+                "/work",
+                "--env",
+                "EDA_INPUT_DIR=/inputs",
+                "--env",
+                "EDA_DEPS_DIR=/deps",
+                "--env",
+                "EDA_OUTPUT_DIR=/work",
+                "--env",
+                "EDA_TOP=device",
+                "--env",
+                "EDA_ACTION=layout.extract",
+                "--entrypoint",
+                "magic",
+                "sha256:762243617db82e1882e933fc5fe47996d814b11b6103d10538c79e0e07628397",
+                "-dnull",
+                "-noconsole",
+                "-T",
+                "scmos",
+                "/inputs/scripts/extract.tcl"
+              ],
+              "elapsed_seconds": 0.5371460421010852,
+              "returncode": 0,
+              "status": "SUCCESS"
+            }
+          ],
+          "state_id": "S141e2f97f288441e",
+          "status": "SUCCESS",
+          "verification": "UNKNOWN"
+        },
+        {
+          "action": "verify.netgen",
+          "artifacts": [
+            "A94f17d2e97d745d9",
+            "Ae0011591298149b8",
+            "Aaddd994f80c341d7"
+          ],
+          "cache_hit": false,
+          "design_status": "INCOMPLETE",
+          "executions": [
+            {
+              "argv": [
+                "docker",
+                "run",
+                "--rm",
+                "--name",
+                "eda-r101e2f23e53d4c7a-1",
+                "--network",
+                "none",
+                "--cpus",
+                "2",
+                "--memory",
+                "2.0g",
+                "--cap-drop",
+                "ALL",
+                "--security-opt",
+                "no-new-privileges",
+                "--mount",
+                "type=bind,src=/Users/roger/code/eda-harness/.validation/verification-final-accepted/.eda/runs/R101e2f23e53d4c7a/inputs,dst=/inputs,readonly",
+                "--mount",
+                "type=bind,src=/Users/roger/code/eda-harness/.validation/verification-final-accepted/.eda/runs/R101e2f23e53d4c7a/01-verify.netgen/deps,dst=/deps,readonly",
+                "--mount",
+                "type=bind,src=/Users/roger/code/eda-harness/.validation/verification-final-accepted/.eda/runs/R101e2f23e53d4c7a/01-verify.netgen/work,dst=/work",
+                "--workdir",
+                "/work",
+                "--env",
+                "EDA_INPUT_DIR=/inputs",
+                "--env",
+                "EDA_DEPS_DIR=/deps",
+                "--env",
+                "EDA_OUTPUT_DIR=/work",
+                "--env",
+                "EDA_TOP=device",
+                "--env",
+                "EDA_ACTION=verify.netgen",
+                "--entrypoint",
+                "netgen",
+                "sha256:762243617db82e1882e933fc5fe47996d814b11b6103d10538c79e0e07628397",
+                "-batch",
+                "source",
+                "/inputs/scripts/compare.tcl"
+              ],
+              "elapsed_seconds": 0.4196597500704229,
+              "returncode": 0,
+              "status": "SUCCESS"
+            }
+          ],
+          "state_id": "S15e84fb1361d4de7",
+          "status": "SUCCESS",
+          "verification": "PASS"
+        },
+        {
+          "action": "debug.waveform",
+          "artifacts": [
+            "A2e7163a5495149eb",
+            "Adb457cf562784a33",
+            "Ac98cf87bf6c54261",
+            "Ab9d2cab7e64c49bb",
+            "Abf4a5954a9ee441e"
+          ],
+          "cache_hit": false,
+          "design_status": "PASS",
+          "executions": [
+            {
+              "argv": [
+                "docker",
+                "run",
+                "--rm",
+                "--name",
+                "eda-r101e2f23e53d4c7a-2",
+                "--network",
+                "none",
+                "--cpus",
+                "2",
+                "--memory",
+                "2.0g",
+                "--cap-drop",
+                "ALL",
+                "--security-opt",
+                "no-new-privileges",
+                "--mount",
+                "type=bind,src=/Users/roger/code/eda-harness/.validation/verification-final-accepted/.eda/runs/R101e2f23e53d4c7a/inputs,dst=/inputs,readonly",
+                "--mount",
+                "type=bind,src=/Users/roger/code/eda-harness/.validation/verification-final-accepted/.eda/runs/R101e2f23e53d4c7a/02-debug.waveform/deps,dst=/deps,readonly",
+                "--mount",
+                "type=bind,src=/Users/roger/code/eda-harness/.validation/verification-final-accepted/.eda/runs/R101e2f23e53d4c7a/02-debug.waveform/work,dst=/work",
+                "--workdir",
+                "/work",
+                "--env",
+                "EDA_INPUT_DIR=/inputs",
+                "--env",
+                "EDA_DEPS_DIR=/deps",
+                "--env",
+                "EDA_OUTPUT_DIR=/work",
+                "--env",
+                "EDA_TOP=device",
+                "--env",
+                "EDA_ACTION=debug.waveform",
+                "--entrypoint",
+                "/bin/sh",
+                "sha256:762243617db82e1882e933fc5fe47996d814b11b6103d10538c79e0e07628397",
+                "/inputs/scripts/wave.sh"
+              ],
+              "elapsed_seconds": 1.0763999577611685,
+              "returncode": 0,
+              "status": "SUCCESS"
+            }
+          ],
+          "state_id": "S40c80a3d5242412c",
+          "status": "SUCCESS",
+          "verification": "PASS"
+        }
+      ]
+    },
+    {
+      "case": "cached",
+      "run_id": "Rc05d1b76792042a7",
+      "state_id": "Sf505e05499eb4fb5",
+      "status": "SUCCESS",
+      "design_status": "PASS",
+      "steps": [
+        {
+          "action": "layout.extract",
+          "cache_hit": true,
+          "design_status": "PASS",
+          "state_id": "S5fab17fa8ef6458b",
+          "status": "SUCCESS",
+          "verification": "UNKNOWN"
+        },
+        {
+          "action": "verify.netgen",
+          "cache_hit": true,
+          "design_status": "PASS",
+          "state_id": "S5917e127667341b9",
+          "status": "SUCCESS",
+          "verification": "PASS"
+        },
+        {
+          "action": "debug.waveform",
+          "cache_hit": true,
+          "design_status": "PASS",
+          "state_id": "Sf505e05499eb4fb5",
+          "status": "SUCCESS",
+          "verification": "PASS"
+        }
+      ]
+    },
+    {
+      "case": "wrong-width",
+      "run_id": "Rc7d3914557174d9c",
+      "state_id": "Se34fb56dee284d97",
+      "status": "SUCCESS",
+      "design_status": "BLOCKED",
+      "steps": [
+        {
+          "action": "layout.extract",
+          "cache_hit": true,
+          "design_status": "INCOMPLETE",
+          "state_id": "S23cd78a034d545f5",
+          "status": "SUCCESS",
+          "verification": "UNKNOWN"
+        },
+        {
+          "action": "verify.netgen",
+          "artifacts": [
+            "A085d65c86569454e",
+            "Af2424750fb294208",
+            "A476280e511eb431f"
+          ],
+          "cache_hit": false,
+          "design_status": "BLOCKED",
+          "executions": [
+            {
+              "argv": [
+                "docker",
+                "run",
+                "--rm",
+                "--name",
+                "eda-rc7d3914557174d9c-1",
+                "--network",
+                "none",
+                "--cpus",
+                "2",
+                "--memory",
+                "2.0g",
+                "--cap-drop",
+                "ALL",
+                "--security-opt",
+                "no-new-privileges",
+                "--mount",
+                "type=bind,src=/Users/roger/code/eda-harness/.validation/verification-final-accepted/.eda/runs/Rc7d3914557174d9c/inputs,dst=/inputs,readonly",
+                "--mount",
+                "type=bind,src=/Users/roger/code/eda-harness/.validation/verification-final-accepted/.eda/runs/Rc7d3914557174d9c/01-verify.netgen/deps,dst=/deps,readonly",
+                "--mount",
+                "type=bind,src=/Users/roger/code/eda-harness/.validation/verification-final-accepted/.eda/runs/Rc7d3914557174d9c/01-verify.netgen/work,dst=/work",
+                "--workdir",
+                "/work",
+                "--env",
+                "EDA_INPUT_DIR=/inputs",
+                "--env",
+                "EDA_DEPS_DIR=/deps",
+                "--env",
+                "EDA_OUTPUT_DIR=/work",
+                "--env",
+                "EDA_TOP=device",
+                "--env",
+                "EDA_ACTION=verify.netgen",
+                "--entrypoint",
+                "netgen",
+                "sha256:762243617db82e1882e933fc5fe47996d814b11b6103d10538c79e0e07628397",
+                "-batch",
+                "source",
+                "/inputs/scripts/compare.tcl"
+              ],
+              "elapsed_seconds": 0.5433395421132445,
+              "returncode": 0,
+              "status": "SUCCESS"
+            }
+          ],
+          "state_id": "Se34fb56dee284d97",
+          "status": "SUCCESS",
+          "verification": "FAIL"
+        }
+      ]
+    }
+  ],
+  "unit_tests": {
+    "passed": 51,
+    "ruff": "PASS",
+    "wheel_build": "PASS"
+  },
+  "scope": "SCMOS teaching fixture proves Magic extraction and Netgen integration; existing Nangate45 KLayout evidence is separate. GTKWave batch GUI under Xvfb, no desktop forwarding.",
+  "source_hashes": {
+    "Dockerfile.tools": "f827864b4373a80353cdf487029098cf913296eacf1766d0469ef2d68369736e",
+    "tools/gtkwave": "d1780406ec105e21f326083ecd7089937335b315d8a925aa07cdfe973bcdefcc",
+    "tools/verification_smoke.py": "fb50a0d5c1906da132b5207c95de08b3a616ca59c52371e523d61258f0606700",
+    "examples/verification/README.md": "d4b64d1725b4ecbc41978134b028f4da9f768c5e891d336942abc4f356c41b11",
+    "examples/verification/eda.yaml": "39435913512b549286a716ac5fd1f40a174ed5899746b4caf5760d99841d4ef6",
+    "examples/verification/layout/device.mag": "443e0192919bf45ba5a08bc74ae548242dd996625bb68d65326efc5a47196162",
+    "examples/verification/reference/device.spice": "172d5d38449cc4d822535dd00128aea52588273a78c12ba22e0705cf1165cc0f",
+    "examples/verification/scripts/compare.tcl": "5cb167ae9d7e515764267f4ad44042e82178f4e40b8f8c2425891fe7e5bd73b2",
+    "examples/verification/scripts/extract.tcl": "d9b8c189102c839ce4c71a64853b426c96308d79de5a742f475b772c000f7880",
+    "examples/verification/scripts/wave.sh": "0a05a40ec4492d6c426f1d6f1dd80bc634d8752aa9c657575baf2829c573f526",
+    "examples/verification/scripts/wave.tcl": "25dca2f68ba18553177f550574b6ea0269f88a65589b55a9f33a1a95502058b0",
+    "examples/verification/waves/counter.vcd": "e61a2816bb88e4f133eb2f47b999adea8e9367fa09a6f18a901da9c830f8f3c3"
+  }
+}

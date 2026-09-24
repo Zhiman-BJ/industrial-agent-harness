@@ -1,0 +1,3 @@
+print(
+    "EDA Harness: call get_tool_guide first; check_environment works before initialization. Pass an absolute project_path to project tools; no directory is selected implicitly. Use initialize_project with Docker by default; host viewers are optional. For stale server or wrapper issues call get_server_info; do not infer versions from process names or kill processes by default."
+)

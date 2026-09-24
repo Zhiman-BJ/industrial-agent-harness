@@ -1,0 +1,149 @@
+{
+  "date": "2026-09-07",
+  "inventory": {
+    "tools": {
+      "verilator": {
+        "path": "/usr/local/bin/verilator",
+        "available": true,
+        "version": "Verilator 5.026 2024-06-15 rev v5.026",
+        "exit_code": 0
+      },
+      "yosys": {
+        "path": "/usr/local/bin/yosys",
+        "available": true,
+        "version": "Yosys 0.68 (git sha1 38e001a6f, Release, GNU /usr/local/bin/wrapped-cc/g++ 11.4.0)",
+        "exit_code": 0
+      },
+      "openroad": {
+        "path": "/OpenROAD-flow-scripts/tools/install/OpenROAD/bin/openroad",
+        "available": true,
+        "version": "26Q3-1867-g84e3ff1eb2",
+        "exit_code": 0
+      },
+      "klayout": {
+        "path": "/usr/bin/klayout",
+        "available": true,
+        "version": "KLayout 0.30.7",
+        "exit_code": 0
+      }
+    },
+    "ready": true,
+    "platform": "linux/amd64",
+    "nangate45": true,
+    "image": "eda-harness-tools:dev",
+    "image_id": "sha256:c22a40e1cf1ad344f0ed122c839556e073a758e5aa4c4992ea6dba5151430fe3"
+  },
+  "image_size_bytes": 1687579539,
+  "upstream": {
+    "orfs": "openroad/orfs@sha256:cdb377cec7796c5cb01d482ca035811bfe559ca55dcca7f5e5f46fa811c63142",
+    "verilator": "verilator/verilator@sha256:4381a83fc2864cc2be91c5acb8ddff688077c73db20304b7f2c38cccd6a965da"
+  },
+  "source_revisions": {
+    "OpenROAD": "84e3ff1eb2c36302cef42e4f70a69efe4cfbb126",
+    "Yosys": "38e001a6ff74ca434bf4cc02c053f53619160ab0",
+    "Verilator": "cd693ce02b914151fcc761eaecd15af96d2006ad",
+    "KLayout": "v0.30.7"
+  },
+  "build_smoke": "PASS: lint, mapped synthesis, OpenROAD placement, KLayout GDS round-trip",
+  "contract": {
+    "status": "PASS",
+    "concurrency": 2,
+    "valid_input": "PASS",
+    "invalid_input": "PASS",
+    "usage_output_and_non_overwrite": "PASS",
+    "downstream_gds_read": "PASS"
+  },
+  "resources": {
+    "profile_verified_by_docker_inspect": true,
+    "cpu_limit": 2,
+    "memory_limit_gib": 4,
+    "pids_limit": 256,
+    "network": "none",
+    "read_only_root": true,
+    "caller_uid_gid": true,
+    "peak_sampled_memory_mib": 574.4,
+    "sample_count": 5,
+    "observed_duration_ms": 10635
+  },
+  "contract_tests": 34,
+  "ruff": "PASS",
+  "wheel_build": "PASS",
+  "registry_publication": "not requested; not published",
+  "flows": {
+    "simulation": {
+      "id": "R6c293dea0bb94b99",
+      "state_id": "S4ab54b166bb5497b",
+      "status": "SUCCESS",
+      "design_status": "INCOMPLETE"
+    },
+    "physical_sta": {
+      "id": "Rd503c1c81b884d10",
+      "state_id": "S2387069799994123",
+      "status": "SUCCESS",
+      "design_status": "PASS"
+    },
+    "drc": {
+      "id": "R3df07a64f8ce46e7",
+      "state_id": "Se0091248e13940b6",
+      "status": "SUCCESS",
+      "design_status": "BLOCKED"
+    }
+  },
+  "metrics": [
+    {
+      "action": "analysis.sta",
+      "evidence": "A443f5ba98e254395",
+      "name": "area.total",
+      "unit": "um^2",
+      "value": 65.1700013
+    },
+    {
+      "action": "verify.drc",
+      "evidence": "A48d35c0cd3434ef0",
+      "name": "drc.violations",
+      "unit": "count",
+      "value": 5445.0
+    },
+    {
+      "action": "rtl.lint",
+      "evidence": "A7f2c501ad5264b14",
+      "name": "lint.errors",
+      "unit": "count",
+      "value": 0.0
+    },
+    {
+      "action": "rtl.lint",
+      "evidence": "A7f2c501ad5264b14",
+      "name": "lint.warnings",
+      "unit": "count",
+      "value": 0.0
+    },
+    {
+      "action": "logic.synthesize",
+      "evidence": "A591c8329bba64d94",
+      "name": "logic.cells",
+      "unit": "count",
+      "value": 33.0
+    },
+    {
+      "action": "analysis.sta",
+      "evidence": "A443f5ba98e254395",
+      "name": "timing.setup.tns",
+      "unit": "ns",
+      "value": 0.0
+    },
+    {
+      "action": "analysis.sta",
+      "evidence": "A443f5ba98e254395",
+      "name": "timing.setup.wns",
+      "unit": "ns",
+      "value": 9.63841567
+    }
+  ],
+  "limitations": [
+    "KLayout LVS requires a project extraction/comparison deck",
+    "Teaching flow still has DRC violations; no signoff claim"
+  ],
+  "local_evidence": ".validation/unified-counter/.eda plus .validation/tool-*.json/.log",
+  "timing_report_crosscheck": "PASS"
+}

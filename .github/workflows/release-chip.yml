@@ -1,0 +1,60 @@
+name: Release Chip Pack
+
+on:
+  push:
+    tags:
+      - 'chip-v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require version-specific notes
+        run: |
+          notes="releases/${GITHUB_REF_NAME}.md"
+          test -f "$notes"
+          grep -q '^## 相对原生 Kimi Code 提供什么' "$notes"
+          grep -q '^## 与 Industrial Core 的边界' "$notes"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install uv
+        run: python -m pip install uv==0.11.6
+      - name: Package and test Chip Pack
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/package-chip.cjs
+          mkdir -p release "$RUNNER_TEMP/chip-pack-smoke"
+          asset="industrial-agent-harness-chip-${GITHUB_REF_NAME}.tar.gz"
+          tar -czf "release/$asset" -C dist chip-pack
+          tar -xzf "release/$asset" -C "$RUNNER_TEMP/chip-pack-smoke"
+          (
+            cd "$RUNNER_TEMP/chip-pack-smoke/chip-pack"
+            sh ./install.sh
+            ./bind-kimi.sh "$PWD/eda-harness/examples/counter" "$RUNNER_TEMP/chip-kimi-adapter"
+            test -f "$RUNNER_TEMP/chip-kimi-adapter/mcp.project.json"
+            test -f "$RUNNER_TEMP/chip-kimi-adapter/kimi-code/skills/eda-core/SKILL.md"
+            ./eda-harness/.venv/bin/python scripts/mcp-smoke.py --mcp-config "$RUNNER_TEMP/chip-kimi-adapter/mcp.project.json"
+            ./chip-harness.sh --project "$PWD/eda-harness/examples/counter" actions > "$RUNNER_TEMP/chip-actions.json"
+          )
+          (
+            cd release
+            sha256sum "$asset" > "$asset.sha256"
+          )
+      - name: Publish GitHub prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" release/* \
+            --verify-tag \
+            --prerelease \
+            --title "Industrial Agent Harness Chip Pack $GITHUB_REF_NAME" \
+            --notes-file "releases/${GITHUB_REF_NAME}.md"

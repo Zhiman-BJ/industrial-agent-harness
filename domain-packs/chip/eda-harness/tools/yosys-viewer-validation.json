@@ -1,0 +1,61 @@
+{
+  "date": "2026-09-08",
+  "image_id": "sha256:4bd4e5296cd64404183f623210d50efd0a1c3e5fc536ecff33d1f10a1983360c",
+  "base_image_id": "sha256:762243617db82e1882e933fc5fe47996d814b11b6103d10538c79e0e07628397",
+  "build_method": "Incremental image from the previously qualified locked tool image, installing graphviz=2.42.2-6ubuntu0.1 and updated inventory.py. Full Dockerfile.tools build blocked twice by Docker Hub frontend metadata EOF.",
+  "package_changes": {
+    "graphviz": "2.42.2-6ubuntu0.1",
+    "libann0": "1.1.2+doc-7build1",
+    "libcdt5": "2.42.2-6ubuntu0.1",
+    "libcgraph6": "2.42.2-6ubuntu0.1",
+    "libgd3": "2.3.0-2ubuntu2.3",
+    "libgts-0.7-5": "0.7.6+darcs121130-5",
+    "libgvc6": "2.42.2-6ubuntu0.1",
+    "libgvpr2": "2.42.2-6ubuntu0.1",
+    "liblab-gamut1": "2.42.2-6ubuntu0.1",
+    "libltdl7": "2.4.6-15build2",
+    "libpathplan4": "2.42.2-6ubuntu0.1"
+  },
+  "cases": [
+    {
+      "viewer": "yosys_show",
+      "top": "chip",
+      "status": "RENDERED",
+      "svg_sha256": "a6a2b6858924a8a11e8bbe300cb4ec8ca75782461b0c4ec4b16f935615269dec",
+      "tool_identity": {
+        "kind": "docker",
+        "image_id": "sha256:4bd4e5296cd64404183f623210d50efd0a1c3e5fc536ecff33d1f10a1983360c"
+      }
+    },
+    {
+      "viewer": "yosys_show",
+      "top": "child",
+      "status": "RENDERED",
+      "svg_sha256": "6b1091aa682f2ca90e7de2d633994014479e04f056e56f22d123ff933085441d",
+      "tool_identity": {
+        "kind": "docker",
+        "image_id": "sha256:4bd4e5296cd64404183f623210d50efd0a1c3e5fc536ecff33d1f10a1983360c"
+      }
+    },
+    {
+      "viewer": "yosys_viz",
+      "top": "chip",
+      "status": "RENDERED",
+      "svg_sha256": "3ed6fd6e3450da44fc5d22c292b21dc4c0ca1823683df291d1dc48feab612fde",
+      "tool_identity": {
+        "kind": "docker",
+        "image_id": "sha256:4bd4e5296cd64404183f623210d50efd0a1c3e5fc536ecff33d1f10a1983360c"
+      }
+    },
+    {
+      "viewer": "yosys_viz",
+      "top": "child",
+      "status": "RENDERED",
+      "svg_sha256": "c845bc4db95064ed361764d998bcee5e7f84866572066e0a377cbccc7e4422dc",
+      "tool_identity": {
+        "kind": "docker",
+        "image_id": "sha256:4bd4e5296cd64404183f623210d50efd0a1c3e5fc536ecff33d1f10a1983360c"
+      }
+    }
+  ]
+}

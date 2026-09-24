@@ -31,6 +31,8 @@ pnpm dev
 
 无需克隆仓库即可从 [GitHub Releases](https://github.com/Zhiman-BJ/industrial-agent-harness/releases) 下载无 UI Harness 预发布包；安装与校验步骤见 [CLI 文档](apps/cli/README.md#github-release-安装)。开发时也可运行 `node scripts/package-headless.cjs` 生成同样的目录。仓库提供当前能力烟测和预期失败的 RTL 验证目标场景；逐场 JSONL 与汇总结果用于定位 Harness 缺口。这个打包产物保留 Broker、Skill 和 MCP 接入，但目前尚无默认 Domain MCP 服务器或真实工业 Runtime。
 
+完整芯片 MCP 另以 [Chip Pack](domain-packs/chip/README.md) 独立发布，包含 EDA Harness 25 工具服务、领域 Skill 和 Kimi 适配生成器。它可先用于真实芯片场景；当前无 UI Core 尚未把 Chip Pack 纳入 Broker Scope。
+
 左侧 Projects 可绑定多个本地目录；首次启动会显示从 EDA Harness demo 提取的精简 Sobel 芯片示例。右侧工作区和其中的文件树默认收起，按需打开；文件树随当前项目切换。点击普通文件预览源码，点击项目内的 GDS、Yosys JSON 或 VCD 等工程产物会自动打开对应 Viewer。Sobel 示例中附有同一设计的网表、波形和版图产物。
 
 一个本地目录对应一个 Project。点击左侧 Projects 标题旁的「＋」可填写项目名称、选择目录和 Domain；点击已有项目可打开详情页，查看目录并修改该项目的 Domain。Domain 在创建时用带 emoji 的圆角按钮选择，在项目列表和新 Session 的输入框中只读显示。Sobel 示例默认属于 Chip；领域列表随已注册能力更新。

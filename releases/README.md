@@ -11,3 +11,5 @@
 - 下载、校验和安装说明的链接。
 
 不要把 Kimi SDK、CLI 或原生 Agent 功能列作 Harness 自研能力，也不要将 Scope 烟测描述成工程验证。
+
+`chip-v*` 是独立的 Chip Pack Release，同样必须提供 `releases/<tag>.md`，说明相对原生 Kimi Code 提供的 MCP/Skill/Runtime，以及它与 Industrial Core Broker 尚未接通的边界。Chip Pack 的版本和测试由 `.github/workflows/release-chip.yml` 管理，不能用 Core 的 Scope 烟测代替真实 MCP 连接测试。

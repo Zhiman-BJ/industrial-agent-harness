@@ -1,0 +1,8 @@
+{
+  "name": "eda-harness",
+  "version": "0.1.0",
+  "description": "Shared EDA state, execution, verification, and context recovery",
+  "skills": "./skills/",
+  "sessionStart": {"skill": "eda-core"},
+  "systemPromptPath": "./SYSTEM.md"
+}
