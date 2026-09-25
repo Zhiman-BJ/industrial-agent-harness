@@ -12,6 +12,6 @@
     "package:headless": "node scripts/package-headless.cjs",
     "package:chip": "node scripts/package-chip.cjs",
     "test:architecture": "node --test tests/architecture/*.test.cjs",
-    "test": "pnpm --filter @industrial-agent-harness/domain-skills test && pnpm --filter @industrial-agent-harness/domain-mcp test && pnpm --filter @industrial-agent-harness/capability-broker test && pnpm --filter @industrial-agent-harness/harness-core test && pnpm --filter @industrial-agent-harness/agent-kimi test && pnpm --filter @industrial-agent-harness/cli test && pnpm --filter @industrial-agent-harness/viewer-builtin test && pnpm --filter @industrial-agent-harness/desktop test"
+    "test": "pnpm --filter @industrial-agent-harness/contracts test && pnpm --filter @industrial-agent-harness/domain-runtime test && pnpm --filter @industrial-agent-harness/domain-skills test && pnpm --filter @industrial-agent-harness/domain-mcp test && pnpm --filter @industrial-agent-harness/capability-broker test && pnpm --filter @industrial-agent-harness/harness-core test && pnpm --filter @industrial-agent-harness/agent-kimi test && pnpm --filter @industrial-agent-harness/cli test && pnpm --filter @industrial-agent-harness/viewer-builtin test && pnpm --filter @industrial-agent-harness/desktop test"
   }
 }

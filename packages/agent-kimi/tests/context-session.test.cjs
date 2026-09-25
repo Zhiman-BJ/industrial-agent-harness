@@ -27,7 +27,7 @@ test('equivalent Broker scope keeps the session; a changed effective scope repla
     created.push(instance);
     return instance;
   };
-  const session = new KimiSession(shareDir, () => scope, async () => null, () => null, event => events.push(event), () => ({apiKey: 'test', revision: 0, shareDir, profile: {thinking: false}, disabledMcpServers: []}), factory);
+  const session = new KimiSession(shareDir, () => scope, async () => null, () => null, event => events.push(event), () => ({apiKey: 'test-key', revision: 0, shareDir, profile: {thinking: false}, disabledMcpServers: []}), factory, {directory: path.join(shareDir, 'logs'), getBrokerTrace: () => [{level: 'L0', event: 'scope'}]});
   t.after(() => session.close());
 
   await session.run('Inspect netlist');
@@ -39,6 +39,13 @@ test('equivalent Broker scope keeps the session; a changed effective scope repla
   assert.deepEqual(events.filter(event => event.type === 'context-metrics')[0], {type: 'context-metrics', peakContextUsage: 0.72, lastContextUsage: 0.24, compactions: 1, toolResults: 1, peakToolResultBytes: 13000});
   assert.equal(events.find(event => event.type === 'tool-result').outputTruncated, true);
   assert.equal(events.find(event => event.type === 'tool-result').outputBytes, 13000);
+  const logPath = events.find(event => event.type === 'diagnostic-log').path;
+  const logRows = fs.readFileSync(logPath, 'utf8').trim().split('\n').map(JSON.parse);
+  assert.equal(fs.statSync(logPath).mode & 0o777, 0o600);
+  assert.deepEqual(logRows.map(row => row.sequence), Array.from({length: logRows.length}, (_, index) => index + 1));
+  assert.deepEqual(logRows.find(row => row.type === 'run.start').payload.brokerTrace, [{level: 'L0', event: 'scope'}]);
+  assert.equal(logRows.find(row => row.type === 'sdk.event' && row.payload.type === 'ToolResult').payload.payload.return_value.output.length, 13000);
+  assert.ok(logRows.some(row => row.type === 'prompt' && row.payload.text.includes('Inspect netlist')));
 
   scope = {...scope, stage: 'verification', version: 'three'};
   await session.run('Inspect verification');

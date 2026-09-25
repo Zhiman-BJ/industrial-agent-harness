@@ -9,9 +9,9 @@ Project、Domain 和 Session 的用户交互决定见[产品决策记录](produc
 | 决定 | 当前落实情况 |
 | --- | --- |
 | Electron 桌面端面向 Linux、macOS、Windows | macOS 桌面 MVP 已运行；三平台打包尚未验证 |
-| 第一阶段使用 Kimi Code，不自研 Coding Agent | `packages/agent-kimi` 精确依赖官方 SDK `0.1.8`；本地 CLI 固定 `1.51.0`，SDK Wire 会话已实测向模拟模型端点发出请求，真实模型回复仍需用户 API Key 验证 |
+| 第一阶段使用 Kimi Code，不自研 Coding Agent | `packages/agent-kimi` 精确依赖官方 SDK `0.1.8`；本地 CLI 固定 `1.51.0`，已使用真实 27B 模型验证文本、外部工具及自动压缩后取回 Checkpoint |
 | Kimi 接入尽量非侵入 | 不把上游整仓作为 submodule；优先使用公开接口 |
-| Monorepo 分离 UI、领域 Skill、领域 Runtime、MCP 等职责 | UI、Viewer、Broker、Kimi 和首批 Skill 声明已实现；Runtime/MCP 仍是边界模块 |
+| Monorepo 分离 UI、领域 Skill、领域 Runtime、MCP 等职责 | UI、Viewer、Broker、Kimi 和首批 Skill 声明已实现；Domain Runtime 只有只读观察状态与最小 Checkpoint，工业 Action/MCP 仍未实现 |
 | Skill 和 Domain MCP 均采用渐进式披露 | Broker 已披露 Skill 和 Tool Scope；Kimi 外部工具按 Scope 注册。独立 Domain MCP 服务尚未接入 |
 | 产品支持多个工业场景，首批以 Chip 和 PCB 验证 | 有 Chip/PCB 首批 Capability 声明；PCB 真实工具尚未接入 |
 | 建立独立 Viewer 层 | KLayout、netlistsvg、Surfer 三组 Viewer 位于正式产品路径并已接入桌面 MVP |
@@ -40,6 +40,14 @@ Project、Domain 和 Session 的用户交互决定见[产品决策记录](produc
 - 状态：方向已确定；Vertical Slice 尚未实现
 - 决定：以 Project → StateProvider → DomainState → Broker → Kimi → scoped Tool → Domain Runtime → Action → Artifact → Verifier → new DomainState → Checkpoint 的真实链路作为晋级 Gate。最小持久化位于首条 E2E 之前；失败 Action 可有空产物集合，但必须保留诊断与未通过的验证状态。只有真实集成测试通过后才称为 Industrial Harness Core v0.1。
 - 约束：现有 MVP 硬编码和内存状态列入 `prototype-register.json`，架构 CI 冻结其扩展。新的具体领域 Tool、Viewer 或执行路径不能继续添加到这些上层捷径中。详细 DoD 见 `04-definition-of-done-and-architecture-tests.md`。
+
+## ADR-004：27B 上下文锚点与诊断日志
+
+- 日期：2026-09-25
+- 状态：只读观察链已实现；完整工业状态仍待 ADR-003 的 Vertical Slice
+- 决定：保持 Kimi Code 的 Agent Loop、会话与压缩实现。Harness 控制自身外部工具的输出大小，以有效 Scope 判定会话复用，每轮注入受限的文件观察 Checkpoint 锚点，并提供按页取回工具。SQLite 只保存已登记文件的路径、内容哈希和 `not_run` 验证状态；不从模型对话中生成工程事实。
+- 诊断：每轮落盘完整 SDK 可见事件和 Broker Trace，保留未截断工具结果，标记已知凭据字段，目录与文件权限分别为 `0700`、`0600`。日志与观察状态不替代 Run、Action、Verifier 或工程 Checkpoint。
+- 验证：真实 Qwen 27B 服务完成外部工具调用和自动压缩后 Checkpoint 再读取。长上下文检索在约 8k、64k、229k、244k、249k、255k 实际输入 token 下进行；细节见 [评测记录](27b-evaluation-results.md)。
 
 ## 两份提案的差异及当前取舍
 

@@ -8,10 +8,13 @@ const {resolveProjectTask, effectiveCapabilities, resourceCatalog} = require('@i
 const {capabilities} = require('@industrial-agent-harness/domain-skills');
 const {discloseDetail} = require('@industrial-agent-harness/capability-broker');
 const {KimiSession} = require('@industrial-agent-harness/agent-kimi');
+const {ObservedContextStore} = require('@industrial-agent-harness/domain-runtime');
 const {runBench} = require('./bench.cjs');
+const {main: inspectDiagnosticLog} = require('./inspect-log.cjs');
 const {defaults, validateProfile, sessionEnv, writeCliConfig} = require('@industrial-agent-harness/agent-kimi/src/model-config.cjs');
 
 const usage = `industrial-harness run --project-dir DIR --domain DOMAIN (--task TEXT | --task-file FILE) [options]
+industrial-harness inspect-log --file FILE
 
 Options:
   --scope-only                 Resolve Broker scope without starting Kimi
@@ -24,6 +27,8 @@ Options:
   --kimi-executable PATH       Kimi CLI executable (or set KIMI_EXECUTABLE)
   --approval POLICY            reject (default), approve, approve_for_session
   --artifact-manifest FILE     JSON array of {id, kind, path} inside the project
+  --state-dir DIR             Durable observed-context database directory
+  --log-dir DIR               Full diagnostic JSONL directory
   --disable-skill ID          Disable a repository skill for this run (repeatable)
   --disable-mcp ID            Disable a repository MCP server for this run (repeatable)
   --timeout-ms N               Interrupt a turn after N milliseconds
@@ -31,12 +36,6 @@ Options:
 Output is JSON Lines on stdout. API keys are read only from the environment.\n`;
 
 function emit(output, event) {output.write(`${JSON.stringify({schemaVersion: 1, ...event})}\n`);}
-
-async function digest(file) {
-  const hash = crypto.createHash('sha256');
-  for await (const chunk of fs.createReadStream(file)) hash.update(chunk);
-  return hash.digest('hex');
-}
 
 async function loadArtifacts(manifestFile, projectDir) {
   if (!manifestFile) return new Map();
@@ -49,8 +48,7 @@ async function loadArtifacts(manifestFile, projectDir) {
     const file = fs.realpathSync(path.resolve(projectDir, entry.path));
     const relativePath = path.relative(projectDir, file);
     if (!relativePath || relativePath === '..' || relativePath.startsWith(`..${path.sep}`) || path.isAbsolute(relativePath) || !fs.statSync(file).isFile()) throw Error('Artifact must be a file inside the project.');
-    const sha256 = await digest(file);
-    artifacts.set(entry.id, {file, sha256, metadata: {id: entry.id, kind: entry.kind, name: path.basename(file), relativePath, sizeBytes: fs.statSync(file).size, sha256}});
+    artifacts.set(entry.id, {file, metadata: {id: entry.id, kind: entry.kind, name: path.basename(file), relativePath, sizeBytes: fs.statSync(file).size}});
   }
   return artifacts;
 }
@@ -86,6 +84,7 @@ async function run(options, output = process.stdout, environment = process.env, 
   const configDir = fs.mkdtempSync(path.join(os.tmpdir(), 'industrial-harness-cli-'));
   fs.chmodSync(configDir, 0o700);
   let session;
+  let contextStore;
   let timeout;
   let timedOut = false;
   let interrupted = false;
@@ -98,11 +97,11 @@ async function run(options, output = process.stdout, environment = process.env, 
   const onSigint = () => onInterrupt('SIGINT');
   const onSigterm = () => onInterrupt('SIGTERM');
   try {
+    contextStore = new ObservedContextStore(projectDir, options.domain, {directory: options.stateDir || environment.INDUSTRIAL_HARNESS_STATE_DIR});
+    for (const [id, item] of artifacts) await contextStore.observeArtifact({id, kind: item.metadata.kind, file: item.file});
     const runtime = {profile, apiKey, revision: 0, executable: options.kimiExecutable || environment.KIMI_EXECUTABLE || 'kimi', shareDir: writeCliConfig(configDir, profile), env: sessionEnv(profile, apiKey), disabledMcpServers: disabled.mcpServers};
     session = new Session(projectDir, () => scope, async id => {
-      const item = artifacts.get(id);
-      if (!item || await digest(item.file) !== item.sha256) throw Error('Artifact is unavailable or changed.');
-      return item.metadata;
+      return contextStore.readArtifact(id);
     }, id => {
       const detail = discloseDetail(scope, effectiveCapabilities(capabilities, disabled), id);
       send({type: 'disclosure', level: 'L3', capabilityId: id, skills: detail.skills.map(item => item.id), tools: detail.tools.map(item => item.id)});
@@ -115,7 +114,7 @@ async function run(options, output = process.stdout, environment = process.env, 
         send({type: 'approval_decision', id: event.id, decision});
         queueMicrotask(() => {Promise.resolve().then(() => session.approve(event.id, decision)).catch(error => send({type: 'approval_error', id: event.id, message: String(error)}));});
       }
-    }, () => runtime);
+    }, () => runtime, undefined, {directory: options.logDir || environment.INDUSTRIAL_HARNESS_LOG_DIR, getBrokerTrace: () => broker.trace, getContextAnchor: () => contextStore.anchor(), readContextPage: (checkpointId, offset, limit) => contextStore.readPage(checkpointId, offset, limit)});
     process.once('SIGINT', onSigint);
     process.once('SIGTERM', onSigterm);
     if (options.timeoutMs) timeout = setTimeout(() => {timedOut = true; send({type: 'timeout', timeoutMs: Number(options.timeoutMs)}); Promise.resolve(session.interrupt()).catch(error => send({type: 'interrupt_error', message: String(error)}));}, Number(options.timeoutMs));
@@ -128,12 +127,14 @@ async function run(options, output = process.stdout, environment = process.env, 
     process.removeListener('SIGINT', onSigint);
     process.removeListener('SIGTERM', onSigterm);
     await session?.close();
+    contextStore?.close();
     fs.rmSync(configDir, {recursive: true, force: true});
   }
 }
 
 async function main() {
   try {
+    if (process.argv[2] === 'inspect-log') {inspectDiagnosticLog(process.argv.slice(3)); return;}
     if (process.argv[2] === 'bench') {
       process.exitCode = await runBench(process.argv.slice(3));
       return;

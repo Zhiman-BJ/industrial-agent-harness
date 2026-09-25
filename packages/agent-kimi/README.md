@@ -6,4 +6,6 @@ Thin integration around `@moonshot-ai/kimi-agent-sdk`, pinned to `0.1.8` in this
 
 Harness 外部工具返回最多 16 KiB UTF-8 JSON；能力详情可按 `skills`、`tools`、`verification` 分段获取。每轮 Industrial Context 最多 8 KiB。SDK 的上下文占用和压缩事件会汇总为 `context-metrics`；界面工具结果截断会标注原始字节数。这些边界不作用于 Kimi 原生工具或 MCP 工具，也不改写 Kimi 的上下文压缩。
 
+每轮生成一份完整的 JSONL 诊断日志，保留 Broker Trace、实际送入 SDK 的提示、SDK 暴露的原始事件和未截断的工具结果。固定 CLI 版本的 `context.jsonl` 与 `wire.jsonl` 也在每轮结束时保存受限权限的快照，日志记录路径、字节数及 SHA-256；快照失败会显式记录。日志路径通过 `diagnostic-log` 事件给 CLI 与桌面 Debug 模式。已知 API Key 和常见凭据字段会脱敏；日志仍含工程数据。若提供观察状态回调，提示中会附带最小 Checkpoint 锚点，`industrial_context_read` 可按页取回；该工具只报告文件哈希观察，不报告工程验收结论。
+
 每个 SDK 会话还使用独立临时 Kimi share directory：复制模型配置，以 `extra_skill_dirs` 添加经过 Project 禁用策略和 Broker Scope 筛选的仓库 Skill，并生成会话 `mcp.json`。Kimi 原有的项目/用户 Skill 搜索路径仍可使用。关闭会话时删除这份临时配置；用户的 `~/.kimi` 不会被改写。当前默认 MCP 列表为空。

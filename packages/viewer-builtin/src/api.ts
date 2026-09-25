@@ -75,6 +75,7 @@ export interface DomainOption {id: string; label: string; emoji: string}
 export interface ResourceCatalog {skills: Array<{id: string; domain: string; title: string; enabledByDefault: boolean}>; mcpServers: Array<{id: string; domain: string; title: string; enabledByDefault: boolean}>}
 
 export type AgentEvent =
+  | {type: 'diagnostic-log'; traceId: string; path: string}
   | {type: 'text'; text: string}
   | {type: 'thinking'; text: string}
   | {type: 'approval'; id: string; description: string; action: string}

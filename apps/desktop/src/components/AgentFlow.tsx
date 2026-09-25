@@ -16,6 +16,7 @@ export function AgentFlow({events, running, debug, approve}: {events: AgentEvent
   }
 
   return <section className="ia-agent-flow">{events.map((event, index) => {
+    if (event.type === 'diagnostic-log' && debug) return <div className="ia-agent-minor" key={index}>Full diagnostic log: {event.path}</div>;
     if (event.type === 'text') return <article className="ia-agent-text" key={index}><p>{event.text}</p></article>;
     if (event.type === 'thinking') return <ThinkingPreview key={index} text={event.text} active={running && index === lastActivity}/>;
     if (event.type === 'approval') return <div className="ia-approval" key={index}><b>Approval requested · {event.action}</b><p>{event.description}</p><button onClick={() => approve(event.id, 'approve')}>Approve</button><button onClick={() => approve(event.id, 'reject')}>Reject</button></div>;

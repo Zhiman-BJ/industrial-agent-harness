@@ -12,6 +12,7 @@ const {resolve, discloseDetail} = require('../../../packages/capability-broker/s
 const {resolveProjectTask, effectiveCapabilities, resourceCatalog} = require('@industrial-agent-harness/harness-core');
 const {capabilities, listDomains} = require('@industrial-agent-harness/domain-skills');
 const {KimiSession} = require('../../../packages/agent-kimi/src/index.cjs');
+const {ObservedContextStore} = require('@industrial-agent-harness/domain-runtime');
 const {readProfile, saveProfile, validateProfile, writeCliConfig, sessionEnv} = require('./model-config.cjs');
 const {readBindings, addBinding, saveBindings} = require('./project-bindings.cjs');
 
@@ -27,6 +28,7 @@ let viewerProtocol;
 let brokerScope;
 let brokerTrace = [];
 let agent;
+let contextStore;
 let projectDir;
 let projectBindings = {projects: [], activeId: null};
 let mainWindow;
@@ -38,8 +40,15 @@ function projectConfigDir() {return path.join(app.getPath('userData'), 'workspac
 function activeProject() {return projectBindings.projects.find(item => item.id === projectBindings.activeId) || null;}
 function projectSnapshot() {return {...projectBindings, projectDir: projectDir || null};}
 function clearProjectArtifacts() {
+  contextStore?.close(); contextStore = undefined;
   artifacts.clear();
   netlistSessions.clear(); activeLayoutToken = undefined;
+}
+function observedContext() {
+  const domain = activeProject()?.domain;
+  if (!projectDir || !domain) throw Error('Choose a project with a domain first.');
+  contextStore ||= new ObservedContextStore(projectDir, domain);
+  return contextStore;
 }
 function keyFile() {return path.join(configDir(), 'api-key.bin');}
 function canPersistKey() {return safeStorage.isEncryptionAvailable() && (process.platform !== 'linux' || safeStorage.getSelectedStorageBackend() !== 'basic_text');}
@@ -90,9 +99,10 @@ async function registerArtifact(entry) {
   const file = fs.realpathSync(entry.file);
   const stat = fs.statSync(file);
   if (!stat.isFile()) throw Error('Artifact is not a file.');
+  const observed = activeProject()?.domain ? await observedContext().observeArtifact({id: entry.id, kind: entry.kind, file}) : null;
   const artifact = {
     id: entry.id, kind: entry.kind, name: entry.name, design: entry.design,
-    sizeBytes: stat.size, sha256: await digest(file),
+    sizeBytes: observed?.sizeBytes ?? stat.size, sha256: observed?.sha256 ?? await digest(file),
     source: 'project file',
   };
   artifacts.set(entry.id, {artifact, file});
@@ -274,7 +284,7 @@ function registerHandlers() {
     if (!projectDir) throw Error('Choose an engineering project first.');
     if (typeof task !== 'string' || !task.trim()) throw Error('Describe the task first.');
     if (!brokerScope) throw Error('Resolve the task scope first.');
-    agent ||= new KimiSession(projectDir, () => brokerScope, async id => (await checked(id)).artifact, loadDetail, event => mainWindow?.webContents.send('agent:event', event), runtimeConfig);
+    agent ||= new KimiSession(projectDir, () => brokerScope, id => observedContext().readArtifact(id), loadDetail, event => mainWindow?.webContents.send('agent:event', event), runtimeConfig, undefined, {getBrokerTrace: () => brokerTrace, getContextAnchor: () => observedContext().anchor(), readContextPage: (checkpointId, offset, limit) => observedContext().readPage(checkpointId, offset, limit)});
     void agent.run(task).catch(error => mainWindow?.webContents.send('agent:event', {type: 'error', message: String(error)}));
     return {started: true};
   });

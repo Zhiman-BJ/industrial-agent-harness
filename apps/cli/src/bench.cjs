@@ -39,7 +39,7 @@ async function executeScenario(item, outputFile, Session) {
     try {fs.writeSync(fd, chunk); callback();} catch (error) {callback(error);}
   }});
   try {
-    const exitCode = await run({projectDir: item.projectDir, domain: item.domain, task: item.task, scopeOnly: item.scopeOnly, timeoutMs: item.timeoutMs, artifactManifest: item.artifactManifest, disabledSkills: item.disabledSkills, disabledMcpServers: item.disabledMcpServers}, output, process.env, Session);
+    const exitCode = await run({projectDir: item.projectDir, domain: item.domain, task: item.task, scopeOnly: item.scopeOnly, timeoutMs: item.timeoutMs, artifactManifest: item.artifactManifest, disabledSkills: item.disabledSkills, disabledMcpServers: item.disabledMcpServers, stateDir: path.join(path.dirname(outputFile), 'state'), logDir: path.join(path.dirname(outputFile), 'logs')}, output, process.env, Session);
     return {exitCode};
   } catch (error) {
     fs.writeSync(fd, `${JSON.stringify({schemaVersion: 1, type: 'error', message: String(error)})}\n`);

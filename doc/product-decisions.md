@@ -106,3 +106,14 @@
 ### 决定
 
 无 UI Core 与 Chip Pack 使用不同 GitHub Release 标签。Chip Pack 独立提供固定版本的 EDA Harness MCP、Skill、Kimi 适配和工具镜像构建说明；它可以先用于芯片场景测试。Core Release 不宣称已装入 Chip Pack，也不把独立 MCP 的执行结果计作 Core Broker/Domain Runtime 垂直闭环验收。未来完成 Broker Gateway 后再增加两包的兼容性与 Scope 集成测试。
+
+## PD-009：保留完整 Agent 诊断日志
+
+- 日期：2026-09-25
+- 状态：已确定
+- 来源：27B 小模型状态调试需求
+- 原因：折叠的聊天界面和截断的工具结果无法还原模型当时看到的输入、工具返回与压缩过程。
+
+### 决定
+
+每次 Agent 运行保存一份可按 Trace ID 关联的 JSONL 文件，记录 Broker 决策、实际提示词、SDK 暴露的原始事件、完整工具返回、审批、压缩及结果。CLI 输出日志路径，桌面 Debug 模式显示路径。日志写在受限权限的用户数据目录，脱敏已知模型凭据；界面仍采用紧凑呈现。诊断日志是调试证据，不自动构成工程 Verification。

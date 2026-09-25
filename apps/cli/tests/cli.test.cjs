@@ -73,7 +73,7 @@ test('headless CLI runs a task and emits agent and approval events', async t => 
     approve(id, decision) {approvals.push({id, decision});}
     async close() {}
   }
-  const options = parseArgs(['run', '--project-dir', projectDir, '--domain', 'chip', '--task', 'Inspect netlist signals']);
+  const options = parseArgs(['run', '--project-dir', projectDir, '--domain', 'chip', '--task', 'Inspect netlist signals', '--state-dir', path.join(projectDir, 'state')]);
   assert.equal(await run(options, output, {KIMI_API_KEY: 'test-key'}, FakeSession), 0);
   assert.deepEqual(rows.map(item => item.type), ['scope', 'agent_event', 'agent_event', 'approval_decision', 'agent_event', 'result']);
   assert.deepEqual(approvals, [{id: 'a1', decision: 'reject'}]);
