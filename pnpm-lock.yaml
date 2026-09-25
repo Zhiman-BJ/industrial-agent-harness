@@ -16,6 +16,9 @@ importers:
       '@industrial-agent-harness/capability-broker':
         specifier: workspace:*
         version: link:../../packages/capability-broker
+      '@industrial-agent-harness/domain-runtime':
+        specifier: workspace:*
+        version: link:../../packages/domain-runtime
       '@industrial-agent-harness/domain-skills':
         specifier: workspace:*
         version: link:../../packages/domain-skills
@@ -28,6 +31,9 @@ importers:
       '@industrial-agent-harness/agent-kimi':
         specifier: workspace:*
         version: link:../../packages/agent-kimi
+      '@industrial-agent-harness/domain-runtime':
+        specifier: workspace:*
+        version: link:../../packages/domain-runtime
       '@industrial-agent-harness/domain-skills':
         specifier: workspace:*
         version: link:../../packages/domain-skills
@@ -83,11 +89,19 @@ importers:
 
   packages/capability-broker: {}
 
-  packages/contracts: {}
+  packages/contracts:
+    dependencies:
+      zod:
+        specifier: 4.6.5
+        version: 4.6.5
 
   packages/domain-mcp: {}
 
-  packages/domain-runtime: {}
+  packages/domain-runtime:
+    dependencies:
+      '@industrial-agent-harness/contracts':
+        specifier: workspace:*
+        version: link:../contracts
 
   packages/domain-skills: {}
 

@@ -1,5 +1,8 @@
 {
   "name": "@industrial-agent-harness/contracts",
   "version": "0.0.0",
-  "private": true
+  "private": true,
+  "main": "src/index.cjs",
+  "scripts": {"test": "node --test tests/*.test.cjs"},
+  "dependencies": {"zod": "4.6.5"}
 }

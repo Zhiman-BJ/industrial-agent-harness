@@ -1,7 +1,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const valueFlags = new Set(['project-dir', 'domain', 'task', 'task-file', 'provider', 'endpoint', 'model', 'context-size', 'approval', 'api-key-env', 'kimi-executable', 'artifact-manifest', 'timeout-ms', 'disable-skill', 'disable-mcp']);
+const valueFlags = new Set(['project-dir', 'domain', 'task', 'task-file', 'provider', 'endpoint', 'model', 'context-size', 'approval', 'api-key-env', 'kimi-executable', 'artifact-manifest', 'timeout-ms', 'disable-skill', 'disable-mcp', 'state-dir', 'log-dir']);
 
 function parseArgs(argv) {
   if (argv[0] === '--help' || argv[0] === '-h' || (argv[0] === 'run' && (argv[1] === '--help' || argv[1] === '-h'))) return {help: true};

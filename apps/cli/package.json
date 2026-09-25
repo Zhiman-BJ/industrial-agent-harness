@@ -5,6 +5,7 @@
   "bin": {"industrial-harness": "src/main.cjs"},
   "scripts": {"test": "node --test tests/*.test.cjs"},
   "dependencies": {
+    "@industrial-agent-harness/domain-runtime": "workspace:*",
     "@industrial-agent-harness/agent-kimi": "workspace:*",
     "@industrial-agent-harness/capability-broker": "workspace:*",
     "@industrial-agent-harness/domain-skills": "workspace:*",

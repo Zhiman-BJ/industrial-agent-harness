@@ -75,14 +75,16 @@ export interface DomainOption {id: string; label: string; emoji: string}
 export interface ResourceCatalog {skills: Array<{id: string; domain: string; title: string; enabledByDefault: boolean}>; mcpServers: Array<{id: string; domain: string; title: string; enabledByDefault: boolean}>}
 
 export type AgentEvent =
+  | {type: 'diagnostic-log'; traceId: string; path: string}
   | {type: 'text'; text: string}
   | {type: 'thinking'; text: string}
   | {type: 'approval'; id: string; description: string; action: string}
   | {type: 'tool'; id: string; name: string; arguments: string}
-  | {type: 'tool-result'; id: string; error: boolean; message: string; output: string}
+  | {type: 'tool-result'; id: string; error: boolean; message: string; output: string; outputBytes?: number; outputTruncated?: boolean}
   | {type: 'todo'; items: Array<{title: string; status: 'pending' | 'in_progress' | 'done'}>}
   | {type: 'status'; contextUsage: number | null; tokenUsage: {input_other: number; output: number; input_cache_read: number; input_cache_creation: number} | null}
   | {type: 'compaction'; state: 'begin' | 'end'}
+  | {type: 'context-metrics'; peakContextUsage: number | null; lastContextUsage: number | null; compactions: number; toolResults: number; peakToolResultBytes: number}
   | {type: 'step'; number: number}
   | {type: 'done'; result: {status: string}}
   | {type: 'error'; message: string};
