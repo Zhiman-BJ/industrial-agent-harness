@@ -49,6 +49,9 @@ let sessionApiKey = '';
 let modelRevision = 0;
 let appSettings = {guiPluginEnabled: false};
 let guiBridge;
+// The gui plugin is shared across chats, so its tool-call records live in a
+// bounded buffer that every chat's broker trace merges at read time.
+let guiTraceLog = [];
 const chats = new ChatStore(process.argv.some(flag => flag.endsWith('-selftest')) ? path.join(app.getPath('userData'), 'chats') : defaultChatDirectory());
 let activeChatId;
 function chatList() {return {chats: activeProject()?.domain ? chats.list(projectDir, activeProject().domain).map(chat => ({...chat, running: sessions.busy(sessions.get(activeProject(), chat.id)), awaitingApproval: Boolean(sessions.get(activeProject(), chat.id).agent?.pendingApprovals.size)})) : [], activeId: activeChatId || null, sessions: sessions.snapshots()};}
@@ -119,7 +122,10 @@ function guiPlugin() {
     guiBridge = createGuiPlugin({
       enabled: () => appSettings.guiPluginEnabled,
       installedDir: guiBridgeDir(),
-      log: (canonicalId, risk, args, info) => brokerTrace.push({level: 'L2', event: 'plugin.tool-call', detail: {plugin: 'computer-use', tool: canonicalId, risk, args, ...info}}),
+      log: (canonicalId, risk, args, info) => {
+        guiTraceLog.push({level: 'L2', event: 'plugin.tool-call', detail: {plugin: 'computer-use', tool: canonicalId, risk, args, ...info}});
+        if (guiTraceLog.length > 500) guiTraceLog.splice(0, guiTraceLog.length - 500);
+      },
     });
   }
   return guiBridge;
@@ -472,7 +478,7 @@ function registerHandlers() {
       };
       entry.agent ||= new KimiSession(entry.project.path, () => entry.scope, id => sessionContext(entry).readArtifact(id), id => loadDetail(id, entry), emit, () => runtimeConfig(entry.project),
         process.argv.includes('--parallel-selftest') ? require('./parallel-selftest.cjs').createSession : process.argv.includes('--image-input-selftest') ? require('./image-input-selftest.cjs').createSession : process.argv.includes('--agent-log-selftest') ? require('./agent-log-selftest.cjs').createSession : process.argv.includes('--chat-selftest') ? require('./chat-selftest.cjs').createSession : undefined,
-        {directory: diagnosticDirectory(), getBrokerTrace: () => entry.trace, getContextAnchor: () => sessionContext(entry).anchor(), readContextPage: (checkpointId, offset, limit) => sessionContext(entry).readPage(checkpointId, offset, limit), resolveSession: key => chats.runtimeSession(entry.id, key), sessionInitialized: id => chats.initialized(id)}, [guiPlugin()]);
+        {directory: diagnosticDirectory(), getBrokerTrace: () => [...entry.trace, ...guiTraceLog], getContextAnchor: () => sessionContext(entry).anchor(), readContextPage: (checkpointId, offset, limit) => sessionContext(entry).readPage(checkpointId, offset, limit), resolveSession: key => chats.runtimeSession(entry.id, key), sessionInitialized: id => chats.initialized(id)}, [guiPlugin()]);
       entry.agent.emit = emit;
       if (images.length) emit({type: 'user-images', images});
       void entry.agent.run(task, images).catch(error => emit({type: 'error', message: String(error)})).finally(() => {
