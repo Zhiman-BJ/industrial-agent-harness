@@ -65,8 +65,10 @@ Harness 提供结构化的 Industrial Context，例如领域、阶段、当前�
 
 扩展点分为 Tool、Bridge、Viewer 和 Verifier。Tool 执行动作，Bridge 连接运行中的专业软件，Viewer 展示产物和状态，Verifier 依据领域规则评价结果。Viewer 的内部渲染与外部专业软件打开使用不同路径；CAD、Godot 等复杂软件在内部展示关键产物，不重建完整工作台。详细边界见 [Viewer 层设计](viewer-layer.md)。优先使用软件提供的原生 API、CLI 或 IPC；交互界面自动化仅在合适场景下补充。
 
+除领域扩展点外，Harness 支持应用级横切插件（ADR-005）：插件由 `packages/computer-use-bridge` 这类无界面包承载，工具面通过 Kimi 会话 `externalTools` 声明式注册，handler 保留在 Harness 侧作为执行边界，审批在启用期间按会话自动批准。横切插件不进入 Domain Pack、Capability 解析或 Broker Scope。首个横切插件是 computer-use（GUI 自动化）；其调用尚未进入 Domain Runtime 的 Action/Verification 记录，该缺口登记在 Prototype Register。
+
 ## 仓库映射
 
-已落实的目录：`apps/desktop`、`apps/cli`、`packages/harness-core`、`packages/agent-kimi`、`packages/contracts`、`packages/domain-skills`、`packages/domain-runtime`、`packages/domain-mcp`、`packages/viewer-core`、`packages/viewer-builtin`。CLI 与桌面端共用 Broker、项目 Domain 约束、Capability Registry 和 Kimi Integration；CLI 的无模型 Scope 路径已验证，真实模型任务仍需 bench 环境验证。Viewer Core 已有初始类型契约；三组 EDA Viewer 已接入桌面端。Kimi SDK 固定为 `0.1.8`，开发环境 Kimi CLI 固定为 `1.51.0`。Domain Runtime 与 Domain MCP 目录目前主要是边界声明。`apps/desktop/viewer-host` 是桌面 Viewer 容器的结构占位。
+已落实的目录：`apps/desktop`、`apps/cli`、`packages/harness-core`、`packages/agent-kimi`、`packages/contracts`、`packages/domain-skills`、`packages/domain-runtime`、`packages/domain-mcp`、`packages/viewer-core`、`packages/viewer-builtin`、`packages/computer-use-bridge`。CLI 与桌面端共用 Broker、项目 Domain 约束、Capability Registry 和 Kimi Integration；CLI 的无模型 Scope 路径已验证，真实模型任务仍需 bench 环境验证。Viewer Core 已有初始类型契约；三组 EDA Viewer 已接入桌面端。Kimi SDK 固定为 `0.1.8`，开发环境 Kimi CLI 固定为 `1.51.0`。Domain Runtime 与 Domain MCP 目录目前主要是边界声明。`apps/desktop/viewer-host` 是桌面 Viewer 容器的结构占位。
 
 计划新增的职责包括完整本地控制面、Domain Pack SDK、Bridge/Verifier 扩展点、参考领域和打包流水线。桌面主进程仍包含部分项目与会话编排逻辑，后续应继续下沉到共享的无界面层；CLI 不通过这些 Electron 代码调用任务。具体拆包以实现时的依赖边界为准。

@@ -9,3 +9,7 @@ Harness 外部工具返回最多 16 KiB UTF-8 JSON；能力详情可按 `skills`
 每轮生成一份完整的 JSONL 诊断日志，保留 Broker Trace、实际送入 SDK 的提示、SDK 暴露的原始事件和未截断的工具结果。固定 CLI 版本的 `context.jsonl` 与 `wire.jsonl` 也在每轮结束时保存受限权限的快照，日志记录路径、字节数及 SHA-256；快照失败会显式记录。日志路径通过 `diagnostic-log` 事件给 CLI 与桌面 Debug 模式。已知 API Key 和常见凭据字段会脱敏；日志仍含工程数据。若提供观察状态回调，提示中会附带最小 Checkpoint 锚点，`industrial_context_read` 可按页取回；该工具只报告文件哈希观察，不报告工程验收结论。
 
 每个 SDK 会话还使用独立临时 Kimi share directory：复制模型配置，以 `extra_skill_dirs` 添加经过 Project 禁用策略和 Broker Scope 筛选的仓库 Skill，并生成会话 `mcp.json`。Kimi 原有的项目/用户 Skill 搜索路径仍可使用。关闭会话时删除这份临时配置；用户的 `~/.kimi` 不会被改写。当前默认 MCP 列表为空。
+
+## 横切插件注入
+
+`KimiSession` 构造函数的第 9 个参数 `plugins` 接收横切插件对象（如 `computer-use-bridge` 的 `createGuiPlugin`），每项形如 `{name, enabled(), toolNames, materializeSkill(dir), toolsFactory()}`。启用的插件会把 skill 目录并入会话 `extra_skill_dirs`，并把其外部工具与 Broker 工具一起注册；本包不依赖任何具体插件，也不感知其领域属性。启用即授权：插件工具触发的 `ApprovalRequest`（按 `sender` 工具名匹配）由本包自动以 `approve_for_session` 应答，不上抛 UI；非插件工具的审批卡片保持不变。插件工具自身的执行边界校验（如会话内被禁用即拒绝）由各插件在自己的 handler 内完成。

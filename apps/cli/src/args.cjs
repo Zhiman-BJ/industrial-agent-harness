@@ -11,6 +11,7 @@ function parseArgs(argv) {
     const flag = argv[index];
     if (flag === '--scope-only') {options.scopeOnly = true; continue;}
     if (flag === '--no-thinking') {options.thinking = false; continue;}
+    if (flag === '--enable-gui') {options.enableGui = true; continue;}
     if (!flag.startsWith('--') || !valueFlags.has(flag.slice(2))) throw Error(`Unknown option: ${flag}`);
     if (!argv[index + 1] || argv[index + 1].startsWith('--')) throw Error(`Missing value for ${flag}.`);
     if (flag === '--disable-skill') {options.disabledSkills.push(argv[++index]); continue;}

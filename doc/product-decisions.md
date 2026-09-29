@@ -117,3 +117,18 @@
 ### 决定
 
 每次 Agent 运行保存一份可按 Trace ID 关联的 JSONL 文件，记录 Broker 决策、实际提示词、SDK 暴露的原始事件、完整工具返回、审批、压缩及结果。CLI 输出日志路径，桌面 Debug 模式显示路径。日志写在受限权限的用户数据目录，脱敏已知模型凭据；界面仍采用紧凑呈现。诊断日志是调试证据，不自动构成工程 Verification。
+
+## PD-010：Computer Use 插件的开关与审批语义
+
+- 日期：2026-09-28
+- 状态：已确定
+- 来源：computer-use MCP 工具接入讨论
+- 原因：驱动桌面 GUI 会反复触发审批，逐次确认打断操作节奏；GUI 能力与 Project 的工业 Domain 无关，不应放进 Domain 选择或 Broker Scope。
+
+### 决定
+
+1. 桌面端在全局 Settings 中提供「Computer Use」开关（与 Project Domain 无关的应用级设置）。开启时自动下载并校验固定版本的 computer-use 二进制，Settings 中显示安装进度（下载/校验/就绪）；关闭后 Agent 无法再调用 GUI 工具。
+2. CLI 用 `--enable-gui` 显式开启，运行前自动安装二进制并输出 `gui_install` 事件；不传该参数时完全不安装、不注册任何 GUI 工具。
+3. 启用即授权：插件开启期间，GUI 工具的审批由 Agent 会话自动批准一次并整场会话有效，不逐次弹窗；未开启时行为不变。首次真实调用触发的 macOS 系统权限（截屏、辅助功能）由操作系统提示，在系统设置中授予一次后不再重复。
+4. GUI 工具不进入 Domain 选择、Capability 解析或 Broker Scope；它们的可见性只取决于插件开关。
+

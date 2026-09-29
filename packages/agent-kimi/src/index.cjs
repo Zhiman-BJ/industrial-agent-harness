@@ -44,16 +44,21 @@ function industrialContext(scope, anchor = null) {
   return complete;
 }
 
-function prepareSessionFiles(scope, runtime) {
+function prepareSessionFiles(scope, runtime, plugins = []) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'industrial-kimi-session-'));
   fs.chmodSync(directory, 0o700);
   try {
     const skillsDir = materializeSkills(scope, directory);
+    const skillDirs = [skillsDir, ...enabledPlugins(plugins).map(plugin => plugin.materializeSkill(directory))];
     const modelConfig = fs.readFileSync(path.join(runtime.shareDir, 'config.toml'), 'utf8');
-    fs.writeFileSync(path.join(directory, 'config.toml'), `extra_skill_dirs = [${JSON.stringify(skillsDir)}]\n${modelConfig}`, {mode: 0o600});
+    fs.writeFileSync(path.join(directory, 'config.toml'), `extra_skill_dirs = ${JSON.stringify(skillDirs)}\n${modelConfig}`, {mode: 0o600});
     writeMcpConfig(directory, selectMcpServers(scope, runtime.disabledMcpServers));
     return directory;
   } catch (error) {fs.rmSync(directory, {recursive: true, force: true}); throw error;}
+}
+
+function enabledPlugins(plugins) {
+  return (plugins || []).filter(plugin => plugin?.enabled?.() === true);
 }
 
 function externalTools(getScope, lookupArtifact, disclose, readContextPage) {
@@ -98,7 +103,7 @@ function externalTools(getScope, lookupArtifact, disclose, readContextPage) {
 }
 
 class KimiSession {
-  constructor(workDir, getScope, lookupArtifact, disclose, emit, getRuntime, sessionFactory = createSession, diagnostics = {}) {
+  constructor(workDir, getScope, lookupArtifact, disclose, emit, getRuntime, sessionFactory = createSession, diagnostics = {}, plugins = []) {
     this.workDir = workDir;
     this.getScope = getScope;
     this.lookupArtifact = lookupArtifact;
@@ -107,12 +112,14 @@ class KimiSession {
     this.getRuntime = getRuntime;
     this.sessionFactory = sessionFactory;
     this.diagnostics = diagnostics;
+    this.plugins = plugins;
   }
   async run(task) {
     if (this.turn) throw Error('A Kimi turn is already running.');
     const scope = this.getScope();
     if (!scope) throw Error('Resolve capabilities before starting the agent.');
     const runtime = this.getRuntime();
+    this.activePluginTools = new Set(enabledPlugins(this.plugins).flatMap(plugin => plugin.toolNames || []));
     if (!runtime.apiKey) throw Error('Set a model API key before running Kimi.');
     const currentScopeKey = scopeKey(scope);
     const log = createDiagnosticLog(this.workDir, {directory: this.diagnostics.directory, apiKey: runtime.apiKey});
@@ -134,7 +141,7 @@ class KimiSession {
         await this.session?.close();
         this.session = undefined;
         if (this.sessionConfigDir) fs.rmSync(this.sessionConfigDir, {recursive: true, force: true});
-        this.sessionConfigDir = prepareSessionFiles(scope, runtime);
+        this.sessionConfigDir = prepareSessionFiles(scope, runtime, this.plugins);
         this.session = this.sessionFactory({
           workDir: this.workDir,
           executable: runtime.executable,
@@ -143,7 +150,7 @@ class KimiSession {
           thinking: runtime.profile.thinking,
           env: runtime.env,
           yoloMode: false,
-          externalTools: externalTools(this.getScope, this.lookupArtifact, this.disclose, this.diagnostics.readContextPage),
+          externalTools: [...externalTools(this.getScope, this.lookupArtifact, this.disclose, this.diagnostics.readContextPage), ...enabledPlugins(this.plugins).flatMap(plugin => plugin.toolsFactory())],
           clientInfo: {name: 'industrial-agent-harness', version: '0.0.0'},
         });
         this.currentScopeKey = currentScopeKey;
@@ -189,8 +196,14 @@ class KimiSession {
     if (event.type === 'ContentPart') {
       if (event.payload.type === 'text') this.emitAgent({type: 'text', text: event.payload.text});
       else if (event.payload.type === 'think') this.emitAgent({type: 'thinking', text: event.payload.think});
-    } else if (event.type === 'ApprovalRequest') this.emitAgent({type: 'approval', id: event.payload.id, description: event.payload.description, action: event.payload.action});
-    else if (event.type === 'ToolCall') this.emitAgent({type: 'tool', id: event.payload.id, name: event.payload.function.name, arguments: event.payload.function.arguments || ''});
+    } else if (event.type === 'ApprovalRequest') {
+      if (this.activePluginTools.has(event.payload.sender)) {
+        // Enabling the plugin is the authorization: auto-approve its tool approvals
+        // for this session instead of surfacing them to the user.
+        this.log?.record('plugin.auto-approve', {sender: event.payload.sender, id: event.payload.id});
+        this.turn.approve(event.payload.id, 'approve_for_session').catch(error => this.emitAgent({type: 'approval_error', id: event.payload.id, message: String(error)}));
+      } else this.emitAgent({type: 'approval', id: event.payload.id, description: event.payload.description, action: event.payload.action});
+    } else if (event.type === 'ToolCall') this.emitAgent({type: 'tool', id: event.payload.id, name: event.payload.function.name, arguments: event.payload.function.arguments || ''});
     else if (event.type === 'ToolResult') {
       const value = event.payload.return_value;
       this.turnMetrics.toolResults++;

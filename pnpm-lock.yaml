@@ -16,6 +16,9 @@ importers:
       '@industrial-agent-harness/capability-broker':
         specifier: workspace:*
         version: link:../../packages/capability-broker
+      '@industrial-agent-harness/computer-use-bridge':
+        specifier: workspace:*
+        version: link:../../packages/computer-use-bridge
       '@industrial-agent-harness/domain-runtime':
         specifier: workspace:*
         version: link:../../packages/domain-runtime
@@ -31,6 +34,9 @@ importers:
       '@industrial-agent-harness/agent-kimi':
         specifier: workspace:*
         version: link:../../packages/agent-kimi
+      '@industrial-agent-harness/computer-use-bridge':
+        specifier: workspace:*
+        version: link:../../packages/computer-use-bridge
       '@industrial-agent-harness/domain-runtime':
         specifier: workspace:*
         version: link:../../packages/domain-runtime
@@ -88,6 +94,12 @@ importers:
         version: 4.6.5
 
   packages/capability-broker: {}
+
+  packages/computer-use-bridge:
+    dependencies:
+      zod:
+        specifier: 4.6.5
+        version: 4.6.5
 
   packages/contracts:
     dependencies:

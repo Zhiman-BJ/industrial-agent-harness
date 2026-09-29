@@ -13,6 +13,8 @@ const {resolveProjectTask, effectiveCapabilities, resourceCatalog} = require('@i
 const {capabilities, listDomains} = require('@industrial-agent-harness/domain-skills');
 const {KimiSession} = require('../../../packages/agent-kimi/src/index.cjs');
 const {ObservedContextStore} = require('@industrial-agent-harness/domain-runtime');
+const {createGuiPlugin, ensureInstalled, status: guiBridgeStatus} = require('@industrial-agent-harness/computer-use-bridge');
+const {readSettings, saveSettings} = require('./harness-settings.cjs');
 const {readProfile, saveProfile, validateProfile, writeCliConfig, sessionEnv} = require('./model-config.cjs');
 const {readBindings, addBinding, saveBindings} = require('./project-bindings.cjs');
 
@@ -34,9 +36,12 @@ let projectBindings = {projects: [], activeId: null};
 let mainWindow;
 let sessionApiKey = '';
 let modelRevision = 0;
+let appSettings = {guiPluginEnabled: false};
+let guiBridge;
 
 function configDir() {return path.join(app.getPath('userData'), 'model');}
 function projectConfigDir() {return path.join(app.getPath('userData'), 'workspace');}
+function guiBridgeDir() {return path.join(app.getPath('userData'), 'gui-bridge');}
 function activeProject() {return projectBindings.projects.find(item => item.id === projectBindings.activeId) || null;}
 function projectSnapshot() {return {...projectBindings, projectDir: projectDir || null};}
 function clearProjectArtifacts() {
@@ -63,6 +68,20 @@ function kimiExecutable() {
   return fs.existsSync(local) ? local : 'kimi';
 }
 function modelStatus() {return {...readProfile(configDir()), hasApiKey: Boolean(readApiKey()), keyPersisted: canPersistKey() && fs.existsSync(keyFile())};}
+function guiPlugin() {
+  if (!guiBridge) {
+    guiBridge = createGuiPlugin({
+      enabled: () => appSettings.guiPluginEnabled,
+      installedDir: guiBridgeDir(),
+      log: (canonicalId, risk, args, info) => brokerTrace.push({level: 'L2', event: 'plugin.tool-call', detail: {plugin: 'computer-use', tool: canonicalId, risk, args, ...info}}),
+    });
+  }
+  return guiBridge;
+}
+function guiBridgeState() {
+  const installed = guiBridgeStatus(guiBridgeDir());
+  return {enabled: appSettings.guiPluginEnabled, install: installed.state, version: installed.version?.tag || null};
+}
 function runtimeConfig() {
   const profile = readProfile(configDir());
   const apiKey = readApiKey();
@@ -153,6 +172,24 @@ function registerHandlers() {
   ipcMain.handle('broker:detail', (_event, capabilityId) => loadDetail(capabilityId));
   ipcMain.handle('broker:trace', () => brokerTrace);
   ipcMain.handle('model:get', () => modelStatus());
+  ipcMain.handle('settings:gui-state', () => guiBridgeState());
+  ipcMain.handle('settings:set-gui', (_event, {enabled}) => {
+    const next = Boolean(enabled);
+    const previous = appSettings.guiPluginEnabled;
+    appSettings = {...appSettings, guiPluginEnabled: next};
+    saveSettings(configDir(), appSettings);
+    // Enabling is the authorization; a session change picks up the new tool set.
+    if (next && !previous) {
+      void agent?.close().catch(() => {});
+      agent = undefined;
+    }
+    if (next) {
+      void ensureInstalled(guiBridgeDir(), process.env, (phase, detail) => mainWindow?.webContents.send('settings:gui-progress', {phase, ...(detail && typeof detail === 'object' ? {detail: Object.keys(detail)} : {})}))
+        .then(result => mainWindow?.webContents.send('settings:gui-progress', {phase: 'ready', tag: result.tag, cached: Boolean(result.cached)}))
+        .catch(error => mainWindow?.webContents.send('settings:gui-progress', {phase: 'error', error: String(error)}));
+    }
+    return guiBridgeState();
+  });
   ipcMain.handle('model:save', async (_event, request) => {
     if (agent?.turn) throw Error('Stop the current Kimi turn before changing the model.');
     const profile = validateProfile(request);
@@ -177,7 +214,7 @@ function registerHandlers() {
     const result = spawnSync(executable, ['--version'], {encoding: 'utf8', timeout: 3000});
     const help = result.status === 0 ? spawnSync(executable, ['--help'], {encoding: 'utf8', timeout: 3000}) : null;
     const available = !result.error && result.status === 0 && help?.status === 0 && help.stdout.includes('--wire');
-    return {available, version: available ? result.stdout.split('\n')[0].trim() : '', projectDir: projectDir || null, configured: Boolean(readApiKey())};
+    return {available, version: available ? result.stdout.split('\n')[0].trim() : '', projectDir: projectDir || null, configured: Boolean(readApiKey()), gui: guiBridgeState()};
   });
   ipcMain.handle('project:bindings', () => projectSnapshot());
   ipcMain.handle('project:set-domain', async (_event, request) => {
@@ -284,7 +321,7 @@ function registerHandlers() {
     if (!projectDir) throw Error('Choose an engineering project first.');
     if (typeof task !== 'string' || !task.trim()) throw Error('Describe the task first.');
     if (!brokerScope) throw Error('Resolve the task scope first.');
-    agent ||= new KimiSession(projectDir, () => brokerScope, id => observedContext().readArtifact(id), loadDetail, event => mainWindow?.webContents.send('agent:event', event), runtimeConfig, undefined, {getBrokerTrace: () => brokerTrace, getContextAnchor: () => observedContext().anchor(), readContextPage: (checkpointId, offset, limit) => observedContext().readPage(checkpointId, offset, limit)});
+    agent ||= new KimiSession(projectDir, () => brokerScope, id => observedContext().readArtifact(id), loadDetail, event => mainWindow?.webContents.send('agent:event', event), runtimeConfig, undefined, {getBrokerTrace: () => brokerTrace, getContextAnchor: () => observedContext().anchor(), readContextPage: (checkpointId, offset, limit) => observedContext().readPage(checkpointId, offset, limit)}, [guiPlugin()]);
     void agent.run(task).catch(error => mainWindow?.webContents.send('agent:event', {type: 'error', message: String(error)}));
     return {started: true};
   });
@@ -321,6 +358,7 @@ function registerHandlers() {
 }
 
 async function createWindow() {
+  appSettings = readSettings(configDir());
   projectBindings = readBindings(projectConfigDir(), path.resolve(desktopRoot, '../../examples/chip-sobel'));
   projectDir = activeProject()?.path;
   viewerProtocol = createViewerProtocol(desktopRoot);
@@ -456,4 +494,4 @@ async function createWindow() {
 
 app.whenReady().then(createWindow).catch(error => {console.error(error); app.exit(1);});
 app.on('window-all-closed', () => {if (process.platform !== 'darwin') app.quit();});
-app.on('before-quit', () => {raster?.close(); viewerProtocol?.close(); void agent?.close();});
+app.on('before-quit', () => {raster?.close(); viewerProtocol?.close(); void agent?.close(); void guiBridge?.close();});

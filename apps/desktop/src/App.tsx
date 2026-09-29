@@ -46,9 +46,10 @@ export function App() {
   const [broker, setBroker] = useState<BrokerResult>();
   const [detail, setDetail] = useState<CapabilityDetail>();
   const [brokerError, setBrokerError] = useState('');
-  const [agentStatus, setAgentStatus] = useState<{available: boolean; version: string; projectDir: string | null; configured: boolean}>();
+  const [agentStatus, setAgentStatus] = useState<{available: boolean; version: string; projectDir: string | null; configured: boolean; gui?: {enabled: boolean; install: string; version: string | null}}>();
   const [agentEvents, setAgentEvents] = useState<AgentEvent[]>([]);
   const [agentBusy, setAgentBusy] = useState(false);
+  const [guiInstall, setGuiInstall] = useState('');
 
   useEffect(() => {localStorage.setItem('ia-theme', theme);}, [theme]);
   useEffect(() => {
@@ -75,6 +76,14 @@ export function App() {
       });
       if (event.type === 'tool-result') void window.viewerHost!.brokerTrace().then(trace => setBroker(current => current ? {...current, trace} : current));
       if (event.type === 'done' || event.type === 'error') setAgentBusy(false);
+    });
+  }, []);
+  useEffect(() => {
+    if (!window.viewerHost) return;
+    return window.viewerHost!.onGuiProgress(event => {
+      if (event.phase === 'downloading' || event.phase === 'verified') setGuiInstall(event.phase);
+      else if (event.phase === 'ready') {setGuiInstall(''); void window.viewerHost!.guiState().then(() => window.viewerHost!.agentStatus().then(setAgentStatus));}
+      else if (event.phase === 'error') {setGuiInstall(`install failed · ${event.error}`); void window.viewerHost!.agentStatus().then(setAgentStatus);}
     });
   }, []);
   useEffect(() => {
@@ -211,7 +220,7 @@ export function App() {
         {submittedTask && <button className="ia-sidebar-chat" title={submittedTask} onClick={() => setPage('chat')}><Activity size={14}/><span>{submittedTask}</span></button>}
         <div className="ia-sidebar-spacer"/>
         <div className="ia-tree-bottom"><button className="ia-settings-button" onClick={() => setSettingsOpen(value => !value)}><Settings2 size={16}/> Settings <ChevronRight size={14}/></button></div>
-        {settingsOpen && <div className="ia-settings-popover"><div className="ia-settings-title"><b>Settings</b><button className="ia-icon" onClick={() => setSettingsOpen(false)}>×</button></div><div className="ia-settings-row"><span>Appearance</span><button onClick={() => setTheme(value => value === 'light' ? 'dark' : 'light')}>{theme === 'light' ? <Sun size={14}/> : <Moon size={14}/>} {theme === 'light' ? 'Light' : 'Dark'}</button></div><div className="ia-settings-row"><span>Debug logs</span><button onClick={() => setDebug(value => !value)}><Bug size={14}/> {debug ? 'On' : 'Off'}</button></div><div className="ia-settings-row"><span>Model API</span><button onClick={() => {setSettingsOpen(false); setModelSettingsOpen(true);}}>Configure</button></div><div className="ia-settings-note">Kimi CLI: {agentStatus?.available ? agentStatus.version || 'available' : 'unavailable'}</div></div>}
+        {settingsOpen && <div className="ia-settings-popover"><div className="ia-settings-title"><b>Settings</b><button className="ia-icon" onClick={() => setSettingsOpen(false)}>×</button></div><div className="ia-settings-row"><span>Appearance</span><button onClick={() => setTheme(value => value === 'light' ? 'dark' : 'light')}>{theme === 'light' ? <Sun size={14}/> : <Moon size={14}/>} {theme === 'light' ? 'Light' : 'Dark'}</button></div><div className="ia-settings-row"><span>Debug logs</span><button onClick={() => setDebug(value => !value)}><Bug size={14}/> {debug ? 'On' : 'Off'}</button></div><div className="ia-settings-row"><span>Computer Use</span><button disabled={Boolean(guiInstall && guiInstall !== 'install failed')} onClick={() => {const next = !agentStatus?.gui?.enabled; setGuiInstall('installing'); void window.viewerHost!.setGuiPlugin(next).then(state => {setAgentStatus(current => current ? {...current, gui: state} : current); if (!state.enabled) setGuiInstall('');}).catch(reason => {setGuiInstall(`toggle failed · ${String(reason)}`);});}} title={agentStatus?.gui?.enabled ? 'Kimi can operate your desktop apps for this session' : 'Install and enable desktop GUI control'}>{agentStatus?.gui?.enabled ? 'On' : 'Off'}</button></div>{agentStatus?.gui?.enabled && <p className="ia-settings-note">{guiInstall.startsWith('install failed') || guiInstall.startsWith('toggle failed') ? guiInstall : guiInstall ? `Installing computer use · ${guiInstall}…` : agentStatus.gui.install !== 'ready' ? 'Installing…' : `Ready · v${agentStatus.gui.version || 'unknown'} · macOS: grant Screen Recording & Accessibility in System Settings → Privacy & Security.`}</p>}{!agentStatus?.gui?.enabled && <p className="ia-settings-note">Enabling installs the computer-use engine and lets Kimi drive desktop apps. It can be disabled at any time.</p>}<div className="ia-settings-row"><span>Model API</span><button onClick={() => {setSettingsOpen(false); setModelSettingsOpen(true);}}>Configure</button></div><div className="ia-settings-note">Kimi CLI: {agentStatus?.available ? agentStatus.version || 'available' : 'unavailable'}</div></div>}
       </aside>}
       <main className="ia-chat">
         <header className="ia-chat-header"><div>{!leftOpen && <button className="ia-icon" onClick={() => setLeftOpen(true)} title="Show sidebar"><PanelLeftOpen size={16}/></button>}<Folder size={14}/><b>{projectName}</b></div><div className="ia-chat-actions"><button className={debug ? 'active' : ''} onClick={() => setDebug(value => !value)} title="Toggle debug logs"><Bug size={15}/></button><button onClick={() => setRightOpen(value => !value)} title={rightOpen ? 'Hide workspace' : 'Show workspace'}>{rightOpen ? <PanelRightClose size={16}/> : <PanelRightOpen size={16}/>}</button></div></header>

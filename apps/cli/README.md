@@ -41,6 +41,16 @@ pnpm cli run --project-dir ./examples/chip-sobel --domain chip --task 'Inspect t
 
 `--scope-only` 只输出能力 Scope 和披露 Trace，无须模型密钥。运行 Agent 时，先通过环境变量配置模型密钥及 Kimi 可执行文件：
 
+模型 API 端点默认要求 HTTPS（localhost 除外）。自托管明文 HTTP 端点需在 `HARNESS_TRUSTED_PLAINTEXT_HOSTS` 中显式声明，逗号分隔，条目为 `host` 或 `host:port`（host 与 port 都匹配、只有 host 匹配时任意端口有效），例如 `HARNESS_TRUSTED_PLAINTEXT_HOSTS=192.168.1.50:48000`。桌面端与 CLI 共用同一校验。
+
+## Computer Use 插件（`--enable-gui`）
+
+`--enable-gui` 启用横切的 computer-use 插件：让 Kimi 在授权下操作桌面 GUI 应用。首次启用时自动从 [munim-computer-use](https://github.com/munimtechnologies/munim-computer-use) 的钉定 release（`v0.4.3`，见 `packages/computer-use-bridge`）下载对应平台二进制，校验 `SHA256SUMS.txt` 后安装到 `~/.industrial-agent-harness/gui-bridge/`（`GUI_BRIDGE_DIR` 可覆盖），已装则跳过；安装过程以 `gui_install` 事件输出（checking/downloading/verified/ready/error）。安装失败会使本次运行报错退出，不写入任何半成品。启用即授权：GUI 工具审批由 Harness 自动以 `approve_for_session` 应答，`--approval` 策略只作用于非插件工具。
+
+- macOS 首次使用需在 系统设置 → 隐私与安全性 → 辅助功能/屏幕录制 中为**运行 CLI 的终端应用**授权一次（也可在终端运行 `~/.industrial-agent-harness/gui-bridge/munim-computer-use request-permissions` 触发系统弹窗）。
+- `GUI_BRIDGE_BIN=/path/to/munim-computer-use` 跳过自动安装直接使用既有二进制；`GUI_BRIDGE_SOURCE_REPO` / `GUI_BRIDGE_TAG` / `GUI_BRIDGE_RELEASE_BASE` 可整体替换安装源（例如 fork 后发布自己的 release）。
+- 插件不进 Domain 体系、不依赖当前项目；关闭方式即不加该旗标。
+
 可重复传入 `--disable-skill chip.netlist.inspect` 或 `--disable-mcp SERVER_ID`，在该次 Bench 运行中应用与 Project 详情页相同的资源策略。未知资源 ID 会报错；默认 MCP 服务器列表目前为空。
 
 ```bash

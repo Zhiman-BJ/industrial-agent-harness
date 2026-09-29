@@ -51,7 +51,10 @@ export interface ViewerHostApi {
   resourceCatalog(): Promise<ResourceCatalog>;
   detail(capabilityId: string): Promise<CapabilityDetail>;
   brokerTrace(): Promise<BrokerResult['trace']>;
-  agentStatus(): Promise<{available: boolean; version: string; projectDir: string | null; configured: boolean}>;
+  agentStatus(): Promise<{available: boolean; version: string; projectDir: string | null; configured: boolean; gui?: GuiPluginState}>;
+  guiState(): Promise<GuiPluginState>;
+  setGuiPlugin(enabled: boolean): Promise<GuiPluginState>;
+  onGuiProgress(callback: (event: {phase: string; tag?: string; cached?: boolean; error?: string}) => void): () => void;
   modelGet(): Promise<ModelProfileStatus>;
   modelSave(request: ModelProfile & {apiKey?: string; clearApiKey?: boolean}): Promise<ModelProfileStatus>;
   chooseProjectDirectory(): Promise<string | null>;
@@ -71,6 +74,7 @@ export interface ViewerHostApi {
 }
 
 export interface ProjectBinding {id: string; name: string; path: string; domain?: string | null; disabledSkills?: string[]; disabledMcpServers?: string[]}
+export interface GuiPluginState {enabled: boolean; install: 'missing' | 'ready' | string; version: string | null}
 export interface DomainOption {id: string; label: string; emoji: string}
 export interface ResourceCatalog {skills: Array<{id: string; domain: string; title: string; enabledByDefault: boolean}>; mcpServers: Array<{id: string; domain: string; title: string; enabledByDefault: boolean}>}
 
