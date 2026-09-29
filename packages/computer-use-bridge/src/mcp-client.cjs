@@ -32,8 +32,8 @@ class McpClient {
     this.stderrTail = '';
     this.child.stdout.on('data', chunk => this.onData(chunk));
     this.child.stderr.on('data', chunk => {this.stderrTail = `${this.stderrTail}${chunk.toString('utf8')}`.slice(-4000);});
-    this.child.on('error', error => this.failAll(error));
-    this.child.on('exit', () => this.failAll(new Error('Computer use server exited.')));
+    this.child.on('error', error => this.die(error));
+    this.child.on('exit', () => this.die(new Error('Computer use server exited.')));
     if (onSpawn) onSpawn(this.child);
   }
   get stderr() {return this.stderrTail;}
@@ -101,10 +101,16 @@ class McpClient {
     for (const {reject, timer} of this.pending.values()) {clearTimeout(timer); reject(error);}
     this.pending.clear();
   }
+  // A dead server must not be reused: fail pending calls first, then mark
+  // closed so ensureClient() rebuilds a fresh client on the next call.
+  die(error) {
+    this.failAll(error);
+    this.closed = true;
+  }
   close() {
     if (this.closed) return;
-    this.closed = true;
     this.failAll(new Error('Computer use server closed by harness.'));
+    this.closed = true;
     this.child.kill();
   }
 }

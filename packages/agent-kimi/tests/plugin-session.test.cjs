@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const {z} = require('zod');
 const {KimiSession} = require('../src/index.cjs');
 
 function makePlugin({enabled = true} = {}) {
@@ -16,7 +17,7 @@ function makePlugin({enabled = true} = {}) {
       fs.writeFileSync(path.join(target, 'SKILL.md'), '---\nname: fake-gui\n---\n');
       return path.join(directory, 'skills');
     },
-    toolsFactory: () => [{name: 'fake_click', description: 'd', parameters: {}, handler: async () => ({output: 'ok', message: 'ok'})}],
+    toolsFactory: () => [{name: 'fake_click', description: 'd', parameters: z.object({}), handler: async () => ({output: 'ok', message: 'ok'})}],
   };
 }
 
@@ -81,6 +82,7 @@ test('streamed ToolCallPart arguments are assembled and replayed with the tool r
       yield {type: 'ToolCallPart', payload: {arguments_part: '.google.Chrome"'}};
       yield {type: 'ToolCallPart', payload: {arguments_part: '}'}};
       yield {type: 'ToolResult', payload: {tool_call_id: 't1', return_value: {is_error: false, output: 'captured', message: 'Tool completed', display: []}}};
+      yield {type: 'ToolResult', payload: {tool_call_id: 't2', return_value: {is_error: false, message: 'Tool completed', display: [], output: [{type: 'text', text: 'window'}, {type: 'image_url', image_url: {url: 'data:image/png;base64,AAAA'}}]}}};
     },
   })});
   const session = new KimiSession(shareDir, () => scope, async () => null, () => null, event => events.push(event), () => ({apiKey: 'k', revision: 0, shareDir, profile: {thinking: false}, disabledMcpServers: []}), factory);
@@ -92,6 +94,12 @@ test('streamed ToolCallPart arguments are assembled and replayed with the tool r
   assert.equal(toolEvents[1].arguments, '{\n  "app": "com.google.Chrome"\n}');
   const resultEvent = events.find(event => event.type === 'tool-result');
   assert.equal(resultEvent.error, false);
+  // Array (ContentPart) outputs: image payloads stay out of the event stream,
+  // only their count is surfaced alongside the text parts.
+  const imageResult = events.filter(event => event.type === 'tool-result')[1];
+  assert.equal(imageResult.imageCount, 1);
+  assert.ok(!JSON.stringify(imageResult).includes('AAAA'), 'base64 payload must not enter the event stream');
+  assert.match(imageResult.output, /window/);
 });
 
 test('a disabled plugin contributes nothing', async t => {

@@ -84,6 +84,15 @@ test('output above the byte limit is truncated with a marker', async t => {
   assert.match(result.output, /truncated/);
 });
 
+test('a crashed server marks the client closed so it is not reused', async t => {
+  const {client, dir} = startFake();
+  t.after(() => {fs.rmSync(dir, {recursive: true, force: true});});
+  await client.initialize();
+  client.child.kill(9);
+  await new Promise(resolve => client.child.on('exit', resolve));
+  assert.equal(client.closed, true);
+});
+
 test('closing the client rejects in-flight and future calls', async t => {
   const {client, dir} = startFake();
   t.after(() => {fs.rmSync(dir, {recursive: true, force: true});});

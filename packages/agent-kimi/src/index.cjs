@@ -49,7 +49,7 @@ function prepareSessionFiles(scope, runtime, plugins = []) {
   fs.chmodSync(directory, 0o700);
   try {
     const skillsDir = materializeSkills(scope, directory);
-    const skillDirs = [skillsDir, ...enabledPlugins(plugins).map(plugin => plugin.materializeSkill(directory))];
+    const skillDirs = [...new Set([skillsDir, ...enabledPlugins(plugins).map(plugin => plugin.materializeSkill(directory))])];
     const modelConfig = fs.readFileSync(path.join(runtime.shareDir, 'config.toml'), 'utf8');
     fs.writeFileSync(path.join(directory, 'config.toml'), `extra_skill_dirs = ${JSON.stringify(skillDirs)}\n${modelConfig}`, {mode: 0o600});
     writeMcpConfig(directory, selectMcpServers(scope, runtime.disabledMcpServers));
@@ -59,6 +59,23 @@ function prepareSessionFiles(scope, runtime, plugins = []) {
 
 function enabledPlugins(plugins) {
   return (plugins || []).filter(plugin => plugin?.enabled?.() === true);
+}
+
+// Image tool results carry multi-megabyte data URIs; the diagnostic log keeps
+// the event shape but must not store the payloads themselves.
+function redactImagePayloads(event) {
+  if (event.type !== 'ToolResult') return event;
+  const value = event.payload?.return_value;
+  if (!value || typeof value.output === 'string' || !Array.isArray(value.output)) return event;
+  let redacted = false;
+  const output = value.output.map(part => {
+    if (part?.type === 'image_url' && typeof part.image_url?.url === 'string') {
+      redacted = true;
+      return {...part, image_url: {...part.image_url, url: `[image redacted, ${part.image_url.url.length} chars]`}};
+    }
+    return part;
+  });
+  return redacted ? {...event, payload: {...event.payload, return_value: {...value, output}}} : event;
 }
 
 function externalTools(getScope, lookupArtifact, disclose, readContextPage) {
@@ -155,7 +172,7 @@ class KimiSession {
           thinking: runtime.profile.thinking,
           env: runtime.env,
           yoloMode: false,
-          externalTools: [...externalTools(this.getScope, this.lookupArtifact, this.disclose, this.diagnostics.readContextPage), ...enabledPlugins(this.plugins).flatMap(plugin => plugin.toolsFactory())],
+          externalTools: [...externalTools(this.getScope, this.lookupArtifact, this.disclose, this.diagnostics.readContextPage), ...enabledPlugins(this.plugins).flatMap(plugin => plugin.toolsFactory().map(tool => createExternalTool(tool)))],
           clientInfo: {name: 'industrial-agent-harness', version: '0.0.0'},
         });
         this.currentScopeKey = currentScopeKey;
@@ -166,7 +183,7 @@ class KimiSession {
       log.record('prompt', {text: prompt});
       const turn = this.session.prompt(prompt);
       this.turn = turn;
-      for await (const event of turn) {log.record('sdk.event', event); this.emitEvent(event);}
+      for await (const event of turn) {log.record('sdk.event', redactImagePayloads(event)); this.emitEvent(event);}
       const result = await turn.result;
       emitMetrics();
       outcome = result.status;

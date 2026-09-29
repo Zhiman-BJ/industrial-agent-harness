@@ -23,17 +23,24 @@ function createGuiPlugin({enabled, installedDir, log, env = process.env, spawner
     });
   }
 
+  // A failed spawn must not poison the cache for later callers: clear it only
+  // while no newer attempt replaced it.
+  function spawnClient() {
+    const promise = createClient();
+    promise.catch(() => {if (clientPromise === promise) clientPromise = null;});
+    return promise;
+  }
+
   async function ensureClient() {
-    if (clientPromise) {
-      try {
-        const client = await clientPromise;
-        if (!client.closed) return client;
-      } catch {
-        clientPromise = null;
-      }
+    if (!clientPromise) clientPromise = spawnClient();
+    let client = await clientPromise;
+    // A client whose server already died is marked closed (mcp-client die()):
+    // drop it and rebuild once instead of reusing a permanently broken pipe.
+    if (client.closed) {
+      clientPromise = spawnClient();
+      client = await clientPromise;
     }
-    clientPromise = createClient();
-    return clientPromise;
+    return client;
   }
 
   const clientLike = {
@@ -42,6 +49,7 @@ function createGuiPlugin({enabled, installedDir, log, env = process.env, spawner
 
   return {
     name: 'computer-use',
+    clientLike,
     enabled: isEnabled,
     toolNames: GUI_TOOLS.map(item => item.name),
     materializeSkill: directory => materializeGuiSkill(directory),
