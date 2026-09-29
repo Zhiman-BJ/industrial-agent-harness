@@ -80,6 +80,14 @@ function redactImagePayloads(event) {
   return redacted ? {...event, payload: {...event.payload, return_value: {...value, output}}} : event;
 }
 
+// The native CLI history (context/wire snapshots) embeds tool-result images as
+// base64 data URIs. The same payloads redactImagePayloads keeps out of the
+// event log must also stay out of the copied files.
+const DATA_URI_PATTERN = /(data:image\/[a-zA-Z0-9.+-]+;base64,)([A-Za-z0-9+/=]+)/g;
+function redactSnapshotText(text) {
+  return text.replace(DATA_URI_PATTERN, (match, prefix, payload) => `${prefix}[image redacted, ${payload.length} chars]`);
+}
+
 function externalTools(getScope, lookupArtifact, disclose, readContextPage) {
   const scope = getScope();
   if (!scope?.capabilityIds.length) return [];
@@ -134,8 +142,11 @@ class KimiSession {
     this.plugins = plugins;
     // ToolCall arrives with arguments:null; the real arguments stream in as
     // ToolCallPart frames (carrying no id) before the ToolResult lands. Track
-    // them so the ToolResult event can carry the complete arguments.
+    // them so the ToolResult event can carry the complete arguments. This is
+    // per-turn state: run() clears it in its finally block so an interrupted
+    // call cannot leak a phantom event into the next turn.
     this.pendingToolArgs = new Map();
+    this.toolNames = new Map();
     this.lastToolCall = null;
     this.pendingApprovals = new Map();
   }
@@ -187,7 +198,7 @@ class KimiSession {
           thinking: runtime.profile.thinking,
           env: runtime.env,
           yoloMode: false,
-          externalTools: [...externalTools(this.getScope, this.lookupArtifact, this.disclose, this.diagnostics.readContextPage), ...enabledPlugins(this.plugins).flatMap(plugin => plugin.toolsFactory().map(tool => createExternalTool(tool)))],
+          externalTools: [...externalTools(this.getScope, this.lookupArtifact, this.disclose, this.diagnostics.readContextPage), ...enabledPlugins(this.plugins).flatMap(plugin => plugin.toolsFactory(this.diagnostics.pluginLog).map(tool => createExternalTool(tool)))],
           clientInfo: {name: 'industrial-agent-harness', version: '0.0.0'},
         });
         this.currentScopeKey = currentScopeKey;
@@ -209,6 +220,9 @@ class KimiSession {
     } catch (error) {emitMetrics(); this.emitAgent({type: 'error', message: String(error)});}
     finally {
       this.turn = undefined;
+      this.pendingToolArgs.clear();
+      this.toolNames.clear();
+      this.lastToolCall = null;
       for (const id of this.pendingApprovals.keys()) this.resolveApproval(id, 'expired');
       try {
         this.captureKimiSnapshot(log, 'after-turn', runtime.apiKey);
@@ -226,7 +240,7 @@ class KimiSession {
       try {
         if (!fs.existsSync(source)) continue;
         const raw = fs.readFileSync(source, 'utf8');
-        const content = apiKey ? raw.replaceAll(apiKey, '[REDACTED_API_KEY]') : raw;
+        const content = redactSnapshotText(apiKey ? raw.replaceAll(apiKey, '[REDACTED_API_KEY]') : raw);
         const target = path.join(path.dirname(log.file), `${log.traceId}.${phase}.${kind}.jsonl`);
         fs.writeFileSync(target, content, {flag: 'wx', mode: 0o600});
         log.record('kimi.snapshot', {phase, kind, path: target, bytes: Buffer.byteLength(content, 'utf8'), sha256: crypto.createHash('sha256').update(content).digest('hex')});
@@ -250,9 +264,10 @@ class KimiSession {
     else if (event.type === 'ApprovalResponse') this.resolveApproval(event.payload.request_id, event.payload.response);
     else if (event.type === 'ToolCall') {
       if (this.lastToolCall && this.pendingToolArgs.has(this.lastToolCall.id)) {
-        this.emitAgent({type: 'tool', id: this.lastToolCall.id, name: this.lastToolCall.name, arguments: this.pendingToolArgs.get(this.lastToolCall.id)});
+        this.emitAgent({type: 'tool', id: this.lastToolCall.id, name: this.toolNames.get(this.lastToolCall.id) || this.lastToolCall.name, arguments: this.pendingToolArgs.get(this.lastToolCall.id)});
       }
       this.pendingToolArgs.set(event.payload.id, '');
+      this.toolNames.set(event.payload.id, event.payload.function.name);
       this.lastToolCall = {id: event.payload.id, name: event.payload.function.name};
       this.emitAgent({type: 'tool', id: event.payload.id, name: event.payload.function.name, arguments: event.payload.function.arguments || ''});
     } else if (event.type === 'ToolCallPart') {
@@ -263,9 +278,10 @@ class KimiSession {
       if (rawArgs) {
         let args = rawArgs;
         try {args = JSON.stringify(JSON.parse(rawArgs), null, 2);} catch {}
-        this.emitAgent({type: 'tool', id: event.payload.tool_call_id, name: this.lastToolCall?.id === event.payload.tool_call_id ? this.lastToolCall.name : '', arguments: args});
+        this.emitAgent({type: 'tool', id: event.payload.tool_call_id, name: this.toolNames.get(event.payload.tool_call_id) || '', arguments: args});
       }
       this.pendingToolArgs.delete(event.payload.tool_call_id);
+      this.toolNames.delete(event.payload.tool_call_id);
       if (this.lastToolCall?.id === event.payload.tool_call_id) this.lastToolCall = null;
       this.turnMetrics.toolResults++;
       // output is a string or a ContentPart array (image results). Base64 image
