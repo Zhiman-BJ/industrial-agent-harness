@@ -64,6 +64,36 @@ test('an enabled plugin contributes skill dir and tools; its approvals are auto-
   assert.deepEqual(surfaced.map(event => event.id), ['a2']);
 });
 
+test('streamed ToolCallPart arguments are assembled and replayed with the tool result', async t => {
+  const shareDir = fs.mkdtempSync(path.join(os.tmpdir(), 'industrial-kimi-plugin-'));
+  t.after(() => fs.rmSync(shareDir, {recursive: true, force: true}));
+  fs.writeFileSync(path.join(shareDir, 'config.toml'), 'default_model = "industrial"\n');
+  const events = [];
+  const scope = {version: 'one', domain: 'chip', stage: null, capabilityIds: [], skills: [], tools: []};
+  const factory = () => ({async close() {}, prompt: () => ({
+    result: Promise.resolve({status: 'completed'}),
+    approve: async () => {},
+    async *[Symbol.asyncIterator]() {
+      // Mirrors the real SDK stream: the ToolCall frame carries arguments:null,
+      // the real arguments arrive as id-less ToolCallPart frames, then the result.
+      yield {type: 'ToolCall', payload: {type: 'function', id: 't1', function: {name: 'screenshot', arguments: null}}};
+      yield {type: 'ToolCallPart', payload: {arguments_part: '{"app": "com'}};
+      yield {type: 'ToolCallPart', payload: {arguments_part: '.google.Chrome"'}};
+      yield {type: 'ToolCallPart', payload: {arguments_part: '}'}};
+      yield {type: 'ToolResult', payload: {tool_call_id: 't1', return_value: {is_error: false, output: 'captured', message: 'Tool completed', display: []}}};
+    },
+  })});
+  const session = new KimiSession(shareDir, () => scope, async () => null, () => null, event => events.push(event), () => ({apiKey: 'k', revision: 0, shareDir, profile: {thinking: false}, disabledMcpServers: []}), factory);
+  await session.run('screenshot chrome');
+  const toolEvents = events.filter(event => event.type === 'tool' && event.id === 't1');
+  // The initial frame plus one replay carrying the assembled arguments.
+  assert.equal(toolEvents.length, 2);
+  assert.equal(toolEvents[0].arguments, '');
+  assert.equal(toolEvents[1].arguments, '{\n  "app": "com.google.Chrome"\n}');
+  const resultEvent = events.find(event => event.type === 'tool-result');
+  assert.equal(resultEvent.error, false);
+});
+
 test('a disabled plugin contributes nothing', async t => {
   const {session, created, events} = startSession(t, makePlugin({enabled: false}));
   await session.run('do it');

@@ -113,6 +113,11 @@ class KimiSession {
     this.sessionFactory = sessionFactory;
     this.diagnostics = diagnostics;
     this.plugins = plugins;
+    // ToolCall arrives with arguments:null; the real arguments stream in as
+    // ToolCallPart frames (carrying no id) before the ToolResult lands. Track
+    // them so the ToolResult event can carry the complete arguments.
+    this.pendingToolArgs = new Map();
+    this.lastToolCall = null;
   }
   async run(task) {
     if (this.turn) throw Error('A Kimi turn is already running.');
@@ -203,14 +208,40 @@ class KimiSession {
         this.log?.record('plugin.auto-approve', {sender: event.payload.sender, id: event.payload.id});
         this.turn.approve(event.payload.id, 'approve_for_session').catch(error => this.emitAgent({type: 'approval_error', id: event.payload.id, message: String(error)}));
       } else this.emitAgent({type: 'approval', id: event.payload.id, description: event.payload.description, action: event.payload.action});
-    } else if (event.type === 'ToolCall') this.emitAgent({type: 'tool', id: event.payload.id, name: event.payload.function.name, arguments: event.payload.function.arguments || ''});
-    else if (event.type === 'ToolResult') {
+    } else if (event.type === 'ToolCall') {
+      if (this.lastToolCall && this.pendingToolArgs.has(this.lastToolCall.id)) {
+        this.emitAgent({type: 'tool', id: this.lastToolCall.id, name: this.lastToolCall.name, arguments: this.pendingToolArgs.get(this.lastToolCall.id)});
+      }
+      this.pendingToolArgs.set(event.payload.id, '');
+      this.lastToolCall = {id: event.payload.id, name: event.payload.function.name};
+      this.emitAgent({type: 'tool', id: event.payload.id, name: event.payload.function.name, arguments: event.payload.function.arguments || ''});
+    } else if (event.type === 'ToolCallPart') {
+      if (this.lastToolCall) this.pendingToolArgs.set(this.lastToolCall.id, (this.pendingToolArgs.get(this.lastToolCall.id) || '') + (event.payload.arguments_part || ''));
+    } else if (event.type === 'ToolResult') {
       const value = event.payload.return_value;
+      const rawArgs = this.pendingToolArgs.get(event.payload.tool_call_id) || '';
+      if (rawArgs) {
+        let args = rawArgs;
+        try {args = JSON.stringify(JSON.parse(rawArgs), null, 2);} catch {}
+        this.emitAgent({type: 'tool', id: event.payload.tool_call_id, name: this.lastToolCall?.id === event.payload.tool_call_id ? this.lastToolCall.name : '', arguments: args});
+      }
+      this.pendingToolArgs.delete(event.payload.tool_call_id);
+      if (this.lastToolCall?.id === event.payload.tool_call_id) this.lastToolCall = null;
       this.turnMetrics.toolResults++;
-      const output = typeof value.output === 'string' ? value.output : '';
+      // output is a string or a ContentPart array (image results). Base64 image
+      // payloads must not enter the event stream or logs; keep only the text
+      // parts plus a count.
+      let output;
+      let imageCount = 0;
+      if (typeof value.output === 'string') output = value.output;
+      else {
+        const parts = Array.isArray(value.output) ? value.output : [];
+        imageCount = parts.filter(part => part?.type === 'image_url').length;
+        output = parts.filter(part => part?.type === 'text').map(part => part.text).join('\n');
+      }
       const outputBytes = Buffer.byteLength(output, 'utf8');
       this.turnMetrics.peakToolResultBytes = Math.max(this.turnMetrics.peakToolResultBytes, outputBytes);
-      this.emitAgent({type: 'tool-result', id: event.payload.tool_call_id, error: value.is_error, message: value.message, output: output.slice(0, 12000), outputBytes, outputTruncated: output.length > 12000});
+      this.emitAgent({type: 'tool-result', id: event.payload.tool_call_id, error: value.is_error, message: value.message, output: output.slice(0, 12000), outputBytes, outputTruncated: output.length > 12000, imageCount});
       for (const block of value.display || []) if (block.type === 'todo' && Array.isArray(block.items)) this.emitAgent({type: 'todo', items: block.items});
     } else if (event.type === 'StepBegin') this.emitAgent({type: 'step', number: event.payload.n});
     else if (event.type === 'StatusUpdate') {

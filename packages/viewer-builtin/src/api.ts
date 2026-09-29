@@ -84,7 +84,7 @@ export type AgentEvent =
   | {type: 'thinking'; text: string}
   | {type: 'approval'; id: string; description: string; action: string}
   | {type: 'tool'; id: string; name: string; arguments: string}
-  | {type: 'tool-result'; id: string; error: boolean; message: string; output: string; outputBytes?: number; outputTruncated?: boolean}
+  | {type: 'tool-result'; id: string; error: boolean; message: string; output: string; outputBytes?: number; outputTruncated?: boolean; imageCount?: number}
   | {type: 'todo'; items: Array<{title: string; status: 'pending' | 'in_progress' | 'done'}>}
   | {type: 'status'; contextUsage: number | null; tokenUsage: {input_other: number; output: number; input_cache_read: number; input_cache_creation: number} | null}
   | {type: 'compaction'; state: 'begin' | 'end'}
