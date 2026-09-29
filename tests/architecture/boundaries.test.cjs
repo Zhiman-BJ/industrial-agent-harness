@@ -57,15 +57,17 @@ test('Desktop and CLI cannot directly spawn industrial executables', () => {
   for (const file of sourceFiles('apps/cli/src')) assert.doesNotMatch(read(file), /node:child_process|require\(['"]child_process['"]\)/, file);
 });
 
-test('existing direct Viewer dispatch and static Capability IDs cannot expand', () => {
+test('Viewer dispatch uses a registry and static Capability IDs cannot expand', () => {
   const app = read('apps/desktop/src/App.tsx');
   const imported = [...app.matchAll(/from '@industrial-agent-harness\/viewer-builtin\/(\w+)'/g)].map(match => match[1]).filter(name => name !== 'api').sort();
-  assert.deepEqual(imported, [...prototype('electron-viewer-dispatch').allowedViewerKinds].sort());
+  assert.deepEqual(imported, ['canvas']);
   const rendered = [...app.matchAll(/opened\?\.kind === '(\w+)'/g)].map(match => match[1]).sort();
-  assert.deepEqual(rendered, [...prototype('electron-viewer-dispatch').allowedViewerKinds].sort());
+  assert.deepEqual(rendered, []);
   const main = read('apps/desktop/electron/main.cjs');
   const openedInMain = [...main.matchAll(/artifact\.kind === '(\w+)'/g)].map(match => match[1]).sort();
-  assert.deepEqual(openedInMain, ['layout', 'netlist']);
+  assert.deepEqual(openedInMain, []);
+  assert.match(main, /createViewerRegistry\(/);
+  assert.match(main, /viewerRegistry\.get\(artifact\.kind\)/);
   const capabilities = require(path.join(root, 'packages/domain-skills/src/capabilities.cjs'));
   assert.deepEqual(capabilities.map(item => item.id).sort(), [...prototype('static-capability-registry').allowedCapabilityIds].sort());
 });

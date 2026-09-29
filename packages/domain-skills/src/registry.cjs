@@ -1,7 +1,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-// Repository-owned defaults. Project bindings store only disabled IDs.
+// Repository-owned defaults. Harness resource policy stores ID enablement only.
 const skills = Object.freeze([
   {id: 'chip.netlist.inspect', domain: 'chip', title: 'Inspect RTL netlist', directory: 'chip-netlist-inspect'},
   {id: 'chip.waveform.inspect', domain: 'chip', title: 'Inspect simulation waveform', directory: 'chip-waveform-inspect'},
@@ -28,7 +28,7 @@ function materializeSkills(scope, directory) {
     const item = skills.find(skill => skill.id === id);
     if (!item) continue;
     const target = path.join(root, item.directory);
-    fs.mkdirSync(target, {mode: 0o700});
+    fs.mkdirSync(target, {recursive: true, mode: 0o700});
     fs.copyFileSync(skillFile(id), path.join(target, 'SKILL.md'));
   }
   return root;

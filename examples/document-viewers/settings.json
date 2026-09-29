@@ -1,0 +1,8 @@
+{
+  "example": true,
+  "window": {"width": 1440, "height": 900, "fullscreen": false},
+  "views": ["table", "json", "jsonl", "markdown", "text"],
+  "modules": {"documents": {"enabled": true}},
+  "optional": null,
+  "note": "这是普通配置 JSON，不是 Yosys 网表"
+}

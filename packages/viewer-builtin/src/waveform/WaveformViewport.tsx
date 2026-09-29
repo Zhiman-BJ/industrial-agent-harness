@@ -1,5 +1,5 @@
 import {useEffect,useRef,useState} from 'react';
-import {Maximize} from 'lucide-react';
+import {useViewNavigation} from '../navigation';
 export interface WaveData {url:string;name:string;defaultSignals?:string[];initialRange?:[number,number]}
 export interface SignalRequest {name:string;id:number}
 export function WaveformViewport({data,onReady,onError,signal}:{data:WaveData;onReady:()=>void;onError:(message:string)=>void;signal?:SignalRequest}) {
@@ -20,6 +20,8 @@ export function WaveformViewport({data,onReady,onError,signal}:{data:WaveData;on
     });
   }
   function fail(message:string){if(!loadedRef.current&&attempt===0){setLoaded(false);setAttempt(1);return;}setError(message);callbacks.current.onError(message);}
+  const navigate = (name: string) => {void command('commands', name).catch(error => fail(error.message));};
+  useViewNavigation({ready: loaded && !error, description: 'Time', zoomIn: () => navigate('zoom_in'), zoomOut: () => navigate('zoom_out'), fit: () => navigate('zoom_fit')});
   useEffect(()=>{
     let ended=false,loadSent=false;loadedRef.current=false;available.current=false;setLoaded(false);setError('');
     const timer=setTimeout(()=>{if(!loadedRef.current&&!ended)fail('Waveform loading exceeded 60 seconds.');},60000);
@@ -72,5 +74,5 @@ export function WaveformViewport({data,onReady,onError,signal}:{data:WaveData;on
     }).catch(e=>{if(!cancelled)fail(e.message);});
     return()=>{cancelled=true;};
   },[signal,loaded]);
-  return <div className="rp-surfer"><div className="rp-view-tools"><span className="rp-tool-caption">{data.name}</span><button disabled={!loaded} onClick={()=>void command('commands','toggle_side_panel').catch(e=>fail(e.message))}>Signals</button><button disabled={!loaded} aria-label="Fit waveform" title="Show full simulation" onClick={()=>void command('commands','zoom_fit').catch(e=>fail(e.message))}><Maximize size={14}/></button></div><iframe key={attempt} ref={frame} src={src} title="Waveform viewer" allow="clipboard-write"/>{!loaded&&!error?<div className="rp-loading">{attempt?'Reloading waveform…':'Loading waveform…'}</div>:null}{error?<div className="rp-view-error" role="alert">{error}<button onClick={()=>{setLoaded(false);setAttempt(n=>n+1);}}>Retry</button></div>:null}</div>;
+  return <div className="rp-surfer"><div className="rp-view-tools"><span className="rp-tool-caption">{data.name}</span><button disabled={!loaded} onClick={()=>void command('commands','toggle_side_panel').catch(e=>fail(e.message))}>Signals</button></div><iframe key={attempt} ref={frame} src={src} title="Waveform viewer" allow="clipboard-write"/>{!loaded&&!error?<div className="rp-loading">{attempt?'Reloading waveform…':'Loading waveform…'}</div>:null}{error?<div className="rp-view-error" role="alert">{error}<button onClick={()=>{setLoaded(false);setAttempt(n=>n+1);}}>Retry</button></div>:null}</div>;
 }

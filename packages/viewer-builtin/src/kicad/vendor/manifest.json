@@ -1,0 +1,9 @@
+{
+  "repository": "https://github.com/theacodes/kicanvas",
+  "revision": "b031159eb74aaa7eef2b026fd85d35bc05ff2095",
+  "esbuild": "0.27.1",
+  "files": {
+    "kicanvas.js": "b5afbebf4256eb952aac4cb2e726e9e6bc350208a373633cd99f4f926a277a04",
+    "symbols.ttf": "9fa039fa173f2c2011cf4dc871af4deb6ae76d375fc6238cffcfa618140e5c44"
+  }
+}

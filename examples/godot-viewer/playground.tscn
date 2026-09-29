@@ -1,0 +1,73 @@
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://playground.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://robot.png" id="2_robot"]
+
+[sub_resource type="AtlasTexture" id="Atlas_0"]
+atlas = ExtResource("2_robot")
+region = Rect2(0, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="Atlas_1"]
+atlas = ExtResource("2_robot")
+region = Rect2(32, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="Atlas_2"]
+atlas = ExtResource("2_robot")
+region = Rect2(64, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="Atlas_3"]
+atlas = ExtResource("2_robot")
+region = Rect2(96, 0, 32, 32)
+
+[sub_resource type="SpriteFrames" id="Frames_robot"]
+animations = [{
+"frames": [{"duration": 1.0, "texture": SubResource("Atlas_0")}, {"duration": 1.0, "texture": SubResource("Atlas_1")}],
+"loop": true,
+"name": &"idle",
+"speed": 3.0
+}, {
+"frames": [{"duration": 1.0, "texture": SubResource("Atlas_0")}, {"duration": 1.0, "texture": SubResource("Atlas_1")}, {"duration": 1.0, "texture": SubResource("Atlas_2")}, {"duration": 1.0, "texture": SubResource("Atlas_3")}],
+"loop": true,
+"name": &"run",
+"speed": 8.0
+}]
+
+[node name="ViewerPlayground" type="Node2D"]
+script = ExtResource("1_script")
+
+[node name="MainCamera" type="Camera2D" parent="."]
+position = Vector2(480, 270)
+
+[node name="Robot" type="AnimatedSprite2D" parent="."]
+position = Vector2(480, 320)
+scale = Vector2(4, 4)
+texture_filter = 1
+sprite_frames = SubResource("Frames_robot")
+animation = &"run"
+autoplay = "run"
+
+[node name="Title" type="Label" parent="."]
+offset_left = 48.0
+offset_top = 32.0
+offset_right = 920.0
+offset_bottom = 80.0
+theme_override_colors/font_color = Color(0.9, 0.96, 1, 1)
+theme_override_font_sizes/font_size = 30
+text = "HARNESS / VIEWER PLAYGROUND"
+
+[node name="Instructions" type="Label" parent="."]
+offset_left = 48.0
+offset_top = 82.0
+offset_right = 920.0
+offset_bottom = 120.0
+theme_override_font_sizes/font_size = 18
+text = "Pause / Step / Play  |  Select Robot to inspect  |  Camera: MainCamera"
+
+[node name="Clock" type="Label" parent="."]
+offset_left = 48.0
+offset_top = 458.0
+offset_right = 500.0
+offset_bottom = 500.0
+theme_override_colors/font_color = Color(0.35, 0.9, 0.7, 1)
+theme_override_font_sizes/font_size = 24
+text = "Runtime 0.0 s"

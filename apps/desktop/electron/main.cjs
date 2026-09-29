@@ -1,16 +1,25 @@
-const {app, BrowserWindow, dialog, ipcMain, protocol, safeStorage} = require('electron');
+const {app, BrowserWindow, dialog, ipcMain, protocol, safeStorage, nativeImage} = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const os = require('node:os');
 const {spawnSync} = require('node:child_process');
 const {RasterService} = require('../../../packages/viewer-builtin/src/layout/raster.cjs');
-const {renderNetlist} = require('../../../packages/viewer-builtin/src/netlist/netlist.cjs');
+const {renderNetlist, isYosysNetlist} = require('../../../packages/viewer-builtin/src/netlist/netlist.cjs');
 const {createViewerProtocol} = require('../../../packages/viewer-builtin/src/waveform/protocol.cjs');
 const {initialVcdSignals} = require('../../../packages/viewer-builtin/src/waveform/signals.cjs');
+const {GodotRuntimeManager, isGodotExport} = require('../../../packages/viewer-builtin/src/godot/runtime.cjs');
+const {createAssetPlugins} = require('../../../packages/viewer-builtin/src/assets/service.cjs');
+const {createDocumentPlugins} = require('../../../packages/viewer-builtin/src/documents/service.cjs');
+const {KiCadRuntimeManager, isKiCadFile} = require('../../../packages/viewer-builtin/src/kicad/runtime.cjs');
+const {createViewerRegistry} = require('../../../packages/viewer-core/src/registry.cjs');
 const {resolve, discloseDetail} = require('../../../packages/capability-broker/src/index.cjs');
-const {resolveProjectTask, effectiveCapabilities, resourceCatalog} = require('@industrial-agent-harness/harness-core');
+const {resolveProjectTask, effectiveCapabilities, resourceCatalog, ResourceSettings, ChatStore, defaultChatDirectory} = require('@industrial-agent-harness/harness-core');
 const {capabilities, listDomains} = require('@industrial-agent-harness/domain-skills');
+const {validatePromptImages} = require('../../../packages/agent-kimi/src/image-input.cjs');
+const {DiagnosticReader} = require('../../../packages/agent-kimi/src/diagnostic-reader.cjs');
+const {defaultLogDirectory} = require('../../../packages/agent-kimi/src/diagnostic-log.cjs');
+const {SessionManager} = require('./session-manager.cjs');
 const {KimiSession} = require('../../../packages/agent-kimi/src/index.cjs');
 const {ObservedContextStore} = require('@industrial-agent-harness/domain-runtime');
 const {createGuiPlugin, ensureInstalled, status: guiBridgeStatus} = require('@industrial-agent-harness/computer-use-bridge');
@@ -19,7 +28,9 @@ const {readProfile, saveProfile, validateProfile, writeCliConfig, sessionEnv} = 
 const {readBindings, addBinding, saveBindings} = require('./project-bindings.cjs');
 
 protocol.registerSchemesAsPrivileged([{scheme: 'app', privileges: {standard: true, secure: true, supportFetchAPI: true, corsEnabled: true}}]);
-if (process.argv.includes('--viewer-selftest')) app.setPath('userData', fs.mkdtempSync(path.join(os.tmpdir(), 'industrial-harness-selftest-')));
+if (['--viewer-selftest', '--kicad-selftest', '--godot-selftest', '--documents-selftest', '--agent-log-selftest', '--chat-selftest', '--parallel-selftest', '--image-input-selftest'].some(flag => process.argv.includes(flag))) app.setPath('userData', fs.mkdtempSync(path.join(os.tmpdir(), 'industrial-harness-selftest-')));
+
+if (process.argv.includes('--chat-selftest') && process.env.INDUSTRIAL_CHAT_SELFTEST_USER_DATA) app.setPath('userData', process.env.INDUSTRIAL_CHAT_SELFTEST_USER_DATA);
 
 const desktopRoot = path.resolve(__dirname, '..');
 const artifacts = new Map();
@@ -27,9 +38,9 @@ const netlistSessions = new Map();
 let activeLayoutToken;
 let raster;
 let viewerProtocol;
-let brokerScope;
-let brokerTrace = [];
-let agent;
+const godotRuntime = new GodotRuntimeManager();
+const kicadRuntime = new KiCadRuntimeManager();
+const sessions = new SessionManager();
 let contextStore;
 let projectDir;
 let projectBindings = {projects: [], activeId: null};
@@ -38,6 +49,38 @@ let sessionApiKey = '';
 let modelRevision = 0;
 let appSettings = {guiPluginEnabled: false};
 let guiBridge;
+const chats = new ChatStore(process.argv.some(flag => flag.endsWith('-selftest')) ? path.join(app.getPath('userData'), 'chats') : defaultChatDirectory());
+let activeChatId;
+function chatList() {return {chats: activeProject()?.domain ? chats.list(projectDir, activeProject().domain).map(chat => ({...chat, running: sessions.busy(sessions.get(activeProject(), chat.id)), awaitingApproval: Boolean(sessions.get(activeProject(), chat.id).agent?.pendingApprovals.size)})) : [], activeId: activeChatId || null, sessions: sessions.snapshots()};}
+function ensureChat() {
+  if (!activeChatId) activeChatId = chats.create(projectDir, activeProject()?.domain).id;
+  chats.get(activeChatId, projectDir, activeProject()?.domain);
+  return activeChatId;
+}
+function chatHistory(id, before = null) {
+  const history = chats.history(id, projectDir, activeProject().domain, before);
+  return {...history, executing: sessions.busy(sessions.get(activeProject(), id))};
+}
+function selectedSession() {
+  const entry = sessions.get(activeProject(), ensureChat());
+  if (!entry.scope && !sessions.busy(entry)) {
+    const last = chats.history(entry.id, entry.project.path, entry.project.domain).turns.at(-1);
+    entry.scope = last?.broker?.scope; entry.resolvedRequest = last?.broker?.request || (last ? {task: last.task} : undefined);
+  }
+  return entry;
+}
+function restoreChatSelection() {
+  activeChatId = activeProject()?.domain ? chats.list(projectDir, activeProject().domain)[0]?.id : undefined;
+}
+function contextStoreOptions() {return process.argv.some(flag => flag.endsWith('-selftest')) ? {directory: path.join(app.getPath('userData'), 'state')} : {};}
+function sessionContext(entry) {entry.context ||= new ObservedContextStore(entry.project.path, entry.project.domain, contextStoreOptions()); return entry.context;}
+function notifySessions() {if (mainWindow && !mainWindow.webContents.isDestroyed()) mainWindow.webContents.send('chat:updated');}
+function diagnosticDirectory() {return process.argv.some(flag => flag.endsWith('-selftest')) ? path.join(app.getPath('userData'), 'logs') : defaultLogDirectory();}
+const diagnosticReader = new DiagnosticReader(diagnosticDirectory());
+
+const resourceSettings = new ResourceSettings(process.argv.some(flag => flag.endsWith('-selftest')) ? path.join(app.getPath('userData'), 'resources') : undefined);
+let changingResources = false;
+function projectResourcePolicy(project = activeProject()) {return resourceSettings.snapshot(resourceCatalog(project?.domain), project?.path).effective;}
 
 function configDir() {return path.join(app.getPath('userData'), 'model');}
 function projectConfigDir() {return path.join(app.getPath('userData'), 'workspace');}
@@ -48,16 +91,19 @@ function clearProjectArtifacts() {
   contextStore?.close(); contextStore = undefined;
   artifacts.clear();
   netlistSessions.clear(); activeLayoutToken = undefined;
+  godotRuntime.close();
+  kicadRuntime.close();
 }
 function observedContext() {
   const domain = activeProject()?.domain;
   if (!projectDir || !domain) throw Error('Choose a project with a domain first.');
-  contextStore ||= new ObservedContextStore(projectDir, domain);
+  contextStore ||= new ObservedContextStore(projectDir, domain, contextStoreOptions());
   return contextStore;
 }
 function keyFile() {return path.join(configDir(), 'api-key.bin');}
 function canPersistKey() {return safeStorage.isEncryptionAvailable() && (process.platform !== 'linux' || safeStorage.getSelectedStorageBackend() !== 'basic_text');}
 function readApiKey() {
+  if (['--agent-log-selftest', '--chat-selftest', '--parallel-selftest', '--image-input-selftest'].some(flag => process.argv.includes(flag))) return 'diagnostic-selftest-key';
   if (sessionApiKey) return sessionApiKey;
   if (!canPersistKey() || !fs.existsSync(keyFile())) return '';
   try {return safeStorage.decryptString(fs.readFileSync(keyFile()));} catch {return '';}
@@ -82,23 +128,16 @@ function guiBridgeState() {
   const installed = guiBridgeStatus(guiBridgeDir());
   return {enabled: appSettings.guiPluginEnabled, install: installed.state, version: installed.version?.tag || null};
 }
-function runtimeConfig() {
+function runtimeConfig(project = activeProject()) {
   const profile = readProfile(configDir());
   const apiKey = readApiKey();
-  return {profile, apiKey, revision: modelRevision, executable: kimiExecutable(), shareDir: writeCliConfig(configDir(), profile), env: sessionEnv(profile, apiKey), disabledMcpServers: activeProject()?.disabledMcpServers || []};
+  return {profile, apiKey, revision: modelRevision, executable: kimiExecutable(), shareDir: writeCliConfig(configDir(), profile), env: sessionEnv(profile, apiKey), disabledMcpServers: projectResourcePolicy(project).mcpServers};
 }
 
 function kindFor(file) {
-  const ext = path.extname(file).toLowerCase();
-  if (['.gds', '.gdsii', '.oas', '.oasis'].includes(ext)) return 'layout';
-  if (['.vcd', '.fst', '.ghw'].includes(ext)) return 'waveform';
-  if (ext === '.json') {
-    const stat = fs.statSync(file);
-    if (stat.size <= 20 * 1024 * 1024) {
-      try {if (JSON.parse(fs.readFileSync(file, 'utf8'))?.modules) return 'netlist';} catch {}
-    }
-  }
-  throw Error('This Viewer currently supports GDS/OAS, Yosys JSON, and VCD/FST/GHW.');
+  const kind = viewerRegistry.match(file);
+  if (!kind) throw Error('No registered Viewer supports this file.');
+  return kind;
 }
 
 function projectFile(relative) {
@@ -149,28 +188,66 @@ function getRaster() {
   return raster;
 }
 
+const viewerRegistry = createViewerRegistry([
+  ...createAssetPlugins({projectRoot: () => projectDir}),
+  {id: 'layout', matches: file => ['.gds', '.gdsii', '.oas', '.oasis'].includes(path.extname(file).toLowerCase()), open: async ({artifact, file}) => {
+    const token = crypto.randomUUID();
+    const data = await getRaster().call({op: 'load', path: file, token});
+    activeLayoutToken = token;
+    return {artifact, kind: 'layout', data};
+  }},
+  {id: 'netlist', matches: isYosysNetlist, open: async ({artifact, file}) => {
+    const token = crypto.randomUUID();
+    const data = await renderNetlist(file);
+    netlistSessions.set(token, file);
+    return {artifact, kind: 'netlist', data: {...data, token}};
+  }},
+  {id: 'waveform', matches: file => ['.vcd', '.fst', '.ghw'].includes(path.extname(file).toLowerCase()), open: async ({artifact, file}) => ({artifact, kind: 'waveform', data: {
+    url: viewerProtocol.registerWave(file), name: artifact.name, defaultSignals: initialVcdSignals(file),
+  }})},
+  {id: 'godot', matches: file => isGodotExport(file), open: async ({artifact, file}) => ({artifact, kind: 'godot', data: await godotRuntime.open(file, artifact.sha256)})},
+  {id: 'kicad', matches: isKiCadFile, open: async ({artifact, file}) => ({artifact, kind: 'kicad', data: await kicadRuntime.open(file, artifact.sha256, projectDir)})},
+  // Generic formats are fallbacks; preserve specialized JSON/HTML detection.
+  ...createDocumentPlugins({projectRoot: () => projectDir}),
+]);
+
 function registerHandlers() {
+  function diagnosticProject(event, request) {
+    if (event.sender !== mainWindow?.webContents || event.senderFrame !== mainWindow.webContents.mainFrame || !projectDir || request?.projectId !== activeProject()?.id) throw Error('Diagnostic logs belong to the selected project.');
+    return projectDir;
+  }
+  async function diagnosticRequest(method, event, request) {
+    const project = diagnosticProject(event, request);
+    const result = await diagnosticReader[method](project, request);
+    if (activeProject()?.id !== request.projectId || projectDir !== project) throw Error('Selected project changed; reopen agent logs.');
+    return result;
+  }
+  ipcMain.handle('agent:log-runs', (event, request) => diagnosticRequest('list', event, request));
+  ipcMain.handle('agent:log-page', (event, request) => diagnosticRequest('page', event, request));
+  ipcMain.handle('agent:log-view', (event, request) => diagnosticRequest('view', event, request));
+  ipcMain.handle('agent:log-detail', (event, request) => diagnosticRequest('detail', event, request));
+  ipcMain.handle('agent:log-record', (event, request) => diagnosticRequest('record', event, request));
   ipcMain.handle('broker:domains', () => listDomains(capabilities));
   ipcMain.handle('resource:catalog', () => resourceCatalog(activeProject()?.domain));
-  ipcMain.handle('broker:resolve', (_event, request) => {
-    const fixedDomain = activeProject()?.domain;
-    if (activeProject() && !fixedDomain) throw Error('Set this project’s domain before starting a session.');
-    if (agent?.turn) void agent.interrupt();
-    const project = activeProject();
-    const disabled = {skills: project?.disabledSkills || [], mcpServers: project?.disabledMcpServers || []};
-    const result = fixedDomain ? resolveProjectTask(fixedDomain, request, brokerScope, capabilities, disabled) : resolve(request, capabilities, brokerScope);
-    brokerScope = result.scope;
-    brokerTrace = result.trace;
-    return result;
+  ipcMain.handle('broker:resolve', (event, request) => {
+    chatRequest(event);
+    if (changingResources) throw Error('Resource settings are being saved.');
+    if (request?.chatId && request.chatId !== activeChatId) throw Error('Selected chat changed; retry the task.');
+    const entry = selectedSession();
+    if (sessions.busy(entry)) throw Error('This chat is already running.');
+    const result = resolveProjectTask(entry.project.domain, request, entry.scope, capabilities, projectResourcePolicy(entry.project));
+    entry.resolvedRequest = {...request}; result.request = entry.resolvedRequest;
+    entry.scope = result.scope; entry.trace = result.trace;
+    entry.preparedTurn = {id: chats.beginTurn(entry.id, request.task, result, false), task: request.task, broker: result};
+    notifySessions(); return {...result, chatId: entry.id, turnId: entry.preparedTurn.id};
   });
-  function loadDetail(capabilityId) {
-    const project = activeProject();
-    const detail = discloseDetail(brokerScope, effectiveCapabilities(capabilities, {skills: project?.disabledSkills || [], mcpServers: project?.disabledMcpServers || []}), capabilityId);
-    brokerTrace.push({level: 'L3', event: 'detail.load', detail: {capabilityId, skills: detail.skills.map(item => item.id), tools: detail.tools.map(item => item.id)}});
+  function loadDetail(capabilityId, entry = selectedSession()) {
+    const detail = discloseDetail(entry.scope, effectiveCapabilities(capabilities, projectResourcePolicy(entry.project)), capabilityId);
+    entry.trace.push({level: 'L3', event: 'detail.load', detail: {capabilityId, skills: detail.skills.map(item => item.id), tools: detail.tools.map(item => item.id)}});
     return detail;
   }
   ipcMain.handle('broker:detail', (_event, capabilityId) => loadDetail(capabilityId));
-  ipcMain.handle('broker:trace', () => brokerTrace);
+  ipcMain.handle('broker:trace', () => selectedSession().trace);
   ipcMain.handle('model:get', () => modelStatus());
   ipcMain.handle('settings:gui-state', () => guiBridgeState());
   ipcMain.handle('settings:set-gui', (_event, {enabled}) => {
@@ -191,25 +268,30 @@ function registerHandlers() {
     return guiBridgeState();
   });
   ipcMain.handle('model:save', async (_event, request) => {
-    if (agent?.turn) throw Error('Stop the current Kimi turn before changing the model.');
+    if (changingResources) throw Error('Settings are being saved.');
+    sessions.assertIdle();
     const profile = validateProfile(request);
     if (request.apiKey !== undefined && (typeof request.apiKey !== 'string' || request.apiKey.length > 8192)) throw Error('Invalid API key.');
-    await agent?.close(); agent = undefined;
-    saveProfile(configDir(), profile);
-    if (request.apiKey) {
-      sessionApiKey = request.apiKey.trim();
-      if (canPersistKey()) {
-        fs.mkdirSync(configDir(), {recursive: true, mode: 0o700});
-        fs.writeFileSync(keyFile(), safeStorage.encryptString(sessionApiKey), {mode: 0o600});
-        fs.chmodSync(keyFile(), 0o600);
+    changingResources = true;
+    try {
+      await sessions.reset();
+      saveProfile(configDir(), profile);
+      if (request.apiKey) {
+        sessionApiKey = request.apiKey.trim();
+        if (canPersistKey()) {
+          fs.mkdirSync(configDir(), {recursive: true, mode: 0o700});
+          fs.writeFileSync(keyFile(), safeStorage.encryptString(sessionApiKey), {mode: 0o600});
+          fs.chmodSync(keyFile(), 0o600);
+        }
       }
-    }
-    if (request.clearApiKey) {sessionApiKey = ''; fs.rmSync(keyFile(), {force: true});}
-    writeCliConfig(configDir(), profile);
-    modelRevision++;
-    return modelStatus();
+      if (request.clearApiKey) {sessionApiKey = ''; fs.rmSync(keyFile(), {force: true});}
+      writeCliConfig(configDir(), profile);
+      modelRevision++;
+      return modelStatus();
+    } finally {changingResources = false;}
   });
   ipcMain.handle('agent:status', () => {
+    if (['--agent-log-selftest', '--chat-selftest', '--parallel-selftest', '--image-input-selftest'].some(flag => process.argv.includes(flag))) return {available:true,version:'SDK seam selftest',projectDir,configured:true};
     const executable = kimiExecutable();
     const result = spawnSync(executable, ['--version'], {encoding: 'utf8', timeout: 3000});
     const help = result.status === 0 ? spawnSync(executable, ['--help'], {encoding: 'utf8', timeout: 3000}) : null;
@@ -218,46 +300,58 @@ function registerHandlers() {
   });
   ipcMain.handle('project:bindings', () => projectSnapshot());
   ipcMain.handle('project:set-domain', async (_event, request) => {
-    if (agent?.turn) throw Error('Stop the current turn before changing the project domain.');
     const {id, domain} = request || {};
     if (!listDomains(capabilities).some(item => item.id === domain)) throw Error('Unknown domain.');
     const project = projectBindings.projects.find(item => item.id === id);
     if (!project) throw Error('Unknown project.');
     if (id !== projectBindings.activeId) throw Error('Open this project before changing its domain.');
     if (project.domain === domain) return projectSnapshot();
-    await agent?.close(); agent = undefined;
-    project.domain = domain;
-    brokerScope = undefined; brokerTrace = [];
-    saveBindings(projectConfigDir(), projectBindings);
-    return projectSnapshot();
+    if (changingResources) throw Error('Settings are being saved.');
+    sessions.assertIdle(project.id);
+    changingResources = true;
+    try {
+      await sessions.reset(project.id);
+      project.domain = domain;
+      if (activeProject()?.id === project.id) {clearProjectArtifacts(); activeChatId = undefined;}
+      saveBindings(projectConfigDir(), projectBindings);
+      return projectSnapshot();
+    } finally {changingResources = false;}
   });
-  ipcMain.handle('project:set-resource', async (_event, request) => {
-    if (agent?.turn) throw Error('Stop the current turn before changing project resources.');
-    const project = activeProject();
-    if (!project || request?.projectId !== project.id) throw Error('Open this project before changing its resources.');
-    const key = request.kind === 'skill' ? 'disabledSkills' : request.kind === 'mcp' ? 'disabledMcpServers' : null;
-    if (!key || typeof request.id !== 'string' || typeof request.enabled !== 'boolean') throw Error('Invalid project resource change.');
-    const catalog = resourceCatalog(project.domain);
-    const entries = request.kind === 'skill' ? catalog.skills : catalog.mcpServers;
-    if (!entries.some(item => item.id === request.id)) throw Error('Unknown project resource.');
-    const disabled = new Set(project[key] || []);
-    if (request.enabled) disabled.delete(request.id); else disabled.add(request.id);
-    await agent?.close(); agent = undefined;
-    project[key] = [...disabled].sort();
-    brokerScope = undefined; brokerTrace = [];
-    saveBindings(projectConfigDir(), projectBindings);
+  function resourceProject(event, request) {
+    if (event.sender !== mainWindow?.webContents || event.senderFrame !== mainWindow.webContents.mainFrame) throw Error('Resource settings require the main app window.');
+    if (request?.projectId !== undefined && (!activeProject() || request.projectId !== activeProject().id)) throw Error('Open this project before configuring resources.');
+    return request?.projectId !== undefined ? activeProject() : null;
+  }
+  ipcMain.handle('resource:get', (event, request) => {
+    const project = resourceProject(event, request);
+    return resourceSettings.snapshot(resourceCatalog(project?.domain), project?.path);
+  });
+  async function setResource(event, request) {
+    const project = resourceProject(event, request);
+    if (changingResources) throw Error('Resource settings are being saved.');
+    sessions.assertIdle(project?.id);
+    changingResources = true;
+    try {
+      await sessions.reset(project?.id);
+      resourceProject(event, request);
+      const snapshot = resourceSettings.set(resourceCatalog(project?.domain), request, project?.path);
+      return snapshot;
+    } finally {changingResources = false;}
+  }
+  ipcMain.handle('resource:set', setResource);
+  ipcMain.handle('project:set-resource', async (event, request) => {
+    if (!request?.projectId || typeof request?.enabled !== 'boolean') throw Error('Invalid project resource change.');
+    await setResource(event, {...request, mode: request.enabled ? 'enabled' : 'disabled'});
     return projectSnapshot();
   });
   ipcMain.handle('project:select', async (_event, id) => {
-    if (agent?.turn) throw Error('Stop the current turn before switching projects.');
     const item = projectBindings.projects.find(candidate => candidate.id === id);
     if (!item) throw Error('Unknown project.');
     const actual = fs.realpathSync(item.path);
     if (!fs.statSync(actual).isDirectory()) throw Error('Project directory is unavailable.');
-    await agent?.close(); agent = undefined;
     projectBindings.activeId = id; projectDir = actual;
-    brokerScope = undefined; brokerTrace = [];
     clearProjectArtifacts();
+    restoreChatSelection();
     saveBindings(projectConfigDir(), projectBindings);
     return projectSnapshot();
   });
@@ -266,29 +360,47 @@ function registerHandlers() {
     return result.canceled ? null : fs.realpathSync(result.filePaths[0]);
   });
   ipcMain.handle('project:create', async (_event, request) => {
-    if (agent?.turn) throw Error('Stop the current turn before creating a project.');
     if (!request || !listDomains(capabilities).some(item => item.id === request.domain)) throw Error('Choose a valid project domain.');
     if (typeof request.directory !== 'string' || typeof request.name !== 'string') throw Error('Invalid project details.');
     const next = addBinding(projectBindings, request.directory, request.domain, request.name);
-    await agent?.close(); agent = undefined;
     projectBindings = next;
     projectDir = activeProject().path;
-    brokerScope = undefined; brokerTrace = [];
+    activeChatId = undefined;
     clearProjectArtifacts();
     saveBindings(projectConfigDir(), projectBindings);
     return projectSnapshot();
   });
-  ipcMain.handle('agent:new', async () => {
-    if (agent?.turn) throw Error('Stop the current turn before starting a new chat.');
-    await agent?.close(); agent = undefined;
-    brokerScope = undefined; brokerTrace = [];
+  ipcMain.handle('agent:new', event => {
+    chatRequest(event);
+    activeChatId = chats.createDraft(projectDir, activeProject().domain, activeChatId).id;
+    notifySessions(); return chatHistory(activeChatId);
+  });
+  function chatRequest(event) {
+    if (event.sender !== mainWindow?.webContents || event.senderFrame !== mainWindow.webContents.mainFrame) throw Error('Chats require the main app window.');
+    if (!activeProject()?.domain) throw Error('Choose a project with a domain.');
+  }
+  ipcMain.handle('chat:list', event => {chatRequest(event); return chatList();});
+  ipcMain.handle('chat:history', (event, request) => {chatRequest(event); return chatHistory(request.id, request.before || null);});
+  ipcMain.handle('chat:select', (event, id) => {
+    chatRequest(event);
+    const history = chatHistory(id);
+    activeChatId = id; return history;
+  });
+  ipcMain.handle('chat:delete', async (event, id) => {
+    chatRequest(event); chats.get(id, projectDir, activeProject().domain);
+    const project = activeProject();
+    await sessions.remove(project, id);
+    chats.remove(id, project.path, project.domain);
+    if (id === activeChatId) activeChatId = undefined;
+    notifySessions(); return chatList();
   });
   ipcMain.handle('project:list', () => {
     if (!projectDir) return [];
     const output = [];
     const walk = (dir, depth) => {
       if (depth > 3 || output.length >= 250) return;
-      const entries = fs.readdirSync(dir, {withFileTypes: true}).filter(item => !item.name.startsWith('.') && !['node_modules', 'dist', 'build', '__pycache__', 'target'].includes(item.name)).sort((a, b) => Number(b.isDirectory()) - Number(a.isDirectory()) || a.name.localeCompare(b.name));
+      const hidden = activeProject()?.domain === 'godot' ? ['node_modules', '__pycache__', 'target'] : ['node_modules', 'dist', 'build', '__pycache__', 'target'];
+      const entries = fs.readdirSync(dir, {withFileTypes: true}).filter(item => !item.name.startsWith('.') && !hidden.includes(item.name)).sort((a, b) => Number(b.isDirectory()) - Number(a.isDirectory()) || a.name.localeCompare(b.name));
       for (const entry of entries) {
         if (output.length >= 250) break;
         if (!entry.isDirectory() && !entry.isFile()) continue;
@@ -317,34 +429,75 @@ function registerHandlers() {
     try {fs.readSync(fd, buffer, 0, buffer.length, 0);} finally {fs.closeSync(fd);}
     return {path: relative, name: path.basename(file), sizeBytes, viewer: null, content: buffer.includes(0) ? null : buffer.toString('utf8'), truncated: sizeBytes > limit};
   });
-  ipcMain.handle('agent:run', (_event, task) => {
-    if (!projectDir) throw Error('Choose an engineering project first.');
-    if (typeof task !== 'string' || !task.trim()) throw Error('Describe the task first.');
-    if (!brokerScope) throw Error('Resolve the task scope first.');
-    agent ||= new KimiSession(projectDir, () => brokerScope, id => observedContext().readArtifact(id), loadDetail, event => mainWindow?.webContents.send('agent:event', event), runtimeConfig, undefined, {getBrokerTrace: () => brokerTrace, getContextAnchor: () => observedContext().anchor(), readContextPage: (checkpointId, offset, limit) => observedContext().readPage(checkpointId, offset, limit)}, [guiPlugin()]);
-    void agent.run(task).catch(error => mainWindow?.webContents.send('agent:event', {type: 'error', message: String(error)}));
-    return {started: true};
+  function imageRequest(event, request) {
+    if (event.sender !== mainWindow?.webContents || event.senderFrame !== mainWindow.webContents.mainFrame || !activeProject() || request?.projectId !== activeProject().id) throw Error('Images belong to the selected project.');
+    const images = validatePromptImages(request.images);
+    for (const image of images) {
+      // Electron nativeImage decodes PNG/JPEG only. WebP is decoded by Chromium
+      // before upload; the shared validator independently bounds its header.
+      if (image.mime === 'image/webp') continue;
+      const decoded = nativeImage.createFromBuffer(Buffer.from(image.dataUrl.split(',')[1], 'base64'));
+      const size = decoded.getSize();
+      if (decoded.isEmpty() || !size.width || !size.height || size.width > 8192 || size.height > 8192 || size.width * size.height !== image.width * image.height) throw Error('This image is corrupt or cannot be decoded.');
+    }
+    return images;
+  }
+  ipcMain.handle('agent:validate-images', (event, request) => imageRequest(event, request));
+  ipcMain.handle('agent:run', (event, request) => {
+    chatRequest(event);
+    if (changingResources) throw Error('Resource settings are being saved.');
+    if (request?.chatId && request.chatId !== activeChatId) throw Error('Selected chat changed; retry the task.');
+    const entry = selectedSession();
+    const task = typeof request === 'string' ? request : request?.task;
+    const images = typeof request === 'string' || request?.images === undefined ? [] : imageRequest(event, request);
+    if (images.length && !readProfile(configDir()).imageInput) throw Error('Enable Image input in Model API settings for a model that supports images.');
+    if (typeof task !== 'string' || !task.trim() || Buffer.byteLength(task, 'utf8') > 128 * 1024) throw Error('Describe the task first.');
+    if (!entry.scope || entry.resolvedRequest?.task !== task) throw Error('Resolve this task in the current chat first.');
+    if (sessions.busy(entry)) throw Error('This chat is already running.');
+    entry.release = chats.acquire(entry.id);
+    try {
+      chats.recoverInterrupted();
+      const current = resolveProjectTask(entry.project.domain, {...entry.resolvedRequest, task}, entry.scope, capabilities, projectResourcePolicy(entry.project));
+      current.request = entry.resolvedRequest; entry.scope = current.scope; entry.trace = current.trace;
+      const turnId = entry.preparedTurn?.task === task ? entry.preparedTurn.id : chats.beginTurn(entry.id, task, current, false);
+      chats.updateBroker(turnId, current); entry.preparedTurn = undefined;
+      chats.start(turnId);
+      let outcome = 'error';
+      const emit = event => {
+        chats.append(turnId, event);
+        if (event.type === 'done') outcome = event.result.status;
+        if (event.type === 'error') outcome = 'error';
+        if (mainWindow && !mainWindow.webContents.isDestroyed()) mainWindow.webContents.send('agent:event', {...event, chatId: entry.id, projectId: entry.project.id, turnId});
+        if (['approval', 'approval-resolved', 'done', 'error'].includes(event.type)) notifySessions();
+      };
+      entry.agent ||= new KimiSession(entry.project.path, () => entry.scope, id => sessionContext(entry).readArtifact(id), id => loadDetail(id, entry), emit, () => runtimeConfig(entry.project),
+        process.argv.includes('--parallel-selftest') ? require('./parallel-selftest.cjs').createSession : process.argv.includes('--image-input-selftest') ? require('./image-input-selftest.cjs').createSession : process.argv.includes('--agent-log-selftest') ? require('./agent-log-selftest.cjs').createSession : process.argv.includes('--chat-selftest') ? require('./chat-selftest.cjs').createSession : undefined,
+        {directory: diagnosticDirectory(), getBrokerTrace: () => entry.trace, getContextAnchor: () => sessionContext(entry).anchor(), readContextPage: (checkpointId, offset, limit) => sessionContext(entry).readPage(checkpointId, offset, limit), resolveSession: key => chats.runtimeSession(entry.id, key), sessionInitialized: id => chats.initialized(id)}, [guiPlugin()]);
+      entry.agent.emit = emit;
+      if (images.length) emit({type: 'user-images', images});
+      void entry.agent.run(task, images).catch(error => emit({type: 'error', message: String(error)})).finally(() => {
+        chats.finish(turnId, outcome);
+        const release = entry.release; entry.release = undefined; release?.();
+        notifySessions();
+      });
+      notifySessions(); return {started: true, chatId: entry.id, turnId};
+    } catch (error) {entry.release?.(); entry.release = undefined; throw error;}
   });
-  ipcMain.handle('agent:approve', (_event, {id, response}) => agent?.approve(id, response));
-  ipcMain.handle('agent:interrupt', () => agent?.interrupt());
+  ipcMain.handle('agent:approve', (event, {id, response, chatId}) => {
+    chatRequest(event);
+    if (chatId && chatId !== activeChatId) throw Error('Open the chat that requested approval.');
+    const entry = selectedSession();
+    if (!entry.agent) throw Error('No active approval.'); return entry.agent.approve(id, response);
+  });
+  ipcMain.handle('agent:interrupt', (event, request) => {
+    chatRequest(event);
+    if (request?.chatId && request.chatId !== activeChatId) throw Error('Open the chat to stop it.');
+    return selectedSession().agent?.interrupt();  });
   ipcMain.handle('viewer:open', async (_event, {artifactId}) => {
     const {artifact, file} = await checked(artifactId);
-    if (artifact.kind === 'layout') {
-      const token = crypto.randomUUID();
-      const data = await getRaster().call({op: 'load', path: file, token});
-      activeLayoutToken = token;
-      return {artifact, kind: 'layout', data};
-    }
-    if (artifact.kind === 'netlist') {
-      const token = crypto.randomUUID();
-      const data = await renderNetlist(file);
-      netlistSessions.set(token, file);
-      return {artifact, kind: 'netlist', data: {...data, token}};
-    }
-    return {artifact, kind: 'waveform', data: {
-      url: viewerProtocol.registerWave(file), name: artifact.name,
-      defaultSignals: initialVcdSignals(file),
-    }};
+    const plugin = viewerRegistry.get(artifact.kind);
+    if (!plugin) throw Error('Viewer plugin unavailable.');
+    return plugin.open({artifact, file});
   });
   ipcMain.handle('viewer:render', (_event, request) => {
     if (request?.token !== activeLayoutToken) throw Error('Layout artifact changed; reopen this view.');
@@ -359,10 +512,24 @@ function registerHandlers() {
 
 async function createWindow() {
   appSettings = readSettings(configDir());
+  if (process.argv.includes('--documents-selftest')) require('./documents-selftest.cjs').prepare(projectConfigDir());
+  if (process.argv.includes('--parallel-selftest')) require('./parallel-selftest.cjs').prepare(projectConfigDir());
+  if (process.argv.includes('--image-input-selftest')) require('./image-input-selftest.cjs').prepare(projectConfigDir(), configDir());
+  if (process.argv.includes('--chat-selftest')) require('./chat-selftest.cjs').prepare(projectConfigDir());
+  if (process.argv.includes('--agent-log-selftest')) require('./agent-log-selftest.cjs').prepare(projectConfigDir(), diagnosticDirectory());
+  if (process.argv.includes('--kicad-selftest')) require('./kicad-selftest.cjs').prepare(projectConfigDir());
+  if (process.argv.includes('--godot-selftest')) require('./godot-selftest.cjs').prepare(projectConfigDir());
   projectBindings = readBindings(projectConfigDir(), path.resolve(desktopRoot, '../../examples/chip-sobel'));
+  resourceSettings.migrate(projectBindings.projects);
   projectDir = activeProject()?.path;
+  restoreChatSelection();
   viewerProtocol = createViewerProtocol(desktopRoot);
-  protocol.handle('app', viewerProtocol.handle);
+  protocol.handle('app', request => {
+    const host = new URL(request.url).hostname;
+    if (host === 'godot') return godotRuntime.handle(request);
+    if (host === 'kicad') return kicadRuntime.handle(request);
+    return viewerProtocol.handle(request);
+  });
   registerHandlers();
   const window = new BrowserWindow({
     width: 1440, height: 900, minWidth: 1000, minHeight: 650,
@@ -372,6 +539,27 @@ async function createWindow() {
   mainWindow = window;
   if (process.env.INDUSTRIAL_DEV_URL) await window.loadURL(process.env.INDUSTRIAL_DEV_URL);
   else await window.loadURL('app://viewer/index.html');
+  if (process.argv.includes('--documents-selftest')) {await require('./documents-selftest.cjs').run(window); app.quit(); return;}
+  if (process.argv.includes('--chat-selftest')) {
+    await require('./chat-selftest.cjs').run(window, chats);
+    app.quit(); return;
+  }
+  if (process.argv.includes('--parallel-selftest')) {await require('./parallel-selftest.cjs').run(window); app.quit(); return;}
+  if (process.argv.includes('--image-input-selftest')) {await require('./image-input-selftest.cjs').run(window); app.quit(); return;}
+  if (process.argv.includes('--agent-log-selftest')) {
+    await require('./agent-log-selftest.cjs').run(window);
+    app.quit(); return;
+  }
+  if (process.argv.includes('--kicad-selftest')) {
+    await require('./kicad-selftest.cjs').run(window);
+    app.quit();
+    return;
+  }
+  if (process.argv.includes('--godot-selftest')) {
+    await require('./godot-selftest.cjs').run(window);
+    app.quit();
+    return;
+  }
   if (process.argv.includes('--viewer-selftest')) {
     async function waitFor(script, timeout = 30000) {
       const end = Date.now() + timeout;
@@ -397,11 +585,11 @@ async function createWindow() {
     await waitFor(`document.querySelector('.ia-project-page') && document.querySelector('select[aria-label="Project domain"]')?.value === 'chip'`);
     await new Promise(resolve => setTimeout(resolve, 150));
     const projectScreenshot = await shot('project');
-    await waitFor(`document.querySelectorAll('.ia-project-resources input[type="checkbox"]').length === 3`);
-    await window.webContents.executeJavaScript(`document.querySelector('.ia-project-resources input[type="checkbox"]').click()`);
-    await waitFor(`!document.querySelector('.ia-project-resources input[type="checkbox"]').checked && window.viewerHost.projectBindings().then(state => state.projects.find(item => item.id === state.activeId)?.disabledSkills.includes('chip.netlist.inspect'))`);
-    await window.webContents.executeJavaScript(`document.querySelector('.ia-project-resources input[type="checkbox"]').click()`);
-    await waitFor(`document.querySelector('.ia-project-resources input[type="checkbox"]').checked && window.viewerHost.projectBindings().then(state => !state.projects.find(item => item.id === state.activeId)?.disabledSkills.includes('chip.netlist.inspect'))`);
+    await waitFor(`document.querySelectorAll('.ia-project-resources select').length === 3`);
+    await window.webContents.executeJavaScript(`(() => {const select = document.querySelector('.ia-project-resources select'); select.value = 'disabled'; select.dispatchEvent(new Event('change', {bubbles: true}));})()`);
+    await waitFor(`document.querySelector('.ia-project-resources select')?.value === 'disabled' && window.viewerHost.projectBindings().then(state => window.viewerHost.resourceGet({projectId: state.activeId})).then(state => state.effective.skills.includes('chip.netlist.inspect'))`);
+    await window.webContents.executeJavaScript(`(() => {const select = document.querySelector('.ia-project-resources select'); select.value = 'inherit'; select.dispatchEvent(new Event('change', {bubbles: true}));})()`);
+    await waitFor(`document.querySelector('.ia-project-resources select')?.value === 'inherit' && window.viewerHost.projectBindings().then(state => window.viewerHost.resourceGet({projectId: state.activeId})).then(state => !state.effective.skills.includes('chip.netlist.inspect'))`);
     await window.webContents.executeJavaScript(`(() => {const domain = document.querySelector('select[aria-label="Project domain"]'); domain.value = 'pcb'; domain.dispatchEvent(new Event('change', {bubbles: true}));})()`);
     await waitFor(`!document.querySelector('.ia-project-domain-edit button')?.disabled`);
     await window.webContents.executeJavaScript(`document.querySelector('.ia-project-domain-edit button').click()`);
@@ -442,7 +630,7 @@ async function createWindow() {
     const screenshots = [projectScreenshot, createScreenshot, await shot('initial')];
     await window.webContents.executeJavaScript(`document.querySelector('.ia-chat-actions button:last-child').click()`);
     await waitFor(`Boolean(document.querySelector('.ia-workspace')) && !document.querySelector('.ia-workspace-tree')`);
-    await window.webContents.executeJavaScript(`document.querySelector('.ia-workspace-actions button').click()`);
+    await window.webContents.executeJavaScript(`document.querySelector('.ia-file-tree-toggle').click()`);
     await waitFor(`Boolean(document.querySelector('.ia-file-list button[title="README.md"]'))`);
     if (await window.webContents.executeJavaScript(`document.body.innerText.includes('VIEWER EXAMPLES')`)) throw Error('Reference Viewer fixtures appeared in the project file tree.');
     await window.webContents.executeJavaScript(`document.querySelector('.ia-file-list button[title="README.md"]').click()`);
@@ -451,8 +639,11 @@ async function createWindow() {
     await waitFor(`Boolean(document.querySelector('.ia-file-list button[title="outputs/sobel_netlist.json"]'))`);
     await window.webContents.executeJavaScript(`document.querySelector('.ia-file-list button[title="outputs/sobel_netlist.json"]').click()`);
     await waitFor(`document.querySelector('.ia-viewer-footer')?.innerText.includes('NETLIST · Ready')`, 120000);
+    const measureNetlist = () => window.webContents.executeJavaScript(`new DOMMatrix(getComputedStyle(document.querySelector('.rp-net-drawing')).transform).a`);
+    await require('./navigation-selftest.cjs').verifyNavigation(window, measureNetlist);
+    await require('./navigation-selftest.cjs').verifyWheel(window, measureNetlist, (deltaY,ctrlKey) => window.webContents.executeJavaScript(`(() => {const e=new WheelEvent('wheel',{deltaY:${deltaY},ctrlKey:${ctrlKey},cancelable:true});document.querySelector('.rp-net-stage').dispatchEvent(e);return e.defaultPrevented;})()`));
     screenshots.push(await shot('netlist'));
-    await window.webContents.executeJavaScript(`const area = document.querySelector('.ia-composer textarea'); Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(area, 'Inspect the netlist signals'); area.dispatchEvent(new Event('input', {bubbles:true})); document.querySelector('.ia-chat-actions button').click()`);
+    await window.webContents.executeJavaScript(`const area = document.querySelector('.ia-composer textarea'); Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(area, 'Inspect the netlist signals'); area.dispatchEvent(new Event('input', {bubbles:true})); document.querySelector('.ia-chat-actions button[title="Toggle debug logs"]').click()`);
     await new Promise(resolve => setTimeout(resolve, 100));
     await window.webContents.executeJavaScript(`document.querySelector('.ia-send').click()`);
     await waitFor(`document.querySelector('.ia-broker-tool:not([open])')?.innerText.includes('chip / rtl')`);
@@ -476,6 +667,22 @@ async function createWindow() {
       await window.webContents.executeJavaScript(`document.querySelector('.ia-file-list button[title="outputs/${file}"]').click()`);
       await waitFor(`document.querySelector('.ia-viewer-footer')?.innerText.includes('${kind.toUpperCase()} · Ready')`, 120000);
       if (kind === 'waveform') await waitFor(`document.querySelector('.rp-surfer iframe')?.getAttribute('data-signals-ready') === '6'`);
+      if (kind === 'layout') {
+        const measure = () => window.webContents.executeJavaScript(`Number(document.querySelector('.rp-view-footer span:last-child').innerText.match(/([0-9.]+)×/)[1])`);
+        await require('./navigation-selftest.cjs').verifyNavigation(window, measure);
+        await require('./navigation-selftest.cjs').verifyWheel(window, measure, (deltaY,ctrlKey) => window.webContents.executeJavaScript(`(() => {const e=new WheelEvent('wheel',{deltaY:${deltaY},ctrlKey:${ctrlKey},cancelable:true});document.querySelector('.rp-canvas-host').dispatchEvent(e);return e.defaultPrevented;})()`));
+      }
+      if (kind === 'waveform') {
+        const frame = window.webContents.mainFrame.frames.find(item => item.url.startsWith('app://surfer/'));
+        const measure = async () => {
+          const state = await frame.executeJavaScript(`import('./surfer.js').then(module => module.get_state())`);
+          const range = state.match(/curr_left:\s*\(([-0-9.e+]+)\),\s*curr_right:\s*\(([-0-9.e+]+)\)/);
+          if (!range) throw Error('Surfer native time range is unavailable.');
+          return 1 / (Number(range[2]) - Number(range[1]));
+        };
+        await require('./navigation-selftest.cjs').verifyNavigation(window, measure, {percent:false});
+        await require('./navigation-selftest.cjs').verifyWheel(window, measure, (deltaY,ctrlKey) => frame.executeJavaScript(`(() => {const e=new WheelEvent('wheel',{deltaY:${deltaY},ctrlKey:${ctrlKey},cancelable:true});document.querySelector('canvas').dispatchEvent(e);return e.defaultPrevented;})()`));
+      }
       screenshots.push(await shot(kind));
     }
     await window.webContents.executeJavaScript(`document.querySelector('.ia-settings-button').click()`);
@@ -494,4 +701,4 @@ async function createWindow() {
 
 app.whenReady().then(createWindow).catch(error => {console.error(error); app.exit(1);});
 app.on('window-all-closed', () => {if (process.platform !== 'darwin') app.quit();});
-app.on('before-quit', () => {raster?.close(); viewerProtocol?.close(); void agent?.close(); void guiBridge?.close();});
+app.on('before-quit', () => {raster?.close(); viewerProtocol?.close(); godotRuntime.close(); kicadRuntime.close(); void sessions.close(); void guiBridge?.close();});

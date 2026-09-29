@@ -71,3 +71,9 @@ KIMI_API_KEY=... KIMI_EXECUTABLE=/path/to/kimi pnpm cli run \
 每轮还保存固定 Kimi CLI 的 `context.jsonl` 和 `wire.jsonl` 快照，日志中记录路径、大小与哈希；可据此检查压缩后的实际会话内容。快照失败会显式记入诊断日志。
 
 观察状态保存登记工件的路径、SHA-256 和最小 Checkpoint，并在下一轮或新进程中重新核验。`industrial_context_read` 可分页读取历史 Checkpoint；其内容只代表文件观察，`verificationStatus` 始终是 `not_run`。完整的 DomainState、Run、Action 与工程 Verifier 不属于这一只读接入。
+
+CLI 与 Desktop 共用 `~/.industrial-agent-harness/resource-settings.json` 的全局 Skill/MCP 默认值及按真实项目目录绑定的覆盖；可用 `INDUSTRIAL_HARNESS_CONFIG_DIR` 隔离配置目录。项目显式启用或禁用优先于全局，未配置则继承。`--disable-skill` / `--disable-mcp` 最后应用，可为本次运行进一步禁用资源。Bench 要固定基线时请指定独立配置目录。配置损坏会明确报错，不会自动覆盖。
+
+## 持久聊天
+
+真实 Agent run 默认保留聊天，在 `chat` 与 `result` JSONL 中输出 `chatId`。`chats --project-dir DIR --domain DOMAIN` 列出同一项目的聊天，`run ... --chat-id UUID` 继续最近的兼容 Kimi 会话段。Desktop/CLI 默认共用 `~/.industrial-agent-harness/chats`；`--chat-dir` 或 `INDUSTRIAL_HARNESS_CHAT_DIR` 可隔离存储。`--scope-only` 不创建聊天。模型、Scope 或 MCP 策略变化时建立新段并保留展示历史；历史读取不会执行工具。详见 [聊天持久化](../../doc/chat-persistence.md)。

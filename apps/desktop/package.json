@@ -8,8 +8,15 @@
     "build": "tsc --noEmit && vite build",
     "start": "electron .",
     "test": "node --test electron/*.test.cjs",
+    "test:parallel": "electron . --parallel-selftest",
+    "test:images": "electron . --image-input-selftest",
+    "test:logs": "electron . --agent-log-selftest",
+    "test:kicad": "electron . --kicad-selftest",
+    "test:godot": "electron . --godot-selftest",
+    "test:documents": "electron . --documents-selftest",
     "setup:layout": "node scripts/setup-layout.cjs",
-    "setup:kimi": "node scripts/setup-kimi.cjs"
+    "setup:kimi": "node scripts/setup-kimi.cjs",
+    "test:chats": "node scripts/test-chats.cjs"
   },
   "dependencies": {
     "@industrial-agent-harness/agent-kimi": "workspace:*",

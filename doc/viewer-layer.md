@@ -1,6 +1,6 @@
 # Viewer 层设计与约束
 
-Viewer 层让用户在 Harness 内直接检查工程产物，并保持产物来源、运行状态和验证结论可追溯。它服务于人工理解与跨视图分析，不替代专业软件的完整工作台。本文定义 Viewer Core、内置渲染器和 Electron Viewer Host 的边界；三种 EDA Viewer 已接入桌面 MVP。
+Viewer 层让用户在 Harness 内直接检查工程产物，并保持产物来源、运行状态和验证结论可追溯。它服务于人工理解与跨视图分析，不替代专业软件的完整工作台。本文定义 Viewer Core、内置渲染器和 Electron Viewer Host 的边界；三种 EDA Viewer 已接入桌面 MVP，Godot Web Export Viewer V1 与 PCB domain 的 KiCad 板图/原理图 Viewer 已在 macOS Electron 实测；边界见 [Godot Viewer V1](godot-viewer.md) 与 [KiCad Viewer V1](kicad-viewer.md)。
 
 ## 展示策略
 
@@ -9,7 +9,7 @@ Viewer 层让用户在 Harness 内直接检查工程产物，并保持产物来�
 | 芯片设计 | 波形、Yosys 网表、报告、DEF/GDS 局部版图、层与对象选择 | 完整版图编辑、工艺设置、复杂时序或物理调试界面 |
 | PCB 设计 | 原理图或板图关键视图、层、网络、DRC 标记、制造产物预览 | 完整布线、封装编辑、设计规则配置 |
 | CAD/CAE | 模型缩略图或受限 3D 预览、剖面图、网格、仿真结果与报告 | 参数化建模、装配、求解器配置和专业后处理 |
-| Godot 等复杂 UI 应用 | 场景快照、资源预览、运行截图或视频、日志与测试结果 | 完整场景编辑器、动画工作台和运行调试器 |
+| Godot 等复杂 UI 应用 | Godot Web Export 运行视图、场景树、选中节点检查、基础运行控制；其他应用为场景快照、资源预览、日志与测试结果 | 完整场景编辑器、动画工作台和原生运行调试器 |
 
 这些是产品目标，不代表格式支持已经实现。是否内置某种格式，由可获得的解析器、许可、跨平台能力、性能和真实产物验证共同决定。无法可靠内置时，提供可追溯的关键产物预览或明确的外部打开入口。
 
@@ -32,7 +32,7 @@ flowchart LR
 - **Domain Pack** 声明本领域的产物类型、配套输入和 Viewer 贡献，但不能向 Electron Renderer 注入任意 HTML 或脚本。
 - **Bridge** 负责连接正在运行的专业软件；外部应用启动也是受控动作。两者均不被内置 Viewer 隐式执行。
 
-`packages/viewer-core` 已有初始类型契约，`packages/viewer-builtin/src` 是三种 EDA Viewer 的正式代码路径。`apps/desktop/viewer-host` 承载桌面接入。具体 API 会在真实产物链路中继续稳定。
+`packages/viewer-core` 已有初始类型契约和最小 Plugin Registry，`packages/viewer-builtin/src` 提供 EDA、Godot、KiCad、素材与通用文件 Viewer。通用文件插件不绑定 Domain，作为专用识别后的格式回退；CSV/TSV、JSON、JSONL、Markdown 和 TXT/LOG 的支持范围与上限见 [通用文件 Viewer](document-viewers.md)。Electron 主进程负责受控文件访问和插件打开，桌面 UI 在文件画布中展示 Viewer。具体 API 会在真实产物链路中继续稳定。
 
 ## 最小查看契约
 
@@ -54,7 +54,7 @@ Viewer 描述至少说明：稳定 ID、可处理的产物类型、所需配套�
 
 ## 首批验证顺序
 
-先以真实报告、波形和 Yosys 网表验证只读产物链路及来源显示，再接 DEF/GDS 的按视口展示和 PCB 关键产物预览。复杂 CAD/Godot 先做产物卡片、截图或导出结果的查看链路，不以重建完整编辑器作为验收条件。每项格式都需分别验证正常、缺配套文件、错误格式、超限、跨项目引用和缓存失效场景。
+先以真实报告、波形和 Yosys 网表验证只读产物链路及来源显示，再接 DEF/GDS 的按视口展示和 PCB 关键产物预览。Godot V1 在隔离 iframe 中运行 Web Export，不重建完整编辑器；具体接入与限制见 [Godot Viewer V1](godot-viewer.md)。每项格式都需分别验证正常、缺配套文件、错误格式、超限、跨项目引用和缓存失效场景。
 
 现有 EDA Harness 的 `viewer_capabilities`、`open_viewer` 和 Silicon Lens 的波形、网表、GDS 视图可作为设计参考；实现需重新确认许可证、格式兼容性与三平台行为。
 

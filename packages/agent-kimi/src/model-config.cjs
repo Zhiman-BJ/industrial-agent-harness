@@ -1,7 +1,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const defaults = Object.freeze({provider: 'kimi', endpoint: 'https://api.moonshot.cn/v1', model: 'kimi-k2-thinking-turbo', contextSize: 262144, thinking: true, vision: false});
+const defaults = Object.freeze({provider: 'kimi', endpoint: 'https://api.moonshot.cn/v1', model: 'kimi-k2-thinking-turbo', contextSize: 262144, thinking: true, imageInput: false, imageInputMode: 'auto'});
 
 function trustedPlaintextHosts() {
   return (process.env.HARNESS_TRUSTED_PLAINTEXT_HOSTS || '').split(',').map(entry => entry.trim().toLowerCase()).filter(Boolean);
@@ -23,17 +23,20 @@ function validateProfile(value) {
   if (!model || model.length > 128 || /[\r\n]/.test(model)) throw Error('Enter a valid model name.');
   const contextSize = Number(value.contextSize);
   if (!Number.isInteger(contextSize) || contextSize < 8192 || contextSize > 2000000) throw Error('Context size must be between 8192 and 2000000.');
-  return {provider: value.provider, endpoint: endpoint.toString().replace(/\/$/, ''), model, contextSize, thinking: Boolean(value.thinking), vision: Boolean(value.vision)};
+  if (value.imageInputMode !== undefined && !['auto', 'enabled', 'disabled'].includes(value.imageInputMode)) throw Error('Choose Auto, Enabled or Disabled for image input.');
+  if (value.imageInput !== undefined && typeof value.imageInput !== 'boolean') throw Error('Image input must be enabled or disabled.');
+  // Existing official MiniMax M3 profiles predate the image-input field.
+  // https://platform.minimax.cn/docs/api-reference/text-openai-api
+  const knownImageModel = value.provider === 'openai_legacy' && ['api.minimaxi.com', 'api.minimax.io', 'api.minimax.cn'].includes(endpoint.hostname) && /^minimax-m3(?:\.1-flash-preview)?$/i.test(model);
+  const imageInputMode = value.imageInputMode ?? (value.imageInput === undefined ? 'auto' : value.imageInput ? 'enabled' : 'disabled');
+  return {provider: value.provider, endpoint: endpoint.toString().replace(/\/$/, ''), model, contextSize, thinking: Boolean(value.thinking), imageInputMode, imageInput: imageInputMode === 'auto' ? knownImageModel : imageInputMode === 'enabled'};
 }
 
 function configToml(profile) {
   const value = validateProfile(profile);
   const quote = JSON.stringify;
-  // The CLI validates model capabilities against the tools a turn requests.
-  // A vision model must declare image_in, otherwise image tool results abort
-  // the turn with LLMNotSupported before the first LLM call.
-  const capabilities = ['thinking', 'image_in'].filter(capability => (capability === 'thinking' ? value.thinking : value.vision));
-  return `default_model = "industrial"\ndefault_thinking = ${value.thinking}\ndefault_yolo = false\nshow_thinking_stream = true\ntelemetry = false\n\n[providers.industrial]\ntype = ${quote(value.provider)}\nbase_url = ${quote(value.endpoint)}\napi_key = "provided-by-harness-session"\n\n[models.industrial]\nprovider = "industrial"\nmodel = ${quote(value.model)}\nmax_context_size = ${value.contextSize}\ncapabilities = ${JSON.stringify(capabilities)}\n`;
+  const modelCapabilities = [...(value.thinking ? ['thinking'] : []), ...(value.imageInput ? ['image_in'] : [])];
+  return `default_model = "industrial"\ndefault_thinking = ${value.thinking}\ndefault_yolo = false\nshow_thinking_stream = true\ntelemetry = false\n\n[providers.industrial]\ntype = ${quote(value.provider)}\nbase_url = ${quote(value.endpoint)}\napi_key = "provided-by-harness-session"\n\n[models.industrial]\nprovider = "industrial"\nmodel = ${quote(value.model)}\nmax_context_size = ${value.contextSize}\ncapabilities = ${JSON.stringify(modelCapabilities)}\n`;
 }
 
 function sessionEnv(profile, apiKey) {

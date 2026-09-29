@@ -5,9 +5,13 @@ const path = require('node:path');
 
 function defaultLogDirectory() {return path.join(os.homedir(), '.industrial-agent-harness', 'logs');}
 
-function createDiagnosticLog(projectDir, {directory = defaultLogDirectory(), apiKey = ''} = {}) {
+function projectLogDirectory(projectDir, directory = defaultLogDirectory()) {
   const projectKey = crypto.createHash('sha256').update(path.resolve(projectDir)).digest('hex').slice(0, 16);
-  const projectDirectory = path.join(directory, projectKey);
+  return path.join(directory, projectKey);
+}
+
+function createDiagnosticLog(projectDir, {directory = defaultLogDirectory(), apiKey = ''} = {}) {
+  const projectDirectory = projectLogDirectory(projectDir, directory);
   fs.mkdirSync(projectDirectory, {recursive: true, mode: 0o700});
   fs.chmodSync(projectDirectory, 0o700);
   const traceId = crypto.randomUUID();
@@ -38,4 +42,4 @@ function createDiagnosticLog(projectDir, {directory = defaultLogDirectory(), api
   };
 }
 
-module.exports = {createDiagnosticLog, defaultLogDirectory};
+module.exports = {createDiagnosticLog, defaultLogDirectory, projectLogDirectory};

@@ -1,12 +1,12 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const valueFlags = new Set(['project-dir', 'domain', 'task', 'task-file', 'provider', 'endpoint', 'model', 'context-size', 'approval', 'api-key-env', 'kimi-executable', 'artifact-manifest', 'timeout-ms', 'disable-skill', 'disable-mcp', 'state-dir', 'log-dir']);
+const valueFlags = new Set(['project-dir', 'domain', 'task', 'task-file', 'provider', 'endpoint', 'model', 'context-size', 'approval', 'api-key-env', 'kimi-executable', 'artifact-manifest', 'timeout-ms', 'disable-skill', 'disable-mcp', 'state-dir', 'log-dir', 'chat-id', 'chat-dir']);
 
 function parseArgs(argv) {
-  if (argv[0] === '--help' || argv[0] === '-h' || (argv[0] === 'run' && (argv[1] === '--help' || argv[1] === '-h'))) return {help: true};
-  if (argv[0] !== 'run') throw Error('Expected the run command. Use --help for usage.');
-  const options = {scopeOnly: false, thinking: true, disabledSkills: [], disabledMcpServers: []};
+  if (argv[0] === '--help' || argv[0] === '-h' || (['run', 'chats'].includes(argv[0]) && (argv[1] === '--help' || argv[1] === '-h'))) return {help: true};
+  if (!['run', 'chats'].includes(argv[0])) throw Error('Expected run or chats. Use --help for usage.');
+  const options = {command: argv[0], scopeOnly: false, thinking: true, disabledSkills: [], disabledMcpServers: []};
   for (let index = 1; index < argv.length; index++) {
     const flag = argv[index];
     if (flag === '--scope-only') {options.scopeOnly = true; continue;}
@@ -21,6 +21,7 @@ function parseArgs(argv) {
     options[key] = argv[++index];
   }
   if (!options.projectDir || !options.domain) throw Error('Provide --project-dir and --domain.');
+  if (options.command === 'chats') {if (options.scopeOnly || options.task || options.taskFile || options.chatId) throw Error('chats only lists project history; use run to submit a task.'); return options;}
   if (Boolean(options.task) === Boolean(options.taskFile)) throw Error('Provide exactly one of --task or --task-file.');
   if (options.taskFile) options.task = fs.readFileSync(path.resolve(options.taskFile), 'utf8');
   if (!options.task.trim()) throw Error('Task text is empty.');

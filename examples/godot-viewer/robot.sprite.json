@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "image": "robot.png",
+  "columns": 4,
+  "rows": 1,
+  "animations": [
+    {"name": "idle", "fps": 3, "loop": true, "frames": [0, 1]},
+    {"name": "run", "fps": 8, "loop": true, "frames": [0, 1, 2, 3]}
+  ]
+}

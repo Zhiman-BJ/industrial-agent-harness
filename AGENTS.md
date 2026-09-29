@@ -30,11 +30,23 @@ Mark a core module implemented only when production code has a real consumer, a 
 - Keep Viewer Core independent of Kimi, MCP, Electron, and concrete domains. Built-in viewers consume registered artifacts through a bounded read-only interface; UI view state and display caches never become execution or verification facts.
 - Offer full in-app viewing only for formats whose parser, performance, license, and target-platform behavior have been verified. For complex CAD/Godot workspaces, show key artifacts without recreating the full editor. External app launch uses a separate authorized path.
 
+## Viewer integration contract
+
+Every new or extended Viewer, including domain-independent document previews, must follow the existing Viewer behavior documented in `doc/product-decisions.md` (PD-003, PD-011, and PD-015), `doc/viewer-layer.md`, and `packages/viewer-builtin/README.md`.
+
+- Register selection through Viewer Core/Registry. Open supported files from the active Project file tree and reuse the shared workspace canvas and toolbar.
+- Implement the shared `ViewNavigation` interface in `packages/viewer-builtin/src/navigation.tsx`: zoom out, zoom in, Fit, readiness, and an appropriate scale indicator. Support canvas wheel and trackpad pinch zoom. Fit restores the appropriate content framing; use time-range zoom for waveforms and preview magnification for Godot without changing its scene camera or playback state.
+- Reuse workspace fullscreen and exit controls, including Esc. Keep Viewer controls available, retain the mounted Viewer and its view/runtime state across fullscreen changes, and restore the workspace layout on exit.
+- Disable zoom while loading or after failure. Remove stale navigation controllers, listeners, and runtime sessions when switching files/projects or unmounting. Keep zoom, pan, selection, and fullscreen as temporary display state; do not modify source files, DomainState, or verification results.
+- Preserve the existing bounded read-only file access, source/companion hash checks, parser limits, sandboxing, provenance, and explicit loading/error states. Declare required dependencies, supported formats, and actual platform availability.
+- Before claiming integration, verify the real Project file tree → Registry → rendered Viewer path, toolbar zoom, wheel/pinch, Fit, fullscreen entry/exit, state retention, and relevant failure/file-boundary behavior. Follow the existing Viewer integration/selftests; report only platforms actually exercised.
+- In the same change, add or update the repository-root `README.md` section “已接入的 Viewer” with the Viewer, supported inputs, viewing features, dependencies, limitations, and a link to its documentation. Update the relevant package README and `doc/` pages whenever their documented behavior changes. An integration is incomplete until its root README entry matches the implemented and verified behavior.
+
 ## Capability and disclosure
 
 - Resolve capabilities from the current Domain State and task. Capabilities bind relevant Skill batches, canonical Tool IDs, viewers, verification, dependencies, and conflicts.
 - Skill and MCP tool disclosure must be progressive. Expose a compact discovery surface first; load detailed skill content and tool schemas only for a selected capability. Replace stale session scope when the domain stage changes.
-- Declare default Skill files in `packages/domain-skills` and default Domain MCP providers in `packages/domain-mcp`. Store only disabled resource IDs per Project; desktop and CLI must apply the same effective policy before Broker resolution. Do not expose an MCP server with undeclared or out-of-scope tools.
+- Declare default Skill files in `packages/domain-skills` and default Domain MCP providers in `packages/domain-mcp`. Store only resource ID enablement policy: global defaults and per-project enable/disable overrides, with absence meaning inherit; desktop and CLI must apply the same effective policy before Broker resolution. Do not expose an MCP server with undeclared or out-of-scope tools.
 - Keep canonical Tool IDs separate from MCP provider names and transport-specific tool names. Enforce the resulting tool allowlist at the execution boundary, not solely in prompts.
 - Make resolver decisions deterministic and testable in V1. Record candidates, selected capabilities, disclosed skills and tools, scope changes, and execution outcomes in a disclosure trace.
 - Keep conversation history and compaction under Kimi's control. Harness supplies a bounded, structured Industrial Context.

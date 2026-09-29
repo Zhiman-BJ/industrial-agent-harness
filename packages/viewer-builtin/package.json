@@ -6,14 +6,19 @@
     "test": "node --test tests/*.test.cjs"
   },
   "dependencies": {
+    "lucide-react": "1.37.0",
     "netlistsvg": "1.0.2",
     "react": "19.2.8",
-    "lucide-react": "1.37.0"
+    "react-markdown": "10.1.0",
+    "remark-gfm": "4.0.1"
   },
   "exports": {
     "./layout": "./src/layout/LayoutViewport.tsx",
     "./netlist": "./src/netlist/NetlistViewport.tsx",
     "./waveform": "./src/waveform/WaveformViewport.tsx",
+    "./godot": "./src/godot/GodotViewport.tsx",
+    "./kicad": "./src/kicad/KiCadViewport.tsx",
+    "./canvas": "./src/ViewerCanvas.tsx",
     "./styles.css": "./src/viewer-styles.css",
     "./api": "./src/api.ts"
   },

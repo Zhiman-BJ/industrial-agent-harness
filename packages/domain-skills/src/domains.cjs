@@ -1,8 +1,8 @@
-const labels = {chip: 'Chip', pcb: 'PCB'};
-const emojis = {chip: '💠', pcb: '🔌'};
+const labels = {chip: 'Chip', pcb: 'PCB', godot: 'Godot'};
+const emojis = {chip: '💠', pcb: '🔌', godot: '🎮'};
 
 function listDomains(capabilities) {
-  return [...new Set(capabilities.map(item => item.domain).filter(Boolean))]
+  return [...new Set([...capabilities.map(item => item.domain).filter(Boolean), 'godot'])]
     .sort((a, b) => a.localeCompare(b))
     .map(id => ({id, label: labels[id] || id.split(/[-_]/).map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' '), emoji: emojis[id] || '⚙️'}));
 }

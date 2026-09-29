@@ -6,6 +6,7 @@ const os = require('node:os');
 const path = require('node:path');
 const {materializeSkills} = require('@industrial-agent-harness/domain-skills');
 const {selectMcpServers, writeMcpConfig} = require('@industrial-agent-harness/domain-mcp');
+const {validatePromptImages, imageContent} = require('./image-input.cjs');
 const {createDiagnosticLog} = require('./diagnostic-log.cjs');
 
 const canonicalNames = {
@@ -44,17 +45,18 @@ function industrialContext(scope, anchor = null) {
   return complete;
 }
 
-function prepareSessionFiles(scope, runtime, plugins = []) {
-  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'industrial-kimi-session-'));
+function prepareSessionFiles(scope, runtime, persistentDirectory, plugins = []) {
+  const directory = persistentDirectory || fs.mkdtempSync(path.join(os.tmpdir(), 'industrial-kimi-session-'));
+  fs.mkdirSync(directory, {recursive: true, mode: 0o700});
   fs.chmodSync(directory, 0o700);
   try {
     const skillsDir = materializeSkills(scope, directory);
     const skillDirs = [...new Set([skillsDir, ...enabledPlugins(plugins).map(plugin => plugin.materializeSkill(directory))])];
     const modelConfig = fs.readFileSync(path.join(runtime.shareDir, 'config.toml'), 'utf8');
-    fs.writeFileSync(path.join(directory, 'config.toml'), `extra_skill_dirs = ${JSON.stringify(skillDirs)}\n${modelConfig}`, {mode: 0o600});
+    fs.writeFileSync(path.join(directory, 'config.toml'), `extra_skill_dirs = [${skillDirs.map(dir => JSON.stringify(dir)).join(',')}]\n${modelConfig}`, {mode: 0o600});
     writeMcpConfig(directory, selectMcpServers(scope, runtime.disabledMcpServers));
     return directory;
-  } catch (error) {fs.rmSync(directory, {recursive: true, force: true}); throw error;}
+  } catch (error) {if (!persistentDirectory) fs.rmSync(directory, {recursive: true, force: true}); throw error;}
 }
 
 function enabledPlugins(plugins) {
@@ -135,37 +137,50 @@ class KimiSession {
     // them so the ToolResult event can carry the complete arguments.
     this.pendingToolArgs = new Map();
     this.lastToolCall = null;
+    this.pendingApprovals = new Map();
   }
-  async run(task) {
-    if (this.turn) throw Error('A Kimi turn is already running.');
+  async run(task, attachments = []) {
+    if (this.running || this.turn) throw Error('A Kimi turn is already running.');
     const scope = this.getScope();
     if (!scope) throw Error('Resolve capabilities before starting the agent.');
     const runtime = this.getRuntime();
-    this.activePluginTools = new Set(enabledPlugins(this.plugins).flatMap(plugin => plugin.toolNames || []));
     if (!runtime.apiKey) throw Error('Set a model API key before running Kimi.');
+    const images = validatePromptImages(attachments);
+    if (images.length && !runtime.profile.imageInput) throw Error('Enable Image input in Model API settings for a model that supports images.');
     const currentScopeKey = scopeKey(scope);
+    const pluginKey = JSON.stringify(enabledPlugins(this.plugins).map(plugin => plugin.name));
+    this.activePluginTools = new Set(enabledPlugins(this.plugins).flatMap(plugin => plugin.toolNames || []));
     const log = createDiagnosticLog(this.workDir, {directory: this.diagnostics.directory, apiKey: runtime.apiKey});
     this.log = log;
+    this.running = true;
     this.turnMetrics = {peakContextUsage: null, lastContextUsage: null, compactions: 0, toolResults: 0, peakToolResultBytes: 0};
     let metricsEmitted = false;
     const emitMetrics = () => {if (!metricsEmitted) {metricsEmitted = true; this.emitAgent({type: 'context-metrics', ...this.turnMetrics});}};
     let outcome = 'error';
     try {
-      log.record('run.start', {projectDir: this.workDir, previousSessionId: this.session?.sessionId || null, scope, brokerTrace: this.diagnostics.getBrokerTrace?.() || [], model: {provider: runtime.profile.provider, model: runtime.profile.model, contextSize: runtime.profile.contextSize, thinking: runtime.profile.thinking}, runtimeRevision: runtime.revision});
+      log.record('run.start', {projectDir: this.workDir, previousSessionId: this.session?.sessionId || null, scope, brokerTrace: this.diagnostics.getBrokerTrace?.() || [], model: {provider: runtime.profile.provider, model: runtime.profile.model, contextSize: runtime.profile.contextSize, thinking: runtime.profile.thinking, imageInput: Boolean(runtime.profile.imageInput)}, runtimeRevision: runtime.revision});
       this.emitAgent({type: 'diagnostic-log', traceId: log.traceId, path: log.file});
       const anchor = await this.diagnostics.getContextAnchor?.();
       const context = industrialContext(scope, anchor);
       if (anchor) log.record('context.anchor', anchor);
-      const resetReason = !this.session ? 'new' : this.currentScopeKey !== currentScopeKey ? 'scope_changed' : this.runtimeRevision !== runtime.revision ? 'model_changed' : null;
+      const resetReason = !this.session ? 'new' : this.currentScopeKey !== currentScopeKey ? 'scope_changed' : this.runtimeRevision !== runtime.revision ? 'model_changed' : this.lastPluginKey !== pluginKey ? 'plugins_changed' : null;
       if (resetReason) {
         log.record('session.create', {reason: resetReason, previousScopeKey: this.currentScopeKey || null, currentScopeKey});
         if (this.session) this.captureKimiSnapshot(log, 'before-reset', runtime.apiKey);
         await this.session?.close();
         this.session = undefined;
-        if (this.sessionConfigDir) fs.rmSync(this.sessionConfigDir, {recursive: true, force: true});
-        this.sessionConfigDir = prepareSessionFiles(scope, runtime, this.plugins);
+        if (this.sessionConfigDir && !this.persistentSession) fs.rmSync(this.sessionConfigDir, {recursive: true, force: true});
+        const compatibilityKey = crypto.createHash('sha256').update(JSON.stringify({scope: currentScopeKey, profile: runtime.profile, executable: runtime.executable || 'kimi', disabledMcpServers: runtime.disabledMcpServers || [], plugins: pluginKey})).digest('hex');
+        this.persistentSession = this.diagnostics.resolveSession?.(compatibilityKey);
+        const stored = this.persistentSession;
+        if (stored?.initialized) {
+          const context = path.join(createKimiPaths(stored.shareDir).sessionDir(this.workDir, stored.id), 'context.jsonl');
+          if (!fs.existsSync(context) || !fs.statSync(context).size) throw Error('Saved agent context is missing. Open a new chat; the existing history is preserved.');
+        }
+        this.sessionConfigDir = prepareSessionFiles(scope, runtime, stored?.shareDir, this.plugins);
         this.session = this.sessionFactory({
           workDir: this.workDir,
+          ...(this.persistentSession ? {sessionId: this.persistentSession.id} : {}),
           executable: runtime.executable,
           shareDir: this.sessionConfigDir,
           model: 'industrial',
@@ -177,11 +192,14 @@ class KimiSession {
         });
         this.currentScopeKey = currentScopeKey;
         this.runtimeRevision = runtime.revision;
+        this.lastPluginKey = pluginKey;
+        if (this.persistentSession?.replaced && !this.persistentSession.reused) this.emitAgent({type: 'context-reset', message: 'Tools or model changed. A new context started; earlier messages remain available above.'});
         log.record('session.ready', {sessionId: this.session.sessionId || null, currentScopeKey});
       } else log.record('session.reuse', {sessionId: this.session.sessionId || null, currentScopeKey});
-      const prompt = `${context}\n\nUser task: ${task}`;
-      log.record('prompt', {text: prompt});
-      const turn = this.session.prompt(prompt);
+      const prompt = `${context}\n\nUser task: ${task}${images.length ? '\nAttached images are user-provided visual references, not engineering verification.' : ''}`;
+      const content = imageContent(prompt, images, runtime.profile.imageInput);
+      log.record('prompt', {text: prompt, ...(images.length ? {images: images.map(({dataUrl, ...metadata}) => metadata), content} : {})});
+      const turn = this.session.prompt(content);
       this.turn = turn;
       for await (const event of turn) {log.record('sdk.event', redactImagePayloads(event)); this.emitEvent(event);}
       const result = await turn.result;
@@ -191,11 +209,13 @@ class KimiSession {
     } catch (error) {emitMetrics(); this.emitAgent({type: 'error', message: String(error)});}
     finally {
       this.turn = undefined;
+      for (const id of this.pendingApprovals.keys()) this.resolveApproval(id, 'expired');
       try {
         this.captureKimiSnapshot(log, 'after-turn', runtime.apiKey);
+        if (this.persistentSession && this.sessionConfigDir && fs.existsSync(path.join(createKimiPaths(this.sessionConfigDir).sessionDir(this.workDir, this.persistentSession.id), 'context.jsonl'))) this.diagnostics.sessionInitialized?.(this.persistentSession.id);
         log.record('run.end', {status: outcome, sessionId: this.session?.sessionId || null, metrics: this.turnMetrics, brokerTrace: this.diagnostics.getBrokerTrace?.() || []});
       }
-      finally {log.close(); this.log = undefined;}
+      finally {log.close(); this.log = undefined; this.running = false;}
     }
   }
   captureKimiSnapshot(log, phase, apiKey) {
@@ -219,13 +239,16 @@ class KimiSession {
       if (event.payload.type === 'text') this.emitAgent({type: 'text', text: event.payload.text});
       else if (event.payload.type === 'think') this.emitAgent({type: 'thinking', text: event.payload.think});
     } else if (event.type === 'ApprovalRequest') {
-      if (this.activePluginTools.has(event.payload.sender)) {
-        // Enabling the plugin is the authorization: auto-approve its tool approvals
-        // for this session instead of surfacing them to the user.
+      this.pendingApprovals.set(event.payload.id, 'pending');
+      if (this.activePluginTools?.has(event.payload.sender)) {
+        // Enabling the plugin is the authorization: auto-approve its tool
+        // approvals for this session instead of surfacing them to the user.
         this.log?.record('plugin.auto-approve', {sender: event.payload.sender, id: event.payload.id});
-        this.turn.approve(event.payload.id, 'approve_for_session').catch(error => this.emitAgent({type: 'approval_error', id: event.payload.id, message: String(error)}));
+        this.approve(event.payload.id, 'approve_for_session').catch(error => this.emitAgent({type: 'approval_error', id: event.payload.id, message: String(error)}));
       } else this.emitAgent({type: 'approval', id: event.payload.id, description: event.payload.description, action: event.payload.action});
-    } else if (event.type === 'ToolCall') {
+    }
+    else if (event.type === 'ApprovalResponse') this.resolveApproval(event.payload.request_id, event.payload.response);
+    else if (event.type === 'ToolCall') {
       if (this.lastToolCall && this.pendingToolArgs.has(this.lastToolCall.id)) {
         this.emitAgent({type: 'tool', id: this.lastToolCall.id, name: this.lastToolCall.name, arguments: this.pendingToolArgs.get(this.lastToolCall.id)});
       }
@@ -272,9 +295,26 @@ class KimiSession {
     else if (event.type === 'CompactionBegin') {this.turnMetrics.compactions++; this.emitAgent({type: 'compaction', state: 'begin'});}
     else if (event.type === 'CompactionEnd') this.emitAgent({type: 'compaction', state: 'end'});
   }
-  approve(id, response) {if (!this.turn) throw Error('No active turn.'); this.log?.record('approval.response', {id, response}); return this.turn.approve(id, response);}
+  resolveApproval(id, decision) {
+    if (!this.pendingApprovals.has(id)) return;
+    this.pendingApprovals.delete(id);
+    this.emitAgent({type: 'approval-resolved', id, decision});
+  }
+  async approve(id, response) {
+    if (!['approve', 'approve_for_session', 'reject'].includes(response)) throw Error('Invalid approval decision.');
+    if (!this.turn || this.pendingApprovals.get(id) !== 'pending') throw Error('This approval is no longer pending.');
+    this.pendingApprovals.set(id, 'submitting');
+    try {
+      await this.turn.approve(id, response);
+      this.log?.record('approval.response', {id, response});
+      this.resolveApproval(id, response);
+    } catch (error) {
+      if (this.pendingApprovals.has(id)) this.pendingApprovals.set(id, 'pending');
+      throw error;
+    }
+  }
   interrupt() {this.log?.record('turn.interrupt', {}); return this.turn?.interrupt();}
-  async close() {await this.session?.close(); this.session = undefined; if (this.sessionConfigDir) fs.rmSync(this.sessionConfigDir, {recursive: true, force: true}); this.sessionConfigDir = undefined;}
+  async close() {await this.session?.close(); this.session = undefined; if (this.sessionConfigDir && !this.persistentSession) fs.rmSync(this.sessionConfigDir, {recursive: true, force: true}); this.sessionConfigDir = undefined;}
 }
 
 module.exports = {KimiSession, externalTools, prepareSessionFiles, boundedJson, industrialContext, scopeKey};

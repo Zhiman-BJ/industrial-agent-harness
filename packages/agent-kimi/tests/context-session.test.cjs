@@ -53,3 +53,26 @@ test('equivalent Broker scope keeps the session; a changed effective scope repla
   assert.equal(created[0].closes, 1);
   assert.match(prompts[2], /"stage":"verification"/);
 });
+
+test('session preparation is busy and a completed turn expires unanswered approvals', async t => {
+  const shareDir = fs.mkdtempSync(path.join(os.tmpdir(), 'industrial-kimi-pending-'));
+  t.after(() => fs.rmSync(shareDir, {recursive: true, force: true}));
+  fs.writeFileSync(path.join(shareDir, 'config.toml'), 'default_model = "industrial"\n');
+  let resume;
+  const anchor = new Promise(resolve => {resume = resolve;});
+  const events = [];
+  const scope = {domain: 'chip', stage: 'rtl', capabilityIds: [], skills: [], tools: []};
+  const factory = () => ({close: async () => {}, prompt: () => ({result: Promise.resolve({status: 'completed'}), async *[Symbol.asyncIterator]() {
+    yield {type: 'ApprovalRequest', payload: {id: 'expired', action: 'read', description: 'No reply'}};
+  }})});
+  const session = new KimiSession(shareDir, () => scope, () => null, () => null, event => events.push(event), () => ({apiKey: 'test-key', revision: 0, shareDir, profile: {thinking: false}}), factory, {directory: path.join(shareDir, 'logs'), getContextAnchor: () => anchor});
+  t.after(() => session.close());
+  const turn = session.run('Inspect');
+  assert.equal(session.running, true);
+  assert.equal(session.turn, undefined);
+  await assert.rejects(session.run('Duplicate task'), /already running/);
+  resume(null); await turn;
+  assert.equal(session.running, false);
+  assert.deepEqual(events.at(-1), {type: 'approval-resolved', id: 'expired', decision: 'expired'});
+  await assert.rejects(session.approve('expired', 'approve'), /no longer pending/);
+});

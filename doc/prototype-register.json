@@ -35,19 +35,6 @@
       "replacement": "ToolDescriptor registry consumed by agent-kimi"
     },
     {
-      "id": "electron-viewer-dispatch",
-      "path": "apps/desktop/src/App.tsx",
-      "signature": "opened?.kind === 'layout'",
-      "allowedViewerKinds": ["layout", "netlist", "waveform"],
-      "replacement": "Viewer Registry discovery through viewer-core"
-    },
-    {
-      "id": "electron-viewer-host-dispatch",
-      "path": "apps/desktop/electron/main.cjs",
-      "signature": "if (artifact.kind === 'layout')",
-      "replacement": "Viewer Host resolves ViewerDescriptor from viewer-core"
-    },
-    {
       "id": "static-capability-registry",
       "path": "packages/domain-skills/src/capabilities.cjs",
       "signature": "chip.rtl.netlist.inspect",

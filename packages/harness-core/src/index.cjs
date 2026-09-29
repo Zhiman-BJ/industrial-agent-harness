@@ -1,6 +1,8 @@
+const {ChatStore, defaultChatDirectory} = require('./chat-store.cjs');
 const {resolve} = require('@industrial-agent-harness/capability-broker');
 const {capabilities, listDomains, listSkills} = require('@industrial-agent-harness/domain-skills');
 const {listMcpServers} = require('@industrial-agent-harness/domain-mcp');
+const {ResourceSettings, defaultResourceDirectory, effectiveResourcePolicy} = require('./resource-settings.cjs');
 
 function resourceCatalog(domain) {return {skills: listSkills(domain), mcpServers: listMcpServers(domain)};}
 
@@ -21,4 +23,4 @@ function resolveProjectTask(domain, request, previous, registry = capabilities, 
   return result;
 }
 
-module.exports = {resolveProjectTask, resourceCatalog, effectiveCapabilities};
+module.exports = {ChatStore, defaultChatDirectory, resolveProjectTask, resourceCatalog, effectiveCapabilities, ResourceSettings, defaultResourceDirectory, effectiveResourcePolicy};

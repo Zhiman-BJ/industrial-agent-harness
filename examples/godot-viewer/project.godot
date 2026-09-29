@@ -1,0 +1,21 @@
+config_version=5
+
+[application]
+config/name="Harness Viewer Playground"
+run/main_scene="res://playground.tscn"
+config/features=PackedStringArray("4.3", "GL Compatibility")
+
+[autoload]
+HarnessViewerBridge="*res://harness_viewer_bridge.gd"
+
+[display]
+window/size/viewport_width=960
+window/size/viewport_height=540
+window/stretch/mode="canvas_items"
+
+[rendering]
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+textures/default_filters/use_nearest_mipmap_filter=false
+textures/canvas_textures/default_texture_filter=0
+environment/defaults/default_clear_color=Color(0.043, 0.075, 0.12, 1)

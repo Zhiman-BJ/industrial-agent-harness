@@ -11,6 +11,17 @@ window.on_surfer_error=message=>{
 window.__surfer_host_api={postMessage:data=>notify({event:'surfer-event',data})};
 try{
  await init({module_or_path:new URL('./surfer_bg.wasm',import.meta.url)});
+ let wheelDelta = 0;
+ document.addEventListener('wheel', event => {
+  if(event.shiftKey || event.target?.tagName !== 'CANVAS')return;
+  event.preventDefault(); event.stopImmediatePropagation();
+  const pixels=event.deltaY*(event.deltaMode===1?8:event.deltaMode===2?24:1);
+  if(Math.sign(pixels)!==Math.sign(wheelDelta))wheelDelta=0;
+  wheelDelta+=Math.max(-120,Math.min(120,pixels));
+  if(Math.abs(wheelDelta)<40)return;
+  const command=wheelDelta<0?'zoom_in':'zoom_out';wheelDelta=0;
+  inject_message(JSON.stringify({LoadCommandFromData:Array.from(new TextEncoder().encode(command))}));
+ },{capture:true,passive:false});
  window.addEventListener('message',async event=>{
   if(event.source!==parent||event.origin!==origin||event.data?.channel!=='industrial-host')return;
   const {id,action,payload}=event.data;
