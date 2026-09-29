@@ -53,7 +53,10 @@ function createGuiPlugin({enabled, installedDir, log, env = process.env, spawner
     enabled: isEnabled,
     toolNames: GUI_TOOLS.map(item => item.name),
     materializeSkill: directory => materializeGuiSkill(directory),
-    toolsFactory: () => createComputerUseTools({client: clientLike, isEnabled, log}),
+    // Each Kimi session builds its tools through this factory. An optional
+    // per-session log sink routes tool-call records to the calling chat's
+    // broker trace; without one the shared `log` callback applies.
+    toolsFactory: (sessionLog) => createComputerUseTools({client: clientLike, isEnabled, log: sessionLog || log}),
     async close() {
       if (!clientPromise) return;
       try {const client = await clientPromise; client.close();} catch {}

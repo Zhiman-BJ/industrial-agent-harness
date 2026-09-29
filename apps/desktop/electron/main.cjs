@@ -49,9 +49,6 @@ let sessionApiKey = '';
 let modelRevision = 0;
 let appSettings = {guiPluginEnabled: false};
 let guiBridge;
-// The gui plugin is shared across chats, so its tool-call records live in a
-// bounded buffer that every chat's broker trace merges at read time.
-let guiTraceLog = [];
 const chats = new ChatStore(process.argv.some(flag => flag.endsWith('-selftest')) ? path.join(app.getPath('userData'), 'chats') : defaultChatDirectory());
 let activeChatId;
 function chatList() {return {chats: activeProject()?.domain ? chats.list(projectDir, activeProject().domain).map(chat => ({...chat, running: sessions.busy(sessions.get(activeProject(), chat.id)), awaitingApproval: Boolean(sessions.get(activeProject(), chat.id).agent?.pendingApprovals.size)})) : [], activeId: activeChatId || null, sessions: sessions.snapshots()};}
@@ -119,20 +116,29 @@ function kimiExecutable() {
 function modelStatus() {return {...readProfile(configDir()), hasApiKey: Boolean(readApiKey()), keyPersisted: canPersistKey() && fs.existsSync(keyFile())};}
 function guiPlugin() {
   if (!guiBridge) {
+    // Tool-call records are attributed per chat through the diagnostics
+    // pluginLog sink each KimiSession passes into toolsFactory.
     guiBridge = createGuiPlugin({
       enabled: () => appSettings.guiPluginEnabled,
       installedDir: guiBridgeDir(),
-      log: (canonicalId, risk, args, info) => {
-        guiTraceLog.push({level: 'L2', event: 'plugin.tool-call', detail: {plugin: 'computer-use', tool: canonicalId, risk, args, ...info}});
-        if (guiTraceLog.length > 500) guiTraceLog.splice(0, guiTraceLog.length - 500);
-      },
     });
   }
   return guiBridge;
 }
 function guiBridgeState() {
+  // A user-supplied GUI_BRIDGE_BIN never lands in the managed directory, so
+  // disk state alone would report 'missing' forever; it is ready by definition.
+  if (process.env.GUI_BRIDGE_BIN) return {enabled: appSettings.guiPluginEnabled, install: 'ready', version: null};
   const installed = guiBridgeStatus(guiBridgeDir());
   return {enabled: appSettings.guiPluginEnabled, install: installed.state, version: installed.version?.tag || null};
+}
+function guiInstallProgress(phase, detail) {
+  mainWindow?.webContents.send('settings:gui-progress', {phase, ...(detail && typeof detail === 'object' ? {detail: Object.keys(detail)} : {})});
+}
+function startGuiInstall() {
+  return ensureInstalled(guiBridgeDir(), process.env, guiInstallProgress)
+    .then(result => mainWindow?.webContents.send('settings:gui-progress', {phase: 'ready', tag: result.tag, cached: Boolean(result.cached)}))
+    .catch(error => mainWindow?.webContents.send('settings:gui-progress', {phase: 'error', error: String(error)}));
 }
 function runtimeConfig(project = activeProject()) {
   const profile = readProfile(configDir());
@@ -257,20 +263,12 @@ function registerHandlers() {
   ipcMain.handle('model:get', () => modelStatus());
   ipcMain.handle('settings:gui-state', () => guiBridgeState());
   ipcMain.handle('settings:set-gui', (_event, {enabled}) => {
-    const next = Boolean(enabled);
-    const previous = appSettings.guiPluginEnabled;
-    appSettings = {...appSettings, guiPluginEnabled: next};
+    appSettings = {...appSettings, guiPluginEnabled: Boolean(enabled)};
     saveSettings(configDir(), appSettings);
-    // Enabling is the authorization; a session change picks up the new tool set.
-    if (next && !previous) {
-      void agent?.close().catch(() => {});
-      agent = undefined;
-    }
-    if (next) {
-      void ensureInstalled(guiBridgeDir(), process.env, (phase, detail) => mainWindow?.webContents.send('settings:gui-progress', {phase, ...(detail && typeof detail === 'object' ? {detail: Object.keys(detail)} : {})}))
-        .then(result => mainWindow?.webContents.send('settings:gui-progress', {phase: 'ready', tag: result.tag, cached: Boolean(result.cached)}))
-        .catch(error => mainWindow?.webContents.send('settings:gui-progress', {phase: 'error', error: String(error)}));
-    }
+    // Enabling is the authorization. No live session is torn down here:
+    // KimiSession detects the changed plugin set (plugins_changed) and rebuilds
+    // itself on the next run of each chat.
+    if (appSettings.guiPluginEnabled) void startGuiInstall();
     return guiBridgeState();
   });
   ipcMain.handle('model:save', async (_event, request) => {
@@ -478,7 +476,7 @@ function registerHandlers() {
       };
       entry.agent ||= new KimiSession(entry.project.path, () => entry.scope, id => sessionContext(entry).readArtifact(id), id => loadDetail(id, entry), emit, () => runtimeConfig(entry.project),
         process.argv.includes('--parallel-selftest') ? require('./parallel-selftest.cjs').createSession : process.argv.includes('--image-input-selftest') ? require('./image-input-selftest.cjs').createSession : process.argv.includes('--agent-log-selftest') ? require('./agent-log-selftest.cjs').createSession : process.argv.includes('--chat-selftest') ? require('./chat-selftest.cjs').createSession : undefined,
-        {directory: diagnosticDirectory(), getBrokerTrace: () => [...entry.trace, ...guiTraceLog], getContextAnchor: () => sessionContext(entry).anchor(), readContextPage: (checkpointId, offset, limit) => sessionContext(entry).readPage(checkpointId, offset, limit), resolveSession: key => chats.runtimeSession(entry.id, key), sessionInitialized: id => chats.initialized(id)}, [guiPlugin()]);
+        {directory: diagnosticDirectory(), getBrokerTrace: () => entry.trace, pluginLog: (canonicalId, risk, args, info) => {entry.trace.push({level: 'L2', event: 'plugin.tool-call', detail: {plugin: 'computer-use', tool: canonicalId, risk, args, ...info}}); if (entry.trace.length > 500) entry.trace.splice(0, entry.trace.length - 500);}, getContextAnchor: () => sessionContext(entry).anchor(), readContextPage: (checkpointId, offset, limit) => sessionContext(entry).readPage(checkpointId, offset, limit), resolveSession: key => chats.runtimeSession(entry.id, key), sessionInitialized: id => chats.initialized(id)}, [guiPlugin()]);
       entry.agent.emit = emit;
       if (images.length) emit({type: 'user-images', images});
       void entry.agent.run(task, images).catch(error => emit({type: 'error', message: String(error)})).finally(() => {
@@ -518,6 +516,10 @@ function registerHandlers() {
 
 async function createWindow() {
   appSettings = readSettings(configDir());
+  // A previously enabled plugin whose install never completed (offline first
+  // run, failed upgrade) must not stay durably enabled with no binary: retry
+  // on every startup until it lands. Progress reaches the Settings panel.
+  if (appSettings.guiPluginEnabled && !process.env.GUI_BRIDGE_BIN && guiBridgeStatus(guiBridgeDir()).state !== 'ready') void startGuiInstall();
   if (process.argv.includes('--documents-selftest')) require('./documents-selftest.cjs').prepare(projectConfigDir());
   if (process.argv.includes('--parallel-selftest')) require('./parallel-selftest.cjs').prepare(projectConfigDir());
   if (process.argv.includes('--image-input-selftest')) require('./image-input-selftest.cjs').prepare(projectConfigDir(), configDir());
