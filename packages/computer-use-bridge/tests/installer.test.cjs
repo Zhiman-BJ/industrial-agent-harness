@@ -101,6 +101,57 @@ test('installBridge downloads, verifies, extracts; ensureInstalled is idempotent
   assert.equal(fs.statSync(first.binary).mode & 0o777, 0o755);
 });
 
+test('a transport error rejects the install instead of crashing the process', async t => {
+  const {EventEmitter} = require('node:events');
+  const workDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gui-bridge-install-'));
+  t.after(() => fs.rmSync(workDir, {recursive: true, force: true}));
+  const requests = [];
+  // A get() fake shaped like https.get: responds via callback, errors via the
+  // returned request's 'error' event (a third callback argument is not a thing).
+  const get = (url, callback) => {const request = new EventEmitter(); requests.push({callback, request}); return request;};
+  const env = {GUI_BRIDGE_SOURCE_REPO: 'test/repo', GUI_BRIDGE_TAG: 'v9.9.9', platform: 'darwin', arch: 'arm64'};
+  const install = installBridge(path.join(workDir, 'gui-bridge'), env, () => {}, get);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.ok(requests.length >= 1, 'the installer starts a download');
+  assert.ok(requests[0].request.listenerCount('error') > 0, 'the request must carry an error listener so a network failure rejects the promise');
+  requests[0].request.emit('error', new Error('getaddrinfo ENOTFOUND github.com'));
+  await assert.rejects(install, /ENOTFOUND/);
+});
+
+test('a redirect without a Location header rejects with a clear error', async () => {
+  const {EventEmitter} = require('node:events');
+  const get = (url, callback) => {setImmediate(() => callback({statusCode: 302, headers: {}, resume() {}})); return new EventEmitter();};
+  const target = path.join(os.tmpdir(), `gui-bridge-redirect-${process.pid}-${Date.now()}`);
+  const env = {GUI_BRIDGE_SOURCE_REPO: 'test/repo', GUI_BRIDGE_TAG: 'v9.9.9', platform: 'darwin', arch: 'arm64'};
+  await assert.rejects(installBridge(target, env, () => {}, get), /Location/);
+});
+
+test('a failed upgrade keeps the previously installed bridge intact', async t => {
+  const workDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gui-bridge-install-'));
+  t.after(() => fs.rmSync(workDir, {recursive: true, force: true}));
+  const assetDir = path.join(workDir, 'asset');
+  fs.mkdirSync(assetDir, {recursive: true});
+  const asset = buildZipAsset(assetDir, '#!/bin/sh\necho v1\n');
+  const sha = crypto.createHash('sha256').update(asset).digest('hex');
+  const sumsText = `${sha}  munim-computer-use-macos-universal.zip\n`;
+  const goodServer = await startServer({asset, sumsText, assetFilename: 'munim-computer-use-macos-universal.zip'});
+  t.after(() => new Promise(resolve => goodServer.close(resolve)));
+  const target = path.join(workDir, 'gui-bridge');
+  await installBridge(target, envFor(goodServer), () => {}, http.get);
+  assert.equal(status(target).state, 'ready');
+  // A pinned-tag change with a failing source (SHA mismatch here) must not
+  // destroy the working install while fetching the replacement.
+  const badSums = 'f'.repeat(64) + '  munim-computer-use-macos-universal.zip\n';
+  const badServer = await startServer({asset, sumsText: badSums, assetFilename: 'munim-computer-use-macos-universal.zip'});
+  t.after(() => new Promise(resolve => badServer.close(resolve)));
+  const upgradeEnv = {...envFor(badServer), GUI_BRIDGE_TAG: 'v8.8.8'};
+  await assert.rejects(ensureInstalled(target, upgradeEnv, () => {}, http.get), /SHA256 mismatch/);
+  const kept = status(target);
+  assert.equal(kept.state, 'ready', 'the previously working bridge survives a failed upgrade');
+  assert.equal(kept.version.tag, 'v9.9.9');
+  assert.equal(fs.readFileSync(kept.binary, 'utf8'), '#!/bin/sh\necho v1\n');
+});
+
 test('installBridge rejects on SHA256 mismatch and removes partial output', async t => {
   const workDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gui-bridge-install-'));
   t.after(() => fs.rmSync(workDir, {recursive: true, force: true}));

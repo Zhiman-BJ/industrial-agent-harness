@@ -30,12 +30,18 @@ function sha256(buffer) {
 }
 
 // `get` defaults to node:https but is injectable so tests can use a local http server.
+// node:https.get takes (url[, options][, callback]); transport errors surface on
+// the returned request's 'error' event, so the handler must be attached there —
+// an extra callback argument is silently dropped and becomes an unhandled error.
 function download(url, get, redirects = 5) {
   return new Promise((resolve, reject) => {
     if (!redirects) return reject(new Error('Too many redirects.'));
-    get(url, response => {
+    const request = get(url, response => {
       if ([301, 302, 303, 307, 308].includes(response.statusCode)) {
         response.resume();
+        // Without this check `new URL(undefined, url)` resolves the string
+        // "undefined" as a path and surfaces a confusing redirect/404 error.
+        if (!response.headers.location) return reject(new Error(`Redirect from ${url} has no Location header.`));
         return resolve(download(new URL(response.headers.location, url).toString(), get, redirects - 1));
       }
       if (response.statusCode !== 200) {
@@ -46,7 +52,8 @@ function download(url, get, redirects = 5) {
       response.on('data', chunk => chunks.push(chunk));
       response.on('end', () => resolve(Buffer.concat(chunks)));
       response.on('error', reject);
-    }, error => reject(error));
+    });
+    request.on('error', reject);
   });
 }
 
@@ -87,7 +94,12 @@ function extractBinary(stagedFile, name, outDir) {
 async function installBridge(targetDir, env = process.env, emit = () => {}, get = require('node:https').get) {
   const {repo, tag} = source(env);
   const name = assetName(env.platform, env.arch);
-  fs.mkdirSync(targetDir, {recursive: true, mode: SUPPORT_DIR_MODE});
+  // Build the replacement in a staging sibling and swap it in only after the
+  // download verified and extracted cleanly: a failed upgrade must leave the
+  // previously working install untouched, not delete it first.
+  const parent = path.dirname(targetDir);
+  fs.mkdirSync(parent, {recursive: true, mode: SUPPORT_DIR_MODE});
+  const staging = fs.mkdtempSync(path.join(parent, `${path.basename(targetDir)}.staging-`));
   try {
     emit('downloading', {asset: name, repo, tag});
     const base = (env.GUI_BRIDGE_RELEASE_BASE || 'https://github.com').replace(/\/$/, '');
@@ -100,16 +112,21 @@ async function installBridge(targetDir, env = process.env, emit = () => {}, get 
     const actual = sha256(archive);
     if (actual !== expected) throw Error(`SHA256 mismatch for ${name}: expected ${expected}, got ${actual}.`);
     emit('verified', {sha256: actual});
-    const staged = path.join(targetDir, `${name}.part`);
+    const staged = path.join(staging, `${name}.part`);
     fs.writeFileSync(staged, archive);
-    const binary = extractBinary(staged, name, targetDir);
+    extractBinary(staged, name, staging);
     const version = {repo, tag, sha256: actual, installedAt: new Date().toISOString()};
-    fs.writeFileSync(path.join(targetDir, 'version.json'), JSON.stringify(version, null, 2), {mode: 0o600});
+    fs.writeFileSync(path.join(staging, 'version.json'), JSON.stringify(version, null, 2), {mode: 0o600});
+    const retired = path.join(parent, `${path.basename(targetDir)}.retired-${crypto.randomUUID()}`);
+    if (fs.existsSync(targetDir)) fs.renameSync(targetDir, retired);
+    fs.renameSync(staging, targetDir);
+    fs.rmSync(retired, {recursive: true, force: true});
     emit('ready', version);
-    return {binary, ...version};
+    return {binary: path.join(targetDir, BINARY_NAME), ...version};
   } catch (error) {
-    // A failed download or verification must not leave a half-installed bridge behind.
-    fs.rmSync(targetDir, {recursive: true, force: true});
+    // A failed download or verification must not leave a half-installed bridge
+    // behind — nor touch an already-installed one.
+    fs.rmSync(staging, {recursive: true, force: true});
     throw error;
   }
 }
@@ -137,7 +154,8 @@ async function ensureInstalled(targetDir, env = process.env, emit = () => {}, ge
   if (current.state === 'ready' && current.version.tag === tag) {
     return {binary: current.binary, ...current.version, cached: true};
   }
-  fs.rmSync(targetDir, {recursive: true, force: true});
+  // installBridge stages the replacement and swaps it in atomically, so a
+  // failure mid-upgrade leaves whatever is already installed in place.
   return installBridge(targetDir, env, emit, get);
 }
 
