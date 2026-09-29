@@ -3,11 +3,22 @@ const path = require('node:path');
 
 const defaults = Object.freeze({provider: 'kimi', endpoint: 'https://api.moonshot.cn/v1', model: 'kimi-k2-thinking-turbo', contextSize: 262144, thinking: true});
 
+function trustedPlaintextHosts() {
+  return (process.env.HARNESS_TRUSTED_PLAINTEXT_HOSTS || '').split(',').map(entry => entry.trim().toLowerCase()).filter(Boolean);
+}
+
 function validateProfile(value) {
   if (!value || !['kimi', 'openai_legacy'].includes(value.provider)) throw Error('Choose Kimi API or OpenAI-compatible API.');
   const endpoint = new URL(String(value.endpoint));
   if (endpoint.username || endpoint.password || endpoint.search || endpoint.hash) throw Error('API endpoint cannot include credentials, query, or fragment.');
-  if (endpoint.protocol !== 'https:' && !(endpoint.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(endpoint.hostname))) throw Error('API endpoint must use HTTPS, except on localhost.');
+  const host = endpoint.hostname.toLowerCase();
+  const trusted = trustedPlaintextHosts();
+  const trustedPlaintext = endpoint.protocol === 'http:' && (
+    ['localhost', '127.0.0.1', '[::1]'].includes(host)
+    || trusted.includes(host)
+    || (endpoint.port && trusted.includes(`${host}:${endpoint.port}`))
+  );
+  if (endpoint.protocol !== 'https:' && !trustedPlaintext) throw Error('API endpoint must use HTTPS, except on localhost or hosts listed in HARNESS_TRUSTED_PLAINTEXT_HOSTS.');
   const model = String(value.model || '').trim();
   if (!model || model.length > 128 || /[\r\n]/.test(model)) throw Error('Enter a valid model name.');
   const contextSize = Number(value.contextSize);

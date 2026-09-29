@@ -1,6 +1,6 @@
 # 27B 上下文与压缩评测记录
 
-日期：2026-09-25。模型：`Qwen/Qwen3.8-27B`。Kimi 接入：`@moonshot-ai/kimi-agent-sdk@0.1.8`、`kimi-cli==1.51.0`。模型服务使用用户提供的 OpenAI 兼容端点和本地密钥文件；密钥未写入仓库或评测汇总。SDK 测试通过仅监听 `127.0.0.1` 的临时代理连接用户指定的 HTTP 服务，没有改变产品的远端 HTTPS 校验规则。
+日期：2026-09-25。模型：`Qwen/Qwen3.8-27B`。Kimi 接入：`@moonshot-ai/kimi-agent-sdk@0.1.8`、`kimi-cli==1.51.0`。模型服务使用用户提供的 OpenAI 兼容端点和本地密钥文件；密钥未写入仓库或评测汇总。SDK 测试通过仅监听 `127.0.0.1` 的临时代理连接用户指定的 HTTP 服务，没有改变产品的远端 HTTPS 校验规则（2026-09-28 起，自托管明文端点需通过 `HARNESS_TRUSTED_PLAINTEXT_HOSTS` 显式声明，见 `apps/cli/README.md`；默认仍要求 HTTPS）。
 
 ## 模型长上下文检索
 
