@@ -93,7 +93,7 @@ export type AgentEvent =
   | {type: 'done'; result: {status: string}}
   | {type: 'error'; message: string};
 
-export interface ModelProfile {provider: 'kimi' | 'openai_legacy'; endpoint: string; model: string; contextSize: number; thinking: boolean}
+export interface ModelProfile {provider: 'kimi' | 'openai_legacy'; endpoint: string; model: string; contextSize: number; thinking: boolean; vision: boolean}
 export interface ModelProfileStatus extends ModelProfile {hasApiKey: boolean; keyPersisted: boolean}
 
 export interface BrokerResult {

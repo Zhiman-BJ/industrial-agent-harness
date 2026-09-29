@@ -18,6 +18,14 @@ test('model config keeps the key out of files and passes it only to the session'
   assert.match(configToml(defaults), /capabilities = \["thinking"\]/);
 });
 
+test('a vision model declares image_in so image tool results are not rejected', () => {
+  assert.equal(defaults.vision, false);
+  assert.equal(configToml(defaults).includes('image_in'), false);
+  assert.match(configToml({...defaults, vision: true}), /capabilities = \["thinking","image_in"\]/);
+  assert.match(configToml({...defaults, thinking: false, vision: true}), /capabilities = \["image_in"\]/);
+  assert.match(configToml({...defaults, thinking: false, vision: false}), /capabilities = \[\]/);
+});
+
 test('endpoint validation rejects remote plaintext and embedded credentials', () => {
   assert.throws(() => validateProfile({...defaults, endpoint: 'http://example.com/v1'}), /HTTPS/);
   assert.throws(() => validateProfile({...defaults, endpoint: 'https://key@example.com/v1'}), /credentials/);
