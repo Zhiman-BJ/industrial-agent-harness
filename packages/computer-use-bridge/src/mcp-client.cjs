@@ -1,5 +1,6 @@
 const {spawn} = require('node:child_process');
 const path = require('node:path');
+const {StringDecoder} = require('node:string_decoder');
 
 const MAX_TOOL_OUTPUT_BYTES = 16 * 1024;
 // Base64 ceiling for one image block. A 1400px-wide PNG is far below this;
@@ -26,11 +27,17 @@ class McpClient {
     this.env = env;
     this.child = spawner(bin, [], {env: {...process.env, COMPUTER_USE_BROWSER: '0', ...env}, stdio: ['pipe', 'pipe', 'pipe']});
     this.buffer = '';
+    // Pipes deliver arbitrary byte boundaries; a multi-byte UTF-8 character
+    // (CJK labels are common here) split across chunks must not be decoded
+    // per chunk or it corrupts to replacement characters. StringDecoder holds
+    // the incomplete tail until the next chunk completes it.
+    this.decoder = new StringDecoder('utf8');
     this.pending = new Map();
     this.nextId = 1;
     this.closed = false;
     this.stderrTail = '';
     this.child.stdout.on('data', chunk => this.onData(chunk));
+    this.child.stdout.on('end', () => {this.buffer += this.decoder.end(); this.drainBuffer();});
     this.child.stderr.on('data', chunk => {this.stderrTail = `${this.stderrTail}${chunk.toString('utf8')}`.slice(-4000);});
     this.child.on('error', error => this.die(error));
     this.child.on('exit', () => this.die(new Error('Computer use server exited.')));
@@ -38,7 +45,10 @@ class McpClient {
   }
   get stderr() {return this.stderrTail;}
   onData(chunk) {
-    this.buffer += chunk.toString('utf8');
+    this.buffer += this.decoder.write(chunk);
+    this.drainBuffer();
+  }
+  drainBuffer() {
     let newline;
     while ((newline = this.buffer.indexOf('\n')) >= 0) {
       const line = this.buffer.slice(0, newline).trim();
@@ -91,10 +101,23 @@ class McpClient {
     }
     const bytes = Buffer.byteLength(raw, 'utf8');
     const truncated = bytes > MAX_TOOL_OUTPUT_BYTES;
-    const output = truncated ? `${raw.slice(0, MAX_TOOL_OUTPUT_BYTES)}\n[truncated ${bytes - MAX_TOOL_OUTPUT_BYTES} bytes]` : raw;
     const isError = Boolean(result?.isError);
     const needsSystemPermission = isError && PERMISSION_HINT.test(raw);
-    return {output: truncated ? output : (isError ? `[computer-use error] ${raw}` : raw) + imageNote, isError, needsSystemPermission, truncated, outputBytes: bytes, images};
+    const prefix = isError ? '[computer-use error] ' : '';
+    let output;
+    if (!truncated) output = prefix + raw + imageNote;
+    else {
+      // Truncate the raw body by bytes (never inside a UTF-8 character) and
+      // reserve room for the prefix, marker, and image note so the assembled
+      // output stays within MAX_TOOL_OUTPUT_BYTES; the model must still learn
+      // that the call failed and why pixels are missing.
+      const data = Buffer.from(raw, 'utf8');
+      const reserve = Buffer.byteLength(prefix + imageNote, 'utf8') + 48;
+      let cut = Math.max(0, MAX_TOOL_OUTPUT_BYTES - reserve);
+      while (cut > 0 && (data[cut] & 0xC0) === 0x80) cut--;
+      output = `${prefix}${data.subarray(0, cut).toString('utf8')}\n[truncated ${bytes - cut} bytes]${imageNote}`;
+    }
+    return {output, isError, needsSystemPermission, truncated, outputBytes: bytes, images};
   }
   failAll(error) {
     if (this.closed) return;
