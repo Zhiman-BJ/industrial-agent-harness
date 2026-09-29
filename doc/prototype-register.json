@@ -64,6 +64,32 @@
         "pcb.board.inspect"
       ],
       "replacement": "Validated Domain Pack loader"
+    },
+    {
+      "id": "computer-use-plugin",
+      "path": "packages/computer-use-bridge/src/tools.cjs",
+      "signature": "const GUI_TOOLS = Object.freeze([",
+      "allowedCanonicalToolIds": [
+        "computer-use.app.list",
+        "computer-use.displays.list",
+        "computer-use.app.state",
+        "computer-use.app.screenshot",
+        "computer-use.app.zoom",
+        "computer-use.app.wait",
+        "computer-use.clipboard.read",
+        "computer-use.app.activate",
+        "computer-use.app.hover",
+        "computer-use.app.click",
+        "computer-use.app.right-click",
+        "computer-use.app.drag",
+        "computer-use.app.scroll",
+        "computer-use.app.type",
+        "computer-use.app.press-key",
+        "computer-use.app.set-value",
+        "computer-use.app.select-text",
+        "computer-use.clipboard.write"
+      ],
+      "replacement": "Domain Runtime Action 层统一承接插件调用与 Verification"
     }
   ]
 }

@@ -107,3 +107,25 @@ test('unscoped direct Domain MCP servers cannot be added before a Gateway', () =
     assert.ok(fs.existsSync(path.join(root, 'tests/integration/domain-mcp-scope.test.cjs')), 'Domain MCP needs a real out-of-scope invocation test');
   }
 });
+
+test('the computer-use plugin tool surface is frozen', () => {
+  const {GUI_TOOLS} = require(path.join(root, 'packages/computer-use-bridge/src/tools.cjs'));
+  const declared = GUI_TOOLS.map(item => item.canonicalId).sort();
+  assert.deepEqual(declared, [...prototype('computer-use-plugin').allowedCanonicalToolIds].sort());
+  for (const item of GUI_TOOLS) {
+    assert.match(item.canonicalId, /^computer-use\./, item.name);
+    assert.ok(['read', 'mutating'].includes(item.risk), item.name);
+    assert.ok(!item.name.startsWith('browser_'), 'browser tools are not part of the plugin surface');
+  }
+});
+
+test('the computer-use binary is only referenced by the bridge package source', () => {
+  const areas = ['apps/desktop/electron', 'apps/cli/src', 'packages/harness-core', 'packages/agent-kimi', 'packages/domain-runtime', 'packages/domain-mcp', 'packages/domain-skills', 'packages/capability-broker', 'packages/contracts', 'packages/viewer-core', 'packages/viewer-builtin'];
+  const offenders = [];
+  for (const area of areas) {
+    for (const file of sourceFiles(area)) {
+      if (read(file).includes('munim-computer-use')) offenders.push(file);
+    }
+  }
+  assert.deepEqual(offenders, [], 'only packages/computer-use-bridge may spawn or name the computer-use binary');
+});
