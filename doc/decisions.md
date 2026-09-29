@@ -62,6 +62,10 @@ Project、Domain 和 Session 的用户交互决定见[产品决策记录](produc
   4. MCP server 进程懒启动：首次工具调用才 spawn，`COMPUTER_USE_BROWSER=0` 启动使 server 实际暴露的工具面与声明一致；进程生命周期内复用。
   5. 审批语义为"启用即授权"：插件开启后，其工具的审批请求由 `KimiSession` 按 sender（工具名）自动 `approve_for_session`，不反复上抛 UI；非插件工具的审批行为不变。macOS 的截屏/辅助功能系统权限仍由操作系统在首次真实调用时提示。
 - 已知缺口：GUI 调用尚未进入 Domain Runtime Action 记录与 VerificationResult，当前仅写 diagnostic log；browser 工具未暴露。
+- 已知缺口（2026-09-29 code review 补充）：
+  - 上游 Kimi CLI（1.51.0 实测）偶发在 `ToolCallRequest` 里丢弃流式到达的工具参数（发 `{}`），外部工具会收到空参。这发生在执行路径（CLI → SDK → handler），与 Harness 事件流的参数拼接修复（`0baa1b6` 只修复 UI 显示）无关；当前实际缓解是 `ARG_HINTS` 引导模型带全参重试。根因在上游，需跟踪 CLI 版本。
+  - MCP server 进程崩溃后旧实现会复用死 client（每次调用吃满超时）；已改为死亡标记 + 重建。
+  - 插件工具曾绕过 `createExternalTool`，参数 JSON Schema 与 zod 校验都不生效（模型只能靠 Skill 文本猜参数、脏类型直通 server）；已在会话组装处统一包装。
 - 约束：`computer-use-bridge` 是第一个横切插件，其"不进 Domain 体系 + externalTools 注入"模式若扩展到第二个插件前，需要重新评审是否需要更正式的插件契约。
 
 ## 两份提案的差异及当前取舍
