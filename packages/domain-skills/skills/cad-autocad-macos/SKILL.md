@@ -1,6 +1,6 @@
 ---
 name: cad-autocad-macos
-description: Driving AutoCAD on macOS through the computer-use plugin: LISP entmake geometry, interactive DIMLINEAR dimensions with %%c text, GUI-only save dialogs for DWG/DXF export, /-to-: path-mangling workarounds, codepage semantics, and a table of verified dead ends. Use when the task requires AutoCAD itself — DWG delivery, the user's live session, or LISP execution. For plain 2D DXF deliverables prefer direct ezdxf authoring (cad-2d-intent-loop).
+description: Driving AutoCAD on macOS through the computer-use plugin: LISP entmake geometry, interactive DIMLINEAR dimensions with %%c text, GUI-only save dialogs for DWG/DXF export, /-to-: path-mangling workarounds, codepage semantics, and a table of verified dead ends. Use when the task requires AutoCAD itself — DWG delivery, the user's live session, or LISP execution. For plain 2D DXF deliverables prefer direct ezdxf authoring (cad-ezdxf).
 ---
 
 # AutoCAD on macOS: operating traits
@@ -12,15 +12,16 @@ this file covers only what is specific to AutoCAD on the Mac.
 
 ## Route first: is AutoCAD even the right tool?
 
-Default for producing a 2D drawing file: author DXF directly with ezdxf
-(the verified main path). Open AutoCAD only when:
+The deliverable-routing table lives in cad-intent-loop. Default for
+producing a 2D drawing file: author DXF directly with ezdxf (cad-ezdxf,
+the verified main path). Open AutoCAD only when:
 - the deliverable must be authored/saved by AutoCAD itself (DWG exit),
 - the work happens in the user's live drawing/session (their styles,
   template, manual edits),
 - or a hand-edit must be absorbed in place.
 Opening AutoCAD for a from-scratch 2D deliverable is the slow path —
 expect roughly an order of magnitude more verify rounds than direct
-authoring. See cad-2d-intent-loop.
+authoring.
 
 ## Platform facts (verified)
 

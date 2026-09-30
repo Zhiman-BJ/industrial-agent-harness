@@ -13,7 +13,8 @@ const skills = Object.freeze([
   {id: 'godot.game.inspect', domain: 'godot', title: 'Inspect Godot game scenes', directory: 'godot-game-inspect'},
   {id: 'godot.game.develop', domain: 'godot', title: 'Develop and verify Godot games', directory: 'godot-game-develop'},
   {id: 'cad.autocad.macos', domain: 'cad', title: 'Operate AutoCAD on macOS', directory: 'cad-autocad-macos'},
-  {id: 'cad.2d.intent-loop', domain: 'cad', title: 'Author 2D drawings via ezdxf', directory: 'cad-2d-intent-loop'},
+  {id: 'cad.intent.loop', domain: 'cad', title: 'CAD intent loop (dimension-neutral)', directory: 'cad-intent-loop'},
+  {id: 'cad.ezdxf.author', domain: 'cad', title: 'Author 2D DXF via ezdxf', directory: 'cad-ezdxf'},
   {id: 'cad.freecad.headless', domain: 'cad', title: 'Drive FreeCAD headless', directory: 'cad-freecad-headless'},
 ]);
 

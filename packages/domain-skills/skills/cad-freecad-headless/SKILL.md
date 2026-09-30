@@ -7,7 +7,7 @@ description: Driving FreeCAD headless via freecadcmd for parametric 2D sketches 
 
 Scope: FreeCAD driven without a GUI — parametric 2D sketches and 3D solids
 alike; this skill is dimension-neutral. Route by deliverable, not by tool:
-2D drawing files go to direct ezdxf authoring (cad-2d-intent-loop — FreeCAD's
+2D drawing files go to direct ezdxf authoring (cad-ezdxf — FreeCAD's
 TechDraw→DXF chain is a known weak link for drawing delivery and was rejected
 in the field); parametric 2D sketches the user will keep editing in FreeCAD,
 and 3D models, go FCStd (3D additionally exports STEP). Everything here is
@@ -28,7 +28,10 @@ version, the Sketcher API differs across 0.2x/1.x.
   or segfaults (exit 139) with no stack. Debug by bisecting with tiny probe
   scripts; a log stuck at START means the script aborted — don't assume it ran.
 
-## Build → readback → verify loop (the only trusted pattern)
+## Build → readback → verify: the intent loop's FreeCAD form
+
+The loop itself is defined in cad-intent-loop (spec → artifact → absorb →
+verify); here is its freecadcmd form — the only trusted pattern:
 
 1. **Build** with an idempotent script → save FCStd + export STEP. Log
    START/stages/END to a file (same discipline as LISP).
