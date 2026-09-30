@@ -1,6 +1,6 @@
 ---
 name: cad-autocad-macos
-description: Driving AutoCAD on macOS through the computer-use plugin: LISP entmake geometry, interactive DIMLINEAR dimensions with %%c text, GUI-only save dialogs for DWG/DXF export, /-to-: path-mangling workarounds, codepage semantics, and a table of verified dead ends. Use when drawing, editing, or saving anything in AutoCAD on the Mac, loading LISP, exporting DXF, or debugging why command-line input, saves, or dimensions failed.
+description: Driving AutoCAD on macOS through the computer-use plugin: LISP entmake geometry, interactive DIMLINEAR dimensions with %%c text, GUI-only save dialogs for DWG/DXF export, /-to-: path-mangling workarounds, codepage semantics, and a table of verified dead ends. Use when the task requires AutoCAD itself — DWG delivery, the user's live session, or LISP execution. For plain 2D DXF deliverables prefer direct ezdxf authoring (cad-2d-intent-loop).
 ---
 
 # AutoCAD on macOS: operating traits
@@ -9,6 +9,18 @@ Scope: AutoCAD for Mac (verified on the 2027 release, simplified-Chinese UI),
 driven through the computer-use plugin. Read the plugin's general
 computer-use skill first — focus, IME, and dialog rules apply here as-is;
 this file covers only what is specific to AutoCAD on the Mac.
+
+## Route first: is AutoCAD even the right tool?
+
+Default for producing a 2D drawing file: author DXF directly with ezdxf
+(the verified main path). Open AutoCAD only when:
+- the deliverable must be authored/saved by AutoCAD itself (DWG exit),
+- the work happens in the user's live drawing/session (their styles,
+  template, manual edits),
+- or a hand-edit must be absorbed in place.
+Opening AutoCAD for a from-scratch 2D deliverable is the slow path —
+expect roughly an order of magnitude more verify rounds than direct
+authoring. See cad-2d-intent-loop.
 
 ## Platform facts (verified)
 
@@ -20,6 +32,10 @@ this file covers only what is specific to AutoCAD on the Mac.
 
 ## Proven working pipeline
 
+0. **Loading a file: `open -a`, never the open dialog** (verified):
+   `open -a "AutoCAD 2027" /abs/path/file.dxf` puts the file straight into
+   the app. Driving NSOpenPanel with computer-use is a verified dead end
+   (see table).
 1. **Geometry via LISP `entmake`** (NOT via GUI clicks): one .lsp file that
    writes all circles/lines/text, with a log file (`open ... "w"`,
    write-line START/END). Load via the command line with an absolute POSIX
@@ -66,6 +82,8 @@ this file covers only what is specific to AutoCAD on the Mac.
 | Command-line `CD` / `._CD` / `._-saveas` / `_SAVEAS` with full paths | wrong command names or the path's `/` → `:` conversion produces malformed literal filenames like `:Users:foo:bar.dxf` |
 | `DXFOUT` typed on the command line (full or bare path) | swallowed / no-op in this environment; the GUI dialog is the reliable exporter |
 | `entmod` to change a DIMENSION's text | silent no-op |
+| Driving the open dialog (NSOpenPanel) with computer-use | foreground drops mid-dialog; Cmd+Shift+G and typed paths ignored; file-type menu closes on open. Load via `open -a "AutoCAD 2027" <abs path>` from the shell instead |
+| DWG export via libredwg 0.14 `dwgwrite` | writes corrupt DWG: coordinates as -1e20, CJK mojibake, round-trip loses all entities (`Duplicate handle`, MATERIAL/MLEADERSTYLE unsupported). Verified DWG exit = GUI Save As; ODA converter untested |
 
 ## Working LISP patterns
 
@@ -95,6 +113,11 @@ this file covers only what is specific to AutoCAD on the Mac.
 - Group 42 = AutoCAD's recomputed actual measurement; group 10/11 defpoints
   include extension lines, so do NOT compare "measurement-line endpoint
   distance" naively — compare the TEXT NUMBER against group 42 instead.
+- `×` survives DWG round-trips (DWG is Unicode): SaveAs-DWG from a UTF-8 DXF
+  keeps `4×%%c12` verbatim. Only ASCII DXF export through the codepage eats it.
+- DXF produced by converters (libredwg dwg2dxf, ODA) can fail plain
+  `ezdxf.readfile` (missing EOF, odd attributes such as CIRCLE carrying
+  `insert`); parse with `ezdxf.recover.readfile`.
 
 ## Dialog anatomy (simplified-Chinese UI)
 
@@ -105,6 +128,9 @@ this file covers only what is specific to AutoCAD on the Mac.
   DXF or DWG) lists MenuItems → click target → **re-read the PopUpButton
   value** (first click occasionally doesn't stick).
 - Replace sheet title fragment: `你要替换它吗？`, button label 替换.
+- File-panel buttons: act via element-id press (AXPress), not coordinate
+  clicks — panel clicks frequently land in "background" once the app has
+  dropped foreground, while AXPress still reaches the button.
 - Every LISP `load` triggers a separate `文件加载 - 安全问题` sheet
   (加载 / 不加载) — handle it each time.
 - Stuck command-line prompt recovery: Enter on an object-selection prompt

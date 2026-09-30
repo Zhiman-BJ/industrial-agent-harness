@@ -3,6 +3,28 @@
   "domain": "cad",
   "capabilities": [
     {
+      "id": "cad.2d.author",
+      "title": "Author 2D drawings via ezdxf",
+      "domain": "cad",
+      "stages": ["drafting"],
+      "priority": 11,
+      "keywords": ["dxf", "2d", "drawing", "ezdxf", "spec", "dimension", "图纸", "二维", "制图", "标注"],
+      "skills": [{"id": "cad.2d.intent-loop", "summary": "Intent-layer 2D workflow: spec.json as the single source of truth, ezdxf authoring, semantic diff to absorb hand-edits, programmatic verify gate.", "reference": "Default route for 2D drawing deliverables; open a CAD app only for a DWG exit or live-session work."}],
+      "tools": [],
+      "verification": ["Confirm the DXF verifies against the spec"]
+    },
+    {
+      "id": "cad.freecad.operate",
+      "title": "Operate FreeCAD headless",
+      "domain": "cad",
+      "stages": ["drafting"],
+      "priority": 10,
+      "keywords": ["freecad", "2d", "3d", "parametric", "sketch", "step", "fcstd", "solid", "建模", "三维", "参数化", "草图"],
+      "skills": [{"id": "cad.freecad.headless", "summary": "FreeCAD headless via freecadcmd for parametric 2D sketches and 3D solids: build→readback→verify loop, fully-constrained gate, analytic volume checks, Sketcher API traps.", "reference": "Route by deliverable: 2D drawing files go to ezdxf; FreeCAD serves parametric sketches and 3D models (FCStd/STEP). Its DXF paths are weak links — never the acceptance reader."}],
+      "tools": [],
+      "verification": ["Confirm FCStd/STEP on disk with model-driven checks"]
+    },
+    {
       "id": "cad.autocad.operate",
       "title": "Operate AutoCAD drawings",
       "domain": "cad",

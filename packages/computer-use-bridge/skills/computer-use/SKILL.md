@@ -18,6 +18,9 @@ list, then restart the app.
 
 ## Protocol
 
+0. If an app-specific skill exists for the target application (e.g.
+   cad-autocad-macos), read it first — its dead-end table is field-tested;
+   do not re-probe known failures.
 1. `list_apps` first to get the exact `app` value. Then `get_app_state` to read the
    accessibility tree; interactive elements carry ids like `e12`.
 2. Act on element ids from the most recent snapshot, not coordinates. Coordinates only
@@ -53,6 +56,11 @@ Budget ~4 tool calls per input. Blind multi-step input wastes 10x more.
   localized 替换/OK), click it, then confirm the file on disk (`ls`, timestamp check).
 - For a format selector: click the PopUpButton, `get_app_state query=<format>`, click the
   wanted item, and re-check the button value before saving (the first click can miss).
+- Loading a file into an app: skip the open dialog entirely — `open -a "<App>" <abs file>`
+  from the shell is one atomic step. Reserve GUI dialog driving for Save As,
+  where the app itself must choose format and location.
+- Dialog buttons: act via element-id press (AXPress), not coordinate clicks —
+  panel clicks often land in "background" when foreground has dropped.
 
 ## IME (Chinese input method)
 
@@ -102,6 +110,9 @@ POINTS, not pixels. `zoom` also returns the mapping for its own region.
 - After an interruption, re-inspect the app state (windows, command line via `zoom`) before
   continuing; do not assume the pre-pause state. The user may have closed windows, switched
   IME, or left commands half-typed.
+- Every claim in a final report must link the exact command and the raw output
+  file that backs it. A claim without archived evidence is treated as false —
+  fabricated success gets caught exactly this way.
 
 ## Safety
 
