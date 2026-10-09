@@ -1,5 +1,6 @@
 import { useDisplayText } from '../text';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import type { EngineeringData, EngineeringDrawing } from '../api';
 import { useViewNavigation, useWheelZoom } from '../navigation';
 import { TextView } from '../documents/TextView';
@@ -93,6 +94,38 @@ function Drawing({ shape, color }: { shape: EngineeringDrawing; color: string })
   return null;
 }
 
+// GDScript 基础高亮：注释 / 字符串 / 注解 / 关键字 / 数字。
+const GD_TOKEN =
+  /(#.*$)|("(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*')|(@\w+)|(\b(?:and|as|assert|await|break|class_name|const|continue|elif|else|enum|extends|false|for|func|if|in|is|match|not|null|or|pass|return|self|signal|static|super|true|var|void|while)\b)|(\b\d+(?:\.\d+)?\b)/g;
+const GD_CLASS: Record<number, string> = {
+  1: 'rp-engineering-comment',
+  2: 'rp-engineering-string',
+  3: 'rp-engineering-annotation',
+  4: 'rp-engineering-keyword',
+  5: 'rp-engineering-number',
+};
+
+function highlightGdscript(line: string): ReactNode[] {
+  const out: ReactNode[] = [];
+  let last = 0;
+  let key = 0;
+  for (const match of line.matchAll(GD_TOKEN)) {
+    const start = match.index ?? 0;
+    if (start > last) out.push(line.slice(last, start));
+    const group = [1, 2, 3, 4, 5].find(i => match[i] !== undefined);
+    if (group) {
+      out.push(
+        <span className={GD_CLASS[group]} key={key++}>
+          {match[0]}
+        </span>,
+      );
+      last = start + match[0].length;
+    }
+  }
+  if (last < line.length) out.push(line.slice(last));
+  return out;
+}
+
 function Source({ data, query }: { data: EngineeringData; query: string }) {
   const { t } = useDisplayText();
   if (!data.source)
@@ -116,23 +149,7 @@ function Source({ data, query }: { data: EngineeringData; query: string }) {
         {selected.map(({ line, number }) => (
           <span className="rp-document-line" key={number} id={`engineering-line-${number}`}>
             <span className="rp-document-line-number">{number}</span>
-            <span>
-              {line
-                .split(
-                  /(@(?:export|onready)\b|\b(?:class_name|extends|signal|func|static|var|const|if|else|elif|for|while|return|await)\b)/g,
-                )
-                .map((part, index) =>
-                  /^(?:class_name|extends|signal|func|static|var|const|if|else|elif|for|while|return|await|@export|@onready)$/.test(
-                    part,
-                  ) ? (
-                    <b className="rp-engineering-keyword" key={index}>
-                      {part}
-                    </b>
-                  ) : (
-                    part
-                  ),
-                )}
-            </span>
+            <span>{highlightGdscript(line)}</span>
           </span>
         ))}
       </pre>
@@ -187,7 +204,10 @@ function StructuredView({
     zoomOut: () => changeZoom(1 / 1.2),
     fit,
   });
-  useWheelZoom(viewport, changeZoom);
+  // 滚轮缩放只作用于图形化预览（几何图、音视频）；原文（代码）视图保持滚轮滚动。
+  const wheelZoomEnabled =
+    mode === 'preview' && (Boolean(data.drawings?.length) || Boolean(data.mediaUrl));
+  useWheelZoom(viewport, changeZoom, wheelZoomEnabled);
   const readyCallback = useRef(onReady);
   readyCallback.current = onReady;
   useEffect(() => {
@@ -239,7 +259,8 @@ function StructuredView({
         </p>
       )}
       <div className="rp-engineering-summary">
-        {data.summary} · {data.sha256.slice(0, 12)} {t('· Wheel or pinch to zoom')}
+        {data.summary} · {data.sha256.slice(0, 12)}
+        {wheelZoomEnabled ? ` ${t('· Wheel or pinch to zoom')}` : ''}
       </div>
       {data.warnings.map((warning, index) => (
         <p className="rp-engineering-notice" role="status" key={index}>

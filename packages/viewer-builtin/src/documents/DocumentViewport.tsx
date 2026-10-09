@@ -11,7 +11,7 @@ import {
 } from 'react';
 import type { ReactNode } from 'react';
 import type { DocumentData, DocumentKind } from '../api';
-import { useViewNavigation, useWheelZoom } from '../navigation';
+import { useViewNavigation } from '../navigation';
 import { TableView } from './TableView';
 import { JsonView } from './JsonView';
 import { TextView } from './TextView';
@@ -95,7 +95,8 @@ export function DocumentViewport({
     ready,
     percent: Math.round(zoom * 100),
   });
-  useWheelZoom(viewport, changeZoom);
+  // 文档视口承载的全是文本类内容（文本/表格/JSON/Markdown），
+  // 滚轮保持原生滚动；滚轮缩放只留给图片与图形类 Viewer。
   const description =
     kind === 'table'
       ? 'Table'
@@ -157,7 +158,7 @@ export function DocumentViewport({
             />
           </label>
         )}
-        <small>{t('Wheel to zoom · Shift+wheel to scroll')}</small>
+        <small>{t('Scroll to browse')}</small>
       </div>
       {error && (
         <p className="rp-document-notice" role="alert">

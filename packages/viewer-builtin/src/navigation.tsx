@@ -41,12 +41,13 @@ export function wheelZoomFactor(deltaY: number, deltaMode = 0) {
 export function useWheelZoom<T extends HTMLElement>(
   element: RefObject<T | null>,
   onZoom?: (factor: number) => void,
+  enabled = true,
 ) {
   const callback = useRef(onZoom);
   callback.current = onZoom;
   useEffect(() => {
     const node = element.current;
-    if (!node) return;
+    if (!node || !enabled) return;
     const wheel = (event: WheelEvent) => {
       if (event.shiftKey || !callback.current) return;
       event.preventDefault();
@@ -54,5 +55,5 @@ export function useWheelZoom<T extends HTMLElement>(
     };
     node.addEventListener('wheel', wheel, { passive: false });
     return () => node.removeEventListener('wheel', wheel);
-  }, [element]);
+  }, [element, enabled]);
 }
