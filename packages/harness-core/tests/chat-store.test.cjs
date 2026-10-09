@@ -281,3 +281,73 @@ test('stable result event IDs deduplicate across store handles and request histo
   const stranger = store.create(project, 'test-domain');
   assert.throws(() => other.turnEvents(stranger.id, turn), /another chat/);
 });
+
+
+test('chat titles derive concisely, rename validates, and auto titles never override a user rename', t => {
+  const { project, store, openStore } = fixture(t);
+  const chat = store.create(project, 'test-domain');
+  assert.equal(chat.title, 'New chat');
+
+  store.beginTurn(
+    chat.id,
+    '修改 Godot 场景 main.tscn：把 Box 节点的 BoxMesh 尺寸改为 Vector3(5, 4, 3)，把 Box 节点的位置改为 Vector3(0, 1, 0)，然后运行验证确认结果',
+  );
+  const derived = store.get(chat.id, project, 'test-domain').title;
+  assert.ok([...derived].length <= 49, `derived title stays concise: ${derived}`);
+  assert.ok(derived.endsWith('…'), 'truncated titles are marked');
+
+  // The eligibility probe gates model requests: only an untouched derived title qualifies.
+  assert.equal(store.autoTitleTarget(chat.id)?.task.startsWith('修改 Godot 场景'), true);
+  assert.equal(store.autoTitleTarget('not-a-uuid'), null);
+
+  // Short tasks and multiline tasks keep their first line, whitespace collapsed.
+  const second = store.create(project, 'test-domain');
+  store.beginTurn(second.id, '  调整一下\n盒子大小  再验证  ', null, false);
+  assert.equal(store.get(second.id, project, 'test-domain').title, '调整一下');
+  assert.ok(store.autoTitleTarget(second.id), 'single-turn derived chat is eligible');
+  store.beginTurn(second.id, 'second turn', null, false);
+  assert.equal(store.autoTitleTarget(second.id), null, 'multi-turn chats are never auto-titled');
+  assert.equal(store.autoTitle(second.id, '太迟了'), false);
+
+  // A model title lands only while the derived title is untouched.
+  assert.equal(store.autoTitle(chat.id, '调整盒子尺寸与位置'), true);
+  assert.equal(store.get(chat.id, project, 'test-domain').title, '调整盒子尺寸与位置');
+  assert.equal(store.autoTitleTarget(chat.id), null, 'a refined chat is no longer eligible');
+  assert.equal(store.autoTitle(chat.id, '不应再覆盖'), false, 'second auto title is ignored');
+  assert.equal(store.autoTitle(chat.id, ''), false);
+  assert.equal(store.autoTitle(chat.id, 'x'.repeat(101)), false);
+
+  const renamed = store.rename(chat.id, project, 'test-domain', '  我的验证会话  ');
+  assert.equal(renamed.title, '我的验证会话');
+  assert.throws(() => store.rename(chat.id, project, 'test-domain', '   '), /chat title/);
+  assert.throws(
+    () => store.rename(chat.id, project, 'test-domain', 'x'.repeat(101)),
+    /chat title/,
+  );
+  assert.equal(
+    store.rename(chat.id, project, 'test-domain', 'a\nb').title,
+    'a b',
+    'newlines collapse to a single space',
+  );
+  const otherDomain = openStore();
+  t.after(() => otherDomain.close());
+  assert.throws(
+    () => otherDomain.rename(chat.id, project, 'other-domain', 'x'),
+    /unavailable/,
+  );
+
+  // A user rename wins over a late model title.
+  const third = store.create(project, 'test-domain');
+  store.beginTurn(third.id, '把盒子调大一点，你觉得合适就行，然后验证一下', null, false);
+  store.rename(third.id, project, 'test-domain', '模糊任务');
+  assert.equal(store.autoTitle(third.id, '模型起的名字'), false);
+  assert.equal(store.get(third.id, project, 'test-domain').title, '模糊任务');
+
+  // Renaming does not reorder the recency list.
+  const before = store.list(project, 'test-domain').map(item => item.id);
+  store.rename(before.at(-1), project, 'test-domain', '顺序不变');
+  assert.deepEqual(
+    store.list(project, 'test-domain').map(item => item.id),
+    before,
+  );
+});

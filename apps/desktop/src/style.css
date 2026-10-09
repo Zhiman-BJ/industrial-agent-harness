@@ -2418,7 +2418,7 @@ body,
   min-width: 0;
   flex: 1;
 }
-.ia-project-list .ia-project-chats .ia-chat-delete {
+.ia-project-list .ia-project-chats .ia-chat-menu-button {
   flex: 0 0 24px;
   width: 24px;
   min-height: 24px;
@@ -2426,8 +2426,58 @@ body,
   color: var(--ia-muted);
   opacity: 0.55;
 }
-.ia-chat-delete:hover {
+.ia-chat-menu-button:hover {
   opacity: 1;
+}
+.ia-chat-menu-wrap {
+  position: relative;
+  flex: 0 0 auto;
+  display: flex;
+}
+.ia-chat-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 2px);
+  z-index: 40;
+  min-width: 132px;
+  padding: 4px;
+  display: grid;
+  gap: 2px;
+  background: var(--ia-raised);
+  border: 1px solid var(--ia-border);
+  border-radius: 10px;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.18);
+}
+.ia-chat-menu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: var(--ia-font-sm);
+  color: var(--ia-text);
+  text-align: left;
+  white-space: nowrap;
+}
+.ia-chat-menu button:hover:not(:disabled) {
+  background: var(--ia-sidebar-active);
+}
+.ia-chat-menu button:disabled {
+  opacity: 0.5;
+}
+.ia-chat-menu .ia-chat-menu-danger {
+  color: var(--ia-danger);
+}
+.ia-chat-rename {
+  flex: 1;
+  min-width: 0;
+  margin: 1px 0;
+  padding: 4px 8px;
+  font-size: var(--ia-font-sm);
+  color: var(--ia-text);
+  background: var(--ia-bg);
+  border: 1px solid var(--ia-accent);
+  border-radius: 6px;
 }
 .ia-chat-turn {
   margin-bottom: 24px;
@@ -2567,11 +2617,12 @@ body,
   color: var(--ia-text);
   font-weight: 500;
 }
-.ia-chat-row .ia-chat-delete {
+.ia-chat-row .ia-chat-menu-button {
   opacity: 0;
 }
-.ia-chat-row:hover .ia-chat-delete,
-.ia-chat-row:focus-within .ia-chat-delete {
+.ia-chat-row:hover .ia-chat-menu-button,
+.ia-chat-row:focus-within .ia-chat-menu-button,
+.ia-chat-menu-wrap.open .ia-chat-menu-button {
   opacity: 1;
 }
 .ia-chat-actions button[aria-pressed='true'] {

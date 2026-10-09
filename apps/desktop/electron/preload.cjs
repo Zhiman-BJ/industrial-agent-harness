@@ -73,6 +73,7 @@ const api = {
   chatHistory: request => ipcRenderer.invoke('chat:history', request),
   selectChat: id => ipcRenderer.invoke('chat:select', id),
   deleteChat: id => ipcRenderer.invoke('chat:delete', id),
+  renameChat: (id, title) => ipcRenderer.invoke('chat:rename', { id, title }),
   onChatUpdated: callback => {
     const listener = () => callback();
     ipcRenderer.on('chat:updated', listener);

@@ -100,6 +100,18 @@
       "en": "Delete chat {0}",
       "zh-CN": "删除聊天 {0}"
     },
+    "Chat actions": {
+      "en": "Chat actions",
+      "zh-CN": "聊天操作"
+    },
+    "Chat actions for {0}": {
+      "en": "Chat actions for {0}",
+      "zh-CN": "{0} 的聊天操作"
+    },
+    "Rename chat": {
+      "en": "Rename chat",
+      "zh-CN": "重命名"
+    },
     "Awaiting answer": {
       "en": "Awaiting answer",
       "zh-CN": "等待回答"
