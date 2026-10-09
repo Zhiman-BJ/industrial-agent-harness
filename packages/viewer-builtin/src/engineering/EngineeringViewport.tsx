@@ -95,34 +95,74 @@ function Drawing({ shape, color }: { shape: EngineeringDrawing; color: string })
 }
 
 // GDScript 基础高亮：注释 / 字符串 / 注解 / 关键字 / 数字。
-const GD_TOKEN =
-  /(#.*$)|("(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*')|(@\w+)|(\b(?:and|as|assert|await|break|class_name|const|continue|elif|else|enum|extends|false|for|func|if|in|is|match|not|null|or|pass|return|self|signal|static|super|true|var|void|while)\b)|(\b\d+(?:\.\d+)?\b)/g;
-const GD_CLASS: Record<number, string> = {
-  1: 'rp-engineering-comment',
-  2: 'rp-engineering-string',
-  3: 'rp-engineering-annotation',
-  4: 'rp-engineering-keyword',
-  5: 'rp-engineering-number',
-};
+// 单趟扫描（O(n)）：正则在未闭合长字符串 + 大量转义引号上会回溯，128 KB
+// 输入实测卡顿 5 秒以上，故手写扫描器。
+const GD_KEYWORDS = new Set([
+  'and', 'as', 'assert', 'await', 'break', 'class_name', 'const', 'continue', 'elif', 'else',
+  'enum', 'extends', 'false', 'for', 'func', 'if', 'in', 'is', 'match', 'not', 'null', 'or',
+  'pass', 'return', 'self', 'signal', 'static', 'super', 'true', 'var', 'void', 'while',
+]);
+const GD_CLASS = {
+  comment: 'rp-engineering-comment',
+  string: 'rp-engineering-string',
+  annotation: 'rp-engineering-annotation',
+  keyword: 'rp-engineering-keyword',
+  number: 'rp-engineering-number',
+} as const;
 
 function highlightGdscript(line: string): ReactNode[] {
   const out: ReactNode[] = [];
-  let last = 0;
+  let plain = '';
   let key = 0;
-  for (const match of line.matchAll(GD_TOKEN)) {
-    const start = match.index ?? 0;
-    if (start > last) out.push(line.slice(last, start));
-    const group = [1, 2, 3, 4, 5].find(i => match[i] !== undefined);
-    if (group) {
-      out.push(
-        <span className={GD_CLASS[group]} key={key++}>
-          {match[0]}
-        </span>,
-      );
-      last = start + match[0].length;
+  const flush = () => {
+    if (plain) {
+      out.push(plain);
+      plain = '';
+    }
+  };
+  const span = (cls: string, text: string) => {
+    flush();
+    out.push(
+      <span className={cls} key={key++}>
+        {text}
+      </span>,
+    );
+  };
+  let i = 0;
+  while (i < line.length) {
+    const ch = line[i];
+    if (ch === '#') {
+      span(GD_CLASS.comment, line.slice(i));
+      i = line.length;
+    } else if (ch === '"' || ch === "'") {
+      let j = i + 1;
+      while (j < line.length && line[j] !== ch) j += line[j] === '\\' ? 2 : 1;
+      j = Math.min(j + 1, line.length); // 未闭合时吞到行尾
+      span(GD_CLASS.string, line.slice(i, j));
+      i = j;
+    } else if (ch === '@' && /[A-Za-z_]/.test(line[i + 1] || '')) {
+      let j = i + 1;
+      while (j < line.length && /\w/.test(line[j])) j++;
+      span(GD_CLASS.annotation, line.slice(i, j));
+      i = j;
+    } else if (/[A-Za-z_]/.test(ch)) {
+      let j = i + 1;
+      while (j < line.length && /\w/.test(line[j])) j++;
+      const word = line.slice(i, j);
+      if (GD_KEYWORDS.has(word)) span(GD_CLASS.keyword, word);
+      else plain += word;
+      i = j;
+    } else if (/\d/.test(ch) && !/\w/.test(plain.slice(-1))) {
+      let j = i + 1;
+      while (j < line.length && /[\d.]/.test(line[j])) j++;
+      span(GD_CLASS.number, line.slice(i, j));
+      i = j;
+    } else {
+      plain += ch;
+      i++;
     }
   }
-  if (last < line.length) out.push(line.slice(last));
+  flush();
   return out;
 }
 
@@ -259,8 +299,8 @@ function StructuredView({
         </p>
       )}
       <div className="rp-engineering-summary">
-        {data.summary} · {data.sha256.slice(0, 12)}
-        {wheelZoomEnabled ? ` ${t('· Wheel or pinch to zoom')}` : ''}
+        {data.summary} · {data.sha256.slice(0, 12)}{' '}
+        {wheelZoomEnabled ? t('· Wheel or pinch to zoom') : t('· Pinch to zoom')}
       </div>
       {data.warnings.map((warning, index) => (
         <p className="rp-engineering-notice" role="status" key={index}>

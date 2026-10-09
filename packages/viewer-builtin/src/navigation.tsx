@@ -47,9 +47,13 @@ export function useWheelZoom<T extends HTMLElement>(
   callback.current = onZoom;
   useEffect(() => {
     const node = element.current;
-    if (!node || !enabled) return;
+    if (!node) return;
     const wheel = (event: WheelEvent) => {
+      // 触控板捏合在浏览器里表现为 Ctrl+wheel；即使普通滚轮缩放被禁用
+      // （文本/代码视图），捏合缩放仍然保留。
+      const pinch = event.ctrlKey || event.metaKey;
       if (event.shiftKey || !callback.current) return;
+      if (!enabled && !pinch) return;
       event.preventDefault();
       callback.current(wheelZoomFactor(event.deltaY, event.deltaMode));
     };
