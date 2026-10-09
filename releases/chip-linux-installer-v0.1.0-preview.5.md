@@ -27,7 +27,7 @@ wget -O install-chip-linux.sh https://github.com/Zhiman-BJ/industrial-agent-harn
 
 源码回归覆盖分步流、真实子审批、MCP 状态/隔离/过期/清理、审批输入冻结、工作区筛选/哈希/边界与无模型诊断。macOS 实际受保护任务和 Chip/PCB 创建→通过→失效→失败→修复链路由本地及原生 CI 验证。
 
-发布 CI 检查实际 Desktop UI/语言切换；Linux 从公开 preview.4 安装，创建真实聊天、模型配置、MCP 注册与项目开关，再升级新包续聊。upgrade-verification.json 记录旧历史保留、原生上下文分段、新段继续与配置保留；其余安装、共享任务、Docker 和 RTL 证据沿用既有门禁。未完成或失败的 CI 不允许发布。
+源码 CI 另检查实际 Desktop UI/语言切换。Linux 发行门禁从公开 preview.4 安装，创建真实聊天、模型配置、MCP 注册与项目开关，再升级新包续聊。upgrade-verification.json 记录旧历史保留、原生上下文分段、新段继续与配置保留；其余安装、共享任务、Docker 和 RTL 证据沿用既有门禁。未完成或失败的 Linux 发行门禁不允许发布。
 
 时长回归覆盖省略参数、超过两小时、超过 Node 单次计时范围、超过数字精度范围、分段等待、取消及到期退出；打包后的真实 Kimi Code 进程检查长时参数不会立即中断。Linux 安装消费者用 30 天截止时间完成实际 RTL 检查，verification.json 与 docker-runtime-verification.json 记录 longTimeoutWithoutOverflow 结果；验证使用短任务和可控时钟，不声称实际运行了 30 天。
 
