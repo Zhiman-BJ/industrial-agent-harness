@@ -1,5 +1,6 @@
 const fs = require('node:fs');
 const path = require('node:path');
+const { parseTimeoutMs } = require('./lib/timeout.cjs');
 const { distributionDomain } = require('@industrial-agent-harness/domain-skills');
 
 const valueFlags = new Set([
@@ -100,13 +101,7 @@ function parseArgs(argv) {
     throw Error('Invalid --approval policy.');
   if (options.apiKeyEnv && !/^[A-Za-z_][A-Za-z0-9_]*$/.test(options.apiKeyEnv))
     throw Error('Invalid --api-key-env name.');
-  if (
-    options.timeoutMs &&
-    (!Number.isInteger(Number(options.timeoutMs)) ||
-      Number(options.timeoutMs) < 1000 ||
-      Number(options.timeoutMs) > 7200000)
-  )
-    throw Error('--timeout-ms must be between 1000 and 7200000.');
+  if (options.timeoutMs !== undefined) parseTimeoutMs(options.timeoutMs);
   return options;
 }
 

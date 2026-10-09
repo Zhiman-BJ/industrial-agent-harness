@@ -4,15 +4,19 @@ CLI 不启动 Electron，也不导入桌面 UI。它面向 Domain Task bench：�
 
 首轮回答结束后，CLI 继续等待 Kimi 原生后台命令、子任务和自动后续回答；最终 `result` 在后台处理及清理结束后输出。`--timeout-ms` 覆盖整个运行，后台提问仍输出 `needs_input` 并以 2 退出。等待、超时和通知由原生工具负责，外壳不生成额外 prompt。验收范围见[后台兼容记录](../../doc/kimi-background-compatibility.md)。
 
+运行时长默认无上限：不传 `--timeout-ms` 就不设置 CLI 总运行计时器。需要截止时间时，传入任意正整数毫秒值，例如 `--timeout-ms 28800000` 为 8 小时；没有两小时上限，超过 Node 单次计时范围的等待会分段计时。`0`、负数、小数和非十进制整数会被拒绝。正常完成、用户停止、失败和需要用户输入仍会结束运行；工具任务及 MCP 调用的独立超时按各自配置执行。
+
+超时后输出 `type=timeout`，最终状态为 `timeout`，退出码为 `124`。事件中的 `timeoutMs` 通常为 JSON 数字；超过 JavaScript 安全整数范围时以十进制字符串保留精度。
+
 2026-10-04 源码新增受保护的 RTL Runtime。真实 Agent 执行支持 macOS Apple Silicon（arm64）与使用 bubblewrap 的 Linux x86-64；Intel Mac 暂不支持，外部 MCP 应用服务和 Computer Use 组合仍需接入工业边界。`--scope-only` 保持无原生依赖的注册预览；真实运行重新读取工程状态。`result.engineering` 和 `industrial_result` 给出工程验证，`result.status` 表示 Agent 回合结束。详见[三轨整改记录](../../doc/harness-quality-three-tracks.md)。
 
 ## Linux Chip 一键安装
 
 ```bash
-wget -O install-chip-linux.sh https://github.com/Zhiman-BJ/industrial-agent-harness/releases/download/chip-linux-installer-v0.1.0-preview.4/install-chip-linux.sh && bash install-chip-linux.sh
+wget -O install-chip-linux.sh https://github.com/Zhiman-BJ/industrial-agent-harness/releases/download/chip-linux-installer-v0.1.0-preview.5/install-chip-linux.sh && bash install-chip-linux.sh
 ```
 
-安装运行时、Chip CLI/MCP 和 EDA 镜像；需要允许 bubblewrap 的用户命名空间。版本、路径、校验、模型配置前提及已知限制见[版本说明](../../releases/chip-linux-installer-v0.1.0-preview.4.md)。
+安装运行时、Chip CLI/MCP 和 EDA 镜像；需要允许 bubblewrap 的用户命名空间。版本、路径、校验、模型配置前提及已知限制见[版本说明](../../releases/chip-linux-installer-v0.1.0-preview.5.md)。
 
 ## GitHub Release 安装
 

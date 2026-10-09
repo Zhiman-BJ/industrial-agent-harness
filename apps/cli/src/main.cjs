@@ -4,6 +4,7 @@ const path = require('node:path');
 const os = require('node:os');
 const crypto = require('node:crypto');
 const { parseArgs } = require('./args.cjs');
+const { scheduleTimeout } = require('./lib/timeout.cjs');
 const { TaskService } = require('@industrial-agent-harness/harness-application');
 const { distributionDomain } = require('@industrial-agent-harness/domain-skills');
 const {
@@ -55,7 +56,7 @@ Options:
   --log-dir DIR               Full diagnostic JSONL directory
   --disable-skill ID          Disable a repository skill for this run (repeatable)
   --disable-mcp ID            Disable a repository MCP server for this run (repeatable)
-  --timeout-ms N               Interrupt the run, including background work, after N milliseconds
+  --timeout-ms N               Optional positive integer milliseconds; omit for no time limit
 
 Global/project resource defaults use ~/.industrial-agent-harness/resource-settings.json.
 Set INDUSTRIAL_HARNESS_CONFIG_DIR to use an isolated configuration directory.
@@ -258,11 +259,9 @@ async function run(
     });
     process.once('SIGINT', onSigint);
     process.once('SIGTERM', onSigterm);
-    if (options.timeoutMs)
-      timeout = setTimeout(
-        () => interrupt('timeout', { type: 'timeout', timeoutMs: Number(options.timeoutMs) }),
-        Number(options.timeoutMs),
-      );
+    timeout = scheduleTimeout(options.timeoutMs, timeoutMs =>
+      interrupt('timeout', { type: 'timeout', timeoutMs }),
+    );
     const result = await started.completion;
     send({ type: 'result', ...result });
     return result.status === 'timeout'
@@ -275,7 +274,7 @@ async function run(
             ? 1
             : 0;
   } finally {
-    if (timeout) clearTimeout(timeout);
+    timeout?.();
     process.removeListener('SIGINT', onSigint);
     process.removeListener('SIGTERM', onSigterm);
     try {

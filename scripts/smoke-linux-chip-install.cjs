@@ -89,7 +89,7 @@ async function main() {
         'release-controlled',
         '--no-thinking',
         '--timeout-ms',
-        '90000',
+        '2592000000',
         '--chat-dir',
         path.join(directory, 'chats'),
         '--state-dir',
@@ -111,6 +111,8 @@ async function main() {
     );
     const rows = result.stdout.trim().split('\n').map(JSON.parse);
     assert.equal(rows.at(-1).status, 'finished', result.stdout + result.stderr);
+    assert.ok(!rows.some(row => row.type === 'timeout'));
+    assert.doesNotMatch(result.stderr, /TimeoutOverflowWarning/);
     const initial = JSON.stringify(fixture.requests[0].messages);
     assert.match(initial, /RELEASE_PROJECT_GUIDANCE/);
     assert.match(initial, /RELEASE_SKILL_DISCOVERY/);
@@ -167,6 +169,8 @@ async function main() {
           sourceCommit: receipt.package.sourceCommit,
           sourceDirty: false,
           installedLauncher: launcher,
+          timeoutMs: '2592000000',
+          longTimeoutWithoutOverflow: 'PASS',
           skillDiscovery: 'PASS',
           nativeGuidance: 'PASS',
           progressiveSkillBody: 'PASS',
