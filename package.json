@@ -35,7 +35,7 @@
     "test:release": "node scripts/check-pack-release.cjs",
     "test:benchmark": "node --test tests/benchmark/*.test.cjs",
     "benchmark:paired": "node scripts/benchmark-paired.cjs",
-    "test:architecture-contract": "node scripts/check-architecture-contract.cjs && node --test tests/architecture/contract-policy.test.cjs",
+    "test:architecture-contract": "node scripts/check-architecture-contract.cjs && node --test tests/architecture/contract-policy.test.cjs tests/architecture/candidate-fetch.test.cjs",
     "test:results": "node --test tests/integration/task-results-freecad.test.cjs tests/integration/task-results-kimi.test.cjs"
   },
   "devDependencies": {

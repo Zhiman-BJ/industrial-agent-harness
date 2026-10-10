@@ -2,7 +2,10 @@
 /AGENTS.md @ZzzPanda
 /architecture/ @ZzzPanda
 /scripts/check-architecture-contract.cjs @ZzzPanda
+/scripts/fetch-architecture-candidate.cjs @ZzzPanda
 /tests/architecture/contract-policy.test.cjs @ZzzPanda
+/tests/architecture/candidate-fetch.test.cjs @ZzzPanda
 /.github/workflows/architecture-contract.yml @ZzzPanda
 /.github/CODEOWNERS @ZzzPanda
 /doc/architecture-contract.md @ZzzPanda
+/doc/architecture-ci-fork-repair.md @ZzzPanda
