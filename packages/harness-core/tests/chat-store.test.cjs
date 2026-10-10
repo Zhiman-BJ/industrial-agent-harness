@@ -282,7 +282,6 @@ test('stable result event IDs deduplicate across store handles and request histo
   assert.throws(() => other.turnEvents(stranger.id, turn), /another chat/);
 });
 
-
 test('chat titles derive concisely, rename validates, and auto titles never override a user rename', t => {
   const { project, store, openStore } = fixture(t);
   const chat = store.create(project, 'test-domain');
@@ -320,10 +319,7 @@ test('chat titles derive concisely, rename validates, and auto titles never over
   const renamed = store.rename(chat.id, project, 'test-domain', '  我的验证会话  ');
   assert.equal(renamed.title, '我的验证会话');
   assert.throws(() => store.rename(chat.id, project, 'test-domain', '   '), /chat title/);
-  assert.throws(
-    () => store.rename(chat.id, project, 'test-domain', 'x'.repeat(101)),
-    /chat title/,
-  );
+  assert.throws(() => store.rename(chat.id, project, 'test-domain', 'x'.repeat(101)), /chat title/);
   assert.equal(
     store.rename(chat.id, project, 'test-domain', 'a\nb').title,
     'a b',
@@ -331,10 +327,7 @@ test('chat titles derive concisely, rename validates, and auto titles never over
   );
   const otherDomain = openStore();
   t.after(() => otherDomain.close());
-  assert.throws(
-    () => otherDomain.rename(chat.id, project, 'other-domain', 'x'),
-    /unavailable/,
-  );
+  assert.throws(() => otherDomain.rename(chat.id, project, 'other-domain', 'x'), /unavailable/);
 
   // A user rename wins over a late model title.
   const third = store.create(project, 'test-domain');
@@ -382,9 +375,7 @@ test('schema v1 databases gain the custom-title flag on open and newer schemas a
   assert.equal(store.db.prepare('PRAGMA user_version').get().user_version, 2);
   assert.equal(
     store.db
-      .prepare(
-        "SELECT custom_title FROM chats WHERE id = '00000000-0000-4000-8000-000000000000'",
-      )
+      .prepare("SELECT custom_title FROM chats WHERE id = '00000000-0000-4000-8000-000000000000'")
       .get().custom_title,
     0,
     'legacy rows default to machine titles',

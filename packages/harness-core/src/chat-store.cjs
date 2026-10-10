@@ -192,15 +192,13 @@ class ChatStore {
   // The custom_title flag is authoritative; the derived-text comparison stays as
   // defense in depth for rows written before the flag existed.
   autoTitleEligible(chatId) {
-    const row = this.statement(
-      'SELECT title, custom_title AS custom FROM chats WHERE id = ?',
-    ).get(chatId);
+    const row = this.statement('SELECT title, custom_title AS custom FROM chats WHERE id = ?').get(
+      chatId,
+    );
     const first = this.statement(
       'SELECT task FROM turns WHERE chat_id = ? ORDER BY rowid LIMIT 1',
     ).get(chatId);
-    const count = this.statement('SELECT COUNT(*) AS n FROM turns WHERE chat_id = ?').get(
-      chatId,
-    ).n;
+    const count = this.statement('SELECT COUNT(*) AS n FROM turns WHERE chat_id = ?').get(chatId).n;
     if (!row || row.custom || !first || count !== 1 || row.title !== deriveChatTitle(first.task))
       return null;
     return { task: first.task };
