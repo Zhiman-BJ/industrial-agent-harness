@@ -22,6 +22,31 @@ const uuid = value =>
   typeof value === 'string' &&
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 
+const CHAT_TITLE_MAX = 100;
+const AUTO_TITLE_LENGTH = 48;
+// Concise sidebar label: first non-empty line, collapsed whitespace, capped on a
+// word boundary so neither CJK nor space-separated text is cut mid-word.
+function deriveChatTitle(task) {
+  const line =
+    String(task)
+      .split(/\r?\n/)
+      .find(part => part.trim())
+      ?.trim() || '';
+  const collapsed = line.replace(/\s+/g, ' ');
+  const chars = [...collapsed];
+  if (chars.length <= AUTO_TITLE_LENGTH) return collapsed;
+  let cut = chars.slice(0, AUTO_TITLE_LENGTH).join('');
+  const lastSpace = cut.lastIndexOf(' ');
+  if (lastSpace >= AUTO_TITLE_LENGTH / 2) cut = cut.slice(0, lastSpace);
+  return `${cut.trimEnd()}…`;
+}
+function cleanChatTitle(title) {
+  const value = typeof title === 'string' ? title.replace(/\s+/g, ' ').trim() : '';
+  if (!value || [...value].length > CHAT_TITLE_MAX)
+    throw Error(`Enter a chat title of at most ${CHAT_TITLE_MAX} characters.`);
+  return value;
+}
+
 // Product history and opaque adapter identities. Model context remains owned by the agent runtime.
 class ChatStore {
   constructor(directory = defaultChatDirectory()) {
@@ -35,7 +60,7 @@ class ChatStore {
     this.statements = new Map();
     fs.chmodSync(file, 0o600);
     const version = this.statement('PRAGMA user_version').get().user_version;
-    if (version > 1) {
+    if (version > 2) {
       this.close();
       throw Error('Chat database has a newer schema.');
     }
@@ -50,7 +75,13 @@ class ChatStore {
       CREATE INDEX IF NOT EXISTS chat_runtime_sessions ON runtime_sessions(chat_id);
       CREATE TABLE IF NOT EXISTS chat_preferences (chat_id TEXT PRIMARY KEY REFERENCES chats(id) ON DELETE CASCADE, approval_mode TEXT NOT NULL CHECK(approval_mode IN ('ask', 'auto')));
       CREATE TABLE IF NOT EXISTS chat_events (turn_id TEXT NOT NULL REFERENCES turns(id) ON DELETE CASCADE, sequence INTEGER NOT NULL, type TEXT NOT NULL, event_json TEXT NOT NULL, PRIMARY KEY(turn_id, sequence));`);
-    if (!version) this.db.exec('PRAGMA user_version = 1');
+    if (version < 2) {
+      // Schema 2: explicit custom-title marker (Kimi's isCustomTitle equivalent).
+      // Title equality with the derived title is only a heuristic; a user who
+      // renames a chat to that same text must still be protected.
+      this.db.exec('ALTER TABLE chats ADD COLUMN custom_title INTEGER NOT NULL DEFAULT 0');
+      this.db.exec('PRAGMA user_version = 2');
+    }
     this.recoverInterrupted();
   }
   statement(sql) {
@@ -149,6 +180,51 @@ class ChatStore {
       return mode;
     });
   }
+  rename(chatId, projectDir, domain, title) {
+    this.get(chatId, projectDir, domain);
+    const value = cleanChatTitle(title);
+    // A rename is display metadata only; it must not reorder the list. The
+    // explicit flag — not the title text — is what protects it from auto titles.
+    this.statement('UPDATE chats SET title = ?, custom_title = 1 WHERE id = ?').run(value, chatId);
+    return this.get(chatId, projectDir, domain);
+  }
+  // Auto-title eligibility: a single-turn chat whose title was never user-set.
+  // The custom_title flag is authoritative; the derived-text comparison stays as
+  // defense in depth for rows written before the flag existed.
+  autoTitleEligible(chatId) {
+    const row = this.statement('SELECT title, custom_title AS custom FROM chats WHERE id = ?').get(
+      chatId,
+    );
+    const first = this.statement(
+      'SELECT task FROM turns WHERE chat_id = ? ORDER BY rowid LIMIT 1',
+    ).get(chatId);
+    const count = this.statement('SELECT COUNT(*) AS n FROM turns WHERE chat_id = ?').get(chatId).n;
+    if (!row || row.custom || !first || count !== 1 || row.title !== deriveChatTitle(first.task))
+      return null;
+    return { task: first.task };
+  }
+  // Eligibility probe for a model-generated title. Checked before asking the
+  // model so ineligible chats never trigger a request; autoTitle re-checks
+  // atomically before writing.
+  autoTitleTarget(chatId) {
+    if (!uuid(chatId)) return null;
+    return this.autoTitleEligible(chatId);
+  }
+  // Best-effort model-generated title: never overwrites a user rename.
+  autoTitle(chatId, title) {
+    if (!uuid(chatId)) return false;
+    let value;
+    try {
+      value = cleanChatTitle(title);
+    } catch {
+      return false;
+    }
+    return this.transaction(() => {
+      if (!this.autoTitleEligible(chatId)) return false;
+      this.statement('UPDATE chats SET title = ? WHERE id = ?').run(value, chatId);
+      return true;
+    });
+  }
   transaction(fn) {
     this.db.exec('BEGIN IMMEDIATE');
     try {
@@ -183,7 +259,7 @@ class ChatStore {
       );
       this.statement(
         "UPDATE chats SET title = CASE WHEN title = 'New chat' THEN ? ELSE title END, updated_at = ? WHERE id = ?",
-      ).run(task.trim().slice(0, 100), now, chatId);
+      ).run(deriveChatTitle(task), now, chatId);
       return id;
     });
   }
@@ -418,4 +494,4 @@ class ChatStore {
     this.statements.clear();
   }
 }
-module.exports = { ChatStore, defaultChatDirectory };
+module.exports = { ChatStore, defaultChatDirectory, deriveChatTitle };

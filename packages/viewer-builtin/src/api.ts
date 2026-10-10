@@ -331,6 +331,10 @@ export interface ViewerHostApi {
   deleteChat(
     id: string,
   ): Promise<{ chats: ChatSummary[]; activeId: string | null; sessions: SessionStatus[] }>;
+  renameChat(
+    id: string,
+    title: string,
+  ): Promise<{ chats: ChatSummary[]; activeId: string | null; sessions: SessionStatus[] }>;
   onChatUpdated(callback: () => void): () => void;
   onModelChanged(callback: () => void): () => void;
   onProjectsChanged(callback: () => void): () => void;

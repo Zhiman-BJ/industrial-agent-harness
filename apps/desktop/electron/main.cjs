@@ -92,6 +92,7 @@ const {
   ResourceSettings,
   RemoteSettings,
   defaultChatDirectory,
+  deriveChatTitle,
   ExternalMcpRegistry,
 } = require('@industrial-agent-harness/harness-core');
 const { loadRegistry } = require('@industrial-agent-harness/domain-skills');
@@ -217,6 +218,64 @@ let raster;
 let viewerProtocol;
 const godotRuntime = new GodotRuntimeManager();
 const kicadRuntime = new KiCadRuntimeManager();
+// Best-effort concise session titles (issue #79): when the first turn starts,
+// ask the configured model for a short title (Kimi Code generates its session
+// title from the first prompt the same way); the completion hook retries once
+// if that early attempt failed. The store only accepts a generated title while
+// the chat still carries the derived title, so a user rename always wins.
+const titleRefinements = new Set();
+async function generateChatTitle(task) {
+  const profile = readProfile(configDir());
+  const apiKey = readApiKey();
+  if (!apiKey || !/^https?:/.test(profile.endpoint)) return null;
+  let response;
+  try {
+    response = await fetch(`${profile.endpoint}/chat/completions`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: profile.model,
+        messages: [
+          {
+            role: 'system',
+            content:
+              'Summarize the user task as a chat title. Rules: use the same language as the task; at most 20 characters; no quotes, no trailing punctuation; never append filler words like "会话", "session", "chat" or "task"; output the title only.',
+          },
+          { role: 'user', content: [...task].slice(0, 2000).join('') },
+        ],
+      }),
+      signal: AbortSignal.timeout(30000),
+    });
+  } catch {
+    return null;
+  }
+  if (!response.ok) return null;
+  const data = await response.json().catch(() => null);
+  const text = data?.choices?.[0]?.message?.content;
+  if (typeof text !== 'string') return null;
+  const cleaned = deriveChatTitle(text.replace(/<think>[\s\S]*?(<\/think>|$)/g, ''))
+    .replace(/^["'`「『【]+|["'`」』】]+$/g, '')
+    .replace(/(?:会话|session|chat)$/i, '')
+    .trim();
+  return cleaned || null;
+}
+async function refineChatTitle(chatId) {
+  if (!chatId || titleRefinements.has(chatId)) return;
+  // Selftest mock endpoints assert per-request invariants; a parallel title
+  // request would violate them, so chats keep their derived title there.
+  if (process.argv.some(flag => flag.endsWith('-selftest'))) return;
+  const target = chats.autoTitleTarget(chatId);
+  if (!target) return; // Ineligible chats never cost a model request.
+  titleRefinements.add(chatId);
+  try {
+    const title = await generateChatTitle(target.task);
+    if (title && chats.autoTitle(chatId, title)) notifySessions();
+  } catch {
+    // Title refinement never blocks or reports; the derived title remains.
+  } finally {
+    titleRefinements.delete(chatId);
+  }
+}
 const tasks = new TaskService({
   chatDirectory: process.argv.some(flag => flag.endsWith('-selftest'))
     ? path.join(app.getPath('userData'), 'chats')
@@ -253,6 +312,7 @@ const tasks = new TaskService({
   onEvent: (event, metadata) => {
     if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isDestroyed())
       mainWindow.webContents.send('agent:event', { ...event, ...metadata });
+    if (event.type === 'done' && metadata?.chatId) void refineChatTitle(metadata.chatId);
   },
 });
 const sessions = tasks.sessions;
@@ -1244,6 +1304,13 @@ function registerHandlers() {
     notifySessions();
     return chatList();
   });
+  ipcMain.handle('chat:rename', (event, request) => {
+    chatRequest(event);
+    const project = activeProject();
+    chats.rename(request?.id, project.path, project.domain, request?.title);
+    notifySessions();
+    return chatList();
+  });
   ipcMain.handle('project:list', () =>
     listProjectFiles(projectDir, { includeBuildDirectories: activeProject()?.domain === 'godot' }),
   );
@@ -1352,6 +1419,9 @@ function registerHandlers() {
     if (sessions.busy(entry)) throw Error('This chat is already running.');
     const { completion, ...started } = await tasks.start(entry, task, { images });
     void completion.catch(error => console.error('Chat finalization failed:', error.message));
+    // Kimi-style timing: ask the model for a title as the first turn starts,
+    // so the derived placeholder only shows for a few seconds.
+    void refineChatTitle(started.chatId);
     return started;
   });
   ipcMain.handle('agent:approve', (event, { id, response, chatId }) => {
