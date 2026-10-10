@@ -54,7 +54,7 @@ try {
     assert.equal(rows.at(-1).status, 'scoped');
     assert.ok(
       rows[0].trace.find(row => row.event === 'domain.index').detail.count ===
-        (domain === 'chip' ? 8 : domain === 'cad' ? 4 : 1),
+        (domain === 'chip' ? 8 : domain === 'cad' ? 4 : domain === 'pcb' ? 8 : 1),
     );
     const denied = domain === 'chip' ? 'pcb' : 'chip';
     assert.throws(
@@ -101,7 +101,9 @@ try {
       assert.deepEqual(run(['--disable-mcp', 'chip-pack.eda'])[0].scope.tools, []);
     } else assert.equal(fs.existsSync(path.join(path.dirname(entry), 'domain-packs/chip')), false);
     if (domain === 'pcb') {
-      assert.equal(catalog.skills.length, 3);
+      // project.work (domain-agnostic) + the three pcb skills; the bench
+      // alignment added pcb.design.e2e.
+      assert.equal(catalog.skills.length, 4);
       assert.equal(fs.existsSync(path.join(packageRoot, 'domain-packs/pcb/uv.lock')), true);
       const pcbScope = extra =>
         execFileSync(
