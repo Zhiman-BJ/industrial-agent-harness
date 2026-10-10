@@ -48,6 +48,12 @@ jobs:
         run: |
           pnpm --filter @industrial-agent-harness/desktop build
           node scripts/stage-desktop.cjs dist/desktop-stage-ci
+      - name: Verify guided installation experience
+        if: matrix.platform == 'mac'
+        shell: bash
+        run: |
+          mkdir -p dist/ci-reports
+          node apps/desktop/scripts/test-install-experience.cjs 2>&1 | tee dist/ci-reports/install-experience.log
       - name: Package macOS application
         if: matrix.platform == 'mac'
         shell: bash
@@ -84,6 +90,7 @@ jobs:
           name: desktop-${{ matrix.platform }}
           path: |
             dist/ci-reports/*.log
+            dist/ci-reports/install-experience.log
             dist/ci-reports/ui/
             dist/ci-reports/cad-install/*.log
             dist/ci-reports/cad-install/*.json

@@ -28,6 +28,7 @@ async function launch(stage) {
 (async () => {
   await launch('first');
   await launch('second');
+  await launch('sync');
   console.log(JSON.stringify({ ok: true, restartedApp: true, evidence: directory }));
 })().catch(error => {
   console.error(error);

@@ -35,13 +35,13 @@
     "test:release": "node scripts/check-pack-release.cjs",
     "test:benchmark": "node --test tests/benchmark/*.test.cjs",
     "benchmark:paired": "node scripts/benchmark-paired.cjs",
-    "test:architecture-contract": "node scripts/check-architecture-contract.cjs && node --test tests/architecture/contract-policy.test.cjs",
+    "test:architecture-contract": "node scripts/check-architecture-contract.cjs && node --test tests/architecture/contract-policy.test.cjs tests/architecture/candidate-fetch.test.cjs",
     "test:results": "node --test tests/integration/task-results-freecad.test.cjs tests/integration/task-results-kimi.test.cjs"
   },
   "devDependencies": {
     "prettier": "3.6.2"
   },
   "dependencies": {
-    "@zhiman-bj/industrial-domain-packs": "https://codeload.github.com/Zhiman-BJ/industrial-domain-packs/tar.gz/b9759342cace66df0be0c4559b7c24fb28ea07d9"
+    "@zhiman-bj/industrial-domain-packs": "https://codeload.github.com/Zhiman-BJ/industrial-domain-packs/tar.gz/a4a6b4028e3efdb002ff5074f7a8cf15c688011c"
   }
 }

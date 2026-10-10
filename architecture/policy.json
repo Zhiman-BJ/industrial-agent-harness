@@ -38,10 +38,13 @@
   "adapterCalls": {},
   "governanceHashes": {
     "AGENTS.md": "5445684b850141c600d552524be342310e3f4be16655c744eb25e641b1694129",
-    ".github/CODEOWNERS": "ae11864d12c3ad289adc3faaf0c513e1c58b75cd4cbdc66aa18be9535a48d13a",
-    ".github/workflows/architecture-contract.yml": "7a8618b688b50f86703d5d74ef30225b2f42324222ec4c1c49d3a491df19157c",
+    ".github/CODEOWNERS": "0a2028bd4c003bbeff49b8904b5084d7a2db3e3ac32d4236792d110bc009ed86",
+    ".github/workflows/architecture-contract.yml": "b32a78b550fdc81f5fa2562635ded98f248f830cb2d1fdff71ee95df4508612a",
     "scripts/check-architecture-contract.cjs": "16fd912ff7a76986a944925da5304d7df82d50a801d7d29f31703f4dd5bcc0ee",
     "tests/architecture/contract-policy.test.cjs": "53f9f062bcd991315c89b7e1a23a5edcec47b2ea55e27b40add7df327eec9982",
-    "doc/architecture-contract.md": "c65f597e2ca49992d754240761c25ac20702942d5f9a16c446926af49b0388e7"
+    "doc/architecture-contract.md": "c65f597e2ca49992d754240761c25ac20702942d5f9a16c446926af49b0388e7",
+    "scripts/fetch-architecture-candidate.cjs": "9f3f9a01f8e975505ea04fc69171522041a99435114946364dead00618bf042c",
+    "tests/architecture/candidate-fetch.test.cjs": "1c9fe23a2060c0ab34855602146893cc3530454bd178432459a63504862d105f",
+    "doc/architecture-ci-fork-repair.md": "4af0e8835bb8bc8c7e5bec012e5f883cbe0fa42a4becb2ec5547c6fab19ec64c"
   }
 }

@@ -39,7 +39,7 @@ jobs:
       - name: Enforce ownership and non-expanding migration exceptions
         run: node "$RUNNER_TEMP/architecture-policy/check.cjs" --root "$GITHUB_WORKSPACE" --policy "$RUNNER_TEMP/architecture-policy/policy.json"
       - name: Verify forbidden changes actually fail
-        run: node --test tests/architecture/contract-policy.test.cjs
+        run: node --test tests/architecture/contract-policy.test.cjs tests/architecture/candidate-fetch.test.cjs
 
   trusted:
     name: Trusted architecture policy
@@ -48,32 +48,40 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: read
-      statuses: write
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.base.sha }}
           path: trusted
           persist-credentials: false
-      - uses: actions/checkout@v4
-        with:
-          repository: ${{ github.event.pull_request.head.repo.full_name }}
-          ref: ${{ github.event.pull_request.head.sha }}
-          path: candidate
-          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+      - name: Acquire exact PR tree as data with no checkout or credentials
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          CANDIDATE_ROOT: ${{ runner.temp }}/architecture-candidate
+        run: node trusted/scripts/fetch-architecture-candidate.cjs
       - name: Inspect candidate files with base-branch code only
-        id: guard
-        continue-on-error: true
-        run: node trusted/scripts/check-architecture-contract.cjs --root "$GITHUB_WORKSPACE/candidate" --policy "$GITHUB_WORKSPACE/trusted/architecture/policy.json"
+        run: node trusted/scripts/check-architecture-contract.cjs --root "$RUNNER_TEMP/architecture-candidate" --policy "$GITHUB_WORKSPACE/trusted/architecture/policy.json"
+      - name: Verify the trusted acquisition and policy regressions
+        run: node --test trusted/tests/architecture/contract-policy.test.cjs trusted/tests/architecture/candidate-fetch.test.cjs
+
+  status:
+    name: Publish trusted architecture result
+    needs: trusted
+    if: always() && github.event_name == 'pull_request_target'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    permissions:
+      statuses: write
+    steps:
       - name: Bind the policy result to the actual PR commit
-        if: always()
         env:
           GH_TOKEN: ${{ github.token }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          RESULT: ${{ steps.guard.outcome }}
+          RESULT: ${{ needs.trusted.result }}
         run: |
           state=failure
           if [ "$RESULT" = success ]; then state=success; fi
