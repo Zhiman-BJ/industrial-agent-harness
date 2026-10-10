@@ -8,6 +8,9 @@ on:
 
 permissions:
   contents: read
+  # Listing pull-request files for area gating needs this on a private
+  # repository; the token is still read-only.
+  pull-requests: read
 
 concurrency:
   group: harness-ci-${{ github.event.pull_request.number || github.ref }}

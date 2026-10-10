@@ -1,0 +1,441 @@
+{
+  "schemaVersion": 1,
+  "manifestId": "IH-EDITIONS-001",
+  "trackingIssue": 101,
+  "recordedAt": "2026-10-10",
+  "basisSourceRef": "78194d985032ecb11207f94f454358b901ad0274",
+  "policyRevision": "IH-ARCH-001",
+  "release": {
+    "externalRepoName": "",
+    "externalRepoUrl": "",
+    "externalDefaultBranch": "",
+    "license": "pending",
+    "notes": "外部仓库名称、地址、默认分支与许可证均待用户定案。为空时仅允许本地开发与导出演练；真实发布由 --gate release 显式阻断。"
+  },
+  "publicSurface": {
+    "statement": "已实现且可验证的核心任务流程、必要的错误/状态/记录、选定 Viewer 和扩展接口。",
+    "docSource": "doc/editions.md",
+    "decisionSource": "doc/product-decisions.md#PD-069"
+  },
+  "entries": [
+    {
+      "id": "root.meta-public",
+      "edition": "public",
+      "kind": "meta",
+      "paths": [
+        "README.md",
+        "README.zh-CN.md",
+        "LICENSE",
+        "THIRD_PARTY_NOTICES.md",
+        "SECURITY.md",
+        "package.json",
+        "pnpm-workspace.yaml",
+        "pnpm-lock.yaml",
+        "electron-builder.config.cjs",
+        ".prettierrc.json",
+        ".prettierignore",
+        ".gitattributes",
+        ".gitignore"
+      ],
+      "dependencyClass": "meta",
+      "publicStatementSource": "README.md#License",
+      "requiredTests": ["tests/architecture/editions-manifest.test.cjs"],
+      "decisionStatus": "decided"
+    },
+    {
+      "id": "architecture.editions-manifest",
+      "edition": "public",
+      "kind": "meta",
+      "paths": ["architecture/editions.json"],
+      "dependencyClass": "meta",
+      "publicStatementSource": "README.md#Development and contributions",
+      "requiredTests": ["tests/architecture/editions-manifest.test.cjs"],
+      "decisionStatus": "decided",
+      "decisionNote": "本清单为版本化机器清单本体；#106 导出时派生只含 public 条目的公开 metadata，内部条目不进入公开仓库。"
+    },
+    {
+      "id": "apps.desktop",
+      "edition": "public",
+      "kind": "app",
+      "paths": ["apps/desktop"],
+      "entry": "apps/desktop/electron/main.cjs",
+      "dependencyClass": "adapter",
+      "publicStatementSource": "README.md#Quick start",
+      "requiredTests": [
+        "apps/desktop/electron/agent-events.test.cjs",
+        "apps/desktop/electron/chat-history.test.cjs"
+      ],
+      "decisionStatus": "decided",
+      "decisionNote": "Debug/Logs 面板与诊断 IPC 属内部能力，按 internal 条目路径覆盖；#102 在组合层拆分入口。"
+    },
+    {
+      "id": "apps.cli",
+      "edition": "public",
+      "kind": "app",
+      "paths": ["apps/cli"],
+      "entry": "apps/cli/src/main.cjs",
+      "dependencyClass": "adapter",
+      "publicStatementSource": "README.md#Quick start",
+      "requiredTests": ["apps/cli/tests/cli.test.cjs", "apps/cli/tests/doctor.test.cjs"],
+      "decisionStatus": "decided",
+      "decisionNote": "inspect-log 子命令属内部诊断能力，按 internal 条目路径覆盖。"
+    },
+    {
+      "id": "packages.contracts",
+      "edition": "public",
+      "kind": "package",
+      "paths": ["packages/contracts"],
+      "entry": "packages/contracts/src/index.cjs",
+      "dependencyClass": "canonical-contracts",
+      "publicStatementSource": "packages/contracts/README.md",
+      "requiredTests": [
+        "packages/contracts/tests/industrial-contract.test.cjs",
+        "packages/contracts/tests/context-contract.test.cjs"
+      ],
+      "decisionStatus": "decided"
+    },
+    {
+      "id": "packages.harness-core",
+      "edition": "public",
+      "kind": "package",
+      "paths": ["packages/harness-core"],
+      "entry": "packages/harness-core/src/index.cjs",
+      "dependencyClass": "core-runtime",
+      "publicStatementSource": "packages/harness-core/README.md",
+      "requiredTests": ["packages/harness-core/tests/chat-store.test.cjs"],
+      "decisionStatus": "decided"
+    },
+    {
+      "id": "packages.capability-broker",
+      "edition": "public",
+      "kind": "package",
+      "paths": ["packages/capability-broker"],
+      "entry": "packages/capability-broker/src/index.cjs",
+      "dependencyClass": "core-runtime",
+      "publicStatementSource": "README.md#What you can do",
+      "requiredTests": ["packages/capability-broker/tests/resolve.test.cjs"],
+      "decisionStatus": "decided"
+    },
+    {
+      "id": "packages.domain-runtime",
+      "edition": "public",
+      "kind": "package",
+      "paths": ["packages/domain-runtime"],
+      "entry": "packages/domain-runtime/src/index.cjs",
+      "dependencyClass": "core-runtime",
+      "publicStatementSource": "packages/domain-runtime/README.md",
+      "requiredTests": [
+        "packages/domain-runtime/tests/actions.test.cjs",
+        "packages/domain-runtime/tests/industrial-read-only.test.cjs"
+      ],
+      "decisionStatus": "decided"
+    },
+    {
+      "id": "packages.harness-application",
+      "edition": "public",
+      "kind": "package",
+      "paths": ["packages/harness-application"],
+      "entry": "packages/harness-application/src/index.cjs",
+      "dependencyClass": "core-runtime",
+      "publicStatementSource": "packages/harness-application/README.md",
+      "requiredTests": ["packages/harness-application/tests/task-service.test.cjs"],
+      "decisionStatus": "decided"
+    },
+    {
+      "id": "packages.agent-kimi",
+      "edition": "public",
+      "kind": "package",
+      "paths": ["packages/agent-kimi"],
+      "entry": "packages/agent-kimi/src/index.cjs",
+      "dependencyClass": "agent-kernel",
+      "publicStatementSource": "packages/agent-kimi/README.md",
+      "requiredTests": ["packages/agent-kimi/tests/approval.test.cjs"],
+      "decisionStatus": "decided",
+      "decisionNote": "诊断日志与读取器（diagnostic-log/diagnostic-reader 及其测试）属内部能力，按 internal 条目路径覆盖；#102 拆分后核心入口不再引用。"
+    },
+    {
+      "id": "packages.pack-manager",
+      "edition": "public",
+      "kind": "package",
+      "paths": ["packages/pack-manager"],
+      "entry": "packages/pack-manager/src/index.cjs",
+      "dependencyClass": "pack-consumption",
+      "publicStatementSource": "packages/pack-manager/README.md",
+      "requiredTests": ["packages/pack-manager/src/index.test.cjs"],
+      "decisionStatus": "decided"
+    },
+    {
+      "id": "packages.domain-skills",
+      "edition": "public",
+      "kind": "package",
+      "paths": ["packages/domain-skills"],
+      "entry": "packages/domain-skills/src/index.cjs",
+      "dependencyClass": "pack-consumption",
+      "publicStatementSource": "packages/domain-skills/README.md",
+      "requiredTests": [
+        "packages/domain-skills/src/distribution.test.cjs",
+        "packages/domain-skills/src/domains.test.cjs"
+      ],
+      "decisionStatus": "decided",
+      "decisionNote": "仓库内冻结的领域 Skill/manifest 兼容快照属内部迁移债，按 internal 条目路径覆盖，公开导出不携带。"
+    },
+    {
+      "id": "packages.domain-mcp",
+      "edition": "public",
+      "kind": "package",
+      "paths": ["packages/domain-mcp"],
+      "entry": "packages/domain-mcp/src/index.cjs",
+      "dependencyClass": "pack-consumption",
+      "publicStatementSource": "packages/domain-mcp/README.md",
+      "requiredTests": [
+        "packages/domain-mcp/src/index.test.cjs",
+        "packages/domain-mcp/src/gateway.test.cjs"
+      ],
+      "decisionStatus": "decided"
+    },
+    {
+      "id": "packages.computer-use-bridge",
+      "edition": "public",
+      "kind": "package",
+      "paths": ["packages/computer-use-bridge"],
+      "entry": "packages/computer-use-bridge/src/index.cjs",
+      "dependencyClass": "cross-cutting-plugin",
+      "publicStatementSource": "packages/computer-use-bridge/README.md",
+      "requiredTests": ["packages/computer-use-bridge/tests/index.test.cjs"],
+      "decisionStatus": "decided"
+    },
+    {
+      "id": "packages.viewer-core",
+      "edition": "public",
+      "kind": "package",
+      "paths": ["packages/viewer-core"],
+      "entry": "packages/viewer-core/src/index.ts",
+      "dependencyClass": "viewer",
+      "publicStatementSource": "packages/viewer-core/README.md",
+      "requiredTests": ["packages/viewer-core/src/registry.test.cjs"],
+      "decisionStatus": "decided"
+    },
+    {
+      "id": "packages.viewer-builtin",
+      "edition": "public",
+      "kind": "package",
+      "paths": ["packages/viewer-builtin"],
+      "dependencyClass": "viewer",
+      "publicStatementSource": "packages/viewer-builtin/README.md",
+      "requiredTests": [
+        "packages/viewer-builtin/tests/assets.test.cjs",
+        "packages/viewer-builtin/tests/cad.test.cjs"
+      ],
+      "decisionStatus": "decided"
+    },
+    {
+      "id": "packages.sdk",
+      "edition": "public",
+      "kind": "package",
+      "paths": ["packages/sdk"],
+      "entry": "packages/sdk/src/index.cjs",
+      "dependencyClass": "adapter",
+      "publicStatementSource": "packages/sdk/README.md",
+      "requiredTests": ["packages/sdk/tests/client.test.cjs", "packages/sdk/tests/process.test.cjs"],
+      "decisionStatus": "decided"
+    },
+    {
+      "id": "examples.public",
+      "edition": "public",
+      "kind": "examples",
+      "paths": ["examples"],
+      "dependencyClass": "examples",
+      "publicStatementSource": "README.md#Quick start",
+      "decisionStatus": "decided",
+      "decisionNote": "示例工程支撑 README 声明的可运行路径；不含内部演示数据。"
+    },
+    {
+      "id": "tests.public-core",
+      "edition": "public",
+      "kind": "tests",
+      "paths": ["tests"],
+      "dependencyClass": "meta",
+      "publicStatementSource": "README.md#Development and contributions",
+      "requiredTests": [
+        "tests/integration/industrial-core-vertical-slice.test.cjs",
+        "tests/integration/chat-resume.test.cjs"
+      ],
+      "decisionStatus": "decided",
+      "decisionNote": "治理与诊断专属测试文件按 internal 条目路径覆盖；核心闭环与共享契约测试为公开测试集的一部分。"
+    },
+    {
+      "id": "scripts.dev-tooling",
+      "edition": "public",
+      "kind": "tooling",
+      "paths": ["scripts"],
+      "dependencyClass": "meta",
+      "publicStatementSource": "README.md#Development and contributions",
+      "decisionStatus": "decided",
+      "decisionNote": "治理与发行脚本按 internal 条目路径覆盖；其余开发工具随公开仓库维护。"
+    },
+    {
+      "id": "github.ci-public",
+      "edition": "public",
+      "kind": "workflow",
+      "paths": [
+        ".github/workflows/ci.yml",
+        ".github/workflows/structure.yml",
+        ".github/workflows/industrial-core.yml",
+        ".github/workflows/industrial-linux.yml",
+        ".github/PULL_REQUEST_TEMPLATE.md"
+      ],
+      "dependencyClass": "meta",
+      "publicStatementSource": "README.md#Development and contributions",
+      "decisionStatus": "decided",
+      "decisionNote": "公开 CI 脚手架；#106 生成最终公开 workflow 集。"
+    },
+    {
+      "id": "internal.diagnostics.agent-kimi-log",
+      "edition": "internal",
+      "kind": "feature",
+      "paths": [
+        "packages/agent-kimi/src/diagnostic-log.cjs",
+        "packages/agent-kimi/src/diagnostic-reader.cjs",
+        "packages/agent-kimi/tests/diagnostic-log.test.cjs",
+        "packages/agent-kimi/tests/diagnostic-reader.test.cjs",
+        "packages/agent-kimi/tests/diagnostic-view.test.cjs"
+      ],
+      "dependencyClass": "diagnostics-internal",
+      "decisionStatus": "decided",
+      "isolation": { "status": "planned", "legacyReferences": 6, "trackingIssue": 102 }
+    },
+    {
+      "id": "internal.diagnostics.desktop-panel",
+      "edition": "internal",
+      "kind": "feature",
+      "paths": ["apps/desktop/src/components/AgentLogPanel.tsx"],
+      "dependencyClass": "diagnostics-internal",
+      "decisionStatus": "decided",
+      "isolation": { "status": "planned", "legacyReferences": 1, "trackingIssue": 102 }
+    },
+    {
+      "id": "internal.diagnostics.cli-inspect-log",
+      "edition": "internal",
+      "kind": "feature",
+      "paths": ["apps/cli/src/inspect-log.cjs", "apps/cli/tests/inspect-log.test.cjs"],
+      "dependencyClass": "diagnostics-internal",
+      "decisionStatus": "decided",
+      "isolation": { "status": "planned", "legacyReferences": 1, "trackingIssue": 102 }
+    },
+    {
+      "id": "internal.diagnostics.desktop-selftest",
+      "edition": "internal",
+      "kind": "tests",
+      "paths": ["apps/desktop/electron/agent-log-selftest.cjs"],
+      "dependencyClass": "diagnostics-internal",
+      "decisionStatus": "decided",
+      "isolation": { "status": "planned", "legacyReferences": 3, "trackingIssue": 102 }
+    },
+    {
+      "id": "internal.docs",
+      "edition": "internal",
+      "kind": "docs",
+      "paths": ["doc"],
+      "dependencyClass": "docs-internal",
+      "decisionStatus": "decided",
+      "isolation": { "status": "enforced", "legacyReferences": 0 }
+    },
+    {
+      "id": "internal.releases",
+      "edition": "internal",
+      "kind": "release-assets",
+      "paths": ["releases"],
+      "dependencyClass": "release-internal",
+      "decisionStatus": "decided",
+      "isolation": { "status": "enforced", "legacyReferences": 0 }
+    },
+    {
+      "id": "internal.governance",
+      "edition": "internal",
+      "kind": "meta",
+      "paths": [
+        "AGENTS.md",
+        "AGENT.md",
+        "PRODUCT.md",
+        "architecture/policy.json",
+        "tests/architecture/contract-policy.test.cjs",
+        "tests/architecture/candidate-fetch.test.cjs",
+        "scripts/check-architecture-contract.cjs",
+        "scripts/fetch-architecture-candidate.cjs",
+        ".github/CODEOWNERS",
+        ".github/workflows/architecture-contract.yml"
+      ],
+      "dependencyClass": "governance-internal",
+      "decisionStatus": "decided",
+      "isolation": { "status": "enforced", "legacyReferences": 0 },
+      "decisionNote": "IH-ARCH-001 治理机械（受保护合约/checker/policy 及其测试与工作流）与仓库级 agent 指令为内部专属；公开仓库获得等价的公共边界检查（见 doc/editions.md）。"
+    },
+    {
+      "id": "internal.github-release-workflows",
+      "edition": "internal",
+      "kind": "workflow",
+      "paths": [
+        ".github/workflows/desktop-package.yml",
+        ".github/workflows/release-desktop.yml",
+        ".github/workflows/release-headless.yml",
+        ".github/workflows/release-linux-chip.yml"
+      ],
+      "dependencyClass": "release-internal",
+      "decisionStatus": "decided",
+      "isolation": { "status": "enforced", "legacyReferences": 0 },
+      "decisionNote": "现行发行流水线带内部 doc/sourceCommit/release-notes 耦合，属内部资产；公开发行工作流由 #106/#108 重建。"
+    },
+    {
+      "id": "internal.scripts-release",
+      "edition": "internal",
+      "kind": "tooling",
+      "paths": [
+        "scripts/package-headless.cjs",
+        "scripts/package-linux-chip-installer.cjs",
+        "scripts/stage-desktop.cjs",
+        "scripts/desktop-release-env.cjs",
+        "scripts/build-pack-distribution.cjs"
+      ],
+      "dependencyClass": "release-internal",
+      "decisionStatus": "decided",
+      "isolation": { "status": "enforced", "legacyReferences": 0 },
+      "decisionNote": "scripts/release-notices.cjs 留在公开工具面：公开的许可证物料测试（tests/integration/license-materials.test.cjs 等）直接消费它，第三方归属校验属公开义务。"
+    },
+    {
+      "id": "internal.domain-frozen-root",
+      "edition": "internal",
+      "kind": "examples",
+      "paths": ["domain-packs"],
+      "pathsMayBeAbsent": true,
+      "dependencyClass": "docs-internal",
+      "decisionStatus": "decided",
+      "isolation": { "status": "enforced", "legacyReferences": 0 },
+      "decisionNote": "IH-ARCH-001 冻结的领域源码兼容快照根目录；当前 main 不存在该目录时跳过存在性检查。"
+    },
+    {
+      "id": "internal.domain-skills-frozen",
+      "edition": "internal",
+      "kind": "examples",
+      "paths": [
+        "packages/domain-skills/packs",
+        "packages/domain-skills/skills/cad-autocad-macos",
+        "packages/domain-skills/skills/cad-ezdxf",
+        "packages/domain-skills/skills/cad-freecad-headless",
+        "packages/domain-skills/skills/cad-intent-loop",
+        "packages/domain-skills/skills/chip-eda-operate",
+        "packages/domain-skills/skills/chip-layout-inspect",
+        "packages/domain-skills/skills/chip-netlist-inspect",
+        "packages/domain-skills/skills/chip-waveform-inspect",
+        "packages/domain-skills/skills/godot-game-develop",
+        "packages/domain-skills/skills/godot-game-inspect",
+        "packages/domain-skills/skills/pcb-design-e2e",
+        "packages/domain-skills/skills/pcb-layout-inspect"
+      ],
+      "pathsMayBeAbsent": true,
+      "dependencyClass": "docs-internal",
+      "decisionStatus": "decided",
+      "isolation": { "status": "enforced", "legacyReferences": 0 },
+      "decisionNote": "IH-ARCH-001 frozenPrefixes 对应的领域 Skill/manifest 兼容快照；领域实现的维护源在 industrial-domain-packs，公开导出不携带快照。"
+    }
+  ]
+}
