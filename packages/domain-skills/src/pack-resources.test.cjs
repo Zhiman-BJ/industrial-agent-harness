@@ -10,13 +10,19 @@ const { domainPacks } = require('./index.cjs');
 test('public PCB Runtime declarations replace private actor writes with hash-pinned native resources', () => {
   const pack = domainPacks.find(pack => pack.domain === 'pcb');
   assert.equal(pack.provider.transport, 'runtime');
-  assert.deepEqual(
-    pack.provider.tools.map(tool => tool.id),
-    ['pcb.kicad.edit', 'pcb.kicad.verify'],
-  );
+  const ids = pack.provider.tools.map(tool => tool.id);
+  // The bounded native profile stays first; the declared PCB-bench surface
+  // (vendored actor + container gateway dispatch) follows.
+  assert.deepEqual(ids.slice(0, 2), ['pcb.kicad.edit', 'pcb.kicad.verify']);
+  assert.equal(ids.length, 91);
+  assert.ok(ids.slice(2).every(id => id.startsWith('pcb.bench.')));
   assert.equal(pack.runtime.entry, 'runtime/index.cjs');
   assert.ok(pack.provider.sourceFiles['runtime/verifier.cjs']);
   assert.ok(pack.provider.sourceFiles['runtime/native.py']);
+  assert.ok(pack.provider.sourceFiles['runtime/bench-upstream.json']);
+  assert.ok(pack.provider.sourceFiles['runtime/bench-gateway.cjs']);
+  // The vendored actor is pinned by the bench snapshot, not by the runtime
+  // inventory; the manifest keeps its own resource roots.
   assert.ok(!Object.keys(pack.provider.sourceFiles).some(name => name.startsWith('pcb-agent/')));
 });
 
