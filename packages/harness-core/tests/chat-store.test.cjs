@@ -360,7 +360,13 @@ test('chat titles derive concisely, rename validates, and auto titles never over
 
 test('schema v1 databases gain the custom-title flag on open and newer schemas are rejected', t => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'industrial-chat-migrate-'));
-  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  let store;
+  // One hook, close before rm: t.after hooks run in registration order, and
+  // Windows refuses to remove a directory while a SQLite handle is still open.
+  t.after(() => {
+    store?.close();
+    fs.rmSync(directory, { recursive: true, force: true });
+  });
   const chatsDir = path.join(directory, 'chats');
   fs.mkdirSync(chatsDir);
   const { DatabaseSync } = require('node:sqlite');
@@ -370,8 +376,7 @@ test('schema v1 databases gain the custom-title flag on open and newer schemas a
     PRAGMA user_version = 1;`);
   db.close();
 
-  const store = new ChatStore(chatsDir);
-  t.after(() => store.close());
+  store = new ChatStore(chatsDir);
   assert.equal(store.db.prepare('PRAGMA user_version').get().user_version, 2);
   assert.equal(
     store.db
