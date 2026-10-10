@@ -97,7 +97,7 @@ async function run(window, store) {
       await window.webContents.reload();
       await wait(`document.querySelectorAll('.ia-chat-turn').length===2`);
       assert.equal(await evaluate(`document.querySelectorAll('.ia-approval button').length`), 0);
-    } else {
+    } else if (stage === 'second') {
       await wait(`document.querySelectorAll('.ia-chat-turn').length===2`);
       assert.ok(
         await evaluate(
@@ -239,6 +239,50 @@ async function run(window, store) {
       );
       await window.webContents.reload();
       await wait(`document.querySelectorAll('.ia-chat-turn').length===4`);
+    } else if (stage === 'sync') {
+      // Issue #92: chats created or selected through IPC (newChat/selectChat,
+      // no React handler) used to leave the renderer on the previous chat, so
+      // sending failed with broker:resolve "Selected chat changed; retry the
+      // task". The chat:updated broadcast must now carry the authoritative
+      // selection, and an unsubmitted task must survive the switch.
+      await evaluate('window.__chatSyncMarker = 42');
+      const before = await evaluate(`document.querySelectorAll('.ia-chat-turn').length`);
+      await send('Sync adoption seed turn', before + 1);
+      const oldId = await evaluate(`window.viewerHost.chats().then(list=>list.activeId)`);
+      assert.ok(oldId, 'a chat is active after the seed turn');
+      const oldTurns = before + 1;
+      await evaluate(
+        `(() => {const area=document.querySelector('.ia-composer textarea');Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(area,'Adopted follow-up');area.dispatchEvent(new Event('input',{bubbles:true}));})()`,
+      );
+      const created = await evaluate(`window.viewerHost.newChat().then(history=>history.chat.id)`);
+      assert.notEqual(created, oldId, 'IPC newChat switches the active chat');
+      await wait(
+        `document.querySelectorAll('.ia-chat-turn').length===0&&Boolean(document.querySelector('.ia-sidebar-chat[aria-current="page"]'))&&document.querySelector('.ia-composer textarea').value==='Adopted follow-up'&&!document.querySelector('.ia-flow-error')`,
+      );
+      assert.equal(
+        await evaluate(`window.viewerHost.chats().then(list=>list.activeId)`),
+        created,
+        'renderer follows the externally created chat',
+      );
+      // The original repro: with the renderer still on the old chat this send
+      // raised "Selected chat changed"; after adoption it must just run.
+      await send('Adopted follow-up', 1);
+      assert.equal(
+        await evaluate(
+          `window.viewerHost.chatHistory({id:${JSON.stringify(oldId)}}).then(history=>history.turns.length)`,
+        ),
+        oldTurns,
+        'the previous chat keeps its turns',
+      );
+      await evaluate(`window.viewerHost.selectChat(${JSON.stringify(oldId)})`);
+      await wait(
+        `document.querySelectorAll('.ia-chat-turn').length===${oldTurns}&&!document.querySelector('.ia-composer textarea').value`,
+      );
+      assert.equal(
+        await evaluate(`window.__chatSyncMarker`),
+        42,
+        'the external chat switches happened without a reload',
+      );
     }
     // Hosted Macs can have a 1024px desktop. Verify the supported narrow window,
     // rather than relying on the local monitor's larger startup dimensions.

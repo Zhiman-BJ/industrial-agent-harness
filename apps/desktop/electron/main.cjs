@@ -1220,6 +1220,7 @@ function registerHandlers() {
     chatRequest(event);
     const history = chatHistory(id);
     activeChatId = id;
+    notifySessions();
     return history;
   });
   ipcMain.handle('chat:set-approval-mode', (event, request) => {
