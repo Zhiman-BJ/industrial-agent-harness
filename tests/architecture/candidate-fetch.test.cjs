@@ -289,10 +289,14 @@ test('workflow separates read-only candidate inspection from status publishing a
   assert.equal((trusted.match(/actions\/checkout@/g) || []).length, 1);
   assert.match(trusted, /ref: \$\{\{ github.event.pull_request.base.sha \}\}/);
   assert.match(trusted, /persist-credentials: false/);
+  // The repository is private (#100, 2026-10-10): the anonymous fetch is gone,
+  // but the trusted job may only carry the workflow-scoped read-only token.
+  assert.match(trusted, /CANDIDATE_FETCH_TOKEN: \$\{\{ github.token \}\}/);
   assert.doesNotMatch(
     trusted,
-    /statuses: write|GH_TOKEN|head.repo|allow-unsafe-pr-checkout|continue-on-error/,
+    /secrets\.|statuses: write|head.repo|allow-unsafe-pr-checkout|continue-on-error/,
   );
+  assert.match(source.split('\njobs:')[0], /permissions:\n  contents: read\n/);
   assert.match(trusted, /node trusted\/scripts\/fetch-architecture-candidate.cjs/);
   assert.match(trusted, /node trusted\/scripts\/check-architecture-contract.cjs/);
   assert.match(status, /needs: trusted/);
@@ -302,4 +306,79 @@ test('workflow separates read-only candidate inspection from status publishing a
   assert.doesNotMatch(status, /checkout|download-artifact|candidate/);
   assert.match(status, /state=failure/);
   assert.match(status, /if \[ "\$RESULT" = success \]/);
+});
+
+test('a private-repository token rides only on the fetch header and never leaks into errors', t => {
+  const f = fixture(t);
+  f.write('package.json', '{}');
+  const sha = f.commit();
+  const token = 'gha-test-token_1';
+  const calls = [];
+  const runGit = (args, directory, max) => {
+    calls.push(args);
+    if (args[0] === 'init') return Buffer.alloc(0);
+    if (args[0] === 'fetch') throw Error(`Command failed: git ${args.join(' ')}`);
+    if (args[0] === 'rev-parse') return Buffer.from(sha);
+    return git(args, path.join(f.repository, '.git'), max);
+  };
+  assert.throws(
+    () =>
+      fetchCandidate(
+        {
+          repository: 'owner/base',
+          number: 7,
+          sha,
+          destination: f.destination,
+          temp: f.root,
+          token,
+        },
+        runGit,
+      ),
+    error => {
+      assert.equal(
+        error.message,
+        'Candidate fetch failed: repository not readable or PR ref missing',
+      );
+      assert.ok(!error.message.includes(token));
+      assert.ok(!error.message.includes(Buffer.from(`x-access-token:${token}`).toString('base64')));
+      return true;
+    },
+  );
+  const fetchArgs = calls.find(args => args.includes('fetch'));
+  const header = fetchArgs.find(
+    argument =>
+      typeof argument === 'string' && argument.startsWith('http.https://github.com/.extraheader='),
+  );
+  assert.ok(header, 'fetch carries the credential header');
+  assert.ok(
+    fetchArgs.indexOf(header) < fetchArgs.indexOf('fetch'),
+    'git config precedes the subcommand',
+  );
+  assert.equal(calls.filter(args => args.includes('fetch')).length, 1);
+  for (const args of calls.filter(args => args[0] !== 'fetch' && !args.includes('fetch')))
+    assert.ok(
+      !args.some(argument => String(argument).includes(token)),
+      'no other git call sees the token',
+    );
+});
+
+test('an invalid candidate fetch token is rejected before any git call', t => {
+  const f = fixture(t);
+  assert.throws(
+    () =>
+      fetchCandidate(
+        {
+          repository: 'owner/base',
+          number: 1,
+          sha: 'a'.repeat(40),
+          destination: f.destination,
+          temp: f.root,
+          token: 'bad token\nwith header injection',
+        },
+        () => {
+          throw Error('must not run git');
+        },
+      ),
+    /Invalid candidate fetch token/,
+  );
 });
