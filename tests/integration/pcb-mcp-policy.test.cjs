@@ -55,10 +55,16 @@ test('real CLI scopes typed PCB Runtime Actions without starting any native proc
   assert.deepEqual(rows[0].scope.tools, ['pcb.kicad.edit', 'pcb.kicad.verify']);
   assert.equal(rows.at(-1).status, 'scoped');
 });
-test('legacy PCB claim names cannot disclose standalone actor mutations through the integrated Broker', () => {
+test('bench claim names scope to the in-pack gateway tools without standalone MCP servers', () => {
   const scope = resolveProjectTask('pcb', {
     task: 'pcb.bench.place_component verify_design finalize_claims',
   }).scope;
-  assert.ok(!scope.tools.some(id => id.startsWith('pcb.bench.')));
+  // The aligned bench surface (domain-packs #14/#15) registers the pcb.bench.*
+  // tools inside the pack, so a task naming them scopes to the vendored
+  // gateway toolset instead of resolving nothing.
+  const bench = scope.tools.filter(id => id.startsWith('pcb.bench.'));
+  assert.equal(bench.length, 89);
+  // The gateway dispatches through the pack runtime transport; no standalone
+  // MCP server may be disclosed for the bench tools.
   assert.deepEqual(selectMcpServers(scope), []);
 });
