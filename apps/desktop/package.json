@@ -47,7 +47,7 @@
     "react-markdown": "10.1.0",
     "remark-gfm": "4.0.1",
     "@industrial-agent-harness/harness-application": "workspace:*",
-    "@zhiman-bj/industrial-domain-packs": "https://codeload.github.com/Zhiman-BJ/industrial-domain-packs/tar.gz/4f737ef9f949a3b8c00e9bf00d2df748dff41320"
+    "@zhiman-bj/industrial-domain-packs": "https://codeload.github.com/Zhiman-BJ/industrial-domain-packs/tar.gz/a4a6b4028e3efdb002ff5074f7a8cf15c688011c"
   },
   "devDependencies": {
     "@types/react": "19.2.18",
