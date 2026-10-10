@@ -153,6 +153,7 @@ jobs:
           docker image rm "$image"
       - name: Retain installer and verification evidence
         if: always()
+        continue-on-error: true  # storage-quota failures must not fail test verdicts
         uses: actions/upload-artifact@v4
         with:
           name: linux-chip-installer

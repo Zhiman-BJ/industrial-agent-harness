@@ -122,6 +122,7 @@ jobs:
           pnpm run smoke:ci-packages 2>&1 | tee dist/ci-reports/packages.log
       - name: Retain regression evidence
         if: always()
+        continue-on-error: true  # storage-quota failures must not fail test verdicts
         uses: actions/upload-artifact@v4
         with:
           name: portable-${{ matrix.platform }}-${{ matrix.arch }}

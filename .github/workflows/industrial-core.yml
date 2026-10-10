@@ -129,6 +129,7 @@ jobs:
           fi
       - name: Retain native regression evidence
         if: always()
+        continue-on-error: true  # storage-quota failures must not fail test verdicts
         uses: actions/upload-artifact@v4
         with:
           name: industrial-native-arm64-${{ matrix.os }}
@@ -197,6 +198,7 @@ jobs:
           fi
       - name: Retain native installation regression evidence
         if: always()
+        continue-on-error: true  # storage-quota failures must not fail test verdicts
         uses: actions/upload-artifact@v4
         with:
           name: industrial-native-installed-arm64-${{ matrix.os }}
