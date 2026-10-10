@@ -97,6 +97,7 @@ function portableFiles() {
       'tests/ci/ci-areas.test.cjs',
       'tests/ci/native-evidence.test.cjs',
       'tests/ci/runtime-archives.test.cjs',
+      'tests/ci/qa-cleanup.test.cjs',
     ]),
   ]
     .filter(
