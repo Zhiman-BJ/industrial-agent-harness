@@ -37,7 +37,7 @@
   },
   "adapterCalls": {},
   "governanceHashes": {
-    "AGENTS.md": "5445684b850141c600d552524be342310e3f4be16655c744eb25e641b1694129",
+    "AGENTS.md": "9f57d037dd47f5750322a7001bcf1cf5e36fd14560ad2bab97f239b81e6df4a7",
     ".github/CODEOWNERS": "0a2028bd4c003bbeff49b8904b5084d7a2db3e3ac32d4236792d110bc009ed86",
     ".github/workflows/architecture-contract.yml": "b32a78b550fdc81f5fa2562635ded98f248f830cb2d1fdff71ee95df4508612a",
     "scripts/check-architecture-contract.cjs": "16fd912ff7a76986a944925da5304d7df82d50a801d7d29f31703f4dd5bcc0ee",
