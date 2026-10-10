@@ -44,11 +44,11 @@ Settings → Domains 显示“已安装 / 可安装 / 更新可用 / 不兼容 /
 
 ## 交付物与版本模型
 
-| 交付物 | 内容与边界 | 版本 / 更新 |
-| --- | --- | --- |
-| Core installer | Electron、共享 Harness 包、固定 Kimi runtime、Broker、Domain Runtime、MCP Gateway、SQLite 访问层和通用 Viewer；不包含大型工业软件 | App 语义版本；整体 OTA |
-| Domain Pack | 领域声明、Capability、Skill、MCP/Tool 映射、StateProvider、Verifier、领域 Viewer/Bridge 适配和必要的可再分发资源 | 独立语义版本；按 Domain 补装与 OTA |
-| 外部依赖 | 模型凭证、PDK、商业/系统软件、工具镜像及受许可限制的数据 | 由健康检查识别；只对明确可再分发的依赖提供自动安装 |
+| 交付物         | 内容与边界                                                                                                                        | 版本 / 更新                                        |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| Core installer | Electron、共享 Harness 包、固定 Kimi runtime、Broker、Domain Runtime、MCP Gateway、SQLite 访问层和通用 Viewer；不包含大型工业软件 | App 语义版本；整体 OTA                             |
+| Domain Pack    | 领域声明、Capability、Skill、MCP/Tool 映射、StateProvider、Verifier、领域 Viewer/Bridge 适配和必要的可再分发资源                  | 独立语义版本；按 Domain 补装与 OTA                 |
+| 外部依赖       | 模型凭证、PDK、商业/系统软件、工具镜像及受许可限制的数据                                                                          | 由健康检查识别；只对明确可再分发的依赖提供自动安装 |
 
 当前四个默认可选领域沿用 Chip、PCB、Godot、CAD ID；CUDA 保留开发者接入身份。Chip 的 25 工具服务可作为 Pack 一部分安装，但 Python 环境、EDA 镜像、PDK 与项目资源须逐项检查；PCB 的 KiCad Viewer 可以在没有原生 KiCad 的情况下工作，工业动作另行判定；Godot 的 Web Export Viewer 与原生 Godot 安装状态分开展示。不要把现有 Scope 烟测结果写成这些工具已完成工程验证。
 

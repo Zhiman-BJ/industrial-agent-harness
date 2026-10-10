@@ -138,19 +138,14 @@ test(
       INDUSTRIAL_HARNESS_PCB_DOCKER: fixture.policy.docker,
     };
     const packDirectory = path.dirname(
-      require.resolve(
-        '@zhiman-bj/industrial-domain-packs/packs/pcb/legacy-harness-pack.json',
-      ),
+      require.resolve('@zhiman-bj/industrial-domain-packs/packs/pcb/legacy-harness-pack.json'),
     );
     const legacy = require(path.join(packDirectory, 'legacy-harness-pack.json'));
     // The frozen legacy manifest predates the vendored snapshot; rebuild the
     // gateway provider view from the current pinned bench-upstream snapshot
     // so the checkout inventory (INDUSTRIAL_HARNESS_PCB_BENCH_DIR at the
     // pinned commit) validates against what the pack ships today.
-    const { bridgeProvider } = require(path.join(
-      packDirectory,
-      'runtime/bench-gateway.cjs',
-    ));
+    const { bridgeProvider } = require(path.join(packDirectory, 'runtime/bench-gateway.cjs'));
     const snapshot = JSON.parse(
       fs.readFileSync(path.join(packDirectory, 'runtime/bench-upstream.json'), 'utf8'),
     );
@@ -200,10 +195,7 @@ test(
     assert.equal(fs.readdirSync(path.join(skills, 'references')).length, 9);
     assert.equal(
       fs.readFileSync(path.join(skills, 'SKILL.md'), 'utf8'),
-      fs.readFileSync(
-        path.join(packDirectory, 'skills/pcb-design-e2e/SKILL.md'),
-        'utf8',
-      ),
+      fs.readFileSync(path.join(packDirectory, 'skills/pcb-design-e2e/SKILL.md'), 'utf8'),
     );
     materializeSkills({ skills: ['pcb.layout.inspect'] }, session, environment);
     assert.ok(

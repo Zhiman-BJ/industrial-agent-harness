@@ -353,23 +353,13 @@ test('public built-in Pack releases retain owned resources and keep the public P
             file.path === 'skills/pcb-design-e2e/assets/constraints.example.yaml',
         ),
       );
-      assert.ok(
-        files.some(file => file.path.startsWith('domain-packs/pcb/pcb-agent/tools/')),
-      );
-      assert.ok(
-        files.some(file => file.path === 'domain-packs/pcb/pcb-agent/tools/workspace.py'),
-      );
-      assert.ok(
-        files.some(file => file.path === 'domain-packs/pcb/runtime/bench-upstream.json'),
-      );
-      assert.ok(
-        files.some(file => file.path === 'domain-packs/pcb/runtime/bench-gateway.cjs'),
-      );
+      assert.ok(files.some(file => file.path.startsWith('domain-packs/pcb/pcb-agent/tools/')));
+      assert.ok(files.some(file => file.path === 'domain-packs/pcb/pcb-agent/tools/workspace.py'));
+      assert.ok(files.some(file => file.path === 'domain-packs/pcb/runtime/bench-upstream.json'));
+      assert.ok(files.some(file => file.path === 'domain-packs/pcb/runtime/bench-gateway.cjs'));
       assert.ok(
         files.some(file => file.path === 'skills/pcb.kicad.native/SKILL.md') ||
-          files.some(
-            file => file.path === 'skills/pcb-kicad-native/SKILL.md',
-          ),
+          files.some(file => file.path === 'skills/pcb-kicad-native/SKILL.md'),
       );
     }
     if (item.domain === 'chip')
