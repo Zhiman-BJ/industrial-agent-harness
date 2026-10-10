@@ -290,9 +290,14 @@ export function App() {
       setTask(last.task);
     }
   }
-  async function refreshChats(openSelected = false) {
+  async function refreshChats(openSelected = false, followSelection = false) {
     const projectId = projectIdRef.current;
     const navigation = navigationRevision.current;
+    // openSelected reads share the history token so a newer navigation can
+    // invalidate an in-flight history adoption. followSelection rides the
+    // list token instead: broadcast-driven adoption must not invalidate
+    // openSelected reads (a suspended one would lose its applyHistory and
+    // the views it refreshes stay stale).
     const request = openSelected ? ++historyRevision.current : ++listRevision.current;
     const list = await window.viewerHost!.chats();
     if (
@@ -326,6 +331,37 @@ export function App() {
       setApprovalMode('ask');
       setTurns([]);
       setHasEarlier(false);
+    } else if (followSelection) {
+      // Chat selection lives in the main process; external IPC callers can
+      // create or select a chat without any React handler running here. The
+      // broadcast carries no payload, so the authoritative activeId is read
+      // from the list and adopted when it diverges. Composer text survives
+      // the switch: an unsubmitted task belongs to the window, not the chat.
+      if (list.activeId && list.activeId !== chatIdRef.current) {
+        const selectedChatId = chatIdRef.current;
+        const history = await readHistory(() =>
+          window.viewerHost!.chatHistory({ id: list.activeId! }),
+        );
+        if (
+          projectId === projectIdRef.current &&
+          selectedChatId === chatIdRef.current &&
+          navigation === navigationRevision.current &&
+          request === listRevision.current
+        ) {
+          previewPolicy.current.invalidate();
+          fileOpenRevision.current++;
+          applyHistory(history);
+          setBrokerError('');
+        }
+      } else if (!list.activeId && chatIdRef.current && !selectedChat) {
+        // The open chat was removed outside this window; mirror the local
+        // deleteChat reset instead of showing a vanished conversation.
+        chatIdRef.current = null;
+        setActiveChatId(null);
+        setApprovalMode('ask');
+        setTurns([]);
+        setHasEarlier(false);
+      }
     }
   }
   async function openChat(id: string) {
@@ -573,7 +609,7 @@ export function App() {
       }
     });
     const removeUpdated = window.viewerHost.onChatUpdated(() => {
-      void refreshChats().catch(reason => setError(String(reason)));
+      void refreshChats(false, true).catch(reason => setError(String(reason)));
     });
     const refreshAgentStatus = () => {
       void window
