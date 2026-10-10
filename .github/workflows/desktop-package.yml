@@ -85,7 +85,6 @@ jobs:
           pnpm --filter @industrial-agent-harness/desktop test:gui-settings 2>&1 | tee dist/ci-reports/desktop-gui-settings.log
       - name: Retain installed application evidence
         if: always()
-        continue-on-error: true  # storage-quota failures must not fail test verdicts
         uses: actions/upload-artifact@v4
         with:
           name: desktop-${{ matrix.platform }}
