@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
-const { ChatStore } = require('../src/index.cjs');
+const { ChatStore, deriveChatTitle } = require('../src/index.cjs');
 
 function fixture(t) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'industrial-chat-store-'));
@@ -343,6 +343,19 @@ test('chat titles derive concisely, rename validates, and auto titles never over
   assert.equal(store.autoTitle(third.id, '模型起的名字'), false);
   assert.equal(store.get(third.id, project, 'test-domain').title, '模糊任务');
 
+  // The custom-title flag is authoritative: renaming to the exact derived text
+  // still counts as user-set, so equality alone can never reopen auto titling.
+  const fourth = store.create(project, 'test-domain');
+  const fourthTask = '把 Box 设为不可见';
+  store.beginTurn(fourth.id, fourthTask, null, false);
+  store.rename(fourth.id, project, 'test-domain', deriveChatTitle(fourthTask));
+  assert.equal(
+    store.autoTitleTarget(fourth.id),
+    null,
+    'rename to the derived text stays protected',
+  );
+  assert.equal(store.autoTitle(fourth.id, '模型标题'), false);
+
   // Renaming does not reorder the recency list.
   const before = store.list(project, 'test-domain').map(item => item.id);
   store.rename(before.at(-1), project, 'test-domain', '顺序不变');
@@ -350,4 +363,47 @@ test('chat titles derive concisely, rename validates, and auto titles never over
     store.list(project, 'test-domain').map(item => item.id),
     before,
   );
+});
+
+test('schema v1 databases gain the custom-title flag on open and newer schemas are rejected', t => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'industrial-chat-migrate-'));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const chatsDir = path.join(directory, 'chats');
+  fs.mkdirSync(chatsDir);
+  const { DatabaseSync } = require('node:sqlite');
+  const db = new DatabaseSync(path.join(chatsDir, 'chats.sqlite'));
+  db.exec(`CREATE TABLE chats (id TEXT PRIMARY KEY, project_key TEXT NOT NULL, project_path TEXT NOT NULL, domain TEXT NOT NULL, title TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, archived INTEGER NOT NULL DEFAULT 0);
+    INSERT INTO chats VALUES ('00000000-0000-4000-8000-000000000000', 'legacy', '/tmp/legacy', 'test-domain', '旧会话', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', 0);
+    PRAGMA user_version = 1;`);
+  db.close();
+
+  const store = new ChatStore(chatsDir);
+  t.after(() => store.close());
+  assert.equal(store.db.prepare('PRAGMA user_version').get().user_version, 2);
+  assert.equal(
+    store.db
+      .prepare(
+        "SELECT custom_title FROM chats WHERE id = '00000000-0000-4000-8000-000000000000'",
+      )
+      .get().custom_title,
+    0,
+    'legacy rows default to machine titles',
+  );
+
+  const project = path.join(directory, 'project');
+  fs.mkdirSync(project);
+  const chat = store.create(project, 'test-domain');
+  store.beginTurn(chat.id, '验证迁移后的行为', null, false);
+  assert.ok(store.autoTitleTarget(chat.id), 'fresh chats stay eligible');
+  store.rename(chat.id, project, 'test-domain', '人工标题');
+  assert.equal(
+    store.db.prepare('SELECT custom_title FROM chats WHERE id = ?').get(chat.id).custom_title,
+    1,
+  );
+  assert.equal(store.autoTitleTarget(chat.id), null);
+
+  const newer = new DatabaseSync(path.join(chatsDir, 'chats.sqlite'));
+  newer.exec('PRAGMA user_version = 3');
+  newer.close();
+  assert.throws(() => new ChatStore(chatsDir), /newer schema/);
 });

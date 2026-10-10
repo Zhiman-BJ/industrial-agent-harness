@@ -60,7 +60,7 @@ class ChatStore {
     this.statements = new Map();
     fs.chmodSync(file, 0o600);
     const version = this.statement('PRAGMA user_version').get().user_version;
-    if (version > 1) {
+    if (version > 2) {
       this.close();
       throw Error('Chat database has a newer schema.');
     }
@@ -75,7 +75,13 @@ class ChatStore {
       CREATE INDEX IF NOT EXISTS chat_runtime_sessions ON runtime_sessions(chat_id);
       CREATE TABLE IF NOT EXISTS chat_preferences (chat_id TEXT PRIMARY KEY REFERENCES chats(id) ON DELETE CASCADE, approval_mode TEXT NOT NULL CHECK(approval_mode IN ('ask', 'auto')));
       CREATE TABLE IF NOT EXISTS chat_events (turn_id TEXT NOT NULL REFERENCES turns(id) ON DELETE CASCADE, sequence INTEGER NOT NULL, type TEXT NOT NULL, event_json TEXT NOT NULL, PRIMARY KEY(turn_id, sequence));`);
-    if (!version) this.db.exec('PRAGMA user_version = 1');
+    if (version < 2) {
+      // Schema 2: explicit custom-title marker (Kimi's isCustomTitle equivalent).
+      // Title equality with the derived title is only a heuristic; a user who
+      // renames a chat to that same text must still be protected.
+      this.db.exec('ALTER TABLE chats ADD COLUMN custom_title INTEGER NOT NULL DEFAULT 0');
+      this.db.exec('PRAGMA user_version = 2');
+    }
     this.recoverInterrupted();
   }
   statement(sql) {
@@ -177,28 +183,36 @@ class ChatStore {
   rename(chatId, projectDir, domain, title) {
     this.get(chatId, projectDir, domain);
     const value = cleanChatTitle(title);
-    // A rename is display metadata only; it must not reorder the list.
-    this.statement('UPDATE chats SET title = ? WHERE id = ?').run(value, chatId);
+    // A rename is display metadata only; it must not reorder the list. The
+    // explicit flag — not the title text — is what protects it from auto titles.
+    this.statement('UPDATE chats SET title = ?, custom_title = 1 WHERE id = ?').run(value, chatId);
     return this.get(chatId, projectDir, domain);
   }
-  // Eligibility probe for a model-generated title: only a chat still carrying the
-  // derived title of its single first turn qualifies. Checked before asking the
-  // model so ineligible chats never trigger a request; autoTitle re-checks
-  // atomically before writing.
-  autoTitleTarget(chatId) {
-    if (!uuid(chatId)) return null;
-    const row = this.statement('SELECT title FROM chats WHERE id = ?').get(chatId);
+  // Auto-title eligibility: a single-turn chat whose title was never user-set.
+  // The custom_title flag is authoritative; the derived-text comparison stays as
+  // defense in depth for rows written before the flag existed.
+  autoTitleEligible(chatId) {
+    const row = this.statement(
+      'SELECT title, custom_title AS custom FROM chats WHERE id = ?',
+    ).get(chatId);
     const first = this.statement(
       'SELECT task FROM turns WHERE chat_id = ? ORDER BY rowid LIMIT 1',
     ).get(chatId);
     const count = this.statement('SELECT COUNT(*) AS n FROM turns WHERE chat_id = ?').get(
       chatId,
     ).n;
-    if (!row || !first || count !== 1 || row.title !== deriveChatTitle(first.task)) return null;
+    if (!row || row.custom || !first || count !== 1 || row.title !== deriveChatTitle(first.task))
+      return null;
     return { task: first.task };
   }
-  // Best-effort model-generated title: applies only while the chat still carries
-  // the derived title of its first turn, so a user rename is never overwritten.
+  // Eligibility probe for a model-generated title. Checked before asking the
+  // model so ineligible chats never trigger a request; autoTitle re-checks
+  // atomically before writing.
+  autoTitleTarget(chatId) {
+    if (!uuid(chatId)) return null;
+    return this.autoTitleEligible(chatId);
+  }
+  // Best-effort model-generated title: never overwrites a user rename.
   autoTitle(chatId, title) {
     if (!uuid(chatId)) return false;
     let value;
@@ -208,14 +222,7 @@ class ChatStore {
       return false;
     }
     return this.transaction(() => {
-      const row = this.statement('SELECT title FROM chats WHERE id = ?').get(chatId);
-      const first = this.statement(
-        'SELECT task FROM turns WHERE chat_id = ? ORDER BY rowid LIMIT 1',
-      ).get(chatId);
-      const count = this.statement('SELECT COUNT(*) AS n FROM turns WHERE chat_id = ?').get(
-        chatId,
-      ).n;
-      if (!row || !first || count !== 1 || row.title !== deriveChatTitle(first.task)) return false;
+      if (!this.autoTitleEligible(chatId)) return false;
       this.statement('UPDATE chats SET title = ? WHERE id = ?').run(value, chatId);
       return true;
     });

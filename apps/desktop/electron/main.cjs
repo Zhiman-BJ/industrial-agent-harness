@@ -243,8 +243,6 @@ async function generateChatTitle(task) {
           },
           { role: 'user', content: [...task].slice(0, 2000).join('') },
         ],
-        max_tokens: 512,
-        stream: false,
       }),
       signal: AbortSignal.timeout(30000),
     });

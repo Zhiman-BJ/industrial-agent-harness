@@ -1203,6 +1203,9 @@ export function App() {
                                   setChatRename({ id: chat.id, value: event.target.value })
                                 }
                                 onKeyDown={event => {
+                                  // IME composition (e.g. Chinese pinyin) uses
+                                  // Enter/Escape for the candidate window first.
+                                  if (event.nativeEvent.isComposing) return;
                                   if (event.key === 'Enter') void commitChatRename();
                                   if (event.key === 'Escape') setChatRename(null);
                                 }}
