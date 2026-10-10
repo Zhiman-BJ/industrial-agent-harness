@@ -39,6 +39,8 @@
 
 **硬性规则**：超时、崩溃、前置缺失一律是 `fail` 或 `blocked`，永远不允许当作"跳过"处理；不允许为让套件通过而修改测试代码或删除断言。
 
+6. **清理**：运行结束（无论 verdict）执行 `node scripts/qa-cleanup.cjs` 预览，确认目标清单合理后加 `--apply`。脚本只回收四类目标：闲置 ≥7 天的构建/暂存产物（`dist/` 除 `ci-reports` 外与 `apps/desktop/dist`）、留存 ≥14 天的证据目录（与 CI artifact 保留期一致）、超过 6 小时的孤儿 suite 锁、闲置 ≥7 天且无未提交改动的本仓库 `/tmp` worktree（崩溃遗留的基线/测试 worktree）。安全栏：任何 git-tracked、未 ignore、保留期内、或被运行中进程命令行引用的目标一律跳过并记录原因；默认预览，`--apply` 才删除；单实例锁防并发；每次运行留 `dist/ci-reports/qa-cleanup-<时间戳>.json` 审计日志。保留期可用 `--retention-builds/--retention-evidence/--retention-worktree/--lock-ttl-hours` 覆盖。
+
 ## 2. 前置条件矩阵
 
 通用（所有层）：macOS/Linux 仓库、Node ≥24、pnpm 11.1.3、`pnpm install --frozen-lockfile` 已执行。
@@ -207,6 +209,7 @@ for suite in ui parallel language gui-settings messages chats logs mcp external-
 done
 # T2 CAD 入口（test:cad / test:cad-resize / test:results）不在标准档：需先完成 T4-1 的 FreeCAD 准备
 pnpm run test:ci -- benchmark 2>&1 | tee "$EVID/benchmark.log"; mv dist/ci-reports/benchmark.json "$EVID/"  # T3-2
+node scripts/qa-cleanup.cjs --apply 2>&1 | tee "$EVID/qa-cleanup.log"                                    # §1.6 清理
 ```
 
 ## 6. 判定规则、允许跳过与已知 flake
@@ -247,3 +250,4 @@ PR 的 area gating 规则：仅 `doc/`、`*.md`、`LICENSE` 变更 → 只跑 re
 2. 新增桌面 selftest：在 `apps/desktop/package.json` 增加 `test:<name>` script，并在 `electron/main.cjs` 注册 `--<name>-selftest` 派发；同步更新本文 T2 表。
 3. 新增 CI 套件或调整平台矩阵：更新 `scripts/ci-tests.cjs` 与对应 workflow 后，同步修订本文 §2/§3/§7。
 4. 本手册描述的命令、允许跳过清单与 flake 必须与 `main` 的 CI 一致；发现不一致时以 CI 实际行为为准并立即修订本手册。
+5. 清理目标与保留期由 §1.6 与 `scripts/qa-cleanup.cjs` 共同定义：新增目标类别或调整保留期时两者必须同步修改，且 `tests/ci/qa-cleanup.test.cjs` 须覆盖新的判定分支。
