@@ -261,6 +261,9 @@ async function generateChatTitle(task) {
 }
 async function refineChatTitle(chatId) {
   if (!chatId || titleRefinements.has(chatId)) return;
+  // Selftest mock endpoints assert per-request invariants; a parallel title
+  // request would violate them, so chats keep their derived title there.
+  if (process.argv.some(flag => flag.endsWith('-selftest'))) return;
   const target = chats.autoTitleTarget(chatId);
   if (!target) return; // Ineligible chats never cost a model request.
   titleRefinements.add(chatId);
