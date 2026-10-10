@@ -340,14 +340,37 @@ test('public built-in Pack releases retain owned resources and keep the public P
       assert.equal(skill.external, undefined);
       assert.ok(files.some(file => file.path === 'domain-packs/pcb/runtime/index.cjs'));
       assert.ok(files.some(file => file.path === 'domain-packs/pcb/runtime/verifier.cjs'));
+      // The vendored PCB-bench surface ships with the pack: skill references
+      // and assets, the actor sources, the pinned snapshot and the gateway.
       assert.ok(
-        !files.some(
+        files.some(file => file.path === 'skills/pcb.design.e2e/references/tools.md') ||
+          files.some(file => file.path === 'skills/pcb-design-e2e/references/tools.md'),
+      );
+      assert.ok(
+        files.some(
           file =>
-            file.path.startsWith('skills/pcb.design.e2e/references/') ||
-            file.path.startsWith('skills/pcb.design.e2e/assets/'),
+            file.path === 'skills/pcb.design.e2e/assets/constraints.example.yaml' ||
+            file.path === 'skills/pcb-design-e2e/assets/constraints.example.yaml',
         ),
       );
-      assert.ok(!files.some(file => file.path.startsWith('pcb-agent/')));
+      assert.ok(
+        files.some(file => file.path.startsWith('domain-packs/pcb/pcb-agent/tools/')),
+      );
+      assert.ok(
+        files.some(file => file.path === 'domain-packs/pcb/pcb-agent/tools/workspace.py'),
+      );
+      assert.ok(
+        files.some(file => file.path === 'domain-packs/pcb/runtime/bench-upstream.json'),
+      );
+      assert.ok(
+        files.some(file => file.path === 'domain-packs/pcb/runtime/bench-gateway.cjs'),
+      );
+      assert.ok(
+        files.some(file => file.path === 'skills/pcb.kicad.native/SKILL.md') ||
+          files.some(
+            file => file.path === 'skills/pcb-kicad-native/SKILL.md',
+          ),
+      );
     }
     if (item.domain === 'chip')
       assert.ok(files.some(file => file.path === 'domain-packs/chip/runtime/index.cjs'));
