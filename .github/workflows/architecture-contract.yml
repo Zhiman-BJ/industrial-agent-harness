@@ -62,6 +62,7 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           CANDIDATE_ROOT: ${{ runner.temp }}/architecture-candidate
+          ARCHITECTURE_FETCH_TOKEN: ${{ github.token }}
         run: node trusted/scripts/fetch-architecture-candidate.cjs
       - name: Inspect candidate files with base-branch code only
         run: node trusted/scripts/check-architecture-contract.cjs --root "$RUNNER_TEMP/architecture-candidate" --policy "$GITHUB_WORKSPACE/trusted/architecture/policy.json"
