@@ -62,6 +62,10 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           CANDIDATE_ROOT: ${{ runner.temp }}/architecture-candidate
+          # The repository is private (#100, 2026-10-10): the PR ref cannot be
+          # fetched anonymously. github.token is the workflow-scoped read-only
+          # token (contents: read); candidate content is still never executed.
+          CANDIDATE_FETCH_TOKEN: ${{ github.token }}
         run: node trusted/scripts/fetch-architecture-candidate.cjs
       - name: Inspect candidate files with base-branch code only
         run: node trusted/scripts/check-architecture-contract.cjs --root "$RUNNER_TEMP/architecture-candidate" --policy "$GITHUB_WORKSPACE/trusted/architecture/policy.json"

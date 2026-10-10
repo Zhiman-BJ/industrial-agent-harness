@@ -85,29 +85,48 @@ function materializeTree(directory, sha, destination, runGit = git, bounds = lim
 }
 
 function fetchCandidate(
-  { repository, number, sha, destination, temp = os.tmpdir() },
+  { repository, number, sha, destination, temp = os.tmpdir(), token },
   runGit = git,
 ) {
   if (!/^[A-Za-z0-9][A-Za-z0-9_.-]*\/[A-Za-z0-9][A-Za-z0-9_.-]*$/.test(repository || ''))
     throw Error('Invalid base repository');
   if (!/^[1-9][0-9]*$/.test(String(number))) throw Error('Invalid PR number');
   if (!/^[a-f0-9]{40}$/.test(sha || '')) throw Error('Invalid expected PR SHA');
+  // Private repositories cannot be fetched anonymously. The token travels as a
+  // one-shot http header on the fetch only; candidate objects stay data.
+  const credential = [];
+  if (token) {
+    if (!/^[A-Za-z0-9_\-]+$/.test(token)) throw Error('Invalid candidate fetch token');
+    credential.push(
+      '-c',
+      `http.https://github.com/.extraheader=AUTHORIZATION: basic ${Buffer.from(
+        `x-access-token:${token}`,
+      ).toString('base64')}`,
+    );
+  }
   const directory = fs.mkdtempSync(path.join(temp, 'architecture-git-'));
   try {
     runGit(['init', '--bare', '--template=', directory], temp);
     // GitHub maintains this ref in the base repo for both fork and same-repo PRs.
-    // Fetch only that ref, with no credentials, tags, submodules or working tree.
-    runGit(
-      [
-        'fetch',
-        '--no-tags',
-        '--depth=1',
-        '--recurse-submodules=no',
-        `https://github.com/${repository}.git`,
-        `refs/pull/${number}/head`,
-      ],
-      directory,
-    );
+    // Fetch only that ref, with no tags, submodules or working tree. Without a
+    // token this stays an anonymous fetch exactly as before.
+    try {
+      runGit(
+        [
+          ...credential,
+          'fetch',
+          '--no-tags',
+          '--depth=1',
+          '--recurse-submodules=no',
+          `https://github.com/${repository}.git`,
+          `refs/pull/${number}/head`,
+        ],
+        directory,
+      );
+    } catch {
+      // execFileSync echoes the full argv on failure; never leak the header.
+      throw Error('Candidate fetch failed: repository not readable or PR ref missing');
+    }
     const actual = runGit(['rev-parse', '--verify', 'FETCH_HEAD^{commit}'], directory)
       .toString()
       .trim();
@@ -128,6 +147,7 @@ if (require.main === module) {
       sha: process.env.HEAD_SHA,
       destination: process.env.CANDIDATE_ROOT,
       temp: process.env.RUNNER_TEMP,
+      token: process.env.CANDIDATE_FETCH_TOKEN,
     });
     console.log(JSON.stringify(report));
   } catch (error) {
