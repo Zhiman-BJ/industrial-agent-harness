@@ -557,6 +557,61 @@ body,
   color: var(--ia-danger) !important;
   font-size: 11px;
 }
+.ia-app .ia-flow-error-card {
+  border: 1px solid color-mix(in srgb, var(--ia-danger) 35%, transparent);
+  border-radius: 7px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+}
+.ia-app .ia-flow-error-card b {
+  font-size: 12px;
+}
+.ia-app .ia-flow-error-actions {
+  display: flex;
+  gap: 6px;
+}
+.ia-app .ia-flow-error-actions button {
+  border: 1px solid var(--ia-border);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 11px;
+  background: transparent;
+}
+.ia-app .ia-flow-error-actions button:hover:not(:disabled) {
+  background: var(--ia-hover);
+}
+.ia-app .ia-approval-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 6px 0 2px;
+}
+.ia-app .ia-approval-fields dt {
+  color: var(--ia-muted);
+  font-size: 10px;
+}
+.ia-app .ia-approval-fields dd {
+  margin: 1px 0 0;
+  overflow-wrap: anywhere;
+}
+.ia-app .ia-approval-fields dd code {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11.5px;
+}
+.ia-app .ia-approval-fields dd small {
+  display: block;
+  color: var(--ia-muted);
+  font-size: 10px;
+  padding: 1px 0 0;
+}
+.ia-app .ia-create-hint {
+  display: block;
+  color: var(--ia-muted);
+  padding: 3px 0 0;
+}
 .ia-approval {
   border: 1px solid var(--ia-border);
   padding: 12px;

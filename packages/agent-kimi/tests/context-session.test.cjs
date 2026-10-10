@@ -158,6 +158,7 @@ test('session preparation is busy and a completed turn expires unanswered approv
     type: 'approval-resolved',
     id: 'expired',
     decision: 'expired',
+    origin: 'runtime',
   });
   await assert.rejects(session.approve('expired', 'approve'), /no longer pending/);
 });

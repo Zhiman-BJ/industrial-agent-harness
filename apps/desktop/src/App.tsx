@@ -174,6 +174,22 @@ export function App() {
     setLogOpen(true);
   }, []);
   const [task, setTask] = useState('');
+  // Unsent drafts survive navigation (project details, chat/project switches):
+  // stash under the leaving chat id, restore when it is opened again.
+  const taskRef = useRef('');
+  const chatDrafts = useRef(new Map<string, string>());
+  useEffect(() => {
+    taskRef.current = task;
+  }, [task]);
+  function stashDraft() {
+    const id = chatIdRef.current;
+    if (!id) return;
+    if (taskRef.current.trim()) chatDrafts.current.set(id, taskRef.current);
+    else chatDrafts.current.delete(id);
+  }
+  function draftFor(id: string | null) {
+    return (id && chatDrafts.current.get(id)) || '';
+  }
   const [submittedTask, setSubmittedTask] = useState('');
   const [broker, setBroker] = useState<BrokerResult>();
   const [capabilityDetail, setCapabilityDetail] = useState<CapabilityDetail>();
@@ -248,6 +264,14 @@ export function App() {
         ? Promise.reject(Error('Wait for the chat to open.'))
         : window.viewerHost!.answerAgentQuestion(id, answers, activeChatId || undefined),
     [activeChatId],
+  );
+  const openModelSettings = useCallback(() => setModelSettingsOpen(true), []);
+  const retryTurn = useCallback(
+    (prompt: string) => {
+      if (agentBusy || !prompt) return;
+      void resolveTask(undefined, prompt);
+    },
+    [agentBusy],
   );
   async function readHistory(read: () => Promise<ChatHistory>): Promise<ChatHistory> {
     const pending = { events: [] as AgentEvent[], overflow: false };
@@ -334,7 +358,8 @@ export function App() {
     fileOpenRevision.current++;
     try {
       const history = await readHistory(() => window.viewerHost!.selectChat(id));
-      setTask('');
+      stashDraft();
+      setTask(draftFor(id));
       applyHistory(history);
       showPage('chat');
       setBrokerError('');
@@ -872,6 +897,13 @@ export function App() {
         showPage('project');
         return;
       }
+      // Sitting in a chat that never sent anything: it already is the "new"
+      // chat — keep it (and its draft) instead of stacking another empty one.
+      if (chatIdRef.current && !turns.length) {
+        showPage('chat');
+        return;
+      }
+      stashDraft();
       const history = await readHistory(() => window.viewerHost!.newChat());
       if (history.chat.id !== chatIdRef.current) {
         applyHistory(history);
@@ -952,6 +984,7 @@ export function App() {
       setBroker(result);
       liveResultTurn.current = result.turnId || null;
       await refreshChats(true);
+      chatDrafts.current.delete(chatIdRef.current || '');
       setTask('');
       if (agentStatus?.available && agentStatus.configured && agentStatus.projectDir)
         await runAgent(prompt, images);
@@ -1044,7 +1077,7 @@ export function App() {
               <span className="ia-product-mark">
                 <img src="./product-mark.png" width={28} height={28} alt="" />
               </span>
-              <b>Industrial Harness</b>
+              <b title="Industrial Harness">Industrial Harness</b>
               <button
                 className="ia-icon"
                 onClick={() => {
@@ -1544,6 +1577,12 @@ export function App() {
                               debug={debug}
                               approve={approveAgent}
                               answer={answerAgent}
+                              onRetry={
+                                turn.events.some(event => event.type === 'error')
+                                  ? () => retryTurn(turn.task)
+                                  : undefined
+                              }
+                              onOpenModelSettings={openModelSettings}
                             />
                           )}
                         </div>
@@ -1953,7 +1992,13 @@ export function App() {
                     ))}
                     {!activeFile && (
                       <div className="ia-workspace-empty">
-                        {t(error) || t('Open the file tree to browse this project.')}
+                        {error
+                          ? t(error)
+                          : activeProject && fileTreeOpen && !projectFiles.length
+                            ? t(
+                                'This project has no files yet. Run a task or add files to the directory.',
+                              )
+                            : t('Open the file tree to browse this project.')}
                       </div>
                     )}
                     {selectedArtifact && (
@@ -2006,7 +2051,11 @@ export function App() {
                         ))}
                         {!projectFiles.length && (
                           <p className="ia-file-hint">
-                            {t('Choose a project to browse its files.')}
+                            {activeProject
+                              ? t(
+                                  'This project has no files yet. Run a task or add files to the directory.',
+                                )
+                              : t('Choose a project to browse its files.')}
                           </p>
                         )}
                       </div>
