@@ -9,6 +9,7 @@ const {
   materializeTree,
   entriesFromTree,
   git,
+  commandConfig,
   limits,
 } = require('../../scripts/fetch-architecture-candidate.cjs');
 const { inspect, hash } = require('../../scripts/check-architecture-contract.cjs');
@@ -302,4 +303,21 @@ test('workflow separates read-only candidate inspection from status publishing a
   assert.doesNotMatch(status, /checkout|download-artifact|candidate/);
   assert.match(status, /state=failure/);
   assert.match(status, /if \[ "\$RESULT" = success \]/);
+});
+
+test('a scoped fetch token rides only as a GitHub-URL header, never raw', () => {
+  const bare = commandConfig('');
+  assert.deepEqual(
+    bare,
+    bare.filter(item => !item.includes('extraheader')),
+  );
+  const withToken = commandConfig('job-token-value');
+  const header = withToken.find(item => item.startsWith('http.https://github.com/.extraheader='));
+  assert.ok(header, 'header config present');
+  assert.match(header, /Authorization: Basic [A-Za-z0-9+/=]+$/);
+  assert.ok(!header.includes('job-token-value'), 'raw token never appears in argv');
+  assert.ok(
+    withToken.filter(item => item === '-c').length ===
+      bare.filter(item => item === '-c').length + 1,
+  );
 });

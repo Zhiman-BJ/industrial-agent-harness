@@ -8,28 +8,45 @@ const { TextDecoder } = require('node:util');
 
 const limits = { files: 20000, blob: 64 * 1024 * 1024, total: 256 * 1024 * 1024 };
 
+function commandConfig(token = process.env.ARCHITECTURE_FETCH_TOKEN) {
+  // Private base repositories need the scoped job token for the single PR-ref
+  // fetch (ARCHITECTURE_FETCH_TOKEN, contents:read). It rides per invocation
+  // as a GitHub-URL-scoped header: never persisted, never in the environment
+  // of any other command, and never echoed into error output.
+  return [
+    '-c',
+    `core.hooksPath=${os.devNull}`,
+    '-c',
+    'credential.helper=',
+    ...(token
+      ? [
+          '-c',
+          `http.https://github.com/.extraheader=Authorization: Basic ${Buffer.from(
+            `x-access-token:${token}`,
+          ).toString('base64')}`,
+        ]
+      : []),
+  ];
+}
+
 function git(args, cwd, maxBuffer = 8 * 1024 * 1024) {
-  return execFileSync(
-    'git',
-    ['-c', `core.hooksPath=${os.devNull}`, '-c', 'credential.helper=', ...args],
-    {
-      cwd,
-      maxBuffer,
-      timeout: 120000,
-      // No token, inherited Git config, credential helper, filters or object alternates.
-      env: {
-        PATH: process.env.PATH,
-        ...(process.env.SystemRoot ? { SystemRoot: process.env.SystemRoot } : {}),
-        GIT_CONFIG_NOSYSTEM: '1',
-        GIT_CONFIG_GLOBAL: os.devNull,
-        GIT_TERMINAL_PROMPT: '0',
-        GIT_ALLOW_PROTOCOL: 'https',
-        GIT_NO_REPLACE_OBJECTS: '1',
-        GIT_LFS_SKIP_SMUDGE: '1',
-      },
-      stdio: ['ignore', 'pipe', 'pipe'],
+  return execFileSync('git', [...commandConfig(), ...args], {
+    cwd,
+    maxBuffer,
+    timeout: 120000,
+    // No inherited Git config, credential helper, filters or object alternates.
+    env: {
+      PATH: process.env.PATH,
+      ...(process.env.SystemRoot ? { SystemRoot: process.env.SystemRoot } : {}),
+      GIT_CONFIG_NOSYSTEM: '1',
+      GIT_CONFIG_GLOBAL: os.devNull,
+      GIT_TERMINAL_PROMPT: '0',
+      GIT_ALLOW_PROTOCOL: 'https',
+      GIT_NO_REPLACE_OBJECTS: '1',
+      GIT_LFS_SKIP_SMUDGE: '1',
     },
-  );
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
 }
 
 function entriesFromTree(bytes, bounds = limits) {
@@ -119,7 +136,14 @@ function fetchCandidate(
   }
 }
 
-module.exports = { fetchCandidate, materializeTree, entriesFromTree, git, limits };
+module.exports = {
+  fetchCandidate,
+  materializeTree,
+  entriesFromTree,
+  git,
+  commandConfig,
+  limits,
+};
 if (require.main === module) {
   try {
     const report = fetchCandidate({
