@@ -105,6 +105,33 @@ async function verifyWheel(window, measure, dispatch) {
   }
   await evaluate(`document.querySelector('button[aria-label="Fit viewer"]').click()`);
 }
+// Text-like views (documents, engineering source/structure): a plain wheel must
+// fall through to native scrolling, while the trackpad pinch (Ctrl+wheel) zooms.
+async function verifyWheelScroll(window, measure, dispatch) {
+  const evaluate = script => window.webContents.executeJavaScript(script, true);
+  await evaluate(`document.querySelector('button[aria-label="Fit viewer"]').click()`);
+  await new Promise(resolve => setTimeout(resolve, 200));
+  const before = await measure();
+  assert.equal(await dispatch(-60, false), false, 'plain wheel must not be consumed');
+  await new Promise(resolve => setTimeout(resolve, 300));
+  const scrolled = await measure();
+  assert.ok(
+    Math.abs(scrolled / before - 1) < 0.01,
+    `Plain wheel must not zoom text: before=${before}, after=${scrolled}`,
+  );
+  assert.equal(await dispatch(-60, true), true, 'pinch (Ctrl+wheel) is consumed by the view');
+  const deadline = Date.now() + 15000;
+  let changed = false;
+  while (Date.now() < deadline) {
+    if ((await measure()) > before * 1.05) {
+      changed = true;
+      break;
+    }
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  assert.ok(changed, 'Pinch did not magnify text content');
+  await evaluate(`document.querySelector('button[aria-label="Fit viewer"]').click()`);
+}
 // macOS emits HTML fullscreen before its native Space transition finishes.
 // Tests must await both so the next real input is not sent during the animation.
 async function transitionFullscreen(window, active, action) {
@@ -132,4 +159,4 @@ async function transitionFullscreen(window, active, action) {
     window.removeListener(event, settled);
   }
 }
-module.exports = { verifyNavigation, verifyWheel, transitionFullscreen };
+module.exports = { verifyNavigation, verifyWheel, verifyWheelScroll, transitionFullscreen };

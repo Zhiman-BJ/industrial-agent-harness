@@ -95,7 +95,9 @@ export function DocumentViewport({
     ready,
     percent: Math.round(zoom * 100),
   });
-  useWheelZoom(viewport, changeZoom);
+  // 文档视口承载的全是文本类内容（文本/表格/JSON/Markdown）：
+  // 普通滚轮保持原生滚动，触控板捏合（Ctrl+wheel）仍可缩放。
+  useWheelZoom(viewport, changeZoom, false);
   const description =
     kind === 'table'
       ? 'Table'
@@ -157,7 +159,7 @@ export function DocumentViewport({
             />
           </label>
         )}
-        <small>{t('Wheel to zoom · Shift+wheel to scroll')}</small>
+        <small>{t('Scroll to browse · Pinch to zoom')}</small>
       </div>
       {error && (
         <p className="rp-document-notice" role="alert">
