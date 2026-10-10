@@ -7,17 +7,21 @@ const crypto = require('node:crypto');
 const { resourceDirectory } = require('./pack-resources.cjs');
 const { domainPacks } = require('./index.cjs');
 
-test('public PCB Runtime declarations replace private actor writes with hash-pinned native resources', () => {
+test('public PCB Runtime declarations vendor the bench actor and bench tools with hash-pinned resources', () => {
   const pack = domainPacks.find(pack => pack.domain === 'pcb');
   assert.equal(pack.provider.transport, 'runtime');
-  assert.deepEqual(
-    pack.provider.tools.map(tool => tool.id),
-    ['pcb.kicad.edit', 'pcb.kicad.verify'],
-  );
+  const tools = pack.provider.tools.map(tool => tool.id);
+  assert.ok(tools.includes('pcb.kicad.edit'));
+  assert.ok(tools.includes('pcb.kicad.verify'));
+  // The 89 pcb.bench.* tools from the aligned bench surface ship in-pack.
+  assert.equal(tools.filter(id => id.startsWith('pcb.bench.')).length, 89);
   assert.equal(pack.runtime.entry, 'runtime/index.cjs');
   assert.ok(pack.provider.sourceFiles['runtime/verifier.cjs']);
   assert.ok(pack.provider.sourceFiles['runtime/native.py']);
-  assert.ok(!Object.keys(pack.provider.sourceFiles).some(name => name.startsWith('pcb-agent/')));
+  // The gateway and its upstream snapshot declare the vendored bench actor
+  // (101 sources, per-file hashes) that the gateway verifies at load time.
+  assert.ok(pack.provider.sourceFiles['runtime/bench-gateway.cjs']);
+  assert.ok(pack.provider.sourceFiles['runtime/bench-upstream.json']);
 });
 
 test('external resources reject changed, missing, extra or symlinked files before a session can load them', t => {

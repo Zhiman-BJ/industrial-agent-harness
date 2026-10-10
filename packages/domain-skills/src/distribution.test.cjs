@@ -309,7 +309,7 @@ test('legacy coreApi 1 installations stay readable and receive integrity receipt
   assert.ok(fs.existsSync(path.join(location, '.hpack-integrity.json')));
 });
 
-test('public built-in Pack releases retain owned resources and keep the public PCB Runtime independent of private resources', t => {
+test('public built-in Pack releases retain owned resources and the vendored PCB bench surface', t => {
   const { directory } = setup(t);
   const output = path.join(directory, 'built-in');
   const environment = {
@@ -340,14 +340,12 @@ test('public built-in Pack releases retain owned resources and keep the public P
       assert.equal(skill.external, undefined);
       assert.ok(files.some(file => file.path === 'domain-packs/pcb/runtime/index.cjs'));
       assert.ok(files.some(file => file.path === 'domain-packs/pcb/runtime/verifier.cjs'));
-      assert.ok(
-        !files.some(
-          file =>
-            file.path.startsWith('skills/pcb.design.e2e/references/') ||
-            file.path.startsWith('skills/pcb.design.e2e/assets/'),
-        ),
-      );
-      assert.ok(!files.some(file => file.path.startsWith('pcb-agent/')));
+      // The bench alignment (domain-packs #14/#15) vendors the bench skill
+      // references and the actor sources into the public release; the actor
+      // tree is hash-pinned per file through runtime/bench-upstream.json.
+      assert.ok(files.some(file => file.path === 'skills/pcb.design.e2e/SKILL.md'));
+      assert.ok(files.some(file => file.path.startsWith('skills/pcb.design.e2e/references/')));
+      assert.ok(files.some(file => file.path.startsWith('domain-packs/pcb/pcb-agent/')));
     }
     if (item.domain === 'chip')
       assert.ok(files.some(file => file.path === 'domain-packs/chip/runtime/index.cjs'));
