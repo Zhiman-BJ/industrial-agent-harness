@@ -104,8 +104,9 @@
 | T2-16 | `test:cad` / `test:cad-resize` | CAD 领域交互 / 视口 resize。真实调用 `cad.freecad.build`/`cad.freecad.export` 工具，**必须先完成 T4-1 native 准备中的 FreeCAD 步骤并导出 `INDUSTRIAL_HARNESS_FREECAD_CMD`**，否则在干净环境必然失败 |
 | T2-17 | `test:results` | 任务成果卡：自动成果生成、版本关联、预览与历史重载（PR #72 引入）。**驱动真实 CAD 任务并断言结果卡与渲染三角数，同 T2-16 需 FreeCAD 前置**；CI 中该路径由 T4 native 套件的 `task-results-freecad/kimi.test.cjs` 覆盖，selftest 本身不进任何 workflow 循环 |
 | T2-18 | `test:model-sync` | 模型/项目配置广播同步：非 UI 的 `model:save`、`project:create` 后渲染端状态免刷新（PR #75 引入） |
+| T2-19 | `node apps/desktop/scripts/test-install-experience.cjs` | 引导式安装体验（域选择/准备中断退出恢复），需先 build，quit 模式仅 darwin（PR #77 引入）；由 desktop-package.yml 的 mac job 执行 |
 
-CI 参考集：`desktop-package.yml` 跑 `ui language parallel gui-settings`；`industrial-core.yml` 跑 `chats logs mcp subagents kicad engineering ui language documents images parallel model-sync`。本地全量即把上表全部执行（共 19 个入口，其中 T2-16/T2-17 受 FreeCAD 前置约束）。
+CI 参考集：`desktop-package.yml` 跑 `ui language parallel gui-settings` 及 T2-19 install-experience 自测（仅 mac）；`industrial-core.yml` 跑 `chats logs mcp subagents kicad engineering ui language documents images parallel model-sync`。本地全量即把上表全部执行（共 20 个入口，其中 T2-16/T2-17 受 FreeCAD 前置约束）。
 
 ### T3 Transport 与 Benchmark（CI：structure.yml 后段）
 
@@ -234,7 +235,7 @@ pnpm run test:ci -- benchmark 2>&1 | tee "$EVID/benchmark.log"; mv dist/ci-repor
 | --- | --- | --- |
 | T0/T3 | `structure.yml`（repository 层） | 每次必跑 |
 | T1 | `ci.yml` portable 矩阵 | PR 触及共享代码时跑；docs-only PR 跳过 |
-| T2/T5 | `desktop-package.yml` | 非 docs-only PR 跑（mac+win） |
+| T2/T5 | `desktop-package.yml` | 非 docs-only PR 跑（mac+win；T2-19 install-experience 自测仅 mac） |
 | T4 | `industrial-core.yml` | 非 docs-only PR 跑（darwin arm64） |
 | T6 | `industrial-linux.yml` | PR 触及共享代码时跑（linux x64） |
 | 汇总 | `ci.yml` 的 `all-checks-passed` | 所有实际运行的层必须 success；main 分支受分支保护约束，不可跨红合并 |

@@ -139,6 +139,11 @@ async function run(window, { manager }) {
       ...point,
     });
     window.webContents.sendInputEvent({ type: 'mouseUp', button: 'left', clickCount: 1, ...point });
+    // The pinned Electron (44.0.0) does not reset :focus-visible for synthetic
+    // pointer input after a synthetic Tab established keyboard modality, so the
+    // mouse view clears the keyboard focus explicitly to stay free of the
+    // keyboard-ring evidence captured above.
+    await evaluate(`document.activeElement && document.activeElement.blur()`);
     await wait(
       `!document.querySelectorAll('.ia-capability-nav button')[2].matches(':focus-visible')`,
     );
@@ -212,7 +217,14 @@ async function run(window, { manager }) {
   if (process.platform === 'darwin') {
     const app = path.join(root, 'native', 'Fixture.app');
     fs.mkdirSync(path.join(app, 'Contents', 'MacOS'), { recursive: true });
-    fs.copyFileSync('/bin/echo', path.join(app, 'Contents', 'MacOS', 'fixture'));
+    // A copied /bin/echo is a dyld-shared-cache platform binary: even after the
+    // ad-hoc re-sign below, macOS 15 runners kill the extracted copy on exec
+    // (SIGKILL in ~3ms). A shebang script is interpreted and carries no code
+    // signature to validate, while matching echo's argument behavior for the
+    // version probe.
+    const executable = path.join(app, 'Contents', 'MacOS', 'fixture');
+    fs.writeFileSync(executable, '#!/bin/sh\nprintf \'%s\\n\' "$@"\n');
+    fs.chmodSync(executable, 0o755);
     fs.writeFileSync(
       path.join(app, 'Contents', 'Info.plist'),
       '<?xml version="1.0"?><plist version="1.0"><dict><key>CFBundleIdentifier</key><string>example.install.fixture</string><key>CFBundleName</key><string>Fixture</string><key>CFBundleExecutable</key><string>fixture</string><key>CFBundlePackageType</key><string>APPL</string></dict></plist>',
