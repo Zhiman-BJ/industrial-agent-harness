@@ -42,6 +42,6 @@
     "prettier": "3.6.2"
   },
   "dependencies": {
-    "@zhiman-bj/industrial-domain-packs": "https://codeload.github.com/Zhiman-BJ/industrial-domain-packs/tar.gz/a4a6b4028e3efdb002ff5074f7a8cf15c688011c"
+    "@zhiman-bj/industrial-domain-packs": "https://codeload.github.com/Zhiman-BJ/industrial-domain-packs/tar.gz/f8d0185db5ad668de7e5e3a5bc664dd580dd543c"
   }
 }

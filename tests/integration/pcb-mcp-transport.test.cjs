@@ -137,12 +137,19 @@ test(
       INDUSTRIAL_HARNESS_PCB_GATEWAY_PYTHON: python,
       INDUSTRIAL_HARNESS_PCB_DOCKER: fixture.policy.docker,
     };
-    const legacy = require(
-      path.join(
-        require('@zhiman-bj/industrial-domain-packs').sourceDirectory('pcb-pack'),
-        'legacy-harness-pack.json',
-      ),
+    const packDirectory = path.dirname(
+      require.resolve('@zhiman-bj/industrial-domain-packs/packs/pcb/legacy-harness-pack.json'),
     );
+    const legacy = require(path.join(packDirectory, 'legacy-harness-pack.json'));
+    // The frozen legacy manifest predates the vendored snapshot; rebuild the
+    // gateway provider view from the current pinned bench-upstream snapshot
+    // so the checkout inventory (INDUSTRIAL_HARNESS_PCB_BENCH_DIR at the
+    // pinned commit) validates against what the pack ships today.
+    const { bridgeProvider } = require(path.join(packDirectory, 'runtime/bench-gateway.cjs'));
+    const snapshot = JSON.parse(
+      fs.readFileSync(path.join(packDirectory, 'runtime/bench-upstream.json'), 'utf8'),
+    );
+    const provider = bridgeProvider(legacy.provider, snapshot);
     const { scope } = resolveProjectTask(
       'pcb',
       { task: 'pcb mcp' },
@@ -154,13 +161,13 @@ test(
     fs.mkdirSync(session);
     require('../../packages/domain-mcp/src/gateway.cjs').gatewayConfig(
       session,
-      { ...legacy.provider, allowedToolIds: scope.tools },
+      { ...provider, allowedToolIds: scope.tools },
       fixture.project,
       environment,
     );
     require('../../packages/domain-mcp/src/index.cjs').writeMcpConfig(
       session,
-      [{ ...legacy.provider, allowedToolIds: scope.tools }],
+      [{ ...provider, allowedToolIds: scope.tools }],
       { projectDir: fixture.project, environment },
     );
     t.after(() => fs.rmSync(session, { recursive: true, force: true }));
@@ -180,12 +187,15 @@ test(
       hostExecutionRejected: true,
       tools: 88,
     });
+    // The complete vendored skill tree materializes into the session from
+    // the pack itself (upstream verbatim, no integration suffix).
+    materializeSkills({ skills: ['pcb.design.e2e'] }, session, environment);
     const skills = path.join(session, 'skills/pcb-design-e2e');
     assert.ok(fs.existsSync(path.join(skills, 'assets/constraints.example.yaml')));
     assert.equal(fs.readdirSync(path.join(skills, 'references')).length, 9);
-    assert.match(
+    assert.equal(
       fs.readFileSync(path.join(skills, 'SKILL.md'), 'utf8'),
-      /Industrial Harness integration/,
+      fs.readFileSync(path.join(packDirectory, 'skills/pcb-design-e2e/SKILL.md'), 'utf8'),
     );
     materializeSkills({ skills: ['pcb.layout.inspect'] }, session, environment);
     assert.ok(

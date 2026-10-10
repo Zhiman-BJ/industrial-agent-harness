@@ -6,7 +6,7 @@
 
 - `packages/pack-manager` 实现签名目录验证、HTTPS 下载、摘要与文件路径检查、跨进程写锁、事务安装、运行中租约、损坏隔离和重装恢复。`scripts/build-pack-distribution.cjs` 从 Chip、PCB、Godot、CAD 现有资源生成独立 `.hpack`；发布时用 `HARNESS_PACK_SIGNING_KEY_FILE` 和 `HARNESS_PACK_SIGNING_KEY_ID` 生成签名目录。
 - 1.0.1-beta.1 本地 Apple Silicon 候选包列出全部五个领域，默认提供 Chip、PCB、Godot、CAD 四域多选；CUDA 显示远程服务前提和当前无可安装桌面包的状态，能力中心可补装、更新和修复；没有在线目录也能使用这些随包选项。Desktop 与 CLI 从同一用户目录加载已安装包，共用目录与就绪状态描述；开发模式仍使用仓库里的资源。CLI 提供 `domains list/available/install/update/remove/repair`。在线包列表接受发行公钥验证过的目录；随 Core 提供的可选 Pack 继承应用资源的信任边界，并验证清单固定的归档 SHA-256。
-- 当前源码消费端固定 Domain Packs 0.5.2 提交 `b9759342cace66df0be0c4559b7c24fb28ea07d9`。PCB、Godot、CAD 按 owner 声明自动下载并准备官方 KiCad 10.0.6、Godot 4.7.2、FreeCAD 1.1.4，用户无需命令或环境变量。界面区分目录未配置／未检查／已连接／不可用，显示下载与安装大小、分阶段进度、可测量的速度与剩余时间，完成后按领域呈现就绪状态和下一步入口。取消等待清理，中断后提示重试，缓存重新校验后复用；空间预估与实际写入前的磁盘检查分开。详见[安装体验](install-experience.md)。
+- 当前源码消费端固定 Domain Packs 0.5.2 提交 `f8d0185db5ad668de7e5e3a5bc664dd580dd543c`（含 PCB bench 工具面：89 个 `pcb.bench.*` 工具、vendored actor 与容器网关派发）。PCB、Godot、CAD 按 owner 声明自动下载并准备官方 KiCad 10.0.6、Godot 4.7.2、FreeCAD 1.1.4，用户无需命令或环境变量。界面区分目录未配置／未检查／已连接／不可用，显示下载与安装大小、分阶段进度、可测量的速度与剩余时间，完成后按领域呈现就绪状态和下一步入口。取消等待清理，中断后提示重试，缓存重新校验后复用；空间预估与实际写入前的磁盘检查分开。详见[安装体验](install-experience.md)。
 - `electron-builder.config.cjs` 配置 macOS arm64 DMG/ZIP 和 Windows NSIS；主进程通过 `electron-updater` 检查并下载 Core 更新，任务空闲时允许重启安装。`HARNESS_RELEASE_BUILD=1` 要求 Pack 下载源、公钥文件、Core 更新源并强制代码签名；macOS 同时启用公证。CI 配置 Apple Silicon 和 Windows x64 两个目标平台的打包与首次启动检查。
 - 模块化安装回归覆盖真实 Chip + PCB 首装、Godot 后补装，以及 Broker/CLI 在安装前后的 Domain 可见性。[2026-09-30 的三平台 CI 打包烟测](https://github.com/Zhiman-BJ/industrial-agent-harness/actions/runs/36691521328)是历史记录，通过签名测试目录和模拟下载完成同一路径；当前只在 Apple Silicon 和 Windows x64 用 `node scripts/smoke-packaged-desktop.cjs --domains` 复跑。该测试验证打包应用的界面和安装链，不等同于安装器、线上 HTTPS 下载源与正式发行密钥的验收。
 - 本地构建：在 Apple Silicon 上先执行 `pnpm --filter @industrial-agent-harness/desktop build`，再执行 `node scripts/stage-desktop.cjs dist/desktop-stage-local`，最后用 `apps/desktop/node_modules/.bin/electron-builder --projectDir dist/desktop-stage-local --config "$PWD/electron-builder.config.cjs" --mac dmg zip --arm64 --publish never`。输出在 `dist/desktop-release/`。目录名称每次须新建；Apple Silicon 本地包包含四个可选 Pack，即使没有在线 Pack 目录也可首装；三个托管原生软件首次准备仍需下载官方归档，已完整校验的缓存可复用。
@@ -44,11 +44,11 @@ Settings → Domains 显示“已安装 / 可安装 / 更新可用 / 不兼容 /
 
 ## 交付物与版本模型
 
-| 交付物 | 内容与边界 | 版本 / 更新 |
-| --- | --- | --- |
-| Core installer | Electron、共享 Harness 包、固定 Kimi runtime、Broker、Domain Runtime、MCP Gateway、SQLite 访问层和通用 Viewer；不包含大型工业软件 | App 语义版本；整体 OTA |
-| Domain Pack | 领域声明、Capability、Skill、MCP/Tool 映射、StateProvider、Verifier、领域 Viewer/Bridge 适配和必要的可再分发资源 | 独立语义版本；按 Domain 补装与 OTA |
-| 外部依赖 | 模型凭证、PDK、商业/系统软件、工具镜像及受许可限制的数据 | 由健康检查识别；只对明确可再分发的依赖提供自动安装 |
+| 交付物         | 内容与边界                                                                                                                        | 版本 / 更新                                        |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| Core installer | Electron、共享 Harness 包、固定 Kimi runtime、Broker、Domain Runtime、MCP Gateway、SQLite 访问层和通用 Viewer；不包含大型工业软件 | App 语义版本；整体 OTA                             |
+| Domain Pack    | 领域声明、Capability、Skill、MCP/Tool 映射、StateProvider、Verifier、领域 Viewer/Bridge 适配和必要的可再分发资源                  | 独立语义版本；按 Domain 补装与 OTA                 |
+| 外部依赖       | 模型凭证、PDK、商业/系统软件、工具镜像及受许可限制的数据                                                                          | 由健康检查识别；只对明确可再分发的依赖提供自动安装 |
 
 当前四个默认可选领域沿用 Chip、PCB、Godot、CAD ID；CUDA 保留开发者接入身份。Chip 的 25 工具服务可作为 Pack 一部分安装，但 Python 环境、EDA 镜像、PDK 与项目资源须逐项检查；PCB 的 KiCad Viewer 可以在没有原生 KiCad 的情况下工作，工业动作另行判定；Godot 的 Web Export Viewer 与原生 Godot 安装状态分开展示。不要把现有 Scope 烟测结果写成这些工具已完成工程验证。
 
