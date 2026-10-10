@@ -10,7 +10,8 @@
     "@industrial-agent-harness/domain-runtime": "workspace:*",
     "@industrial-agent-harness/capability-broker": "workspace:*",
     "@industrial-agent-harness/domain-skills": "workspace:*",
-    "@industrial-agent-harness/domain-mcp": "workspace:*"
+    "@industrial-agent-harness/domain-mcp": "workspace:*",
+    "@industrial-agent-harness/contracts": "workspace:*"
   },
   "license": "MIT"
 }

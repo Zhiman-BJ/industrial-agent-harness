@@ -170,6 +170,12 @@ function redactedNative(value, key = '', secrets = []) {
 class CodeSession {
   constructor(options) {
     this.options = options;
+    this.agentProfile = options.agentProfile ?? 'agent';
+    if (
+      typeof this.agentProfile !== 'string' ||
+      !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(this.agentProfile)
+    )
+      throw Error('Kimi Code agent profile must be a valid profile name.');
     this.sessionId = options.sessionId || crypto.randomUUID();
     this.home = path.resolve(options.shareDir);
     this.questions = new Map();
@@ -323,6 +329,7 @@ class CodeSession {
         identity.version !== KIMI_CODE_VERSION ||
         identity.projectDir !== path.resolve(this.options.workDir) ||
         identity.adapterId !== this.sessionId ||
+        (identity.agentProfile ?? 'agent') !== this.agentProfile ||
         !/^session_[\w-]+$/.test(identity.nativeId)
       )
         throw Error('Saved Kimi Code session identity is incompatible.');
@@ -352,6 +359,7 @@ class CodeSession {
           adapterId: this.sessionId,
           nativeId: this.nativeId,
           projectDir: path.resolve(this.options.workDir),
+          agentProfile: this.agentProfile,
         }),
         { mode: 0o600 },
       );
@@ -483,6 +491,7 @@ class CodeSession {
         body: {
           prompt_id: turn.promptId,
           content: promptContent(content),
+          profile: this.agentProfile,
           model: this.options.model || 'industrial',
           thinking: this.options.thinkingEffort ?? (this.options.thinking ? 'high' : 'off'),
           permission_mode: 'manual',

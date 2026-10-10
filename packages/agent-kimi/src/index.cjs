@@ -6,6 +6,7 @@ const {
 } = require('./code-session.cjs');
 const { createKimiPaths } = require('./legacy-paths.cjs');
 const { thinkingEffort } = require('./model-config.cjs');
+const { materializeAgentProfiles, nativeAgentProfile } = require('./agent-profiles.cjs');
 const { z } = require('zod');
 const fs = require('node:fs');
 const crypto = require('node:crypto');
@@ -109,9 +110,10 @@ function prepareSessionFiles(scope, runtime, persistentDirectory, projectDir, pl
       ]),
     ];
     const modelConfig = fs.readFileSync(path.join(runtime.shareDir, 'config.toml'), 'utf8');
+    const agents = materializeAgentProfiles(runtime.agentSnapshot, directory);
     fs.writeFileSync(
       path.join(directory, 'config.toml'),
-      `extra_skill_dirs = [${skillDirs.map(dir => JSON.stringify(dir)).join(',')}]\n${modelConfig}`,
+      `extra_skill_dirs = [${skillDirs.map(dir => JSON.stringify(dir)).join(',')}]\n${agents.directory ? `extra_agent_dirs = [${JSON.stringify(agents.directory)}]\n` : ''}${modelConfig}`,
       { mode: 0o600 },
     );
     writeMcpConfig(
@@ -431,19 +433,25 @@ class KimiSession {
           'Broker scope and current State exceed the Industrial Context limit; narrow the selected capabilities before starting Kimi.',
         );
       if (anchor) log.record('context.anchor', anchor);
+      const agentKey =
+        runtime.agentSnapshot && runtime.agentSnapshot.id !== 'builtin:default'
+          ? runtime.agentSnapshot.revision
+          : null;
       const resetReason = !this.session
         ? 'new'
-        : this.currentScopeKey !== currentScopeKey
-          ? 'scope_changed'
-          : this.runtimeRevision !== runtime.revision
-            ? 'model_changed'
-            : this.lastApprovalMode !== approvalMode
-              ? 'approval_mode_changed'
-              : this.lastPluginKey !== pluginKey
-                ? 'plugins_changed'
-                : this.currentMcpKey !== currentMcpKey
-                  ? 'mcp_changed'
-                  : null;
+        : (this.lastAgentKey || null) !== agentKey
+          ? 'agent_changed'
+          : this.currentScopeKey !== currentScopeKey
+            ? 'scope_changed'
+            : this.runtimeRevision !== runtime.revision
+              ? 'model_changed'
+              : this.lastApprovalMode !== approvalMode
+                ? 'approval_mode_changed'
+                : this.lastPluginKey !== pluginKey
+                  ? 'plugins_changed'
+                  : this.currentMcpKey !== currentMcpKey
+                    ? 'mcp_changed'
+                    : null;
       if (resetReason) {
         log.record('session.create', {
           reason: resetReason,
@@ -470,6 +478,7 @@ class KimiSession {
               runtime: `kimi-code-server-v1:${KIMI_CODE_VERSION}`,
               scope: currentScopeKey,
               profile: runtime.profile,
+              ...(agentKey ? { agent: agentKey } : {}),
               executable:
                 !runtime.executable ||
                 runtime.executable === 'kimi' ||
@@ -560,6 +569,7 @@ class KimiSession {
           shareDir: this.sessionConfigDir,
           resumeRequired: Boolean(stored?.initialized),
           model: 'industrial',
+          agentProfile: nativeAgentProfile(runtime.agentSnapshot?.id),
           thinking: runtime.profile.thinking,
           thinkingEffort: thinkingEffort(runtime.profile),
           onBackgroundEvent: event => this.handleBackgroundEvent(event),
@@ -583,6 +593,7 @@ class KimiSession {
         this.currentScopeKey = currentScopeKey;
         this.currentMcpKey = currentMcpKey;
         this.runtimeRevision = runtime.revision;
+        this.lastAgentKey = agentKey;
         this.lastPluginKey = pluginKey;
         this.lastApprovalMode = approvalMode;
         if (this.persistentSession?.replaced && !this.persistentSession.reused)
@@ -1152,6 +1163,7 @@ class KimiSession {
 }
 
 module.exports = {
+  ...require('./agent-profiles.cjs'),
   createProcessSandbox,
   runtimeTools,
   KimiSession,

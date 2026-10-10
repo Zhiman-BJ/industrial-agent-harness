@@ -39,7 +39,7 @@ node dist/headless/industrial-harness.cjs bench --suite examples/bench/scope-smo
 
 `bench` 读取 JSON suite，顺序运行多个 `run` 场景，逐场保存 JSONL，并生成 `summary.json`；断言失败时返回非零退出码。Suite 中 `projectDir` 和可选的 `artifactManifest` 相对于 suite 文件定位。每个场景可设置 `scopeOnly`、`disabledSkills`、`disabledMcpServers`、`timeoutMs`，并在 `expected` 中断言 `status`、`capabilityIds`、`skills`、`tools`、`mcpServers`。请使用全新的输出目录，避免覆盖先前证据。`examples/bench/scope-smoke.json` 是当前能力基线，其中 RTL 验证请求解析为空，表明该能力链尚未实现。
 
-打包目录包含 CLI、Broker、固定 Domain Packs 的 Skill 文件、MCP 注册表、随包 Kimi Code 2.1.1、Server API 接入与只读观察状态存储；不包含 Electron 或工业可执行文件。当前源码注册 Chip Pack 0.6.2，经共享 Scope Gateway 调用；需先准备固定 Python 环境。真实 Agent 场景还需模型 API Key，`KIMI_EXECUTABLE` 为可选的同版本覆盖。2026-10-03 的本地运行时修复需要同时重建 EDA 工具镜像，具体迁移和验证范围见 [运行时修复说明](https://github.com/Zhiman-BJ/industrial-domain-packs/blob/cf72a46b6b4ba927b091ded71b2d52d227db0351/packs/chip/eda-harness/docs/runtime-reliability.md)。已有 GitHub Release 不会随本地源码修改而更新。
+打包目录包含 CLI、Broker、固定 Domain Packs 的 Skill 文件、MCP 注册表、随包 Kimi Code 2.1.1、Server API 接入与只读观察状态存储；不包含 Electron 或工业可执行文件。当前源码注册 Chip Pack 0.6.3，经共享 Scope Gateway 调用；需先准备固定 Python 环境。真实 Agent 场景还需模型 API Key，`KIMI_EXECUTABLE` 为可选的同版本覆盖。2026-10-03 的本地运行时修复需要同时重建 EDA 工具镜像，具体迁移和验证范围见 [运行时修复说明](https://github.com/Zhiman-BJ/industrial-domain-packs/blob/cf72a46b6b4ba927b091ded71b2d52d227db0351/packs/chip/eda-harness/docs/runtime-reliability.md)。已有 GitHub Release 不会随本地源码修改而更新。
 
 如需独立使用完整芯片 MCP 工具集，请安装 [Chip Pack 0.6.1 Release](https://github.com/Zhiman-BJ/industrial-agent-harness/releases/tag/chip-v0.6.1-preview.1)。它已与本 CLI 的 Broker Scope 经共享网关连接，使用和验收路径见 [Chip Pack 文档](https://github.com/Zhiman-BJ/industrial-domain-packs/blob/cf72a46b6b4ba927b091ded71b2d52d227db0351/packs/chip/README.md)。
 
@@ -87,6 +87,26 @@ KIMI_API_KEY=... KIMI_EXECUTABLE=/path/to/kimi pnpm cli run \
 观察状态保存登记工件的路径、SHA-256 和最小 Checkpoint，并在下一轮或新进程中重新核验。`industrial_context_read` 可分页读取历史 Checkpoint；其内容只代表文件观察，`verificationStatus` 始终是 `not_run`。完整的 DomainState、Run、Action 与工程 Verifier 不属于这一只读接入。
 
 CLI 与 Desktop 共用 `~/.industrial-agent-harness/resource-settings.json` 的全局 Skill/MCP 默认值及按真实项目目录绑定的覆盖；可用 `INDUSTRIAL_HARNESS_CONFIG_DIR` 隔离配置目录。项目显式启用或禁用优先于全局，未配置则继承。`--disable-skill` / `--disable-mcp` 最后应用，可为本次运行进一步禁用资源。Bench 要固定基线时请指定独立配置目录。配置损坏会明确报错，不会自动覆盖。
+
+## Agent 配置
+
+`agents list` 列出内置、Pack 与自定义角色；附带 `--project-dir DIR --domain DOMAIN`
+时按项目领域筛选并显示默认角色。`agents save --file AGENT.json` 创建角色，文件带
+已有自定义 `id` 时更新完整定义；`agents delete --id ID` 删除自定义角色。
+`agents default --project-dir DIR --domain DOMAIN --id ID` 设置项目默认。
+管理命令可用 `--config-dir DIR` 隔离配置，也遵循 `INDUSTRIAL_HARNESS_CONFIG_DIR`。
+
+```sh
+pnpm cli agents list --project-dir ./examples/chip-sobel --domain chip
+pnpm cli run --project-dir ./examples/chip-sobel --domain chip \
+  --agent chip.engineer --task 'Inspect netlist signals' --scope-only
+```
+
+真实 `run --agent ID` 为新建或空白聊天选择角色；`--chat-id` 续聊沿用原快照，
+已有任务记录时拒绝换角色。最小 JSON 包含 `name`、`description`、`domain`、
+`instructions`；可选 `tools`、`disallowedTools`、`skills` 和 `subagents`。
+角色不单设模型；注册 Skill 允许列表与有效资源政策、Broker Scope 取交集，
+不能绕过审批或沙箱。完整字段、继承与来源边界见 [Agent 配置](../../doc/agent-profiles.md)。
 
 ## 持久聊天
 

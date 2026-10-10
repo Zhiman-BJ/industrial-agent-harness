@@ -72,6 +72,7 @@ class EventStream {
 }
 
 const valueFlags = {
+  agentId: 'agent',
   chatId: 'chat-id',
   chatDir: 'chat-dir',
   stateDir: 'state-dir',

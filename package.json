@@ -21,6 +21,7 @@
     "test:ci": "node scripts/ci-tests.cjs",
     "smoke:ci-packages": "node scripts/ci-package-smoke.cjs",
     "test": "pnpm --filter @industrial-agent-harness/contracts test && pnpm --filter @industrial-agent-harness/domain-runtime test && pnpm --filter @industrial-agent-harness/domain-skills test && pnpm --filter @industrial-agent-harness/domain-mcp test && pnpm --filter @industrial-agent-harness/pack-manager test && pnpm --filter @industrial-agent-harness/capability-broker test && pnpm --filter @industrial-agent-harness/computer-use-bridge test && pnpm --filter @industrial-agent-harness/harness-core test && pnpm --filter @industrial-agent-harness/agent-kimi test && pnpm --filter @industrial-agent-harness/harness-application test && pnpm --filter @industrial-agent-harness/cli test && pnpm --filter @industrial-agent-harness/viewer-core test && pnpm --filter @industrial-agent-harness/viewer-builtin test && pnpm --filter @industrial-agent-harness/desktop test && pnpm --filter @industrial-agent-harness/sdk test",
+    "test:agents": "node --test tests/integration/agent-profiles-kimi.test.cjs",
     "test:chat-resume": "node --test tests/integration/chat-resume.test.cjs",
     "test:compaction-compat": "node --test tests/integration/compaction-compat-kimi.test.cjs",
     "test:mcp": "node --test tests/integration/domain-mcp*.test.cjs tests/integration/pcb-mcp*.test.cjs tests/integration/chip-runtime-reliability.test.cjs",
@@ -42,6 +43,6 @@
     "prettier": "3.6.2"
   },
   "dependencies": {
-    "@zhiman-bj/industrial-domain-packs": "https://codeload.github.com/Zhiman-BJ/industrial-domain-packs/tar.gz/b9759342cace66df0be0c4559b7c24fb28ea07d9"
+    "@zhiman-bj/industrial-domain-packs": "https://codeload.github.com/Zhiman-BJ/industrial-domain-packs/tar.gz/328256cd66d1ee5158095438f60dcaa7621536ef"
   }
 }

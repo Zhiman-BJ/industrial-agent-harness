@@ -27,6 +27,7 @@ Godot/PCB 的源工程文件另有[受限只读预览](engineering-file-viewers.
 | 文档 | 内容 |
 | --- | --- |
 | [Kimi Code 迁移](kimi-code-migration.md) | 固定 2.1.1、认证 Server API、身份映射与外壳兼容验收 |
+| [Agent 配置](agent-profiles.md) | 内置／Pack／自定义角色、项目默认、会话快照、工具与 Skill 范围及 CLI |
 | [Kimi 后台兼容](kimi-background-compatibility.md) | 原生后台 Bash、WaitFor、自动续答与 Headless 生命周期 |
 | [系统架构](architecture.md) | Kimi Code、桌面端、Broker、工业运行时与领域包的职责和数据流 |
 | [Capability Broker](capability-broker.md) | Capability 解析、skill 与 MCP 工具的渐进式披露、Scope 和 Trace |

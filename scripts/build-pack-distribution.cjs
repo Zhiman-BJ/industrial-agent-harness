@@ -48,6 +48,18 @@ for (const declaration of metadata.domains) {
     const resource = skillPackaging(skill.id);
     copySkillResources(resource.source, path.dirname(target));
   }
+  const agents = (metadata.agents || [])
+    .filter(agent => agent.domain === domain)
+    .map(agent => {
+      const { resourcePath, ...declaration } = agent;
+      const resource = owner.agentResource(agent.id);
+      const file = `agents/${agent.id}.md`;
+      const target = path.join(directory, file);
+      const bytes = Buffer.from(resource.instructions, 'utf8');
+      fs.mkdirSync(path.dirname(target), { recursive: true });
+      fs.writeFileSync(target, bytes);
+      return { ...declaration, file, sha256: digest(bytes) };
+    });
   for (const pack of providers) {
     const source = owner.sourceDirectory(pack.id);
     const destination = path.join(directory, 'domain-packs', pack.provider.packDirectory);
@@ -95,6 +107,7 @@ for (const declaration of metadata.domains) {
       ...providers.flatMap(pack => pack.capabilities),
     ],
     skills,
+    agents,
     providerPacks: providers,
     runtimeAssets: providers.flatMap(pack => pack.runtimeAssets || []),
   };

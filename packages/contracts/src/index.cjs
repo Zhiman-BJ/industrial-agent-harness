@@ -185,6 +185,7 @@ const ActionRequestSchema = ProjectRefSchema.extend({
 }).strict();
 
 module.exports = {
+  ...require('./agents.cjs'),
   ...require('./workspace.cjs'),
   ...require('./results.cjs'),
   INDUSTRIAL_SCHEMA_VERSION,

@@ -88,7 +88,12 @@ const api = {
     ipcRenderer.on('projects:changed', listener);
     return () => ipcRenderer.removeListener('projects:changed', listener);
   },
-  newChat: () => ipcRenderer.invoke('agent:new'),
+  newChat: request => ipcRenderer.invoke('agent:new', request),
+  agentList: request => ipcRenderer.invoke('agent-profiles:list', request),
+  agentSave: request => ipcRenderer.invoke('agent-profiles:save', request),
+  agentDelete: request => ipcRenderer.invoke('agent-profiles:delete', request),
+  projectAgentSet: request => ipcRenderer.invoke('project:set-agent', request),
+  chatSetAgent: request => ipcRenderer.invoke('chat:set-agent', request),
   projectFiles: () => ipcRenderer.invoke('project:list'),
   readProjectFile: relative => ipcRenderer.invoke('project:read', relative),
   revealResult: request => ipcRenderer.invoke('result:reveal', request),

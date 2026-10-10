@@ -9,9 +9,15 @@ const {
   resourceCatalog,
   defaultResourceDirectory,
   ExternalMcpRegistry,
+  AgentProfiles,
+  DEFAULT_AGENT_ID,
 } = require('@industrial-agent-harness/harness-core');
 const { loadRegistry } = require('@industrial-agent-harness/domain-skills');
-const { KimiSession } = require('@industrial-agent-harness/agent-kimi');
+const {
+  KimiSession,
+  agentToolCatalog,
+  validateAgentTools,
+} = require('@industrial-agent-harness/agent-kimi');
 const { ObservedContextStore } = require('@industrial-agent-harness/domain-runtime');
 const { discloseDetail } = require('@industrial-agent-harness/capability-broker');
 const { PackManager } = require('@industrial-agent-harness/pack-manager');
@@ -49,6 +55,9 @@ class TaskService {
       options.packManager ||
       (this.environment.INDUSTRIAL_HARNESS_PACK_STORE ? new PackManager() : null);
     this.Session = options.Session || KimiSession;
+    this.agents = new AgentProfiles(
+      options.resourceDirectory || defaultResourceDirectory(this.environment),
+    );
   }
   get chats() {
     return (this.chatStore ||= new ChatStore(
@@ -58,10 +67,52 @@ class TaskService {
   registry() {
     return this.options.getRegistry?.() || loadRegistry();
   }
+  agentCatalog(project) {
+    return { ...this.agents.catalog(this.registry(), project), tools: agentToolCatalog };
+  }
+  saveAgent(input) {
+    validateAgentTools(input);
+    return this.agents.save(this.registry(), input);
+  }
+  setProjectAgent(project, id) {
+    this.agents.setDefault(this.registry(), project, id);
+    return this.agentCatalog(project);
+  }
+  chatAgent(project, chatId) {
+    const chat = this.chats.get(chatId, project.path, project.domain);
+    let snapshot = this.chats.agentSnapshot(chatId);
+    if (!snapshot) {
+      snapshot = this.agents.snapshot(
+        this.registry(),
+        project,
+        chat.agentLocked ? DEFAULT_AGENT_ID : undefined,
+      );
+      this.chats.setAgentSnapshot(chatId, project.path, project.domain, snapshot, true);
+    }
+    return snapshot;
+  }
+  setChatAgent(project, chatId, id) {
+    if (this.sessions.busy(this.sessions.find(chatId)))
+      throw Error('Stop this chat before changing its Agent.');
+    const snapshot = this.agents.snapshot(this.registry(), project, id);
+    const chat = this.chats.setAgentSnapshot(chatId, project.path, project.domain, snapshot);
+    const entry = this.sessions.find(chatId);
+    if (entry) entry.agentSnapshot = snapshot;
+    this.options.onChanged?.();
+    return chat;
+  }
+  newChat(project, { agentId, preferredId, draft = true } = {}) {
+    this.agents.snapshot(this.registry(), project, agentId);
+    const chat = draft
+      ? this.chats.createDraft(project.path, project.domain, preferredId)
+      : this.chats.create(project.path, project.domain);
+    return this.setChatAgent(project, chat.id, agentId);
+  }
   resume(project, chatId) {
     if (this.closing) throw Error('Task session is unavailable.');
     const entry = this.sessions.get(project, chatId);
     this.chats.get(chatId, project.path, project.domain);
+    entry.agentSnapshot = this.chatAgent(project, chatId);
     if (!entry.scope && !this.sessions.busy(entry)) {
       const last = this.chats.history(chatId, project.path, project.domain).turns.at(-1);
       entry.scope = last?.broker?.scope;
@@ -78,6 +129,16 @@ class TaskService {
       skills: [...new Set([...saved.skills, ...(entry.overrides?.skills || [])])],
       mcpServers: [...new Set([...saved.mcpServers, ...(entry.overrides?.mcpServers || [])])],
     };
+    const allowedSkills = entry.agentSnapshot?.profiles[0].skills;
+    if (allowedSkills)
+      disabled.skills = [
+        ...new Set([
+          ...disabled.skills,
+          ...catalog.skills
+            .filter(skill => !allowedSkills.includes(skill.id))
+            .map(skill => skill.id),
+        ]),
+      ];
     for (const [key, values] of Object.entries(disabled))
       for (const id of values)
         if (!catalog[key].some(item => item.id === id))
@@ -140,6 +201,9 @@ class TaskService {
   async prepare(entry, request, { preview = false, persist = true, overrides } = {}) {
     this.assertEntry(entry);
     if (this.sessions.busy(entry)) throw Error('This chat is already running.');
+    entry.agentSnapshot = persist
+      ? this.chatAgent(entry.project, entry.id)
+      : entry.agentSnapshot || this.agents.snapshot(this.registry(), entry.project);
     if (
       typeof request?.task !== 'string' ||
       !request.task.trim() ||
@@ -150,7 +214,10 @@ class TaskService {
     const settled = this.beginOperation();
     let release;
     try {
-      if (persist) release = this.chats.acquire(entry.id);
+      if (persist) {
+        release = this.chats.acquire(entry.id);
+        entry.agentSnapshot = this.chats.agentSnapshot(entry.id);
+      }
       entry.overrides = overrides;
       const result = await this.resolve(entry, request, this.registry(), preview);
       this.assertEntry(entry);
@@ -325,7 +392,10 @@ class TaskService {
         id => this.context(entry).readArtifact(id),
         id => this.detail(entry, id),
         emit,
-        () => (options.getConfig || this.options.getConfig)(entry),
+        () => ({
+          ...(options.getConfig || this.options.getConfig)(entry),
+          agentSnapshot: entry.agentSnapshot,
+        }),
         options.createSession || this.options.createSession,
         {
           industrialRuntime: entry.runtimeBundle?.runtime,

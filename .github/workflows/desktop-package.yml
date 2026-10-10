@@ -77,6 +77,7 @@ jobs:
           pnpm --filter @industrial-agent-harness/desktop test:language 2>&1 | tee dist/ci-reports/desktop-language.log
           pnpm --filter @industrial-agent-harness/desktop test:parallel 2>&1 | tee dist/ci-reports/desktop-parallel.log
           pnpm --filter @industrial-agent-harness/desktop test:gui-settings 2>&1 | tee dist/ci-reports/desktop-gui-settings.log
+          pnpm --filter @industrial-agent-harness/desktop test:agents 2>&1 | tee dist/ci-reports/desktop-agents.log
       - name: Retain installed application evidence
         if: always()
         uses: actions/upload-artifact@v4

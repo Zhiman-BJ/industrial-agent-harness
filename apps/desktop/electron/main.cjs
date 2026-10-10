@@ -152,6 +152,7 @@ if (
     '--parallel-selftest',
     '--image-input-selftest',
     '--model-sync-selftest',
+    '--agents-selftest',
     '--packaged-smoke',
     '--install-experience-selftest',
   ].some(flag => process.argv.includes(flag))
@@ -296,7 +297,7 @@ function chatList() {
   };
 }
 function ensureChat() {
-  if (!activeChatId) activeChatId = chats.create(projectDir, activeProject()?.domain).id;
+  if (!activeChatId) activeChatId = tasks.newChat(activeProject()).id;
   chats.get(activeChatId, projectDir, activeProject()?.domain);
   return activeChatId;
 }
@@ -1098,6 +1099,33 @@ function registerHandlers() {
     const project = resourceProject(event, request);
     return resourceSettings.snapshot(resourceCatalog(project?.domain), project?.path);
   });
+  ipcMain.handle('agent-profiles:list', (event, request) => {
+    const project = resourceProject(event, request);
+    return tasks.agentCatalog(project);
+  });
+  ipcMain.handle('agent-profiles:save', (event, request) => {
+    resourceProject(event, {});
+    const agent = tasks.saveAgent(request);
+    notifySessions();
+    return agent;
+  });
+  ipcMain.handle('agent-profiles:delete', (event, request) => {
+    resourceProject(event, {});
+    tasks.agents.remove(request?.id);
+    notifySessions();
+  });
+  ipcMain.handle('project:set-agent', (event, request) => {
+    const project = executionProject(event, request);
+    const catalog = tasks.setProjectAgent(project, request.agentId);
+    notifyProjectsChanged();
+    return catalog;
+  });
+  ipcMain.handle('chat:set-agent', (event, request) => {
+    chatRequest(event);
+    if (request?.chatId !== activeChatId)
+      throw Error('Agent selection belongs to the selected chat.');
+    return tasks.setChatAgent(activeProject(), request.chatId, request.agentId);
+  });
   async function setResource(event, request) {
     const project = resourceProject(event, request);
     if (changingResources) throw Error('Resource settings are being saved.');
@@ -1191,9 +1219,12 @@ function registerHandlers() {
     notifyProjectsChanged();
     return projectSnapshot();
   });
-  ipcMain.handle('agent:new', event => {
+  ipcMain.handle('agent:new', (event, request) => {
     chatRequest(event);
-    activeChatId = chats.createDraft(projectDir, activeProject().domain, activeChatId).id;
+    activeChatId = tasks.newChat(activeProject(), {
+      agentId: request?.agentId,
+      preferredId: activeChatId,
+    }).id;
     notifySessions();
     return chatHistory(activeChatId);
   });
@@ -1412,6 +1443,8 @@ function registerHandlers() {
 }
 
 async function createWindow() {
+  if (process.argv.includes('--agents-selftest'))
+    require('./agents-selftest.cjs').prepare(projectConfigDir());
   if (process.argv.includes('--gui-settings-selftest'))
     require('./gui-settings-selftest.cjs').prepare();
   if (process.argv.includes('--ui-selftest'))
@@ -1660,6 +1693,11 @@ async function createWindow() {
   if (process.argv.includes('--subagent-selftest')) {
     await require('./selftest-language.cjs').setLanguage(window, 'en');
     await require('./subagent-selftest.cjs').run(window);
+    app.quit();
+    return;
+  }
+  if (process.argv.includes('--agents-selftest')) {
+    await require('./agents-selftest.cjs').run(window, tasks);
     app.quit();
     return;
   }

@@ -112,12 +112,13 @@ async function run(window, { manager, runtime }) {
         path.join(process.resourcesPath, 'bootstrap-packs'),
       );
       const targetVersion = bundledCatalog.packs.find(item => item.domain === 'cad')?.version;
-      assert.equal(targetVersion, '1.1.4-pack.7');
+      assert.equal(targetVersion, '1.1.4-pack.8');
       const available = await evaluate('window.viewerHost.domainAvailable()');
       assert.equal(available.find(item => item.domain === 'cad')?.version, targetVersion);
       await evaluate(`window.viewerHost.domainInstall(['cad'])`);
       const updatedBundle = manager.list().find(item => item.domain === 'cad');
       assert.equal(updatedBundle.version, targetVersion);
+      assert.ok(updatedBundle.agents?.some(agent => agent.domain === updatedBundle.domain));
       assert.ok(updatedBundle.runtimeAssets[0].installedSize > 0);
       const updatedRuntime = manager.runtimeAssets.status(updatedBundle.runtimeAssets)[0];
       assert.equal(updatedRuntime.ready, true);

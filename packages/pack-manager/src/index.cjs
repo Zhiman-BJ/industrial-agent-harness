@@ -3,6 +3,7 @@ const os = require('node:os');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const zlib = require('node:zlib');
+const { AgentDefinitionSchema } = require('@industrial-agent-harness/contracts');
 const { Transfer, TransferProgress } = require('./transfer.cjs');
 const { availableSpace, footprint, checkSpace } = require('./install-space.cjs');
 const { RuntimeAssetManager, validateRuntimeAssets } = require('./runtime-assets.cjs');
@@ -65,6 +66,8 @@ function validateBundle(bundle) {
     typeof bundle.emoji !== 'string' ||
     !Array.isArray(bundle.capabilities) ||
     !Array.isArray(bundle.skills) ||
+    (bundle.agents !== undefined &&
+      (!Array.isArray(bundle.agents) || bundle.agents.length > 128)) ||
     !Array.isArray(bundle.providerPacks)
   )
     throw Error('Invalid Domain Pack manifest.');
@@ -84,6 +87,46 @@ function validateBundle(bundle) {
       throw Error('Invalid Domain Skill.');
     skillIds.add(skill.id);
     skillDirectories.add(path.posix.dirname(skill.file));
+  }
+  const agentIds = new Set();
+  const agentFiles = new Set();
+  for (const agent of bundle.agents || []) {
+    const fields = [
+      'id',
+      'title',
+      'description',
+      'domain',
+      'packId',
+      'file',
+      'sha256',
+      'skills',
+      'tools',
+      'disallowedTools',
+      'subagents',
+    ];
+    if (
+      !agent ||
+      typeof agent !== 'object' ||
+      Array.isArray(agent) ||
+      Object.keys(agent).some(key => !fields.includes(key)) ||
+      agent.domain !== bundle.domain ||
+      !RESOURCE_ID.test(agent.id || '') ||
+      !RESOURCE_ID.test(agent.packId || '') ||
+      !SHA.test(agent.sha256 || '') ||
+      agentIds.has(agent.id) ||
+      agentFiles.has(agent.file) ||
+      !safeRelative(agent.file).startsWith('agents/') ||
+      !agent.file.endsWith('.md')
+    )
+      throw Error('Invalid Domain Agent declaration.');
+    const { title, packId, file, sha256, ...definition } = agent;
+    if (
+      !AgentDefinitionSchema.safeParse({ ...definition, name: title, instructions: '' }).success ||
+      agent.skills?.some(id => !skillIds.has(id))
+    )
+      throw Error('Invalid Domain Agent configuration.');
+    agentIds.add(agent.id);
+    agentFiles.add(agent.file);
   }
   const capabilityIds = new Set();
   for (const capability of bundle.capabilities) {
@@ -137,6 +180,33 @@ function validateBundle(bundle) {
       throw Error('Invalid external Skill resource declaration.');
   }
   return bundle;
+}
+
+function agentInstructions(agent, bytes) {
+  if (bytes.length > 128 * 1024 || digest(bytes) !== agent.sha256)
+    throw Error(`Domain Agent instructions failed integrity verification: ${agent.id}`);
+  const instructions = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  const { title, packId, file, sha256, ...definition } = agent;
+  if (
+    !instructions.trim() ||
+    !AgentDefinitionSchema.safeParse({ ...definition, name: title, instructions }).success
+  )
+    throw Error(`Invalid Domain Agent instructions: ${agent.id}`);
+  return instructions;
+}
+
+function readAgentInstructions(directory, agent) {
+  let file = directory;
+  if (!fs.lstatSync(file).isDirectory()) throw Error('Invalid Domain Agent directory.');
+  for (const part of safeRelative(agent.file).split('/')) {
+    file = path.join(file, part);
+    if (fs.lstatSync(file).isSymbolicLink())
+      throw Error('Domain Agent resources cannot contain symlinks.');
+  }
+  const info = fs.statSync(file);
+  if (!info.isFile() || info.size > 128 * 1024)
+    throw Error(`Invalid Domain Agent instruction file: ${agent.id}`);
+  return agentInstructions(agent, fs.readFileSync(file));
 }
 
 function validateFootprintMetadata(entry) {
@@ -307,6 +377,11 @@ function decodeArchive(compressed) {
       resources.reduce((sum, file) => sum + file.bytes.length, 0) > 32 * 1024 * 1024
     )
       throw Error('Skill resource size limit exceeded.');
+  }
+  for (const agent of bundle.agents || []) {
+    const resource = files.find(file => file.path === agent.file);
+    if (!resource) throw Error(`Missing Domain Agent: ${agent.id}`);
+    agentInstructions(agent, resource.bytes);
   }
   for (const pack of bundle.providerPacks)
     if (!files.some(file => file.path.startsWith(`domain-packs/${pack.provider.packDirectory}/`)))
@@ -574,6 +649,7 @@ class PackManager {
               ?.isFile()
           )
             throw Error(`Installed Domain Skill is missing: ${skill.id}`);
+        for (const agent of bundle.agents || []) readAgentInstructions(location, agent);
         for (const provider of bundle.providerPacks)
           if (
             !fs
@@ -782,6 +858,7 @@ module.exports = {
   defaultPackDirectory,
   digest,
   validateBundle,
+  readAgentInstructions,
   RuntimeAssetManager,
   compareVersions,
 };

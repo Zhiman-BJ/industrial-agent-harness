@@ -49,6 +49,7 @@ class ChatStore {
       CREATE INDEX IF NOT EXISTS running_turns ON turns(chat_id) WHERE status = 'running';
       CREATE INDEX IF NOT EXISTS chat_runtime_sessions ON runtime_sessions(chat_id);
       CREATE TABLE IF NOT EXISTS chat_preferences (chat_id TEXT PRIMARY KEY REFERENCES chats(id) ON DELETE CASCADE, approval_mode TEXT NOT NULL CHECK(approval_mode IN ('ask', 'auto')));
+      CREATE TABLE IF NOT EXISTS chat_agents (chat_id TEXT PRIMARY KEY REFERENCES chats(id) ON DELETE CASCADE, snapshot_json TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS chat_events (turn_id TEXT NOT NULL REFERENCES turns(id) ON DELETE CASCADE, sequence INTEGER NOT NULL, type TEXT NOT NULL, event_json TEXT NOT NULL, PRIMARY KEY(turn_id, sequence));`);
     if (!version) this.db.exec('PRAGMA user_version = 1');
     this.recoverInterrupted();
@@ -108,6 +109,7 @@ class ChatStore {
       updatedAt: row.updated_at,
       archived: Boolean(row.archived),
       approvalMode: this.approvalMode(id),
+      ...this.agentSummary(id),
     };
   }
   list(projectDir, domain) {
@@ -123,7 +125,60 @@ class ChatStore {
         updatedAt: row.updated_at,
         archived: false,
         approvalMode: this.approvalMode(row.id),
+        ...this.agentSummary(row.id),
       }));
+  }
+  agentSnapshot(chatId) {
+    const row = this.statement('SELECT snapshot_json FROM chat_agents WHERE chat_id = ?').get(
+      chatId,
+    );
+    return row ? JSON.parse(row.snapshot_json) : null;
+  }
+  agentSummary(chatId) {
+    const snapshot = this.agentSnapshot(chatId);
+    return {
+      ...(snapshot
+        ? {
+            agent: {
+              id: snapshot.id,
+              name: snapshot.name,
+              revision: snapshot.revision,
+              source: snapshot.source,
+            },
+          }
+        : {}),
+      agentLocked: Boolean(
+        this.statement('SELECT 1 FROM turns WHERE chat_id = ? LIMIT 1').get(chatId),
+      ),
+    };
+  }
+  setAgentSnapshot(chatId, projectDir, domain, snapshot, initialize = false) {
+    this.get(chatId, projectDir, domain);
+    return this.transaction(() => {
+      const current = this.agentSnapshot(chatId);
+      const lock = this.statement('SELECT owner_pid FROM execution_locks WHERE chat_id = ?').get(
+        chatId,
+      );
+      const started = this.agentSummary(chatId).agentLocked;
+      if (
+        (lock && alive(lock.owner_pid)) ||
+        (started && !(initialize && !current && snapshot.id === 'builtin:default'))
+      )
+        throw Error(
+          'Agent configuration is fixed after a chat starts. Open a new chat to choose another Agent.',
+        );
+      if (
+        !snapshot ||
+        snapshot.schemaVersion !== 1 ||
+        !Array.isArray(snapshot.profiles) ||
+        !snapshot.profiles.length
+      )
+        throw Error('Invalid Agent snapshot.');
+      this.statement(
+        'INSERT INTO chat_agents (chat_id, snapshot_json) VALUES (?, ?) ON CONFLICT(chat_id) DO UPDATE SET snapshot_json = excluded.snapshot_json',
+      ).run(chatId, JSON.stringify(snapshot));
+      return this.get(chatId, projectDir, domain);
+    });
   }
   approvalMode(chatId) {
     return (

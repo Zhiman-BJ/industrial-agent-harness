@@ -9,6 +9,8 @@ const root = path.resolve(__dirname, '..');
 const nativeFiles = [
   'tests/integration/background-tasks-kimi.test.cjs',
   'packages/agent-kimi/tests/code-session-heartbeat.test.cjs',
+  'packages/agent-kimi/tests/code-session-profiles.test.cjs',
+  'tests/integration/agent-profiles-kimi.test.cjs',
   'tests/integration/workspace-runtime.test.cjs',
   'tests/integration/agent-question-kimi.test.cjs',
   'tests/integration/compaction-compat-kimi.test.cjs',
@@ -39,7 +41,7 @@ const nativeInstalledFiles = [
   'tests/integration/freecad-installed.test.cjs',
   'tests/integration/pcb-godot-installed.test.cjs',
 ];
-const nativeTestCounts = { native: 68, 'native-installed': 3 };
+const nativeTestCounts = { native: 76, 'native-installed': 3 };
 function testConcurrency(suite) {
   return suite === 'native-installed' ? 1 : suite.startsWith('native') ? 2 : 4;
 }
@@ -54,6 +56,8 @@ const transportFiles = [
 const linuxNativeFiles = [
   'tests/integration/background-tasks-kimi.test.cjs',
   'packages/agent-kimi/tests/code-session-heartbeat.test.cjs',
+  'packages/agent-kimi/tests/code-session-profiles.test.cjs',
+  'tests/integration/agent-profiles-kimi.test.cjs',
   'tests/integration/workspace-runtime.test.cjs',
   'tests/integration/domain-mcp-kimi.test.cjs',
   'tests/integration/pcb-mcp-kimi.test.cjs',
@@ -276,6 +280,7 @@ module.exports = {
   runFiles,
   nativeFiles,
   nativeInstalledFiles,
+  linuxNativeFiles,
   nativeTestCounts,
   testConcurrency,
   portableFiles,

@@ -48,6 +48,8 @@ export class HarnessError extends Error {
   details: Record<string, unknown>;
 }
 export interface RunOptions {
+  /** Select a configured Agent for a new or empty chat. */
+  agentId?: string;
   task: string;
   scopeOnly?: boolean;
   chatId?: string;

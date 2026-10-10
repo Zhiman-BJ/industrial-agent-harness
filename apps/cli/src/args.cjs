@@ -22,6 +22,7 @@ const valueFlags = new Set([
   'log-dir',
   'chat-id',
   'chat-dir',
+  'agent',
 ]);
 
 function parseArgs(argv) {

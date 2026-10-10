@@ -301,6 +301,11 @@ export interface ViewerHostApi {
   modelSave(
     request: ModelProfile & { apiKey?: string; clearApiKey?: boolean },
   ): Promise<ModelProfileStatus>;
+  agentList(request?: { projectId?: string }): Promise<AgentCatalog>;
+  agentSave(request: AgentProfileInput): Promise<AgentProfileView>;
+  agentDelete(request: { id: string }): Promise<void>;
+  projectAgentSet(request: { projectId: string; agentId: string }): Promise<AgentCatalog>;
+  chatSetAgent(request: { chatId: string; agentId: string }): Promise<ChatSummary>;
   chooseProjectDirectory(locale?: string): Promise<string | null>;
   createProject(request: {
     directory: string;
@@ -334,7 +339,7 @@ export interface ViewerHostApi {
   onChatUpdated(callback: () => void): () => void;
   onModelChanged(callback: () => void): () => void;
   onProjectsChanged(callback: () => void): () => void;
-  newChat(): Promise<ChatHistory>;
+  newChat(request?: { agentId?: string }): Promise<ChatHistory>;
   projectFiles(): Promise<Array<{ path: string; name: string; depth: number; directory: boolean }>>;
   readProjectFile(relative: string): Promise<{
     path: string;
@@ -732,6 +737,38 @@ export interface ModelProfileStatus extends ModelProfile {
   keyPersisted: boolean;
 }
 
+export interface AgentProfileInput {
+  id?: string;
+  name: string;
+  description: string;
+  instructions: string;
+  domain: string;
+  tools?: string[];
+  disallowedTools?: string[];
+  skills?: string[];
+  subagents?: string[];
+}
+export interface AgentProfileView extends AgentProfileInput {
+  id: string;
+  source: 'builtin' | 'pack' | 'custom';
+  packId?: string;
+  packVersion?: string;
+  revision: string;
+  editable: boolean;
+}
+export interface AgentCatalog {
+  agents: AgentProfileView[];
+  defaultAgentId: string;
+  tools: Array<{ id: string; label: string }>;
+  skills: Array<{ id: string; title: string; domain?: string }>;
+}
+export interface ChatAgentSnapshot {
+  id: string;
+  name: string;
+  revision: string;
+  source: AgentProfileView['source'];
+}
+
 export interface BrokerResult {
   chatId?: string;
   turnId?: string;
@@ -810,6 +847,8 @@ export interface SessionStatus {
 }
 export interface ChatSummary {
   id: string;
+  agent?: ChatAgentSnapshot;
+  agentLocked?: boolean;
   approvalMode: 'ask' | 'auto';
   running?: boolean;
   awaitingApproval?: boolean;

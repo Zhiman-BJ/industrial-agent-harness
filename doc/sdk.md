@@ -40,6 +40,8 @@ Task 以权限受限的临时文件传递，子进程不经过 Shell，结束后
 
 `client.chats({chatDir})` 列出当前 Project/Domain 的历史 Chat。调用 `client.run({task, chatId, chatDir, stateDir})` 可使用 CLI 已有的持久化会话恢复，跨 Domain 的 Chat 会被 CLI 拒绝。Checkpoint 引用不会回滚项目文件，SDK 未提供项目文件回滚接口。
 
+`RunOptions.agentId` 可为新建或空白聊天选择角色，例如 `client.run({task, agentId: 'chip.engineer'})`，底层映射 CLI `--agent`。续聊沿用已保存角色快照，已有任务记录时不能换角色。角色的创建、编辑、删除和项目默认通过能力中心或 CLI `agents` 管理；SDK 没有配置 CRUD API。详见 [Agent 配置](agent-profiles.md)。
+
 ## 状态与契约
 
 外层 `sdkSchemaVersion: 1` 描述 SDK 返回封套。CLI 事件保持 `schemaVersion: 1` 原形；工业对象以 `packages/contracts` 的版本化契约为准，SDK 不另造 Artifact、State 或 Verification schema。

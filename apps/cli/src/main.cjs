@@ -21,6 +21,7 @@ const { runMcp } = require('./mcp.cjs');
 const { main: inspectDiagnosticLog } = require('./inspect-log.cjs');
 const { runRemote } = require('./remote.cjs');
 const { runDomains } = require('./domains.cjs');
+const { runAgents } = require('./agents.cjs');
 const {
   defaults,
   validateProfile,
@@ -34,10 +35,12 @@ industrial-harness doctor --project-dir DIR --domain DOMAIN
 industrial-harness inspect-log --file FILE
 industrial-harness remote --help
 industrial-harness mcp --help
+industrial-harness agents --help
 industrial-harness domains list|available|install|update|remove [options]
 
 Options:
   --chat-id ID                 Continue an existing project chat
+  --agent ID                   Select an Agent for a new or empty chat
   --chat-dir DIR               Shared chat database and agent session directory
   --scope-only                 Resolve Broker scope without starting Kimi
   --provider NAME              kimi or openai_legacy
@@ -118,7 +121,17 @@ async function run(
     }
     entry = options.scopeOnly
       ? tasks.sessions.get(project, options.chatId || runId)
-      : tasks.resume(project, options.chatId || tasks.chats.create(projectDir, options.domain).id);
+      : tasks.resume(
+          project,
+          options.chatId || tasks.newChat(project, { agentId: options.agent, draft: false }).id,
+        );
+    if (options.scopeOnly)
+      entry.agentSnapshot = tasks.agents.snapshot(tasks.registry(), project, options.agent);
+    else if (options.chatId && options.agent && entry.agentSnapshot.id !== options.agent) {
+      if (tasks.chats.get(entry.id, project.path, project.domain).agentLocked)
+        throw Error('This chat is bound to another Agent. Start a new chat to change Agent.');
+      tasks.setChatAgent(project, entry.id, options.agent);
+    }
     const broker = await tasks.prepare(
       entry,
       { task: options.task },
@@ -293,6 +306,10 @@ async function run(
 
 async function main() {
   try {
+    if (process.argv[2] === 'agents') {
+      process.exitCode = await runAgents(process.argv.slice(3));
+      return;
+    }
     if (process.argv[2] === 'remote') {
       process.exitCode = await runRemote(process.argv.slice(3));
       return;

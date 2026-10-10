@@ -1,12 +1,24 @@
 const fs = require('node:fs');
 const path = require('node:path');
-const { PackManager } = require('@industrial-agent-harness/pack-manager');
+const { PackManager, readAgentInstructions } = require('@industrial-agent-harness/pack-manager');
+const owner = require('@zhiman-bj/industrial-domain-packs');
 const { distributionDomain } = require('./distribution.cjs');
 const staticCapabilities = require('@zhiman-bj/industrial-domain-packs').consumerMetadata()
   .capabilities;
 const { loadDomainPacks } = require('./packs.cjs');
 const staticSkills = require('./consumer.cjs');
 const { listDomains } = require('./domains.cjs');
+
+function agentView(declaration, instructions, packVersion) {
+  const { title, file, resourcePath, sha256, ...definition } = declaration;
+  return { ...definition, name: title, instructions, source: 'pack', packVersion };
+}
+
+function releaseVersion(identity, fallback) {
+  return identity?.packageVersion && /^[a-f0-9]{64}$/.test(identity.contentSha256 || '')
+    ? `${identity.packageVersion}+${identity.contentSha256}`
+    : fallback;
+}
 
 function builtInPackDirectory(provider) {
   // Resolve deployed pnpm resources from the owning module's ancestors. A
@@ -42,6 +54,12 @@ function loadRegistry() {
       skills: staticSkills
         .listSkills()
         .map(item => ({ ...item, file: staticSkills.skillFile(item.id) })),
+      agents: (owner.consumerMetadata().agents || [])
+        .filter(item => !distributionDomain || item.domain === distributionDomain)
+        .map(item => {
+          const resource = owner.agentResource(item.id);
+          return agentView(item, resource.instructions, releaseVersion(owner.identity));
+        }),
       providerPacks,
       runtimePacks: providerPacks
         .filter(pack => pack.runtime)
@@ -63,6 +81,17 @@ function loadRegistry() {
     .map(bundle => ({ id: bundle.domain, label: bundle.label, emoji: bundle.emoji }))
     .sort((a, b) => a.id.localeCompare(b.id));
   const capabilities = bundles.flatMap(bundle => bundle.capabilities);
+  const agents = bundles.flatMap(bundle =>
+    (bundle.agents || []).map(agent =>
+      agentView(
+        agent,
+        readAgentInstructions(bundle.location, agent),
+        releaseVersion(bundle.sourceRelease, `${bundle.version}+${agent.sha256}`),
+      ),
+    ),
+  );
+  if (new Set(agents.map(agent => agent.id)).size !== agents.length)
+    throw Error('Duplicate installed Domain Agent.');
   const skills = [
     ...staticSkills
       .listSkills()
@@ -110,7 +139,7 @@ function loadRegistry() {
         directory: path.join(bundle.location, 'domain-packs', pack.provider.packDirectory),
       })),
   );
-  return { domains, capabilities, skills, providerPacks, runtimePacks };
+  return { domains, capabilities, skills, agents, providerPacks, runtimePacks };
 }
 
 function installedSkills(domain) {

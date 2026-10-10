@@ -493,7 +493,7 @@ async function upgrade(args, evidence, application) {
   assert.deepEqual(restart, { ready: true, projectRestored: true, actions: 2 });
   const packUpgrade = readJson('pack-upgrade.json');
   assert.equal(packUpgrade.fromVersion, '1.1.4-pack.4');
-  assert.equal(packUpgrade.toVersion, '1.1.4-pack.7');
+  assert.equal(packUpgrade.toVersion, '1.1.4-pack.8');
   assert.equal(packUpgrade.nativeRuntimeReused, true);
   assert.equal(packUpgrade.modelConfigurationLoaded, true);
   assert.equal(packUpgrade.loadedChat.turns, 2);
@@ -585,7 +585,7 @@ async function recheckFinal(args, evidence, application) {
   if (updating) {
     packUpgrade = readJson('pack-upgrade-continuation.json');
     assert.equal(packUpgrade.fromVersion, '1.1.4-pack.6');
-    assert.equal(packUpgrade.toVersion, '1.1.4-pack.7');
+    assert.equal(packUpgrade.toVersion, '1.1.4-pack.8');
     assert.equal(packUpgrade.nativeRuntimeReused, true);
     assert.equal(packUpgrade.modelConfigurationLoaded, true);
     assert.equal(packUpgrade.loadedChat.turns, 2);

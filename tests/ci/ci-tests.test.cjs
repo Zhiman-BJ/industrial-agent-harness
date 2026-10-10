@@ -10,8 +10,10 @@ const {
   allowedSkips,
   nativeFiles,
   nativeInstalledFiles,
+  linuxNativeFiles,
   nativeTestCounts,
   testConcurrency,
+  portableFiles,
 } = require('../../scripts/ci-tests.cjs');
 
 test('CI cannot pass with no tests, failed, cancelled, TODO or unaccounted skipped tests', () => {
@@ -37,6 +39,8 @@ test('native lanes retain the complete acceptance catalog without overlap or red
   const expected = [
     'tests/integration/background-tasks-kimi.test.cjs',
     'packages/agent-kimi/tests/code-session-heartbeat.test.cjs',
+    'packages/agent-kimi/tests/code-session-profiles.test.cjs',
+    'tests/integration/agent-profiles-kimi.test.cjs',
     'tests/integration/workspace-runtime.test.cjs',
     'tests/integration/agent-question-kimi.test.cjs',
     'tests/integration/compaction-compat-kimi.test.cjs',
@@ -72,7 +76,15 @@ test('native lanes retain the complete acceptance catalog without overlap or red
     'tests/integration/freecad-installed.test.cjs',
     'tests/integration/pcb-godot-installed.test.cjs',
   ]);
-  assert.deepEqual(nativeTestCounts, { native: 68, 'native-installed': 3 });
+  assert.deepEqual(nativeTestCounts, { native: 76, 'native-installed': 3 });
+  const portable = portableFiles();
+  for (const file of [
+    'packages/agent-kimi/tests/code-session-profiles.test.cjs',
+    'tests/integration/agent-profiles-kimi.test.cjs',
+  ]) {
+    assert.ok(linuxNativeFiles.includes(file), `${file} must run on Linux native CI`);
+    assert.ok(!portable.includes(file), `${file} requires native runtime and sandbox support`);
+  }
   for (const count of Object.values(nativeTestCounts)) {
     const summary = tests => ({
       success: true,

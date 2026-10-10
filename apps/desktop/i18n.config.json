@@ -3475,6 +3475,410 @@
     "Supporting results ({0})": {
       "en": "Supporting results ({0})",
       "zh-CN": "附件与报告（{0}）"
+    },
+    "Agents": {
+      "en": "Agents",
+      "zh-CN": "Agent"
+    },
+    "Built-in": {
+      "en": "Built-in",
+      "zh-CN": "内置"
+    },
+    "Domain pack": {
+      "en": "Domain pack",
+      "zh-CN": "领域包"
+    },
+    "Custom": {
+      "en": "Custom",
+      "zh-CN": "自定义"
+    },
+    "Selection": {
+      "en": "Selection",
+      "zh-CN": "选择范围"
+    },
+    "Use defaults": {
+      "en": "Use defaults",
+      "zh-CN": "使用默认设置"
+    },
+    "Choose allowed items": {
+      "en": "Choose allowed items",
+      "zh-CN": "选择允许的项目"
+    },
+    "No items are available.": {
+      "en": "No items are available.",
+      "zh-CN": "暂无可选项目。"
+    },
+    "Nothing selected. This agent will not use these items.": {
+      "en": "Nothing selected. This agent will not use these items.",
+      "zh-CN": "尚未选择，此 Agent 将不使用这类能力。"
+    },
+    "Agent configuration": {
+      "en": "Agent configuration",
+      "zh-CN": "Agent 配置"
+    },
+    "All agents": {
+      "en": "All agents",
+      "zh-CN": "所有 Agent"
+    },
+    "New agent": {
+      "en": "New agent",
+      "zh-CN": "新建 Agent"
+    },
+    "This agent is supplied by its source. Make a copy to customize it.": {
+      "en": "This agent is supplied by its source. Make a copy to customize it.",
+      "zh-CN": "此 Agent 由内置配置或领域包提供，可复制后自定义。"
+    },
+    "Saved changes apply to new chats. Chats already started keep their configuration.": {
+      "en": "Saved changes apply to new chats. Chats already started keep their configuration.",
+      "zh-CN": "保存的修改用于新聊天。已开始的聊天保留原配置。"
+    },
+    "Stop running tasks to change agent configurations.": {
+      "en": "Stop running tasks to change agent configurations.",
+      "zh-CN": "请先停止运行中的任务，再修改 Agent 配置。"
+    },
+    "Agent name": {
+      "en": "Agent name",
+      "zh-CN": "Agent 名称"
+    },
+    "Description": {
+      "en": "Description",
+      "zh-CN": "描述"
+    },
+    "Available in": {
+      "en": "Available in",
+      "zh-CN": "适用范围"
+    },
+    "All domains": {
+      "en": "All domains",
+      "zh-CN": "所有领域"
+    },
+    "Instructions": {
+      "en": "Instructions",
+      "zh-CN": "指令"
+    },
+    "Describe this agent’s role, approach, and expected output.": {
+      "en": "Describe this agent’s role, approach, and expected output.",
+      "zh-CN": "描述此 Agent 的角色、工作方式和预期输出。"
+    },
+    "Tools": {
+      "en": "Tools",
+      "zh-CN": "工具"
+    },
+    "Choose the tools this agent can use within the project’s permissions.": {
+      "en": "Choose the tools this agent can use within the project’s permissions.",
+      "zh-CN": "选择此 Agent 可在项目权限范围内使用的工具。"
+    },
+    "Subagents": {
+      "en": "Subagents",
+      "zh-CN": "子 Agent"
+    },
+    "Choose the specialist agents this agent can delegate to.": {
+      "en": "Choose the specialist agents this agent can delegate to.",
+      "zh-CN": "选择此 Agent 可以委派任务的专业 Agent。"
+    },
+    "Excluded tools": {
+      "en": "Excluded tools",
+      "zh-CN": "禁用工具"
+    },
+    "Excluded tools remain unavailable even when included above.": {
+      "en": "Excluded tools remain unavailable even when included above.",
+      "zh-CN": "这里禁用的工具即使在上方选中，也不可使用。"
+    },
+    "Delete agent": {
+      "en": "Delete agent",
+      "zh-CN": "删除 Agent"
+    },
+    "Save agent": {
+      "en": "Save agent",
+      "zh-CN": "保存 Agent"
+    },
+    "Delete this custom agent? Existing chats keep their saved configuration.": {
+      "en": "Delete this custom agent? Existing chats keep their saved configuration.",
+      "zh-CN": "删除此自定义 Agent？已有聊天会保留其已保存的配置。"
+    },
+    "Choose an agent’s role, instructions, and available capabilities. Set a project default or choose one in a new chat.": {
+      "en": "Choose an agent’s role, instructions, and available capabilities. Set a project default or choose one in a new chat.",
+      "zh-CN": "配置 Agent 的角色、指令和可用能力。可设为项目默认，也可在新聊天中选择。"
+    },
+    "Search agents": {
+      "en": "Search agents",
+      "zh-CN": "搜索 Agent"
+    },
+    "Loading agents…": {
+      "en": "Loading agents…",
+      "zh-CN": "正在加载 Agent…"
+    },
+    "Copy agent": {
+      "en": "Copy agent",
+      "zh-CN": "复制 Agent"
+    },
+    "Copy agent {0}": {
+      "en": "Copy agent {0}",
+      "zh-CN": "复制 Agent {0}"
+    },
+    "{0} copy": {
+      "en": "{0} copy",
+      "zh-CN": "{0} 副本"
+    },
+    "No agents match your search.": {
+      "en": "No agents match your search.",
+      "zh-CN": "没有匹配的 Agent。"
+    },
+    "Default agent": {
+      "en": "Default agent",
+      "zh-CN": "默认 Agent"
+    },
+    "Project default agent": {
+      "en": "Project default agent",
+      "zh-CN": "项目默认 Agent"
+    },
+    "Used for new chats in this project. Existing chats keep their agent.": {
+      "en": "Used for new chats in this project. Existing chats keep their agent.",
+      "zh-CN": "用于此项目的新聊天，已有聊天保留原 Agent。"
+    },
+    "This chat keeps the agent configuration it started with.": {
+      "en": "This chat keeps the agent configuration it started with.",
+      "zh-CN": "此聊天保留开始时的 Agent 配置。"
+    },
+    "Agent for this chat": {
+      "en": "Agent for this chat",
+      "zh-CN": "此聊天的 Agent"
+    },
+    "Choose an agent before the first message.": {
+      "en": "Choose an agent before the first message.",
+      "zh-CN": "在发送第一条消息前选择 Agent。"
+    },
+    "Unavailable agent": {
+      "en": "Unavailable agent",
+      "zh-CN": "Agent 不可用"
+    },
+    "Built-in agents keep their standard roles and capabilities.": {
+      "en": "Built-in agents keep their standard roles and capabilities.",
+      "zh-CN": "内置 Agent 保留其标准角色和能力。"
+    },
+    "Coder": {
+      "en": "Coder",
+      "zh-CN": "编程 Agent"
+    },
+    "Explorer": {
+      "en": "Explorer",
+      "zh-CN": "探索 Agent"
+    },
+    "Planner": {
+      "en": "Planner",
+      "zh-CN": "规划 Agent"
+    },
+    "General assistant with the standard tools and delegation.": {
+      "en": "General assistant with the standard tools and delegation.",
+      "zh-CN": "使用标准工具并可委派任务的通用助手。"
+    },
+    "Implement and check changes using the available tools.": {
+      "en": "Implement and check changes using the available tools.",
+      "zh-CN": "使用可用工具实现并检查修改。"
+    },
+    "Read and investigate without editing files.": {
+      "en": "Read and investigate without editing files.",
+      "zh-CN": "读取和调查项目，不修改文件。"
+    },
+    "Develop an implementation plan before making changes.": {
+      "en": "Develop an implementation plan before making changes.",
+      "zh-CN": "在修改前制定实施计划。"
+    },
+    "Skills and subagents were adjusted to the selected domain.": {
+      "en": "Skills and subagents were adjusted to the selected domain.",
+      "zh-CN": "已按新的适用领域调整技能和子 Agent。"
+    },
+    "Read files": {
+      "en": "Read files",
+      "zh-CN": "读取文件"
+    },
+    "Write files": {
+      "en": "Write files",
+      "zh-CN": "写入文件"
+    },
+    "Edit files": {
+      "en": "Edit files",
+      "zh-CN": "编辑文件"
+    },
+    "Find files": {
+      "en": "Find files",
+      "zh-CN": "查找文件"
+    },
+    "Search file contents": {
+      "en": "Search file contents",
+      "zh-CN": "搜索文件内容"
+    },
+    "Run shell commands": {
+      "en": "Run shell commands",
+      "zh-CN": "运行命令"
+    },
+    "Read images and media": {
+      "en": "Read images and media",
+      "zh-CN": "读取图像与媒体"
+    },
+    "Use skills": {
+      "en": "Use skills",
+      "zh-CN": "使用技能"
+    },
+    "Search the web": {
+      "en": "Search the web",
+      "zh-CN": "搜索网页"
+    },
+    "Read web pages": {
+      "en": "Read web pages",
+      "zh-CN": "读取网页"
+    },
+    "Track task steps": {
+      "en": "Track task steps",
+      "zh-CN": "跟踪任务步骤"
+    },
+    "Ask the user": {
+      "en": "Ask the user",
+      "zh-CN": "询问用户"
+    },
+    "Send progress updates": {
+      "en": "Send progress updates",
+      "zh-CN": "发送进展更新"
+    },
+    "Delegate to agents": {
+      "en": "Delegate to agents",
+      "zh-CN": "委派子 Agent"
+    },
+    "Run an agent group": {
+      "en": "Run an agent group",
+      "zh-CN": "运行 Agent 团队"
+    },
+    "List background tasks": {
+      "en": "List background tasks",
+      "zh-CN": "列出后台任务"
+    },
+    "Read task output": {
+      "en": "Read task output",
+      "zh-CN": "读取任务输出"
+    },
+    "Stop a task": {
+      "en": "Stop a task",
+      "zh-CN": "停止任务"
+    },
+    "Wait for tasks": {
+      "en": "Wait for tasks",
+      "zh-CN": "等待任务"
+    },
+    "Enter planning mode": {
+      "en": "Enter planning mode",
+      "zh-CN": "进入规划模式"
+    },
+    "Finish planning": {
+      "en": "Finish planning",
+      "zh-CN": "结束规划"
+    },
+    "Create a goal": {
+      "en": "Create a goal",
+      "zh-CN": "创建目标"
+    },
+    "Read the current goal": {
+      "en": "Read the current goal",
+      "zh-CN": "读取当前目标"
+    },
+    "Set a goal budget": {
+      "en": "Set a goal budget",
+      "zh-CN": "设置目标预算"
+    },
+    "Update goal status": {
+      "en": "Update goal status",
+      "zh-CN": "更新目标状态"
+    },
+    "Schedule a task": {
+      "en": "Schedule a task",
+      "zh-CN": "安排定时任务"
+    },
+    "List scheduled tasks": {
+      "en": "List scheduled tasks",
+      "zh-CN": "列出定时任务"
+    },
+    "Remove a scheduled task": {
+      "en": "Remove a scheduled task",
+      "zh-CN": "删除定时任务"
+    },
+    "Discover deferred tools": {
+      "en": "Discover deferred tools",
+      "zh-CN": "发现按需工具"
+    },
+    "Initialize tower work": {
+      "en": "Initialize tower work",
+      "zh-CN": "初始化协作工作区"
+    },
+    "Plan tower work": {
+      "en": "Plan tower work",
+      "zh-CN": "规划协作任务"
+    },
+    "Start a tower worker": {
+      "en": "Start a tower worker",
+      "zh-CN": "启动协作 Agent"
+    },
+    "Merge tower work": {
+      "en": "Merge tower work",
+      "zh-CN": "合并协作结果"
+    },
+    "Finish tower work": {
+      "en": "Finish tower work",
+      "zh-CN": "结束协作任务"
+    },
+    "Send tower instructions": {
+      "en": "Send tower instructions",
+      "zh-CN": "发送协作指令"
+    },
+    "Read tower messages": {
+      "en": "Read tower messages",
+      "zh-CN": "读取协作消息"
+    },
+    "Record a tower finding": {
+      "en": "Record a tower finding",
+      "zh-CN": "记录协作发现"
+    },
+    "Review tower work": {
+      "en": "Review tower work",
+      "zh-CN": "审核协作结果"
+    },
+    "Read the tower mission": {
+      "en": "Read the tower mission",
+      "zh-CN": "读取协作目标"
+    },
+    "Read tower status": {
+      "en": "Read tower status",
+      "zh-CN": "读取协作状态"
+    },
+    "Connected MCP tools": {
+      "en": "Connected MCP tools",
+      "zh-CN": "已连接的 MCP 工具"
+    },
+    "Domain skills": {
+      "en": "Domain skills",
+      "zh-CN": "领域技能"
+    },
+    "Limit registered skills available to this chat and its subagents.": {
+      "en": "Limit registered skills available to this chat and its subagents.",
+      "zh-CN": "限制此聊天及其子 Agent 可用的已注册领域技能。"
+    },
+    "The default agent is unavailable. Choose another agent for new chats.": {
+      "en": "The default agent is unavailable. Choose another agent for new chats.",
+      "zh-CN": "默认 Agent 已不可用，请为新聊天选择其他 Agent。"
+    },
+    "{0} (saved configuration)": {
+      "en": "{0} (saved configuration)",
+      "zh-CN": "{0}（已保存配置）"
+    },
+    "Open the project before choosing an agent.": {
+      "en": "Open the project before choosing an agent.",
+      "zh-CN": "请先打开项目，再选择 Agent。"
+    },
+    "Native tools": {
+      "en": "Native tools",
+      "zh-CN": "原生工具"
+    },
+    "MCP tools within the authorized scope": {
+      "en": "MCP tools within the authorized scope",
+      "zh-CN": "授权范围内的 MCP 工具"
     }
   }
 }

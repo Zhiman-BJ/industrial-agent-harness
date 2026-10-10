@@ -1,16 +1,18 @@
 import { useDisplayText } from '@industrial-agent-harness/viewer-builtin/text';
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Blocks, CircuitBoard, Stethoscope, Wrench } from 'lucide-react';
+import { ArrowLeft, Blocks, CircuitBoard, Stethoscope, UserRound, Wrench } from 'lucide-react';
 import type { DomainOption, ProjectBinding } from '@industrial-agent-harness/viewer-builtin/api';
 import { PacksSection, type DomainStatus, type DomainProgress } from './CapabilityPacks';
 import { WindowControls } from './WindowControls';
 import { McpSection, SkillsSection } from './CapabilityResources';
 import { DiagnosticsSection } from './CapabilityDiagnostics';
+import { AgentsSection } from './AgentSettings';
 
-export type CapabilitySection = 'packs' | 'mcp' | 'skills' | 'diagnostics';
+export type CapabilitySection = 'packs' | 'mcp' | 'skills' | 'agents' | 'diagnostics';
 
 export function CapabilityCenter({
   project,
+  domains,
   busy,
   initialSection,
   returnPage,
@@ -19,6 +21,7 @@ export function CapabilityCenter({
   onExit,
 }: {
   project?: ProjectBinding;
+  domains: DomainOption[];
   busy: boolean;
   initialSection: CapabilitySection;
   returnPage: 'chat' | 'project';
@@ -110,6 +113,7 @@ export function CapabilityCenter({
     { id: 'packs' as const, label: t('Domain packs'), icon: Blocks },
     { id: 'mcp' as const, label: t('MCP servers'), icon: CircuitBoard },
     { id: 'skills' as const, label: t('Skills'), icon: Wrench },
+    { id: 'agents' as const, label: t('Agents'), icon: UserRound },
     { id: 'diagnostics' as const, label: t('Runtime diagnostics'), icon: Stethoscope },
   ];
   return (
@@ -166,6 +170,9 @@ export function CapabilityCenter({
             )}
             {section === 'skills' && (
               <SkillsSection project={project} busy={busy} onChanged={onResourcesChanged} />
+            )}
+            {section === 'agents' && (
+              <AgentsSection domains={domains} busy={busy} onChanged={onResourcesChanged} />
             )}
             {section === 'diagnostics' && (
               <DiagnosticsSection

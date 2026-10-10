@@ -10,6 +10,7 @@ const {
   PackManager,
   createArchive,
   decodeArchive,
+  compareVersions,
   digest,
 } = require('../../pack-manager/src/index.cjs');
 const { loadRegistry, materializeInstalledSkills } = require('./installed.cjs');
@@ -327,10 +328,25 @@ test('public built-in Pack releases retain owned resources and keep the public P
   assert.equal(result.status, 0, result.stderr);
   const catalog = JSON.parse(fs.readFileSync(path.join(output, 'catalog.unsigned.json')));
   assert.deepEqual(catalog.packs.map(pack => pack.domain).sort(), ['cad', 'chip', 'godot', 'pcb']);
+  const previous = { chip: '0.6.2', pcb: '0.1.0-kicad.2', godot: '0.2.2', cad: '1.1.4-pack.7' };
   for (const item of catalog.packs) {
+    assert.ok(
+      compareVersions(item.version, previous[item.domain]) > 0,
+      'Agent resources require an installable version upgrade',
+    );
     const bytes = fs.readFileSync(path.join(output, item.url));
     assert.equal(digest(bytes), item.sha256);
     const { bundle, files } = decodeArchive(bytes);
+    const owner = require('@zhiman-bj/industrial-domain-packs');
+    const agents = owner.consumerMetadata().agents.filter(agent => agent.domain === item.domain);
+    assert.equal(bundle.agents.length, agents.length);
+    for (const agent of bundle.agents) {
+      const resource = files.find(file => file.path === agent.file);
+      assert.ok(resource);
+      assert.equal(digest(resource.bytes), agent.sha256);
+      assert.equal(resource.bytes.toString('utf8'), owner.agentResource(agent.id).instructions);
+      assert.equal(agent.packId, agents.find(item => item.id === agent.id).packId);
+    }
     assert.ok(files.some(file => file.path === 'LICENSE'));
     assert.ok(files.some(file => file.path === 'THIRD_PARTY_NOTICES.md'));
     if (item.domain === 'cad')

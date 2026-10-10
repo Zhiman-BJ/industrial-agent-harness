@@ -115,6 +115,7 @@ function resolveProjectTask(
 }
 
 module.exports = {
+  ...require('./agent-profiles.cjs'),
   createProjectRuntime,
   readProjectRecords,
   runtimeCapabilities,

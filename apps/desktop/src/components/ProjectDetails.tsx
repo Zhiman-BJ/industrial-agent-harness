@@ -3,6 +3,7 @@ import { useDisplayText } from '@industrial-agent-harness/viewer-builtin/text';
 import { useEffect, useState } from 'react';
 import { ProjectExecution } from './RemoteExecution';
 import { ResourceList } from './CapabilityResources';
+import { ProjectAgentSelect } from './AgentSettings';
 import { MessageSquarePlus } from 'lucide-react';
 import type { DomainOption, ProjectBinding } from '@industrial-agent-harness/viewer-builtin/api';
 
@@ -27,6 +28,7 @@ export function ProjectDetails({
   const [domain, setDomain] = useState(project.domain || '');
   const [executionReady, setExecutionReady] = useState(project.executionLocation !== 'remote');
   const [saving, setSaving] = useState(false);
+  const [agentSaving, setAgentSaving] = useState(false);
   const [error, setError] = useState('');
   useEffect(() => {
     setDomain(project.domain || '');
@@ -55,7 +57,7 @@ export function ProjectDetails({
           <button
             className="ia-project-start"
             onClick={() => void onNewChat()}
-            disabled={busy || !project.domain || !executionReady}
+            disabled={busy || agentSaving || !project.domain || !executionReady}
           >
             <MessageSquarePlus size={15} />
             {t('New chat')}
@@ -79,7 +81,7 @@ export function ProjectDetails({
                   aria-label={t('Project domain')}
                   value={domain}
                   onChange={event => setDomain(event.target.value)}
-                  disabled={busy || saving}
+                  disabled={busy || saving || agentSaving}
                 >
                   <option value="" disabled>
                     {t('Select a domain')}
@@ -93,13 +95,23 @@ export function ProjectDetails({
               </span>
               <button
                 onClick={() => void save()}
-                disabled={busy || saving || !domain || domain === project.domain}
+                disabled={busy || saving || agentSaving || !domain || domain === project.domain}
               >
                 {t('Save')}
               </button>
             </div>
           </div>
         </div>
+        {project.domain && project.executionLocation !== 'remote' && (
+          <ProjectAgentSelect
+            key={`agent-${project.id}-${project.domain}`}
+            project={project}
+            revision={resourceRevision}
+            busy={busy || saving}
+            onChanged={onResourcesChanged}
+            onSavingChange={setAgentSaving}
+          />
+        )}
         {project.domain && (
           <ProjectExecution
             project={project}

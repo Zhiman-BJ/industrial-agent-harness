@@ -50,6 +50,7 @@ import {
 } from './components/ImageAttachments';
 import { AgentLogPanel } from './components/AgentLogPanel';
 import { AgentFlow } from './components/AgentFlow';
+import { ChatAgentSelect } from './components/AgentSettings';
 import { BrokerCall } from './components/BrokerCall';
 import { TodoList } from './components/TodoList';
 import { DomainManager } from './components/DomainManager';
@@ -195,6 +196,20 @@ export function App() {
   const [approvalModeBusy, setApprovalModeBusy] = useState(false);
   const [agentOwned, setAgentOwned] = useState(false);
   const [chatList, setChatList] = useState<ChatSummary[]>([]);
+  const [chatAgent, setChatAgent] = useState<ChatSummary>();
+  const [chatAgentProjectId, setChatAgentProjectId] = useState<string | null>(null);
+  const [agentSelectionBusy, setAgentSelectionBusy] = useState(false);
+  const agentSelectionPending = useRef(false);
+  const [agentUnavailable, setAgentUnavailable] = useState(false);
+  const onAgentAvailability = useCallback(
+    (available: boolean) => setAgentUnavailable(!available),
+    [],
+  );
+  useEffect(() => {
+    agentSelectionPending.current = false;
+    setAgentSelectionBusy(false);
+    setAgentUnavailable(false);
+  }, [activeProjectId]);
   const [runningSessions, setRunningSessions] = useState<SessionStatus[]>([]);
   const [navigating, setNavigating] = useState(false);
   const navigationPending = useRef(false);
@@ -225,7 +240,13 @@ export function App() {
     } else if (followMessages.current) element.scrollTop = element.scrollHeight;
   }, [turns, page, tabbed, workbenchFocus]);
   function beginNavigation() {
-    if (navigationPending.current || submitting.current || startingAgent.current) return false;
+    if (
+      navigationPending.current ||
+      submitting.current ||
+      startingAgent.current ||
+      agentSelectionPending.current
+    )
+      return false;
     navigationPending.current = true;
     navigationRevision.current++;
     setNavigating(true);
@@ -270,6 +291,8 @@ export function App() {
     chatIdRef.current = history.chat.id;
     setActiveChatId(history.chat.id);
     setApprovalMode(history.chat.approvalMode);
+    setChatAgent(history.chat);
+    setChatAgentProjectId(projectIdRef.current);
     setTurns(history.turns);
     setHistoryBefore(history.before);
     setHasEarlier(history.hasMore);
@@ -307,7 +330,11 @@ export function App() {
     const selectedChat = list.chats.find(chat => chat.id === chatIdRef.current);
     setAgentBusy(Boolean(selectedSession?.running || selectedChat?.running));
     setAgentOwned(Boolean(selectedSession));
-    if (selectedChat) setApprovalMode(selectedChat.approvalMode);
+    if (selectedChat) {
+      setApprovalMode(selectedChat.approvalMode);
+      setChatAgent(selectedChat);
+      setChatAgentProjectId(projectId);
+    }
     if (openSelected && list.activeId) {
       const selectedChatId = chatIdRef.current;
       const history = await readHistory(() =>
@@ -323,6 +350,8 @@ export function App() {
     } else if (openSelected) {
       chatIdRef.current = null;
       setActiveChatId(null);
+      setChatAgent(undefined);
+      setChatAgentProjectId(null);
       setApprovalMode('ask');
       setTurns([]);
       setHasEarlier(false);
@@ -911,6 +940,8 @@ export function App() {
       navigationPending.current ||
       submitting.current ||
       startingAgent.current ||
+      agentSelectionPending.current ||
+      agentUnavailable ||
       agentBusy ||
       (activeProject?.executionLocation === 'remote' && !remoteExecutionReady) ||
       attachments.loading ||
@@ -998,7 +1029,13 @@ export function App() {
     }
   }
   async function runAgent(prompt = submittedTask, images: PromptImage[] = []) {
-    if (navigationPending.current || startingAgent.current) return;
+    if (
+      navigationPending.current ||
+      startingAgent.current ||
+      agentSelectionPending.current ||
+      agentUnavailable
+    )
+      return;
     startingAgent.current = true;
     previewPolicy.current.begin({
       chatId: chatIdRef.current,
@@ -1107,6 +1144,7 @@ export function App() {
                           onClick={() => void newChat()}
                           disabled={
                             navigating ||
+                            agentSelectionBusy ||
                             submitting.current ||
                             !item.domain ||
                             (page === 'chat' && Boolean(activeChatId) && turns.length === 0)
@@ -1232,6 +1270,17 @@ export function App() {
                     onClick={() => {
                       setSettingsOpen(false);
                       setModelSettingsOpen(true);
+                    }}
+                  >
+                    {t('Configure')}
+                  </button>
+                </div>
+                <div className="ia-settings-row">
+                  <span>{t('Agents')}</span>
+                  <button
+                    onClick={() => {
+                      setSettingsOpen(false);
+                      showCapabilities('agents');
                     }}
                   >
                     {t('Configure')}
@@ -1437,6 +1486,7 @@ export function App() {
               {page === 'capabilities' ? (
                 <CapabilityCenter
                   project={activeProject || undefined}
+                  domains={domains}
                   busy={runningSessions.some(session => session.running)}
                   initialSection={capabilitySection}
                   returnPage={capabilityReturn}
@@ -1648,6 +1698,7 @@ export function App() {
                           value={task}
                           disabled={
                             agentBusy ||
+                            agentSelectionBusy ||
                             navigating ||
                             !fixedDomain ||
                             (activeProject?.executionLocation === 'remote' && !remoteExecutionReady)
@@ -1671,6 +1722,65 @@ export function App() {
                               domains={domains}
                               label={t('Session domain')}
                             />
+                            {activeProjectId &&
+                              fixedDomain &&
+                              activeProject?.executionLocation !== 'remote' && (
+                                <ChatAgentSelect
+                                  key={`${activeProjectId}:${fixedDomain}:${activeChatId || 'draft'}`}
+                                  projectId={activeProjectId}
+                                  chat={
+                                    chatAgentProjectId === activeProjectId &&
+                                    chatAgent?.domain === fixedDomain &&
+                                    chatAgent?.id === activeChatId
+                                      ? {
+                                          ...chatAgent,
+                                          agentLocked: chatAgent.agentLocked || turns.length > 0,
+                                        }
+                                      : undefined
+                                  }
+                                  busy={
+                                    agentBusy ||
+                                    navigating ||
+                                    submitting.current ||
+                                    agentSelectionBusy ||
+                                    Boolean(activeChatId && chatAgentProjectId !== activeProjectId)
+                                  }
+                                  revision={resourceRevision}
+                                  onAvailabilityChange={onAgentAvailability}
+                                  onCreate={async agentId => {
+                                    const projectId = projectIdRef.current;
+                                    const draftImages = [...attachments.images];
+                                    const draftText = task;
+                                    const history = await readHistory(() =>
+                                      window.viewerHost!.newChat({ agentId }),
+                                    );
+                                    if (projectId !== projectIdRef.current)
+                                      throw Error('Open the project before choosing an agent.');
+                                    applyHistory(history);
+                                    attachments.restore(draftImages);
+                                    setTask(draftText);
+                                    await refreshChats();
+                                    return history.chat;
+                                  }}
+                                  onSavingChange={value => {
+                                    if (activeProjectId !== projectIdRef.current) return;
+                                    agentSelectionPending.current = value;
+                                    setAgentSelectionBusy(value);
+                                  }}
+                                  onChanged={next => {
+                                    if (
+                                      next.id !== chatIdRef.current ||
+                                      activeProjectId !== projectIdRef.current
+                                    )
+                                      return;
+                                    setChatAgent(next);
+                                    setChatAgentProjectId(activeProjectId);
+                                    setChatList(current =>
+                                      current.map(item => (item.id === next.id ? next : item)),
+                                    );
+                                  }}
+                                />
+                              )}
                             <select
                               className="ia-chat-approval-mode"
                               aria-label={t('Approval mode for this chat')}
@@ -1685,7 +1795,11 @@ export function App() {
                               }
                               value={approvalMode}
                               disabled={
-                                !activeChatId || agentBusy || navigating || approvalModeBusy
+                                !activeChatId ||
+                                agentBusy ||
+                                agentSelectionBusy ||
+                                navigating ||
+                                approvalModeBusy
                               }
                               onChange={event =>
                                 void changeChatApprovalMode(event.target.value as 'ask' | 'auto')
@@ -1725,6 +1839,8 @@ export function App() {
                                 onClick={() => void runAgent()}
                                 disabled={
                                   navigating ||
+                                  agentSelectionBusy ||
+                                  agentUnavailable ||
                                   agentBusy ||
                                   submitting.current ||
                                   turns.at(-1)?.status !== 'scoped'
@@ -1740,6 +1856,8 @@ export function App() {
                               onClick={() => void resolveTask()}
                               disabled={
                                 navigating ||
+                                agentSelectionBusy ||
+                                agentUnavailable ||
                                 agentBusy ||
                                 !fixedDomain ||
                                 (activeProject?.executionLocation === 'remote' &&

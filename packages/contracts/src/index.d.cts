@@ -1,4 +1,17 @@
 import { z } from 'zod';
+export interface AgentDefinition {
+  id: string;
+  name: string;
+  description: string;
+  instructions: string;
+  domain: string;
+  tools?: string[];
+  disallowedTools?: string[];
+  skills?: string[];
+  subagents?: string[];
+}
+export const AgentIdSchema: z.ZodType<string>;
+export const AgentDefinitionSchema: z.ZodType<AgentDefinition>;
 export const INDUSTRIAL_SCHEMA_VERSION: '1';
 export type InputHashes = Record<string, string>;
 export type VerificationStatus = 'not_run' | 'passed' | 'failed' | 'insufficient_evidence';

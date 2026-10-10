@@ -145,3 +145,31 @@ test('real source CLI scope and project chat listing are headless SDK consumers'
     [],
   );
 });
+
+test('SDK agent selection reaches the shared CLI policy for a configured role', async t => {
+  const { AgentProfiles } = require('../../harness-core/src/agent-profiles.cjs');
+  const { loadRegistry } = require('../../domain-skills/src/index.cjs');
+  const config = fs.mkdtempSync(path.join(os.tmpdir(), 'sdk-agent-config-'));
+  t.after(() => fs.rmSync(config, { recursive: true, force: true }));
+  const agent = new AgentProfiles(config).save(loadRegistry(), {
+    name: 'SDK reviewer',
+    description: 'Inspect with no domain skills',
+    domain: '*',
+    instructions: 'Report findings.',
+    skills: [],
+  });
+  const client = setup(t, {
+    cliPath: path.resolve(__dirname, '../../../apps/cli/src/main.cjs'),
+    environment: { INDUSTRIAL_HARNESS_CONFIG_DIR: config },
+  });
+  const baseline = client.run({ task: 'Inspect netlist signals', scopeOnly: true });
+  assert.ok((await drain(baseline))[0].scope.skills.length > 0);
+  await baseline.result;
+  const selected = client.run({
+    task: 'Inspect netlist signals',
+    scopeOnly: true,
+    agentId: agent.id,
+  });
+  assert.deepEqual((await drain(selected))[0].scope.skills, []);
+  assert.equal((await selected.result).result.status, 'scoped');
+});
