@@ -4,15 +4,11 @@
   "locales": {
     "zh-CN": {
       "label": "简体中文",
-      "systemLanguages": [
-        "zh"
-      ]
+      "systemLanguages": ["zh"]
     },
     "en": {
       "label": "English",
-      "systemLanguages": [
-        "en"
-      ]
+      "systemLanguages": ["en"]
     }
   },
   "messages": {
@@ -274,7 +270,7 @@
     },
     "Kimi ready": {
       "en": "Kimi ready",
-      "zh-CN": "Kimi 已就绪"
+      "zh-CN": "模型已配置"
     },
     "Workspace": {
       "en": "Workspace",
@@ -1482,7 +1478,7 @@
     },
     "error": {
       "en": "error",
-      "zh-CN": "错误"
+      "zh-CN": "出错"
     },
     "needs_input": {
       "en": "needs input",
@@ -3475,6 +3471,66 @@
     "Supporting results ({0})": {
       "en": "Supporting results ({0})",
       "zh-CN": "附件与报告（{0}）"
+    },
+    "finished": {
+      "en": "finished",
+      "zh-CN": "已结束"
+    },
+    "Tools or model changed. A new context started; earlier messages remain available above.": {
+      "en": "Tools or model changed. A new context started; earlier messages remain available above.",
+      "zh-CN": "工具或模型已变更，已开始新的上下文；之前的消息仍保留在上方。"
+    },
+    "Cancelled without running": {
+      "en": "Cancelled without running",
+      "zh-CN": "已取消，命令未执行"
+    },
+    "Working directory": {
+      "en": "Working directory",
+      "zh-CN": "工作目录"
+    },
+    "Isolated session workspace; project files are read via project/.": {
+      "en": "Isolated session workspace; project files are read via project/.",
+      "zh-CN": "隔离的会话工作区；工程文件通过 project/ 只读访问。"
+    },
+    "Retry task": {
+      "en": "Retry task",
+      "zh-CN": "重试任务"
+    },
+    "The model service rejected this API key.": {
+      "en": "The model service rejected this API key.",
+      "zh-CN": "模型服务拒绝了当前 API 密钥（认证失败）。"
+    },
+    "Enter an API key before saving; tasks cannot run without one.": {
+      "en": "Enter an API key before saving; tasks cannot run without one.",
+      "zh-CN": "请先填写 API 密钥再保存；没有密钥任务无法运行。"
+    },
+    "This project has no files yet. Run a task or add files to the directory.": {
+      "en": "This project has no files yet. Run a task or add files to the directory.",
+      "zh-CN": "这个项目还没有文件。可以先运行任务生成文件，或直接在目录中添加。"
+    },
+    "Existing files are kept as-is; the agent only writes after you approve an action.": {
+      "en": "Existing files are kept as-is; the agent only writes after you approve an action.",
+      "zh-CN": "目录中的现有文件保持原样；Agent 仅在你批准操作后才会写入。"
+    },
+    "Chip design: RTL, synthesis, netlist, GDS layout and waveform review.": {
+      "en": "Chip design: RTL, synthesis, netlist, GDS layout and waveform review.",
+      "zh-CN": "芯片设计：RTL、综合、网表、GDS 版图与波形审查。"
+    },
+    "PCB design: schematics, layout, fabrication outputs (KiCad).": {
+      "en": "PCB design: schematics, layout, fabrication outputs (KiCad).",
+      "zh-CN": "PCB 设计：原理图、布局与生产文件（KiCad）。"
+    },
+    "Mechanical CAD: 3D models and drawings (FreeCAD).": {
+      "en": "Mechanical CAD: 3D models and drawings (FreeCAD).",
+      "zh-CN": "机械 CAD：三维模型与工程图（FreeCAD）。"
+    },
+    "GPU compute: CUDA kernels and performance work.": {
+      "en": "GPU compute: CUDA kernels and performance work.",
+      "zh-CN": "GPU 计算：CUDA 核函数与性能优化。"
+    },
+    "Game/simulation engineering with the Godot engine.": {
+      "en": "Game/simulation engineering with the Godot engine.",
+      "zh-CN": "基于 Godot 引擎的游戏/仿真工程。"
     }
   }
 }

@@ -988,11 +988,11 @@ class KimiSession {
       this.emitAgent({ type: 'compaction', state: 'begin' });
     } else if (event.type === 'CompactionEnd') this.emitAgent({ type: 'compaction', state: 'end' });
   }
-  resolveApproval(id, decision) {
+  resolveApproval(id, decision, origin = 'runtime') {
     if (!this.pendingApprovals.has(id)) return;
     this.pendingApprovals.delete(id);
     this.backgroundApprovals?.delete(id);
-    this.emitAgent({ type: 'approval-resolved', id, decision });
+    this.emitAgent({ type: 'approval-resolved', id, decision, origin });
   }
   resolveQuestion(id, decision, answers) {
     if (!this.pendingQuestions.has(id)) return;
@@ -1057,7 +1057,7 @@ class KimiSession {
     if (this.runtimeApprovals.has(id)) {
       this.runtimeApprovals.get(id)(response !== 'reject');
       this.runtimeApprovals.delete(id);
-      this.resolveApproval(id, response);
+      this.resolveApproval(id, response, 'user');
       return;
     }
     if (
@@ -1069,7 +1069,7 @@ class KimiSession {
     try {
       await (this.turn || this.controlTurn).approve(id, response);
       this.log?.record('approval.response', { id, response });
-      this.resolveApproval(id, response);
+      this.resolveApproval(id, response, 'user');
     } catch (error) {
       if (this.pendingApprovals.has(id)) this.pendingApprovals.set(id, 'pending');
       throw error;
@@ -1079,7 +1079,9 @@ class KimiSession {
     this.diagnostics.industrialRuntime?.cancel(this.resourceId);
     for (const [id, resolve] of this.runtimeApprovals) {
       resolve(false);
-      this.resolveApproval(id, 'reject');
+      // The runtime denies the command because the turn is stopping; the user
+      // never chose to reject it, so resolve as expired, not rejected.
+      this.resolveApproval(id, 'expired');
     }
     this.runtimeApprovals.clear();
     if (this.running) this.interruptRequested = true;
