@@ -675,6 +675,8 @@ export type AgentEvent = {
       type: 'approval-resolved';
       id: string;
       decision: 'approve' | 'approve_for_session' | 'reject' | 'expired';
+      /** Who resolved it: the user through the UI, or the runtime cancelling. */
+      origin?: 'user' | 'runtime';
     }
   | {
       type: 'question';

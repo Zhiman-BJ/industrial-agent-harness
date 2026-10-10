@@ -31,6 +31,9 @@ export function ModelSettings({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  // First-time configuration needs a key; saving without one would silently
+  // leave every turn failing with 401 while showing "saved".
+  const needsKey = !profile.hasApiKey && !apiKey.trim();
   useEffect(() => {
     void window
       .viewerHost!.modelGet()
@@ -171,7 +174,9 @@ export function ModelSettings({
               ? profile.keyPersisted
                 ? t('API key is stored using your OS credential protection.')
                 : t('API key is available for this app session only.')
-              : t('An API key is required to run a Kimi turn.')}
+              : needsKey
+                ? t('Enter an API key before saving; tasks cannot run without one.')
+                : t('An API key is required to run a Kimi turn.')}
           </small>
           {error && <p className="ia-model-error">{t(error)}</p>}
           {message && <p className="ia-model-success">{t(message)}</p>}
@@ -184,7 +189,7 @@ export function ModelSettings({
           )}
           <span />
           <button onClick={onClose}>{t('Cancel')}</button>
-          <button className="primary" onClick={() => void save()} disabled={saving}>
+          <button className="primary" onClick={() => void save()} disabled={saving || needsKey}>
             {saving ? t('Saving…') : t('Save')}
           </button>
         </footer>
