@@ -229,6 +229,8 @@ importers:
 
   packages/harness-recording: {}
 
+  packages/harness-replay: {}
+
   packages/pack-manager: {}
 
   packages/sdk: {}
