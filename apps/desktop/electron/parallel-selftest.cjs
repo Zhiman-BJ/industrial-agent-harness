@@ -479,7 +479,7 @@ async function run(window) {
     );
     await window.webContents.reload();
     await wait(
-      `document.querySelector('.ia-question')?.innerText.includes('SESSION_THETA')&&Boolean(document.querySelector('button[title=\"Stop agent\"]'))`,
+      `document.querySelector('.ia-question')?.innerText.includes('SESSION_THETA')&&Boolean(document.querySelector('button[title="Stop agent"]'))`,
     );
     await evaluate(
       `Array.from(document.querySelectorAll('.ia-question label')).find(label=>label.innerText.includes('Continue')).querySelector('input').click()`,

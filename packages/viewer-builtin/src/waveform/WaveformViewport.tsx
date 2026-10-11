@@ -11,6 +11,9 @@ export interface SignalRequest {
   name: string;
   id: number;
 }
+// Untyped postMessage payload from the vendored Surfer iframe; only the
+// fields consumed here are declared.
+type SurferResponse = { ids?: Array<{ id?: string }> };
 export function WaveformViewport({
   data,
   onReady,
@@ -28,7 +31,7 @@ export function WaveformViewport({
     new Map<
       number,
       {
-        resolve: (value: any) => void;
+        resolve: (value: SurferResponse) => void;
         reject: (error: Error) => void;
         timer: ReturnType<typeof setTimeout>;
       }
@@ -43,7 +46,7 @@ export function WaveformViewport({
   const callbacks = useRef({ onReady, onError });
   callbacks.current = { onReady, onError };
   const src = `app://surfer/index.html?${new URLSearchParams({ host_origin: window.location.origin, attempt: String(attempt) })}`;
-  function command(action: string, payload: unknown): Promise<any> {
+  function command(action: string, payload: unknown): Promise<SurferResponse> {
     return new Promise((resolve, reject) => {
       if (!available.current) return reject(Error('Waveform viewer is not ready.'));
       const id = ++sequence.current;
@@ -125,7 +128,8 @@ export function WaveformViewport({
       if (request) {
         clearTimeout(request.timer);
         pending.current.delete(message.id);
-        message.error ? request.reject(Error(message.error)) : request.resolve(message.result);
+        if (message.error) request.reject(Error(message.error));
+        else request.resolve(message.result);
       }
     };
     window.addEventListener('message', listener);
@@ -168,7 +172,7 @@ export function WaveformViewport({
         const deadline = performance.now() + 15000;
         while (!cancelled) {
           const result = await command('probe', names);
-          if (result.ids?.every((item: { id: unknown }) => item.id != null)) break;
+          if (result.ids?.every(item => item.id != null)) break;
           if (performance.now() > deadline) throw Error('Waveform signals did not become visible.');
           await new Promise(resolve => setTimeout(resolve, 100));
         }
@@ -187,7 +191,7 @@ export function WaveformViewport({
   useEffect(() => {
     if (!loaded || !signal) return;
     // Mapping values are identifiers, never arbitrary Surfer commands.
-    if (!/^[A-Za-z_][A-Za-z0-9_.$\[\]:/\\-]*$/.test(signal.name)) {
+    if (!/^[A-Za-z_][A-Za-z0-9_.$[\]:/\\-]*$/.test(signal.name)) {
       fail('Signal mapping contains an unsupported identifier.');
       return;
     }
