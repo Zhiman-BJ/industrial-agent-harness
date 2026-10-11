@@ -360,6 +360,7 @@
         "architecture/policy.json",
         "tests/architecture/contract-policy.test.cjs",
         "tests/architecture/candidate-fetch.test.cjs",
+        "tests/architecture/replay-supersession.test.cjs",
         "scripts/check-architecture-contract.cjs",
         "scripts/fetch-architecture-candidate.cjs",
         ".github/CODEOWNERS",
