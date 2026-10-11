@@ -1,0 +1,2 @@
+{"seq":1,"at":"2026-10-11T10:00:00.250Z","relMs":250,"origin":{"chatId":"chat-demo","projectId":"proj-demo","turnId":"turn-1","eventRevision":1},"event":{"type":"text","text":"将被损坏的样例。"}}
+{"seq":1,"at":"2026-10-11T10:00:00.500Z","relMs":500,"origin":{"chatId":"chat-demo","projectId":"proj-demo","turnId":"turn-1","eventRevision":2},"event":{"type":"done","result":{"status":"success"}}}

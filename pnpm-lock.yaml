@@ -227,6 +227,8 @@ importers:
         specifier: workspace:*
         version: link:../domain-skills
 
+  packages/harness-recording: {}
+
   packages/pack-manager: {}
 
   packages/sdk: {}
@@ -741,7 +743,7 @@ packages:
     engines: {node: '>=10.0.0'}
 
   '@zhiman-bj/industrial-domain-packs@https://codeload.github.com/Zhiman-BJ/industrial-domain-packs/tar.gz/f8d0185db5ad668de7e5e3a5bc664dd580dd543c':
-    resolution: {tarball: https://codeload.github.com/Zhiman-BJ/industrial-domain-packs/tar.gz/f8d0185db5ad668de7e5e3a5bc664dd580dd543c}
+    resolution: {gitHosted: true, tarball: https://codeload.github.com/Zhiman-BJ/industrial-domain-packs/tar.gz/f8d0185db5ad668de7e5e3a5bc664dd580dd543c}
     version: 0.5.2
     engines: {node: '>=24'}
     peerDependencies:
