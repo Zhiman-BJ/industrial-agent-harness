@@ -457,6 +457,22 @@
       "decisionStatus": "decided",
       "isolation": { "status": "enforced", "legacyReferences": 0 },
       "decisionNote": "#104 录制包（manifest/校验/recorder/loader/脱敏/demo 导出/fixtures），PD-070 许可的内部能力。零公共引用，入口接线待 #102 组合接口。"
+    },
+    {
+      "id": "internal.replay",
+      "edition": "internal",
+      "kind": "feature",
+      "paths": ["packages/harness-replay"],
+      "dependencyClass": "replay-internal",
+      "requiredTests": [
+        "packages/harness-replay/tests/display-reducer.test.cjs",
+        "packages/harness-replay/tests/engine.test.cjs",
+        "packages/harness-replay/tests/describe.test.cjs",
+        "packages/harness-replay/tests/closure.test.cjs"
+      ],
+      "decisionStatus": "decided",
+      "isolation": { "status": "enforced", "legacyReferences": 0 },
+      "decisionNote": "#105 重放引擎核心（display reducer/timeline/engine/clock/describe），PD-070 许可的内部能力。运行时仅依赖 node 内建、闭包测试钉死；零公共引用，UI 接线待 #102。"
     }
   ]
 }
