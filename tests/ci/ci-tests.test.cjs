@@ -92,7 +92,7 @@ test('both protected native matrices must succeed; a missing, skipped, cancelled
     'utf8',
   );
   for (const name of ['native-vertical-slice', 'native-installed']) {
-    const job = workflow.split(`  ${name}:\n`)[1].split(/\n  [a-z][\w-]*:/)[0];
+    const job = workflow.split(`  ${name}:\n`)[1].split(/\n {2}[a-z][\w-]*:/)[0];
     assert.match(job, /os: \[macos-15, macos-26\]/);
     assert.match(job, /timeout-minutes: 25/);
     assert.doesNotMatch(job, /continue-on-error:/);

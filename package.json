@@ -28,6 +28,7 @@
     "test:pcb-mcp": "node --test tests/integration/pcb-mcp*.test.cjs",
     "format": "prettier --write \"{apps,packages,scripts,tests}/**/*.{cjs,mjs,js,ts,tsx,css}\"",
     "format:check": "prettier --check \"{apps,packages,scripts,tests}/**/*.{cjs,mjs,js,ts,tsx,css}\"",
+    "lint": "eslint .",
     "benchmark:maintenance": "node scripts/benchmark-maintenance.cjs",
     "test:session-resources": "node --test tests/integration/session-resources-kimi.test.cjs",
     "stress:sessions": "node scripts/stress-sessions.cjs",
@@ -40,7 +41,12 @@
     "test:results": "node --test tests/integration/task-results-freecad.test.cjs tests/integration/task-results-kimi.test.cjs"
   },
   "devDependencies": {
-    "prettier": "3.6.2"
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.12.0",
+    "globals": "^17.13.0",
+    "prettier": "3.6.2",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.71.1"
   },
   "dependencies": {
     "@zhiman-bj/industrial-domain-packs": "https://codeload.github.com/Zhiman-BJ/industrial-domain-packs/tar.gz/f8d0185db5ad668de7e5e3a5bc664dd580dd543c"

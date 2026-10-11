@@ -121,7 +121,7 @@ test('a corrupted download never executes or provisions system dependencies', ()
     );
     fs.writeFileSync(
       path.join(directory, 'wget'),
-      '#!/bin/bash\nwhile (( $# )); do\n if [[ "$1" == -O ]]; then printf "#!/bin/bash\\ntouch \\\"%s\\\"\\n" "$BOOTSTRAP_EXECUTION_MARKER" > "$2"; exit; fi\n shift\ndone\nexit 1\n',
+      '#!/bin/bash\nwhile (( $# )); do\n if [[ "$1" == -O ]]; then printf "#!/bin/bash\\ntouch \\"%s\\"\\n" "$BOOTSTRAP_EXECUTION_MARKER" > "$2"; exit; fi\n shift\ndone\nexit 1\n',
       { mode: 0o755 },
     );
     const result = run([], {

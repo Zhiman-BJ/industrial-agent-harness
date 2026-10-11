@@ -359,6 +359,7 @@ test(
     const turn = f.session.prompt('Never execute');
     await assert.rejects(async () => {
       for await (const event of turn) {
+        // Drain the stream; events are not inspected.
       }
     }, /process exited/);
     await assert.rejects(turn.result, /process exited/);
