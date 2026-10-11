@@ -628,15 +628,16 @@ class KimiSession {
       emitMetrics();
       outcome = result.status;
       this.emitAgent({ type: 'done', result });
-    } catch (error) {
+    } catch (caught) {
+      let error = caught;
       if (this.turn) {
         this.interruptRequested = true;
         try {
           await this.closeNative();
         } catch (closeError) {
           error = new AggregateError(
-            [error, closeError],
-            `${error.message}; ${closeError.message}`,
+            [caught, closeError],
+            `${caught.message}; ${closeError.message}`,
           );
         }
       }
@@ -875,7 +876,6 @@ class KimiSession {
           id: event.payload.id,
           description: event.payload.description,
           action: event.payload.action,
-          agentId: event.payload.agentId,
         });
     } else if (event.type === 'QuestionRequest') {
       const { id, tool_call_id, questions } = event.payload;
