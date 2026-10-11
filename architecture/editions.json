@@ -473,6 +473,20 @@
       "decisionStatus": "decided",
       "isolation": { "status": "enforced", "legacyReferences": 0 },
       "decisionNote": "#105 重放引擎核心（display reducer/timeline/engine/clock/describe），PD-070 许可的内部能力。运行时仅依赖 node 内建、闭包测试钉死；零公共引用，UI 接线待 #102。"
+    },
+    {
+      "id": "internal.docs-center",
+      "edition": "internal",
+      "kind": "feature",
+      "paths": ["packages/harness-docs"],
+      "dependencyClass": "docs-center-internal",
+      "requiredTests": [
+        "packages/harness-docs/tests/markdown-links.test.cjs",
+        "packages/harness-docs/tests/docs.test.cjs"
+      ],
+      "decisionStatus": "decided",
+      "isolation": { "status": "enforced", "legacyReferences": 0 },
+      "decisionNote": "#103 文档中心数据核心（版本化索引/受限 provider/中文搜索/导航 reducer），PD-070 同批内部能力。清单标 internal-only 供 #106 导出器排除；面板与 IPC 接线待 #102。"
     }
   ]
 }
