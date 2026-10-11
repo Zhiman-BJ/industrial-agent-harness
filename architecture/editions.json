@@ -446,11 +446,13 @@
       "requiredTests": [
         "packages/harness-recording/tests/recorder.test.cjs",
         "packages/harness-recording/tests/validate.test.cjs",
-        "packages/harness-recording/tests/fixtures.test.cjs"
+        "packages/harness-recording/tests/fixtures.test.cjs",
+        "packages/harness-recording/tests/redact.test.cjs",
+        "packages/harness-recording/tests/demo-export.test.cjs"
       ],
       "decisionStatus": "decided",
       "isolation": { "status": "enforced", "legacyReferences": 0 },
-      "decisionNote": "#104 录制包核心（manifest/校验/recorder/loader/fixtures），PD-070 许可的内部能力。零公共引用，入口接线待 #102 组合接口。"
+      "decisionNote": "#104 录制包（manifest/校验/recorder/loader/脱敏/demo 导出/fixtures），PD-070 许可的内部能力。零公共引用，入口接线待 #102 组合接口。"
     }
   ]
 }

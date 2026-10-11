@@ -196,3 +196,27 @@ test('validator and loader agree on a recorded success bundle', () => {
   assert.equal(bundle.manifest.status, 'complete');
   assert.equal(bundle.manifest.outcome, 'success');
 });
+
+test('a real in-bundle symlink is caught, but a symlinked bundle root is fine', () => {
+  const dir = tempDir();
+  const recorder = createRecorder({ directory: dir, chatId: 'chat-1' });
+  recorder.start();
+  recorder.noteAsset({ id: 'a1', type: 'image', bytes: Buffer.from('png'), filename: 'a.png' });
+  recorder.record(
+    { type: 'done', result: { status: 'success' } },
+    { chatId: 'chat-1', projectId: null, turnId: 't', eventRevision: 1 },
+  );
+  recorder.stop();
+
+  // os.tmpdir() on macOS is behind /var -> /private/var; a bundle living
+  // there must still validate cleanly (regression guard for the lstat fix).
+  assert.ok(validateBundle(dir).every(error => error.code !== 'asset:symlink'));
+
+  // Replacing the asset with a symlink pointing outside the bundle must fail.
+  const outside = path.join(tempDir(), 'outside.bin');
+  fs.writeFileSync(outside, 'escape payload');
+  fs.rmSync(path.join(dir, 'assets', 'a.png'));
+  fs.symlinkSync(outside, path.join(dir, 'assets', 'a.png'));
+  const errors = validateBundle(dir);
+  assert.ok(errors.some(error => error.code === 'asset:symlink'));
+});

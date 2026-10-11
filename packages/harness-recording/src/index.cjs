@@ -12,4 +12,7 @@ module.exports = {
   loadBundle: require('./loader.cjs').loadBundle,
   streamEvents: require('./loader.cjs').streamEvents,
   RecordingError: require('./loader.cjs').RecordingError,
+  ...require('./redact.cjs'),
+  exportDemoBundle: require('./demo-export.cjs').exportDemoBundle,
+  markDemoReview: require('./demo-export.cjs').markDemoReview,
 };
