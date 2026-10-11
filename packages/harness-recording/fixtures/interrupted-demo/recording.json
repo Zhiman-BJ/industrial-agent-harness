@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "recordingId": "rec-interrupted-demo",
+  "createdAt": "2026-10-11T09:00:00.000Z",
+  "source": {
+    "kind": "chat-recording",
+    "capturedVia": "taskservice-presentation-events"
+  },
+  "chat": {
+    "chatId": "chat-demo",
+    "projectId": "proj-demo",
+    "displayName": "演示：布局检查",
+    "initialSnapshot": {
+      "included": false,
+      "turns": [],
+      "note": "Turns before recording start are summarized here; their ordering was not recorded."
+    }
+  },
+  "status": "recording",
+  "outcome": "unknown",
+  "events": {
+    "file": "events.jsonl",
+    "count": 0,
+    "firstSeq": null,
+    "lastSeq": null
+  },
+  "assets": [],
+  "limits": {
+    "maxEvents": 50000,
+    "maxEventBytes": 524288,
+    "maxAssetsBytes": 268435456,
+    "maxTotalBytes": 536870912
+  },
+  "redaction": {
+    "applied": false,
+    "mode": "original",
+    "rulesVersion": null,
+    "reviewed": "unreviewed",
+    "reviewNote": null
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "recordingId": "rec-success-demo",
+  "createdAt": "2026-10-11T09:00:00.000Z",
+  "source": {
+    "kind": "chat-recording",
+    "capturedVia": "taskservice-presentation-events"
+  },
+  "chat": {
+    "chatId": "chat-demo",
+    "projectId": "proj-demo",
+    "displayName": "演示：布局检查",
+    "initialSnapshot": {
+      "included": false,
+      "turns": [],
+      "note": "Turns before recording start are summarized here; their ordering was not recorded."
+    }
+  },
+  "status": "complete",
+  "outcome": "success",
+  "events": {
+    "file": "events.jsonl",
+    "count": 6,
+    "firstSeq": 1,
+    "lastSeq": 6
+  },
+  "assets": [
+    {
+      "id": "layout-snapshot",
+      "type": "artifact-snapshot",
+      "relativePath": "assets/sobel-layout.snapshot.bin",
+      "mediaType": "application/octet-stream",
+      "bytes": 39,
+      "sha256": "619291d412b36554659721fb492da6e62660e08e9d79cc6803ba9abe73a9e682",
+      "status": "present",
+      "source": {
+        "artifactId": "art-demo-1",
+        "actionId": "act-demo-1",
+        "originalPath": "outputs/sobel_layout.gds"
+      }
+    }
+  ],
+  "limits": {
+    "maxEvents": 50000,
+    "maxEventBytes": 524288,
+    "maxAssetsBytes": 268435456,
+    "maxTotalBytes": 536870912
+  },
+  "redaction": {
+    "applied": false,
+    "mode": "original",
+    "rulesVersion": null,
+    "reviewed": "unreviewed",
+    "reviewNote": null
+  },
+  "completedAt": "2026-10-11T09:00:01.750Z",
+  "durationMs": 1750
+}

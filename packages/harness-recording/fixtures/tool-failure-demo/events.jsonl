@@ -1,0 +1,6 @@
+{"seq":1,"at":"2026-10-11T09:00:00.250Z","relMs":250,"origin":{"chatId":"chat-demo","projectId":"proj-demo","turnId":"turn-1","eventRevision":1},"event":{"type":"text","text":"检查这版 Sobel 布局的连线。"}}
+{"seq":2,"at":"2026-10-11T09:00:00.500Z","relMs":500,"origin":{"chatId":"chat-demo","projectId":"proj-demo","turnId":"turn-1","eventRevision":2},"event":{"type":"todo","items":[{"title":"读取布局","status":"in_progress"},{"title":"核对电源网络","status":"pending"}]}}
+{"seq":3,"at":"2026-10-11T09:00:00.750Z","relMs":750,"origin":{"chatId":"chat-demo","projectId":"proj-demo","turnId":"turn-1","eventRevision":3},"event":{"type":"tool","id":"t1","name":"inspect_layout","arguments":"{\"file\":\"sobel_layout.gds\"}"}}
+{"seq":4,"at":"2026-10-11T09:00:01.000Z","relMs":1000,"origin":{"chatId":"chat-demo","projectId":"proj-demo","turnId":"turn-1","eventRevision":4},"event":{"type":"tool-result","id":"t1","error":true,"message":"布局文件解析失败","output":"ValueError: unmatched layer","outputBytes":27}}
+{"seq":5,"at":"2026-10-11T09:00:01.250Z","relMs":1250,"origin":{"chatId":"chat-demo","projectId":"proj-demo","turnId":"turn-1","eventRevision":5},"event":{"type":"text","text":"工具失败，汇报问题。"}}
+{"seq":6,"at":"2026-10-11T09:00:01.500Z","relMs":1500,"origin":{"chatId":"chat-demo","projectId":"proj-demo","turnId":"turn-1","eventRevision":6},"event":{"type":"done","result":{"status":"success"}}}

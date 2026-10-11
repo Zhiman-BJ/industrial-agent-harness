@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "recordingId": "rec-missing-asset",
+  "createdAt": "2026-10-11T10:00:00.000Z",
+  "source": {
+    "kind": "chat-recording",
+    "capturedVia": "taskservice-presentation-events"
+  },
+  "chat": {
+    "chatId": "chat-demo",
+    "projectId": "proj-demo",
+    "displayName": null,
+    "initialSnapshot": {
+      "included": false,
+      "turns": [],
+      "note": "Turns before recording start are summarized here; their ordering was not recorded."
+    }
+  },
+  "status": "complete",
+  "outcome": "success",
+  "events": {
+    "file": "events.jsonl",
+    "count": 2,
+    "firstSeq": 1,
+    "lastSeq": 2
+  },
+  "assets": [
+    {
+      "id": "lost-image",
+      "type": "image",
+      "relativePath": "assets/lost.png",
+      "mediaType": "image/png",
+      "bytes": 0,
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "status": "missing",
+      "source": null
+    }
+  ],
+  "limits": {
+    "maxEvents": 50000,
+    "maxEventBytes": 524288,
+    "maxAssetsBytes": 268435456,
+    "maxTotalBytes": 536870912
+  },
+  "redaction": {
+    "applied": false,
+    "mode": "original",
+    "rulesVersion": null,
+    "reviewed": "unreviewed",
+    "reviewNote": null
+  },
+  "completedAt": "2026-10-11T10:00:00.750Z",
+  "durationMs": 750
+}
