@@ -240,8 +240,18 @@ function validateBundle(directory) {
     let stat = null;
     try {
       stat = fs.statSync(assetPath);
-      if (fs.realpathSync(assetPath) !== path.resolve(assetPath))
-        errors.push(fail('asset:symlink', `asset ${asset.id}: symbolic links are not allowed`));
+      // A symlinked segment could redirect outside the bundle, but comparing
+      // realpath against resolve would also fire for a legitimately symlinked
+      // bundle root (macOS /var -> /private/var). Check each path segment
+      // under the bundle itself with lstat instead.
+      let segment = path.resolve(directory);
+      for (const part of asset.relativePath.split('/')) {
+        segment = path.join(segment, part);
+        if (fs.lstatSync(segment).isSymbolicLink()) {
+          errors.push(fail('asset:symlink', `asset ${asset.id}: symbolic links are not allowed`));
+          break;
+        }
+      }
     } catch {
       errors.push(fail('asset:absent', `asset ${asset.id}: marked present but file is missing`));
       continue;

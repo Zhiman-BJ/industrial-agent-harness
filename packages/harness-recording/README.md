@@ -23,10 +23,22 @@ can be copied between machines with no access to the original project.
   for replay (#105). Crashed recordings (status `recording`) load as explicit
   interrupted evidence; structural corruption throws `RecordingError` with a
   stable code; missing assets surface as gaps, never silent holes.
+- **Redaction** (`src/redact.cjs`): deterministic text rules for demo copies —
+  secret-sounding keys lose their values (including inside JSON-encoded tool
+  arguments), home paths drop the username, credential-carrying URLs, bearer
+  tokens, common API-key literals, and private endpoints are masked, plus
+  caller-selected literals. It makes no claim to recognize all sensitive
+  content; that is what the human review step is for.
+- **Demo export** (`src/demo-export.cjs`): `exportDemoBundle` copies an
+  original bundle into a separate desensitized demo directory (the original is
+  opened read-only and never modified), including only assets a human has
+  explicitly cleared — everything else stays out and surfaces as an explicit
+  missing-asset gap. `markDemoReview` records the review verdict on the demo
+  manifest (`approved` requires `redaction.applied`). Every export and review
+  update must re-pass bundle validation.
 
 ## Not in this package (yet)
 
-- Desensitization pipeline and demo-copy export (tracked by #104, next PR).
 - Any composition into apps/desktop or the CLI — that wiring belongs to the
   internal extension surface defined by #102.
 - Archive (zip) import — bundles are directories for now; if compression is
