@@ -1000,20 +1000,16 @@ export function App() {
     }
   }
   async function setProjectDomain(id: string, domain: string) {
-    try {
-      const bindings = await window.viewerHost!.setProjectDomain(id, domain);
-      if (activeProject?.domain !== domain) resetWorkspace();
-      setProjects(bindings.projects);
-      setTask('');
-      setSubmittedTask('');
-      setBroker(undefined);
-      setCapabilityDetail(undefined);
-      setBrokerError('');
-      setAgentEvents([]);
-      await refreshChats(true);
-    } catch (reason) {
-      throw reason;
-    }
+    const bindings = await window.viewerHost!.setProjectDomain(id, domain);
+    if (activeProject?.domain !== domain) resetWorkspace();
+    setProjects(bindings.projects);
+    setTask('');
+    setSubmittedTask('');
+    setBroker(undefined);
+    setCapabilityDetail(undefined);
+    setBrokerError('');
+    setAgentEvents([]);
+    await refreshChats(true);
   }
   function resourcesChanged() {
     setBroker(undefined);

@@ -14,6 +14,11 @@ jobs:
           test -f README.md
           test -f README.zh-CN.md
           test -f AGENTS.md
+          test -f CLAUDE.md
+          test -f CONTRIBUTING.md
+          for dir in apps/desktop apps/cli packages/agent-kimi packages/viewer-builtin; do
+            test -f "$dir/AGENTS.md"
+          done
           test -f pnpm-workspace.yaml
           test -f LICENSE
           test -f THIRD_PARTY_NOTICES.md
@@ -34,6 +39,8 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Source formatting
         run: pnpm run format:check
+      - name: Static analysis
+        run: pnpm run lint
       - name: Architecture boundaries
         run: pnpm test:architecture
       - name: Domain Pack release contents and compatibility
