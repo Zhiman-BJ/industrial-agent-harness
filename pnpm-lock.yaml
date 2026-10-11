@@ -227,6 +227,8 @@ importers:
         specifier: workspace:*
         version: link:../domain-skills
 
+  packages/harness-docs: {}
+
   packages/harness-recording: {}
 
   packages/harness-replay: {}
