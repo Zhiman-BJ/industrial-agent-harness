@@ -20,6 +20,20 @@ simulation, restart and signed same-version repairs without changing Core's modu
 cache or retaining stale engineering acceptance. Source/build and runtime results
 do not constitute a newly signed/notarized Desktop installer or a public release.
 
+The final owner pin is `e7347c14bddc956ed0336570dea0af652ccec296`. Its managed
+Chip profile is also qualified on Linux x86-64 with Docker. The real canonical
+container test and signed installed-Pack test passed without skips, exercising
+RTL assertions/VCD, synthesis, an incorrect assertion, active cancellation and
+recovery, restart and same-version repair. The final runtime 1.0.1 identity is
+`industrial-chip-managed@sha256:80925a7398169e1404d3cf372f217e1743a2e105e986e11f5743bb5eda32d8f2`
+in the public `industrial-runtime-assets` Harbor project. The owner retains
+`chip-linux-r2-preparation.json`, `chip-linux-managed-native.txt` and
+`chip-linux-installed-native.txt` under `provenance/runtime-distribution-evidence/`.
+An earlier image had a cold-store preparation; the final-image run reused its
+base layers, so it is not a second cold-download measurement. This Linux result
+does not qualify PCB, CAD, Godot or the CUDA client on Linux. The Mac installation
+gate below retains its separately tested owner identity and sample scope.
+
 The container-backed native CI jobs need a macOS ARM64 machine with a running
 local Linux Docker daemon and working project-directory mounts. The existing
 GitHub-hosted ARM64 Mac runners do not provide that environment, and no repository

@@ -11,7 +11,7 @@ English · [简体中文](README.zh-CN.md)
 Industrial Agent Harness connects local projects, Kimi Code, professional software and engineering evidence through a desktop workbench and a headless CLI. Domain Packs provide the knowledge, tools and verification methods for each field.
 
 > [!IMPORTANT]
-> **Developer Preview.** The project is a Workbench MVP with a first persistent RTL verification path. APIs, Pack interfaces and runtime behavior are still evolving. This README describes the current source tree; published preview archives follow their own release notes.
+> **Developer Preview.** The project is a Workbench MVP with persistent, scoped engineering runtimes. APIs, Pack interfaces and runtime behavior are still evolving. This README describes the current source tree; published preview archives follow their own release notes.
 
 [Quick start](#quick-start) · [Domain Packs](#domain-packs) · [Viewers](#viewers) · [Documentation](#documentation) · [License](#license)
 
@@ -20,27 +20,27 @@ Industrial Agent Harness connects local projects, Kimi Code, professional softwa
 - **Work from a real project.** Bind a local directory to a domain, keep multiple chats, resume sessions and inspect execution logs.
 - **Load relevant knowledge and tools.** The Capability Broker progressively discloses Skills and tool schemas, then enforces the selected scope at execution.
 - **Use project guidance.** Discover `.skill/`, `.skills/` and standard project Skill directories, and load project `AGENTS.md` through Kimi's native mechanism. See the [compatibility audit](doc/kimi-native-compatibility-audit.md) for remaining limitations.
-- **Keep engineering evidence.** The RTL runtime records inputs, actions, artifacts, verification and checkpoints. Input changes invalidate current evidence; interrupted work remains visible after restart.
+- **Keep engineering evidence.** Domain runtimes record inputs, actions, artifacts, verification and checkpoints. Input changes invalidate current evidence; interrupted work remains visible after restart.
 - **Inspect artifacts in the workbench.** View waveforms, netlists, layouts, KiCad designs, Godot assets and ordinary project files.
 - **Automate and extend.** Use the CLI's JSON Lines events, the Node SDK or stdio JSON-RPC; build independent Domain Packs with complete Skill resources and installation integrity checks.
 
 Kimi Code owns the agent loop, conversation history and compaction. Harness supplies project context, scoped engineering tools and evidence. A completed agent turn or a successful process exit does not establish engineering acceptance.
 
-The first implemented industrial path is:
+The shared engineering execution path is:
 
 ```mermaid
 flowchart LR
     Project["Project + state"] --> Broker["Capability Broker"]
     Broker --> Agent["Kimi Code"]
     Agent --> Runtime["Scoped Domain Runtime"]
-    Runtime --> Tools["Chip Pack tools"]
+    Runtime --> Tools["Domain Pack tools"]
     Tools --> Evidence["Artifacts + verification"]
     Evidence --> State["Updated state + checkpoint"]
 ```
 
 ## Quick start
 
-Use **Node.js 24+** and **pnpm 11.1.3**. Kimi Code 2.1.1 is bundled; Agent execution needs model API settings. Chip MCP separately needs **uv** and **Python 3.13**. Protected agent execution is available on **macOS with Apple Silicon (arm64)** and **Linux x86-64 with bubblewrap**; see [preview scope](#preview-scope) before trying other platforms.
+Use **Node.js 24+** and **pnpm 11.1.3**. Kimi Code 2.1.1 is bundled; Agent execution needs model API settings. Installed Chip tools use the managed Harbor EDA image and need a running Docker daemon; no host Python or manual `uv sync` is required. Protected agent execution is available on **macOS with Apple Silicon (arm64)** and **Linux x86-64 with bubblewrap**; see [preview scope](#preview-scope) before trying other platforms.
 
 ```sh
 git clone https://github.com/Zhiman-BJ/industrial-agent-harness.git
@@ -78,9 +78,9 @@ Select the server's **API format** independently of the Kimi agent kernel. Offic
 
 The setup command verifies the bundled **Kimi Code 2.1.1** runtime; Desktop and CLI share the authenticated Server API integration. No separate Python Kimi installation is needed. See the [migration record](doc/kimi-code-migration.md) for history, diagnostics and compatibility. Layout viewing additionally needs KLayout Python: run `pnpm --filter @industrial-agent-harness/desktop setup:layout` or set `KLAYOUT_PYTHON`.
 
-### 3. Verify the real RTL path on macOS with Apple Silicon
+### 3. Maintainer native regression on macOS with Apple Silicon
 
-After setting up Kimi above, prepare Verilator, a C++ toolchain and the Chip Python environment:
+This historical full-suite source entry includes compatibility tests that need host Verilator, a C++ toolchain, uv and Python 3.13. It is a maintainer workflow, separate from ordinary installed Chip use, which runs the prebuilt EDA image. The current managed and installed tests additionally require Docker:
 
 ```sh
 brew install verilator
@@ -90,25 +90,27 @@ HARNESS_REQUIRE_CORE_NATIVE=1 pnpm run test:industrial-core
 
 The tests run real RTL simulation and check assertions, waveforms, failure handling, installed Pack integrity and restart recovery. Model responses come from a controlled local provider, so these tests do not spend model API credits or measure model capability. See the [industrial runtime guide](doc/p0-industrial-runtime.md) for real-task setup and evidence boundaries.
 
-For Linux x86-64 Chip users, the [one-command installer](releases/chip-linux-installer-v0.1.0-preview.3.md) prepares private runtimes, the protected Agent and the EDA image.
+The current managed Chip profile is qualified on macOS ARM64 and Linux x86-64 with Docker. The historical Linux [one-command installer](releases/chip-linux-installer-v0.1.0-preview.3.md) retains its own versioned runtime and installation instructions.
 
 Prefer a packaged preview? Browse [GitHub Releases](https://github.com/Zhiman-BJ/industrial-agent-harness/releases) and follow that version's instructions. [Headless installation](apps/cli/README.md#github-release-安装) and [domain CLI packages](doc/domain-cli-downloads.md) cover checksums and external dependencies. Existing archives do not acquire newer source features automatically.
 
-The 1.0.1-beta.1 local Apple Silicon desktop candidate lists all five domains. Chip, PCB, Godot and CAD are optional bundled Packs, including when no online catalog is configured; CUDA stays visible with its remote prerequisites and unavailable desktop-package status. Selecting PCB, Godot or CAD automatically prepares the pinned official KiCad 10.0.6, Godot 4.7.2 or FreeCAD 1.1.4 in the user Pack store. These managed tools need no shell commands or environment setup; Chip still needs its external Python, compiler and EDA/PDK environment. Core bundles Kimi Code 2.1.1; model API configuration remains separate. The installer shows size estimates, progress, cancellation and recovery, then each domain’s actual readiness. See [installation experience and release limits](doc/install-experience.md) and [CAD installation acceptance](doc/macos-cad-distribution.md). This local candidate is not a signed public release or a qualified Core OTA update.
+Current source consumes **Domain Packs 0.6.0**, pinned by the package manifests and lockfile. All five domains have normal macOS ARM64 bundles, including the CUDA remote client; Chip also has a qualified Linux x86-64 managed profile. Installing a Pack prepares its declared native applications and prebuilt tools from `harbor.pvg2.zhiman.tech`, verifies their immutable identities and reuses verified caches. Users do not build tool images, install complete GUI suites first or manually synchronize Python environments. Container tools require a running Docker daemon (Docker Desktop on Mac); CUDA requires the administrator's paired authenticated GPU services. Model API configuration remains separate. Installation progress, cancellation, repair and readiness are described in [installation experience](doc/install-experience.md). These source results do not establish a new signed public installer or Core OTA release.
+
+**Historical local candidate:** the 1.0.1-beta.1 Apple Silicon desktop candidate lists all five domains. Chip, PCB, Godot and CAD are optional bundled Packs, including when no online catalog is configured; CUDA stays visible with its remote prerequisites and unavailable desktop-package status. Selecting PCB, Godot or CAD automatically prepares the pinned official KiCad 10.0.6, Godot 4.7.2 or FreeCAD 1.1.4 in the user Pack store. These managed tools need no shell commands or environment setup; Chip still needs its external Python, compiler and EDA/PDK environment. Core bundles Kimi Code 2.1.1; model API configuration remains separate. The installer shows size estimates, progress, cancellation and recovery, then each domain’s actual readiness. See [installation experience and release limits](doc/install-experience.md) and [CAD installation acceptance](doc/macos-cad-distribution.md). This local candidate is not a signed public release or a qualified Core OTA update.
 
 ## Domain Packs
 
-| Domain                                                                                                                          | Available in this preview                                                                                                                                     | Dependencies and limits                                                                                                                                         |
-| ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [Chip](https://github.com/Zhiman-BJ/industrial-domain-packs/tree/b9759342cace66df0be0c4559b7c24fb28ea07d9/packs/chip/README.md) | EDA knowledge and tool registration; a persistent, declared RTL verification path; waveform, netlist and layout viewers                                       | Python and Verilator for the Core path; other EDA flows need their own tools, images or PDKs. Broader EDA execution still needs Runtime integration.            |
-| [CUDA](doc/cuda-domain-pack.md)                                                                                                 | Two remote Compiler/Evaluator MCP Servers, kernel optimization Skill and canonical native evidence                                                            | Developer configuration with both authenticated endpoints; fixed RTX 4090 AXPBY scope; private native workers remain external. No advertised desktop bundle.    |
-| [PCB](doc/pcb-godot-runtime.md)                                                                                                 | Public typed rectangular board/footprint edits, native DRC and independent task verification; KiCad viewers                                                   | macOS Apple Silicon; packaged Desktop prepares official KiCad 10.0.6 and its Python automatically. Bounded mechanical layout, no electrical/manufacturing signoff or private actor dependency.    |
-| [Godot](doc/pcb-godot-runtime.md)                                                                                               | Typed scene transforms/BoxMesh edits, native import/readback/frame verification; source and Web Export viewers                                                | macOS Apple Silicon; packaged Desktop prepares Godot 4.7.2 automatically. Explicit structural properties, no unrestricted gameplay QA; Web Export keeps separate dependencies. |
-| [CAD · FreeCAD](doc/freecad-domain-pack.md)                                                                                     | Parametric sketches, pads, holes, boolean solids and versioned parameter/outline edits; FCStd/STEP/STL export, independent geometry readback and OCCT viewing | Packaged Desktop prepares FreeCAD 1.1.4 automatically on macOS arm64. Bounded native feature types; no mechanical strength or manufacturing acceptance.         |
+| Domain | Current 0.6.0 capability | Dependencies and qualified scope |
+| --- | --- | --- |
+| [Chip](https://github.com/Zhiman-BJ/industrial-domain-packs/tree/main/packs/chip) | Managed EDA operations, RTL assertions and VCD, Yosys synthesis checks, waveform/netlist/layout viewing | macOS ARM64 and Linux x86-64 with Docker; prebuilt Harbor image includes Python and tools. Physical flows still need project-owned PDK/technology inputs. Synthesis is not equivalence, LVS or physical signoff. |
+| [PCB](doc/pcb-godot-runtime.md) | Reused PCBbench design tools and Skills for user-owned schematic/board creation, repair, components, checks and exports; ordinary projects need no benchmark seed or scoring | macOS ARM64; Harbor supplies KiCad 10.0.6 and the prebuilt gateway, with Docker required. Actual ERC/DRC and applicable analyses remain separate evidence; no blanket electrical, compliance or manufacturing signoff. |
+| [CAD · FreeCAD / DXF](doc/freecad-domain-pack.md) | Parametric FreeCAD creation/edits, FCStd/STEP/STL export and geometry readback; bounded DXF creation/inspection/verification | macOS ARM64; Harbor supplies FreeCAD 1.1.4 and the prebuilt ezdxf Docker runtime. AutoCAD is optional. DXF covers declared 2D geometry; no general DWG/PDF conversion, strength or manufacturing acceptance. |
+| [Godot](doc/pcb-godot-runtime.md) | Typed scene transforms/BoxMesh edits, native import/readback/frame verification; source and Web Export viewers | macOS ARM64; Harbor supplies Godot 4.7.2. Qualification covers explicit structural properties, not unrestricted gameplay QA; Web Export retains separate dependencies. |
+| [CUDA](doc/cuda-domain-pack.md) | Installable macOS remote client for user-owned kernel projects, with protected project reference/measurement binding and real compiler/evaluator evidence | Administrator-provided paired authenticated Compiler/Evaluator services; exercised on RTX 4090. The pinned worker image stays in private Harbor under administrator credentials. No local CUDA toolkit/GPU or registry credentials are needed by the client; other GPUs are unqualified. |
 
-Managed runtime assets can also pin prebuilt OCI containers and download native archives from the Harbor mirror. The shared installer verifies immutable image/config identities and reuses its cache; container tasks require Docker Desktop to be installed and running. Packs declare their source/evidence boundary, while the shared backend owns persistent tool sessions, cancellation and cleanup. This host profile is currently qualified on macOS Apple Silicon.
+The shared installer verifies native archive hashes and container manifest/config/platform identities. Packs declare source/evidence boundaries; the shared backend owns persistent tool sessions, cancellation and cleanup. Platform qualification is specific to each row, not implied by installing a source Pack.
 
-Build your own Pack with the [Pack authoring tutorial](doc/pack-authoring.md). Domain code lives in Packs; the shared Core and Broker remain independent of concrete domains. Registration, a rendered preview or a successful native smoke check does not imply a complete industrial workflow. The [PCB/Godot native profiles](doc/pcb-godot-runtime.md) close the shared Runtime gap for their explicit first tasks; broader engineering support remains outside those profiles. The [earlier release audit](doc/release-readiness-20261007.md) is historical evidence.
+Build your own Pack with the [Pack authoring tutorial](doc/pack-authoring.md). Domain code lives in Packs; the shared Core and Broker remain independent of concrete domains. Registration, a rendered preview or a successful native smoke check does not imply a complete industrial workflow. The [PCB/Godot native profiles](doc/pcb-godot-runtime.md) and owner qualification records describe exercised tasks; broader engineering support remains outside those records. The [earlier release audit](doc/release-readiness-20261007.md) is historical evidence.
 
 
 ### Task results
@@ -164,14 +166,14 @@ pnpm run test:release
 pnpm run format:check
 ```
 
-The [Harness CI gate](.github/workflows/ci.yml) runs shared-package and packaged CLI regressions on Linux x64/arm64, macOS arm64 and Windows x64, desktop installation on macOS/Windows, and the industrial Core path on Apple Silicon and Linux x86-64, including the actual installed Chip CLI. [CI regression coverage](doc/ci-regression.md) documents dependencies, retained evidence and explicit coverage gaps; a skipped test does not establish support. Report security issues through the process in [SECURITY.md](SECURITY.md).
+The [Harness CI gate](.github/workflows/ci.yml) runs shared-package and packaged CLI regressions on Linux x64/arm64, macOS arm64 and Windows x64, desktop installation on macOS/Windows, and declares industrial Core acceptance lanes for Apple Silicon and Linux x86-64, including the actual installed Chip CLI. The container-backed Mac lanes currently require a suitable runner with local Docker; local acceptance does not mean those GitHub-hosted lanes are passing. [CI regression coverage](doc/ci-regression.md) documents dependencies, retained evidence and explicit coverage gaps; a skipped test does not establish support. Report security issues through the process in [SECURITY.md](SECURITY.md).
 
 ## Preview scope
 
 - **Platforms:** desktop build and first-run CI targets are macOS with Apple Silicon (arm64) and Windows x64. Intel Mac is temporarily unsupported; no Intel installers or Pack catalog targets will be published. Support can resume after installation and runtime validation on an Intel test machine. Signed installers and real upgrades still need separate acceptance.
 - **Protected execution:** macOS uses Seatbelt; Linux x86-64 uses bubblewrap/seccomp and requires unprivileged user namespaces. Windows protected Agent execution remains unavailable.
 - **Tool compatibility:** legacy domain MCP writes remain blocked; all domains have approved workspace edits and declared task execution. Registered external MCP uses audited host Runtime calls; the separate Computer Use plugin remains unavailable.
-- **Engineering acceptance:** the first Core path verifies declared RTL/testbench assertions and evidence. Coverage sufficiency, physical signoff and other domains' complete workflows are pending.
+- **Engineering acceptance:** declared domain profiles verify specific native checks and retain failed or missing evidence. RTL coverage sufficiency, physical signoff and complete industrial workflows are not implied.
 - **Packaging and evaluation:** local unsigned desktop checks and controlled model fixtures are documented. Signed releases, end-to-end cross-platform qualification and formal paid model comparisons remain separate work.
 
 See the [validation record](doc/harness-quality-three-tracks.md) for exact tested versions and results.
@@ -188,8 +190,8 @@ Workspace approvals show file diffs, declared commands and external arguments. `
 
 ### Built-in remote execution (internal trial)
 
-Projects can choose this computer or Zhiman Remote, with explicit file upload review and compact job status. Desktop and CLI share the Remote Runtime; qualified domain tools execute in the existing fixed CPU sandbox pool. Public endpoint and sign-in defaults remain unset. The macOS Apple Silicon client → H200 Linux RTL path is verified; public access and other remote domains are pending. See [remote execution](doc/remote-execution.md).
+Projects can choose this computer or Zhiman Remote, with explicit file upload review and compact job status. Desktop and CLI share the Remote Runtime; qualified domain tools execute in the existing fixed CPU sandbox pool. Public endpoint and sign-in defaults remain unset. The macOS Apple Silicon client → H200 Linux RTL path is verified; public access and additional CPU-pool domains are pending. CUDA uses the separately configured paired GPU services described above. See [remote execution](doc/remote-execution.md).
 
 CLI and Desktop now share the Harness task application; domain metadata, Skills and implementations come from one immutable Domain Packs release. See [consumer migration and validation](doc/shared-task-and-pack-consumption.md).
 
-PCB and Godot professional Runtime Actions now have bounded macOS Apple Silicon native profiles, maintained in the pinned Domain Packs package. The current 1.0.1-beta.1 source pins Domain Packs 0.5.2 at `b9759342cace66df0be0c4559b7c24fb28ea07d9` and prepares the declared official native applications through the generic Pack Manager. See [profile, dependencies and acceptance](doc/pcb-godot-runtime.md); other platforms and remote execution remain unqualified.
+The current source pins Domain Packs 0.6.0 by immutable commit and prepares the declared Harbor assets through the generic Pack Manager. macOS ARM64 qualification covers the declared CAD, PCB and Godot profiles and the CUDA remote client; managed Chip also passed Linux x86-64 installation and native checks. See [installation evidence](doc/install-experience.md) and each domain's qualification limits. Historical preview archives retain their original dependencies and scope.
