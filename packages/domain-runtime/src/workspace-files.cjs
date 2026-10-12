@@ -249,7 +249,7 @@ function applyFiles(projectDir, changes, protectedPaths = []) {
   // Validate the entire batch and all preconditions before the first write.
   const plans = changes.map(change => {
     const file = projectFile(projectDir, change.path, protectedPaths);
-    const before = fs.existsSync(file) ? readBytes(file) : null;
+    const before = fs.existsSync(file) ? readBytes(file, 16 * 1024 * 1024) : null;
     if ((before === null ? null : hash(before)) !== change.expectedSha256)
       throw Error('File precondition is stale: ' + change.path);
     if (change.content === null && before === null) throw Error('Cannot delete a missing file.');
@@ -265,7 +265,7 @@ function applyFiles(projectDir, changes, protectedPaths = []) {
   try {
     for (const plan of plans) {
       projectFile(projectDir, plan.path, protectedPaths);
-      const current = fs.existsSync(plan.file) ? readBytes(plan.file) : null;
+      const current = fs.existsSync(plan.file) ? readBytes(plan.file, 16 * 1024 * 1024) : null;
       if ((current === null ? null : hash(current)) !== plan.expectedSha256)
         throw Error('File changed before applying the batch: ' + plan.path);
       if (plan.content === null) fs.unlinkSync(plan.file);
@@ -296,7 +296,7 @@ function applyFiles(projectDir, changes, protectedPaths = []) {
           fs.closeSync(fd);
           opened = false;
           projectFile(projectDir, plan.path, protectedPaths);
-          if (plan.before !== null && hash(fs.readFileSync(plan.file)) !== plan.expectedSha256)
+          if (plan.before !== null && hash(readBytes(plan.file, 16 * 1024 * 1024)) !== plan.expectedSha256)
             throw Error('File changed before writing: ' + plan.path);
           if (plan.before === null) fs.linkSync(temporary, plan.file);
           else fs.renameSync(temporary, plan.file);
@@ -311,7 +311,7 @@ function applyFiles(projectDir, changes, protectedPaths = []) {
   } catch (error) {
     for (const plan of applied.reverse()) {
       const file = projectFile(projectDir, plan.path, protectedPaths);
-      const current = fs.existsSync(file) ? readBytes(file) : null;
+      const current = fs.existsSync(file) ? readBytes(file, 16 * 1024 * 1024) : null;
       const expected = plan.content === null ? null : hash(Buffer.from(plan.content));
       if ((current === null ? null : hash(current)) !== expected) continue;
       if (plan.before === null) fs.unlinkSync(file);

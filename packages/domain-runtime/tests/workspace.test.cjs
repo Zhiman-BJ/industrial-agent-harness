@@ -294,7 +294,8 @@ test('input mutations make accepted evidence stale rather than replacing it with
 });
 test('partial staging failures preserve original files and rollback prior edits in the batch', async t => {
   const { project, execute, runtime } = open(t);
-  fs.writeFileSync(path.join(project, 'first'), 'one', { mode: 0o600 });
+  const large = 'one'.repeat(200000);
+  fs.writeFileSync(path.join(project, 'first'), large, { mode: 0o600 });
   fs.writeFileSync(path.join(project, 'second'), 'two', { mode: 0o600 });
   const original = fs.writeFileSync;
   for (const failAt of [1, 2]) {
@@ -310,7 +311,7 @@ test('partial staging failures preserve original files and rollback prior edits 
     try {
       failed = await execute('project.files.apply', {
         changes: [
-          { path: 'first', content: 'new first', expectedSha256: hash(Buffer.from('one')) },
+          { path: 'first', content: 'new first'.repeat(100000), expectedSha256: hash(Buffer.from(large)) },
           { path: 'second', content: 'new second', expectedSha256: hash(Buffer.from('two')) },
         ],
       });
@@ -319,10 +320,10 @@ test('partial staging failures preserve original files and rollback prior edits 
     }
     assert.equal(failed.action.status, 'failed');
     assert.equal(failed.verification.status, 'insufficient_evidence');
-    assert.equal(fs.readFileSync(path.join(project, 'first'), 'utf8'), 'one');
+    assert.equal(fs.readFileSync(path.join(project, 'first'), 'utf8'), large);
     assert.equal(fs.readFileSync(path.join(project, 'second'), 'utf8'), 'two');
     assert.ok(!fs.readdirSync(project).some(name => name.startsWith('.harness-edit-')));
-    assert.equal((await runtime.inspect()).inputHashes.first, hash(Buffer.from('one')));
+    assert.equal((await runtime.inspect()).inputHashes.first, hash(Buffer.from(large)));
   }
 });
 test('symlink, hard-link and reserved output-kind inputs are refused', async t => {
@@ -374,4 +375,16 @@ test('Pack input boundary ignores changing derived evidence and retains design d
   fs.writeFileSync(path.join(root, '.pcb/libraries/custom.lib'), 'changed design dependency');
   assert.notDeepEqual(await indexer.index(root), first);
   await assert.rejects(createInputIndexer({ ignore: ['../escape'] }).index(root));
+});
+
+test('protected file batches can replace and delete existing native source files above 256KiB', t => {
+  const { project } = open(t);
+  const { applyFiles } = require('../src/workspace-files.cjs');
+  const before = 'a'.repeat(1024 * 1024), after = 'b'.repeat(2 * 1024 * 1024);
+  fs.writeFileSync(path.join(project, 'large.dxf'), before);
+  applyFiles(project, [{ path: 'large.dxf', content: after, expectedSha256: hash(Buffer.from(before)) }]);
+  assert.equal(fs.readFileSync(path.join(project, 'large.dxf'), 'utf8'), after);
+  assert.throws(() => applyFiles(project, [{ path: 'large.dxf', content: 'stale', expectedSha256: hash(Buffer.from(before)) }]), /stale/);
+  applyFiles(project, [{ path: 'large.dxf', content: null, expectedSha256: hash(Buffer.from(after)) }]);
+  assert.equal(fs.existsSync(path.join(project, 'large.dxf')), false);
 });

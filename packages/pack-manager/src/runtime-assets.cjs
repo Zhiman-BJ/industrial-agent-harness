@@ -450,7 +450,8 @@ class RuntimeAssetManager {
         {
           signal,
           cwd: profile,
-          timeout: 30000,
+          // First macOS launch can spend over 30s in system signature checks.
+          timeout: 120000,
           env: {
             PATH: '/usr/bin:/bin',
             HOME: profile,
