@@ -326,7 +326,18 @@ test('public built-in Pack releases retain owned resources and keep the public P
   );
   assert.equal(result.status, 0, result.stderr);
   const catalog = JSON.parse(fs.readFileSync(path.join(output, 'catalog.unsigned.json')));
-  assert.deepEqual(catalog.packs.map(pack => pack.domain).sort(), ['cad', 'chip', 'godot', 'pcb']);
+  const targetPlatforms = environment.HARNESS_PACK_PLATFORMS.split(',');
+  const owner = require('@zhiman-bj/industrial-domain-packs');
+  const qualifiedDomains = owner
+    .consumerMetadata()
+    .domains.filter(
+      domain =>
+        !domain.qualifiedBundlePlatforms ||
+        targetPlatforms.some(platform => domain.qualifiedBundlePlatforms.includes(platform)),
+    )
+    .map(domain => domain.id)
+    .sort();
+  assert.deepEqual(catalog.packs.map(pack => pack.domain).sort(), qualifiedDomains);
   for (const item of catalog.packs) {
     const bytes = fs.readFileSync(path.join(output, item.url));
     assert.equal(digest(bytes), item.sha256);
@@ -340,17 +351,19 @@ test('public built-in Pack releases retain owned resources and keep the public P
       assert.equal(skill.external, undefined);
       assert.ok(files.some(file => file.path === 'domain-packs/pcb/runtime/index.cjs'));
       assert.ok(files.some(file => file.path === 'domain-packs/pcb/runtime/verifier.cjs'));
-      // The vendored PCB-bench surface ships with the pack: skill references
-      // and assets, the actor sources, the pinned snapshot and the gateway.
+      // The product Skill is disclosed to the user; attributed upstream
+      // references/assets remain available to the runtime in its source tree.
+      assert.ok(files.some(file => file.path === skill.file));
+      assert.ok(files.some(file => file.path === 'domain-packs/pcb/runtime/product.cjs'));
       assert.ok(
-        files.some(file => file.path === 'skills/pcb.design.e2e/references/tools.md') ||
-          files.some(file => file.path === 'skills/pcb-design-e2e/references/tools.md'),
+        files.some(
+          file => file.path === 'domain-packs/pcb/skills/pcb-design-e2e/references/tools.md',
+        ),
       );
       assert.ok(
         files.some(
           file =>
-            file.path === 'skills/pcb.design.e2e/assets/constraints.example.yaml' ||
-            file.path === 'skills/pcb-design-e2e/assets/constraints.example.yaml',
+            file.path === 'domain-packs/pcb/skills/pcb-design-e2e/assets/constraints.example.yaml',
         ),
       );
       assert.ok(files.some(file => file.path.startsWith('domain-packs/pcb/pcb-agent/tools/')));

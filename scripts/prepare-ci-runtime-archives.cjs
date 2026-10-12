@@ -4,6 +4,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { Readable } = require('node:stream');
 const { pipeline } = require('node:stream/promises');
+const { Transfer } = require('../packages/pack-manager/src/transfer.cjs');
 
 function archiveDeclarations(directory) {
   const { packSourceDirectory } = require('../packages/domain-skills/src/index.cjs');
@@ -14,10 +15,14 @@ function archiveDeclarations(directory) {
     ['pcb', 'pcb-pack'],
     ['godot', 'godot-pack'],
   ].map(([domain, id]) => {
-    const assets = packs.find(pack => pack.id === id)?.runtimeAssets;
+    const assets = packs
+      .find(pack => pack.id === id)
+      ?.runtimeAssets?.filter(asset => ['macos-app-dmg', 'macos-app-zip'].includes(asset.type));
     if (assets?.length !== 1) throw Error(`Expected one declared CI runtime archive: ${id}`);
     const asset = assets[0];
-    let archive = path.basename(new URL(asset.url).pathname);
+    // The mirror is addressed by digest; retain the vendor archive filename
+    // for existing native setup caches without downloading from that vendor.
+    let archive = path.basename(new URL(asset.upstreamUrl || asset.url).pathname);
     if (domain !== 'cad') {
       const lock = JSON.parse(
         fs.readFileSync(path.join(packSourceDirectory(id), 'runtime/native-dependency.json')),
@@ -48,7 +53,7 @@ async function verifyArchive(asset, file) {
 
 // Prepare bytes only. Tests still use fresh stores and the production installer
 // repeats SHA-256, extraction, signature, executable and version verification.
-async function prepareArchives(assets, { download = false, fetchImpl = global.fetch } = {}) {
+async function prepareArchives(assets, { download = false, fetchImpl } = {}) {
   const archives = {};
   for (const asset of assets) {
     if (!fs.existsSync(asset.file)) {
@@ -58,13 +63,24 @@ async function prepareArchives(assets, { download = false, fetchImpl = global.fe
       fs.mkdirSync(path.dirname(asset.file), { recursive: true });
       const temporary = `${asset.file}.${crypto.randomUUID()}.partial`;
       try {
-        const response = await fetchImpl(asset.url);
-        if (!response.ok)
-          throw Error(`Official runtime download failed: ${asset.id} (${response.status})`);
-        await pipeline(
-          Readable.fromWeb(response.body),
-          fs.createWriteStream(temporary, { flags: 'wx' }),
-        );
+        await new Transfer().run(async transfer => {
+          const response = fetchImpl
+            ? await fetchImpl(asset.url)
+            : await transfer.response(asset.url);
+          if (!response.ok || !response.body)
+            throw Error(`Official runtime download failed: ${asset.id} (${response.status})`);
+          const chunks = async function* () {
+            for await (const chunk of response.body) {
+              transfer.touch();
+              yield chunk;
+            }
+          };
+          await pipeline(
+            Readable.from(chunks()),
+            fs.createWriteStream(temporary, { flags: 'wx' }),
+            { signal: transfer.signal },
+          );
+        });
         await verifyArchive(asset, temporary);
         fs.renameSync(temporary, asset.file);
       } finally {

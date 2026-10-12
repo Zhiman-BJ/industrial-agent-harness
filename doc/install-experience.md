@@ -1,5 +1,27 @@
 # Installation experience
 
+## Current managed source (2026-10-12)
+
+The current source consumes Domain Packs 0.6.0 at the exact commit recorded in the
+root and adapter package manifests and lockfile. On the qualified macOS Apple
+Silicon client, all five domains enter normal Pack bundles. PCB, CAD and Godot
+native applications, plus the prebuilt PCB, Chip and DXF environments, come from
+the project Harbor with immutable identities. Upstream addresses are provenance,
+not automatic fallback download locations. Docker is an explicit prerequisite for
+container tools; users do not create Python environments or build runtime images.
+CUDA requires an administrator-configured authenticated remote GPU service and
+project binding; its restricted worker image remains in a private Harbor project.
+
+The real generic installer prepared the public assets and checked their identity
+and readiness. Native task qualification and limits are recorded by the pinned
+owner in `docs/managed-domain-runtime-validation.md`, `docs/pcb-product-validation.md`
+and `packs/cuda/QUALIFICATION.md`. The installed Chip Pack additionally passed real
+simulation, restart and signed same-version repairs without changing Core's module
+cache or retaining stale engineering acceptance. Source/build and runtime results
+do not constitute a newly signed/notarized Desktop installer or a public release.
+
+## Historical installer candidate (0.5.1)
+
 The 1.0.1-beta.1 local desktop candidate addresses issue #60 on macOS Apple Silicon. It consumes Domain Packs 0.5.1 at immutable commit `09c39193e199de61941882f0e92f10ed7789dbd2`; the lockfile binds the archive integrity. Domain dependencies remain maintained by the Pack owner. The Core contains the generic installer, catalog, readiness descriptions and a small durable installation status record shared by CLI and Desktop.
 
 ## User flow

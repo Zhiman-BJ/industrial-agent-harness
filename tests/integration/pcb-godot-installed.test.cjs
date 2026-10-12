@@ -166,10 +166,15 @@ async function install(t, root) {
       onProgress: event => progress.push(event),
     });
     assert.ok(manager.runtimeAssets.status(assets).every(asset => asset.ready));
-    for (const executable of Object.values(manager.runtimeAssets.environment(assets)))
-      assert.ok(
-        fs.realpathSync(executable).startsWith(fs.realpathSync(manager.directory) + path.sep),
-      );
+    for (const asset of assets) {
+      const environment = manager.runtimeAssets.environment([asset]);
+      if (asset.type === 'docker-image') assert.equal(environment[asset.environment], asset.image);
+      else
+        for (const executable of Object.values(environment))
+          assert.ok(
+            fs.realpathSync(executable).startsWith(fs.realpathSync(manager.directory) + path.sep),
+          );
+    }
   }
   fs.writeFileSync(
     path.join(root, 'managed-installation.json'),

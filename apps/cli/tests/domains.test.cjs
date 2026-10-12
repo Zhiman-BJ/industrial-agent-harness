@@ -305,6 +305,8 @@ test('a platform-only Pack is omitted from other platform catalogs', t => {
   );
   assert.equal(built.status, 0, built.stderr);
   const catalog = JSON.parse(fs.readFileSync(path.join(output, 'catalog.unsigned.json'), 'utf8'));
-  assert.deepEqual(catalog.packs.map(item => item.domain).sort(), ['chip']);
+  // The new managed products are qualified as Apple Silicon clients. A Linux
+  // container image does not by itself qualify the Linux desktop/CLI package.
+  assert.deepEqual(catalog.packs.map(item => item.domain).sort(), []);
   assert.ok(catalog.packs.every(item => item.platforms.length > 0));
 });

@@ -29,18 +29,29 @@ test('a server is withheld unless every declared tool is in scope and it is enab
   assert.deepEqual(JSON.parse(fs.readFileSync(file)), { mcpServers: {} });
 });
 
-test('registered gateway intersects the current scope while direct providers retain all-or-nothing disclosure', () => {
+test('a gateway intersects scope while installed Runtime providers stay behind canonical execution', () => {
   const { listMcpServers } = require('./index.cjs');
-  const providers = listMcpServers('chip');
-  assert.equal(providers.length, 1);
-  assert.equal(providers[0].id, 'chip-pack.eda');
-  assert.equal(providers[0].toolIds.length, 25);
-  assert.deepEqual(listMcpServers('pcb'), []);
-  assert.deepEqual(listMcpServers('godot'), []);
-  assert.deepEqual(selectMcpServers({ domain: 'pcb', tools: ['pcb.bench.add_track'] }), []);
-  const scope = { domain: 'chip', tools: ['eda.harness.get_server_info'] };
-  assert.deepEqual(selectMcpServers(scope)[0].allowedToolIds, scope.tools);
-  assert.deepEqual(selectMcpServers(scope, ['chip-pack.eda']), []);
-  assert.deepEqual(selectMcpServers({ ...scope, domain: 'pcb' }), []);
-  assert.deepEqual(selectMcpServers({ domain: 'chip', tools: ['unknown'] }), []);
+  const { loadRegistry } = require('@industrial-agent-harness/domain-skills');
+  for (const pack of loadRegistry().providerPacks.filter(
+    pack => pack.provider.transport === 'runtime',
+  )) {
+    assert.ok(!listMcpServers(pack.domain).some(provider => provider.id === pack.provider.id));
+    assert.ok(
+      !selectMcpServers({
+        domain: pack.domain,
+        tools: pack.provider.tools.map(tool => tool.id),
+      }).some(provider => provider.id === pack.provider.id),
+    );
+  }
+  const gateway = {
+    id: 'fixture.gateway',
+    domain: 'fixture',
+    transport: 'gateway',
+    toolIds: ['fixture.inspect', 'fixture.edit'],
+  };
+  const scope = { domain: 'fixture', tools: ['fixture.inspect'] };
+  assert.deepEqual(selectMcpServers(scope, [], [gateway])[0].allowedToolIds, scope.tools);
+  assert.deepEqual(selectMcpServers(scope, [gateway.id], [gateway]), []);
+  assert.deepEqual(selectMcpServers({ ...scope, domain: 'other' }, [], [gateway]), []);
+  assert.deepEqual(selectMcpServers({ domain: 'fixture', tools: ['unknown'] }, [], [gateway]), []);
 });

@@ -33,19 +33,27 @@ const safe = value =>
   typeof value === 'string' &&
   /^[A-Za-z0-9._ -]+(?:\/[A-Za-z0-9._ -]+)*$/.test(value) &&
   !value.split('/').some(part => part === '.' || part === '..');
+const runtimePlatforms = asset =>
+  asset.type === 'docker-image' ? asset.platforms || [asset.platform] : [asset.platform];
 function validateRuntimeAssets(assets = []) {
   if (!Array.isArray(assets) || assets.length > 8) throw Error('Invalid runtime assets.');
   const ids = new Set(),
     variables = new Set();
   for (const asset of assets) {
     if (asset?.type === 'docker-image') {
+      const platforms = runtimePlatforms(asset);
       if (
         !/^[a-z][a-z0-9-]{0,63}$/.test(asset.id || '') ||
         ids.has(asset.id) ||
         !/^[0-9]+\.[0-9]+\.[0-9]+(?:-[a-z0-9.-]+)?$/.test(asset.version || '') ||
         typeof asset.label !== 'string' ||
         !asset.label ||
-        asset.platform !== 'darwin-arm64' ||
+        !Array.isArray(platforms) ||
+        !platforms.length ||
+        platforms.length > 2 ||
+        new Set(platforms).size !== platforms.length ||
+        !platforms.includes(asset.platform) ||
+        platforms.some(platform => !['darwin-arm64', 'linux-x64'].includes(platform)) ||
         !/^[a-z0-9.-]+(?::[0-9]+)?\/[a-z0-9._/-]+@sha256:[a-f0-9]{64}$/.test(asset.image || '') ||
         !/^sha256:[a-f0-9]{64}$/.test(asset.imageId || '') ||
         asset.sha256 !== asset.imageId.slice(7) ||
@@ -373,7 +381,7 @@ class RuntimeAssetManager {
     validateRuntimeAssets(assets);
     return assets.map(asset => {
       try {
-        if (asset.platform !== this.platform)
+        if (!runtimePlatforms(asset).includes(this.platform))
           throw Error('Runtime does not support this platform.');
         const location = this.location(asset),
           receipt = JSON.parse(fs.readFileSync(path.join(location, 'receipt.json'), 'utf8'));
@@ -484,7 +492,7 @@ class RuntimeAssetManager {
       timeout: 15000,
     }).catch(error => {
       throw Error(
-        'Docker runtime is unavailable. Install and start Docker Desktop, then retry preparation. ' +
+        'Docker runtime is unavailable. Install and start Docker (Docker Desktop on macOS), then retry preparation. ' +
           error.message,
       );
     });
@@ -549,7 +557,7 @@ class RuntimeAssetManager {
       fs.writeFileSync(fd, JSON.stringify({ pid: process.pid }));
       for (const asset of assets) {
         signal?.throwIfAborted();
-        if (asset.platform !== this.platform)
+        if (!runtimePlatforms(asset).includes(this.platform))
           throw Error('Runtime does not support this platform.');
         const report = state => onProgress({ id: asset.id, label: asset.label, ...state });
         const target = this.location(asset);

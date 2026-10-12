@@ -38,28 +38,13 @@
       "scopeOnly": true,
       "expected": {
         "status": "scoped",
-        "capabilityIds": ["chip.eda.history"],
+        "capabilityIds": ["chip.eda.managed"],
         "skills": ["chip.eda.operate"],
         "tools": [
-          "eda.harness.get_server_info",
-          "eda.harness.check_environment",
-          "eda.harness.tool_capabilities",
-          "eda.harness.viewer_capabilities",
-          "eda.harness.preflight",
-          "eda.harness.inspect_project",
-          "eda.harness.get_operational_context",
-          "eda.harness.workspace_status",
-          "eda.harness.list_actions",
-          "eda.harness.get_run",
-          "eda.harness.get_metrics",
-          "eda.harness.get_diagnostics",
-          "eda.harness.get_artifacts",
-          "eda.harness.read_artifact",
-          "eda.harness.compare_states",
-          "eda.harness.get_tool_guide",
-          "eda.harness.checkout_state",
-          "eda.harness.create_goal",
-          "eda.harness.record_decision"
+          "chip.rtl.verify",
+          "chip.environment.check",
+          "chip.project.describe",
+          "chip.eda.execute"
         ],
         "mcpServers": []
       }

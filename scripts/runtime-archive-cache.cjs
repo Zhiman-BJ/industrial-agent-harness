@@ -9,6 +9,7 @@ function stageRuntimeArchiveCache(directory, assets, environment = process.env) 
   const target = path.join(directory, '.runtime-assets', 'cache');
   const used = [];
   for (const asset of assets) {
+    if (!['macos-app-dmg', 'macos-app-zip'].includes(asset.type)) continue;
     if (!sources[asset.id]) continue;
     const source = path.resolve(sources[asset.id]);
     if (!fs.statSync(source).isFile() || fs.statSync(source).size !== asset.size)

@@ -19,7 +19,7 @@ const root = path.resolve(__dirname, '../..');
 
 test(
   'a signed installed Chip Pack executes real Verilator without changing its verified inventory, then factory restart restores acceptance',
-  { timeout: 120000 },
+  { timeout: 20 * 60 * 1000 },
   async t => {
     const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'industrial-installed-chip-'));
     t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
@@ -56,6 +56,7 @@ test(
     const selected = (await manager.catalog('https://qualification.example/catalog.json')).packs[0];
     await manager.install(selected, {
       bytes: fs.readFileSync(path.join(output, path.basename(selected.url))),
+      prepareRuntime: true,
     });
     const installed = manager.scan();
     assert.deepEqual(installed.errors, []);
@@ -71,15 +72,8 @@ test(
     });
     const project = path.join(directory, 'project');
     fs.cpSync(path.join(__dirname, 'fixtures/industrial-rtl'), project, { recursive: true });
-    const environment = {
-      ...process.env,
-      INDUSTRIAL_HARNESS_EDA_PYTHON:
-        process.env.INDUSTRIAL_HARNESS_EDA_PYTHON ||
-        path.join(
-          require('../../packages/domain-skills/src/index.cjs').packSourceDirectory('chip-pack'),
-          'eda-harness/.venv/bin/python',
-        ),
-    };
+    const environment = { ...process.env };
+    delete environment.INDUSTRIAL_HARNESS_EDA_PYTHON;
     const open = () =>
       createProjectRuntime({
         projectDir: project,
@@ -100,7 +94,15 @@ test(
       { scope, approval: true },
     );
     assert.equal(result.verification.status, 'passed', JSON.stringify(result.action));
-    assert.match(result.action.toolVersion, /Verilator/);
+    const nativeReport = result.artifacts.find(
+      artifact => artifact.kind === 'report.eda.execution',
+    );
+    assert.ok(nativeReport, 'Managed execution must retain its native EDA report.');
+    const native = JSON.parse(bundle.runtime.readArtifact(nativeReport.id).content);
+    const verilator = native.toolIdentities['rtl.simulate'];
+    assert.match(verilator.version, /Verilator/);
+    assert.match(verilator.binary, /\/verilator$/);
+    assert.match(verilator.sha256, /^[a-f0-9]{64}$/);
     bundle.runtime.close();
     bundle = null;
     assert.deepEqual(manager.scan().errors, []);
@@ -136,6 +138,31 @@ test(
         path.join(runtimeDirectory, 'revision.cjs'),
         `module.exports = { stage: ${JSON.stringify(stage)} };\n`,
       );
+      const bundleFile = path.join(sourceDirectory, 'bundle.json');
+      const repairedBundle = JSON.parse(fs.readFileSync(bundleFile));
+      const repairedPack = repairedBundle.providerPacks.find(pack => pack.id === 'chip-pack');
+      const packDirectory = path.join(sourceDirectory, 'domain-packs/chip');
+      const resourceFiles = [];
+      const inventory = relative => {
+        const file = path.join(packDirectory, relative);
+        if (fs.statSync(file).isDirectory()) {
+          for (const name of fs.readdirSync(file).sort()) inventory(relative + '/' + name);
+        } else resourceFiles.push(relative);
+      };
+      repairedPack.provider.resourceRoots.forEach(inventory);
+      repairedPack.provider.sourceFiles = Object.fromEntries(
+        resourceFiles
+          .sort()
+          .map(relative => [relative, digest(fs.readFileSync(path.join(packDirectory, relative)))]),
+      );
+      repairedPack.provider.sourceSha256 = digest(
+        Buffer.from(JSON.stringify(repairedPack.provider.sourceFiles)),
+      );
+      fs.writeFileSync(
+        path.join(packDirectory, 'harness-pack.json'),
+        JSON.stringify(repairedPack, null, 2) + '\n',
+      );
+      fs.writeFileSync(bundleFile, JSON.stringify(repairedBundle, null, 2) + '\n');
       const archive = createArchive(sourceDirectory);
       const originalPayload = JSON.parse(catalog.toString()).payload;
       const repaired = signCatalog(
@@ -148,7 +175,7 @@ test(
       );
       global.fetch = async () => new Response(JSON.stringify(repaired));
       const repair = (await manager.catalog('https://qualification.example/catalog.json')).packs[0];
-      await manager.install(repair, { bytes: archive });
+      await manager.install(repair, { bytes: archive, prepareRuntime: true });
       assert.deepEqual(manager.scan().errors, []);
       bundle = open();
       const current = await bundle.runtime.inspect();

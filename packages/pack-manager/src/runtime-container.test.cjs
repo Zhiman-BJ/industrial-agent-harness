@@ -71,7 +71,7 @@ test('wrong config/platform and unavailable daemon cannot activate an image', as
   manager.command = async () => {
     throw Error('daemon offline');
   };
-  await assert.rejects(manager.ensure([asset]), /Install and start Docker Desktop/);
+  await assert.rejects(manager.ensure([asset]), /Install and start Docker/);
 });
 test('mutable or inconsistently pinned container declarations fail validation', () => {
   assert.throws(
@@ -93,4 +93,23 @@ test('containerd Docker image store verifies descriptor config plus repository d
   });
   await manager.ensure([asset]);
   assert.equal(manager.status([asset])[0].ready, true);
+});
+
+test('one immutable image can be prepared only on its declared client platforms', async t => {
+  const multi = { ...asset, platforms: ['darwin-arm64', 'linux-x64'] };
+  const { manager } = fixture(t, { platform: 'linux-x64' });
+  await assert.rejects(manager.ensure([asset]), /does not support this platform/);
+  await manager.ensure([multi]);
+  assert.equal(manager.status([multi])[0].ready, true);
+  manager.platform = 'win32-x64';
+  assert.equal(manager.status([multi])[0].ready, false);
+  await assert.rejects(manager.ensure([multi]), /does not support this platform/);
+  for (const platforms of [
+    [],
+    ['linux-x64'],
+    ['darwin-arm64', 'darwin-arm64'],
+    ['darwin-arm64', 'win32-x64'],
+    'linux-x64',
+  ])
+    assert.throws(() => validateRuntimeAssets([{ ...asset, platforms }]), /container/);
 });
