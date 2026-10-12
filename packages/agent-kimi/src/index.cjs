@@ -514,15 +514,17 @@ class KimiSession {
         if (this.sessionFactory === createSession) {
           // Native child MCP gateways stay outside the industrial boundary.
           // Registered services instead use the audited host Runtime.
+          // Application plugins already filtered by executionPolicy (only
+          // protectedSafe plugins survive here) run host-side and are allowed.
           const externalSelected = selectMcpServers(
             scope,
             runtime.disabledMcpServers,
             undefined,
             runtime.externalServers,
           ).some(provider => provider.transport === 'external');
-          if ((externalSelected && !runtime.hostRuntimeExternal) || enabledPlugins(plugins).length)
+          if (externalSelected && !runtime.hostRuntimeExternal)
             throw Error(
-              '当前工业执行隔离不支持外部 MCP 服务或应用控制插件。请在本次项目资源设置中停用这些服务后重试；工业修改仅能通过已接入的 Domain Runtime。',
+              '当前工业执行隔离不支持外部 MCP 服务。请在本次项目资源设置中停用这些服务后重试；工业修改仅能通过已接入的 Domain Runtime。',
             );
           this.processSandbox = createProcessSandbox({
             executable:
