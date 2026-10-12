@@ -186,3 +186,64 @@ test('clock ticks drive the engine deterministically; dispose stops the timer', 
     [3, 'paused'], // 700ms: paused engine ignores ticks
   ]);
 });
+
+test('the lead-in before the first event compresses like any gap and stays raw when compression is off', () => {
+  // First event arrives 90s after recording start, then 250ms cadence.
+  const list = records([
+    [90000, text(0)],
+    [90250, text(1)],
+    [90500, text(2)],
+  ]);
+  const compressed = buildTimeline(list);
+  assert.deepEqual(
+    compressed.points.map(point => point.displayMs),
+    [1500, 1750, 2000],
+  );
+  const raw = buildTimeline(list, { thresholdMs: Infinity, capMs: 1 });
+  assert.deepEqual(
+    raw.points.map(point => point.displayMs),
+    [90000, 90250, 90500],
+  );
+});
+
+test('every playback speed converges to the same final state, with wall time scaling inversely', () => {
+  const list = records([
+    [0, text(0)],
+    [400, text(1)],
+    [800, text(2)],
+    [1200, text(3)],
+    [1600, { type: 'done', result: { status: 'success' } }],
+  ]);
+  const finals = [];
+  const walls = [];
+  for (const speed of [0.5, 1, 2, 4]) {
+    const engine = createReplayEngine(list);
+    engine.play();
+    engine.setSpeed(speed);
+    let wall = 0;
+    for (let guard = 0; engine.snapshot().phase === 'playing' && guard < 10000; guard++) {
+      engine.tick(100);
+      wall += 100;
+    }
+    const snapshot = engine.snapshot();
+    finals.push(JSON.stringify(snapshot.display));
+    finals.push(`${snapshot.position}/${snapshot.running}`);
+    walls.push(wall);
+  }
+  assert.equal(new Set(finals).size, 2, 'all speeds reach one identical final display + position');
+  // 1600ms of display time per run; wall time scales inversely with speed
+  // (tick granularity 100ms): 0.5x needs 3200ms of ticks, 4x needs 400ms.
+  assert.deepEqual(walls, [3200, 1600, 800, 400]);
+
+  // Switching speed mid-playback is equally convergent.
+  const switched = createReplayEngine(list);
+  switched.play();
+  switched.setSpeed(0.5);
+  switched.tick(800); // 400ms of display time
+  switched.setSpeed(4);
+  switched.tick(300); // +1200ms of display time reaches the 1600ms end
+  const snapshot = switched.snapshot();
+  assert.equal(snapshot.phase, 'paused');
+  assert.equal(snapshot.position, 5);
+  assert.deepEqual(snapshot.display, JSON.parse(finals[0]));
+});
