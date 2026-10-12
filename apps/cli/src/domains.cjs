@@ -18,8 +18,10 @@ industrial-harness domains update --catalog HTTPS_URL --keys-file FILE [--store 
 industrial-harness domains remove DOMAIN [--store DIR]
 industrial-harness domains repair DOMAIN [--profile ID] [--project-dir DIR] [--store DIR]
 industrial-harness domains environments DOMAIN [--project-dir DIR] [--store DIR]
-industrial-harness domains detect|associate|prepare DOMAIN --profile ID [--project-dir DIR] [--path ASSET=/abs/App.app] [--store DIR]
+industrial-harness domains detect|associate DOMAIN --profile ID [--project-dir DIR] [--path ASSET=/abs/installed-path] [--store DIR]
+industrial-harness domains prepare DOMAIN --profile CONTAINER_PROFILE [--project-dir DIR] [--store DIR]
 industrial-harness domains unbind DOMAIN [--project-dir DIR] [--store DIR]
+Prepare downloads container images only; install and start Docker yourself. Native software is installed externally, then detected and associated.
 Use a trusted public-key JSON file: {"key-id":"-----BEGIN PUBLIC KEY-----..."}.
 Set INDUSTRIAL_HARNESS_PACK_STORE to the same store for run and bench.\n`;
 
@@ -48,7 +50,7 @@ function parse(argv) {
     if (token === '--path') {
       const value = argv[++index],
         separator = value?.indexOf('=');
-      if (!value || separator < 1) throw Error('Use --path ASSET=/absolute/Application.app.');
+      if (!value || separator < 1) throw Error('Use --path ASSET=/absolute/installed-path.');
       const asset = value.slice(0, separator),
         appPath = value.slice(separator + 1);
       if (!/^[a-z][a-z0-9-]{0,63}$/.test(asset) || !path.isAbsolute(appPath))
@@ -163,7 +165,7 @@ async function runDomains(argv, output = process.stdout) {
         const profileId = options.profile || current.binding?.profileId;
         if (!profileId)
           throw Error(
-            'Choose --profile before checking an environment. Repair never downloads software; use prepare explicitly.',
+            'Choose --profile before checking an environment. Install dependencies externally, then detect and associate.',
           );
         const binding = current.binding;
         const paths =
@@ -174,7 +176,8 @@ async function runDomains(argv, output = process.stdout) {
         result = await environments.detect(options.domain, { ...selected, profileId, paths });
       } else result = await environments[options.command](options.domain, selected);
       output.write(`${JSON.stringify(result, null, 2)}\n`);
-      return ['missing', 'incompatible', 'unsupported', 'stale'].includes(result.status) ? 1 : 0;
+      if (['environments', 'unbind'].includes(options.command)) return 0;
+      return result.status === 'ready' ? 0 : 1;
     }
     const available = await catalog.available({ signal: controller.signal });
     if (catalog.snapshot().state === 'unavailable') throw Error(catalog.snapshot().message);

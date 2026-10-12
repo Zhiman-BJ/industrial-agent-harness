@@ -2,7 +2,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const crypto = require('node:crypto');
-const { run } = require('./runtime-assets.cjs');
+const { run, treeIdentity, probeArgs } = require('./runtime-assets.cjs');
 const hash = value => crypto.createHash('sha256').update(value).digest('hex');
 const identity = value => hash(JSON.stringify(value));
 const id = /^[a-z][a-z0-9._-]{0,127}$/;
@@ -57,7 +57,7 @@ class RuntimeEnvironmentManager {
     this.versionProbe =
       versionProbe ||
       manager.versionProbe ||
-      ((asset, executable, options) => this.command(executable, asset.versionArgs, options));
+      ((asset, executable, options) => this.command(executable, probeArgs(asset), options));
     this.directory = path.join(manager.directory, 'environments');
     this.file = path.join(this.directory, 'state.json');
     this.pending = new Set();
@@ -328,6 +328,21 @@ class RuntimeEnvironmentManager {
     };
   }
   externalIdentity(asset, appPath) {
+    if (asset.type === 'native-executable') {
+      if (!path.isAbsolute(appPath)) throw Error('Choose an absolute executable file path.');
+      const file = fs.realpathSync(appPath),
+        stat = fs.statSync(file);
+      if (!stat.isFile() || stat.nlink !== 1) throw Error('Executable is not an ordinary file.');
+      fs.accessSync(file, fs.constants.X_OK);
+      return {
+        appPath,
+        selectedPath: appPath,
+        realPath: file,
+        executables: { [asset.environment]: file },
+        hashes: { [asset.environment]: hash(fs.readFileSync(file)) },
+        declaration: identity(asset),
+      };
+    }
     if (!path.isAbsolute(appPath) || fs.lstatSync(appPath).isSymbolicLink())
       throw Error('Choose an ordinary absolute application directory.');
     const root = fs.realpathSync(appPath);
@@ -353,7 +368,13 @@ class RuntimeEnvironmentManager {
       executables[variable] = file;
       hashes[variable] = hash(fs.readFileSync(file));
     }
-    return { appPath: root, executables, hashes, declaration: identity(asset) };
+    return {
+      appPath: root,
+      executables,
+      hashes,
+      declaration: identity(asset),
+      ...(asset.type === 'native-runtime-zip' ? { treeHash: treeIdentity(root).hash } : {}),
+    };
   }
   platformProbe(bundle) {
     const declaration = bundle.platformProbe;
@@ -453,7 +474,14 @@ class RuntimeEnvironmentManager {
           profiles.find(profile => profile.id === binding?.profileId)?.assetIds.includes(asset.id),
         )
       : assets;
-    const managed = this.manager.runtimeAssets.status(selectedAssets);
+    const managed = this.manager.runtimeAssets.status(selectedAssets).map((status, index) => {
+      const asset = selectedAssets[index];
+      return !status.ready &&
+        asset.type === 'docker-image' &&
+        this.manager.runtimeAssets.inspectExistingImage
+        ? this.manager.runtimeAssets.inspectExistingImage(asset)
+        : status;
+    });
     const environment = Object.fromEntries(
       assets.flatMap(asset =>
         Object.keys({ [asset.environment]: '', ...asset.environmentExecutables }).map(key => [
@@ -477,15 +505,24 @@ class RuntimeEnvironmentManager {
                   status: 'ready',
                   reasons: [],
                   executables: prepared.executables,
-                  source: 'managed',
+                  source: prepared.source || 'managed',
                 }
               : failure(
                   'missing',
                   'DEPENDENCY_MISSING',
-                  prepared?.message || 'Runtime dependency needs preparation.',
+                  prepared?.message ||
+                    'Prepare this dependency externally, then detect and associate it.',
                 );
           return {
             id: asset.id,
+            type: asset.type,
+            selectionKind:
+              asset.type === 'native-executable'
+                ? 'file'
+                : asset.type === 'native-runtime-zip'
+                  ? 'directory'
+                  : 'application',
+            manageable: asset.type === 'docker-image',
             label: asset.label,
             discoveryPaths: asset.discoveryPaths || [],
             installUrl: asset.installUrl,
@@ -598,7 +635,10 @@ class RuntimeEnvironmentManager {
     const probe = bundle && this.platformProbe(bundle);
     const versionProbe = probe ? this.probeFactory(probe) : this.versionProbe;
     const before = this.externalIdentity(asset, appPath);
-    if (this.platform.startsWith('darwin-'))
+    if (
+      this.platform.startsWith('darwin-') &&
+      !['native-executable', 'native-runtime-zip'].includes(asset.type)
+    )
       await this.command('/usr/bin/codesign', ['--verify', '--deep', '--strict', before.appPath], {
         signal,
         timeout: 120000,
@@ -690,14 +730,25 @@ class RuntimeEnvironmentManager {
       )) {
         signal?.throwIfAborted();
         if (profile.kind === 'container') {
-          const status = this.manager.runtimeAssets.status([asset])[0];
+          const status = this.manager.runtimeAssets.inspectExistingImage
+            ? this.manager.runtimeAssets.inspectExistingImage(asset)
+            : this.manager.runtimeAssets.status([asset])[0];
           assets.push({
             id: asset.id,
             ...(status.ready
-              ? { status: 'ready', reasons: [], source: 'managed' }
+              ? { status: 'ready', reasons: [], source: status.source || 'managed' }
               : failure('missing', 'IMAGE_MISSING', status.message)),
           });
           continue;
+        }
+        // A verified managed receipt is already an explicit trusted installation.
+        // Explicit user paths still take precedence over managed discovery.
+        if (!paths[asset.id] && asset.type !== 'native-executable') {
+          const managed = this.manager.runtimeAssets.status([asset])[0];
+          if (managed.ready) {
+            assets.push({ id: asset.id, status: 'ready', reasons: [], source: 'managed' });
+            continue;
+          }
         }
         const candidates = paths[asset.id]
           ? [paths[asset.id]]
@@ -809,16 +860,53 @@ class RuntimeEnvironmentManager {
   async prepare(domain, { profileId, projectDir, signal, onProgress } = {}) {
     const bundle = this.bundle(domain),
       profile = this.profile(bundle, profileId);
-    const unsupported =
-      this.supported(profile) ||
-      (profile.kind === 'remote'
-        ? failure(
-            'unsupported',
-            'REMOTE_PREPARATION_EXTERNAL',
-            'Remote services are prepared by their administrator. Associate existing trusted connection settings instead.',
-          )
-        : null);
-    if (unsupported) return { ...this.describe(domain, { projectDir }), ...unsupported, profileId };
+    const assets = (bundle.runtimeAssets || []).filter(asset =>
+      profile.assetIds.includes(asset.id),
+    );
+    if (
+      profile.kind !== 'container' ||
+      !assets.length ||
+      assets.some(asset => asset.type !== 'docker-image')
+    )
+      return {
+        domain,
+        profileId,
+        ...failure(
+          'unsupported',
+          'DEPENDENCY_INSTALLATION_EXTERNAL',
+          'Install native software and independent runtimes externally, then detect and associate them. Harness prepares only explicitly selected container profiles; Docker itself must already be installed.',
+        ),
+      };
+    const unsupported = this.supported(profile);
+    if (unsupported) return { domain, profileId, ...unsupported };
+    signal?.throwIfAborted();
+    // One read-only command proves both CLI and daemon availability before any
+    // install lock, storage mutation or image transfer is attempted.
+    try {
+      const output = await this.command('docker', ['info', '--format', '{{.OSType}}'], {
+        signal,
+        timeout: 15000,
+        captureOutput: true,
+      });
+      const stdout = typeof output === 'string' ? output : output.stdout;
+      if (String(stdout).trim() !== 'linux')
+        throw Error(
+          'Docker must support Linux containers.' +
+            (typeof output === 'object' && output.stderr ? ' ' + output.stderr.slice(-1000) : ''),
+        );
+    } catch (error) {
+      signal?.throwIfAborted();
+      return {
+        domain,
+        profileId,
+        ...failure(
+          'missing',
+          'DOCKER_UNAVAILABLE',
+          'Install and start Docker externally, then retry container preparation. ' +
+            String(error.message).slice(0, 1000),
+        ),
+      };
+    }
     this.manager.withLock(() => {
       this.manager.assertIdle(domain);
       this.assertNotPreparing(domain);
@@ -829,11 +917,10 @@ class RuntimeEnvironmentManager {
       });
     });
     try {
-      await this.manager.runtimeAssets.ensure(
-        (bundle.runtimeAssets || []).filter(asset => profile.assetIds.includes(asset.id)),
-        { signal, onProgress },
-      );
+      await this.manager.runtimeAssets.ensure(assets, { signal, onProgress });
       signal?.throwIfAborted();
+      if (this.manager.runtimeAssets.status(assets).some(asset => !asset.ready))
+        throw Error('Container dependency identity verification failed after preparation.');
       this.write(
         state => {
           state.bindings[this.key(domain, projectDir)] = {

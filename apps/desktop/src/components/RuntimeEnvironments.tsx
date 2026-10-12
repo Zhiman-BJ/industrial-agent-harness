@@ -5,6 +5,9 @@ type Reason = { code: string; message: string };
 type Asset = {
   id: string;
   label?: string;
+  type?: string;
+  selectionKind?: 'file' | 'directory' | 'application';
+  manageable?: boolean;
   status: string;
   reasons?: Reason[];
   appPath?: string;
@@ -70,7 +73,6 @@ type Progress = {
   phase?: string;
   downloaded?: number;
   total?: number;
-  status?: string;
 };
 export interface EnvironmentHost {
   onEnvironmentProgress(callback: (progress: Progress) => void): () => void;
@@ -88,14 +90,6 @@ export interface EnvironmentHost {
   environmentChooseApp(request: Request): Promise<string | null>;
   environmentOfficial(request: Request): Promise<void>;
 }
-const progressLabels: Record<string, string> = {
-  downloading: 'Downloading…',
-  verifying: 'Verifying download…',
-  extracting: 'Extracting files…',
-  checking: 'Checking installation…',
-  installing: 'Preparing files…',
-  ready: 'Preparation finished',
-};
 const host = () => window.viewerHost as unknown as EnvironmentHost;
 const statusLabels: Record<string, string> = {
   ready: 'Ready',
@@ -376,7 +370,9 @@ export function RuntimeEnvironments({
     >
       <h3>{t(projectId ? 'Project execution environment' : 'Execution environments')}</h3>
       {!view && !error && <p role="status">{t('Loading…')}</p>}
-      {view?.legacy && <p>{t('This pack has no selectable execution profiles.')}</p>}
+      {view && !view.profiles.length && (
+        <p>{t('This pack has no selectable execution profiles.')}</p>
+      )}
       {Boolean(view?.profiles.length) && (
         <>
           <label>
@@ -628,7 +624,7 @@ export function RuntimeEnvironments({
                         )}
                         {asset.discoveryPaths?.length ? (
                           <small>
-                            {t('Known application locations:')} {asset.discoveryPaths.join(', ')}
+                            {t('Known installation locations:')} {asset.discoveryPaths.join(', ')}
                           </small>
                         ) : null}
                         {check.reasons?.map(reason => (
@@ -664,7 +660,13 @@ export function RuntimeEnvironments({
                               disabled={locked || unsupported}
                               onClick={() => void choose(asset.id)}
                             >
-                              {t('Choose installed application')}
+                              {t(
+                                asset.selectionKind === 'file'
+                                  ? 'Choose executable'
+                                  : asset.selectionKind === 'directory'
+                                    ? 'Choose runtime folder'
+                                    : 'Choose installed application',
+                              )}
                             </button>
                             {asset.installUrl && (
                               <button disabled={locked} onClick={() => void official(asset.id)}>
@@ -676,6 +678,18 @@ export function RuntimeEnvironments({
                       </div>
                     );
                   })}
+                  {profile.kind === 'container' && (
+                    <p className="ia-capability-note">
+                      {t('Install and start Docker before preparing the container image.')}
+                    </p>
+                  )}
+                  {profile.kind !== 'container' && profile.assets.length > 0 && (
+                    <p className="ia-capability-note">
+                      {t(
+                        'Install missing software from its official source, choose its location, then detect and save this environment.',
+                      )}
+                    </p>
+                  )}
                   <details className="ia-domain-requirements">
                     <summary>{t('Environment details')}</summary>
                     {profile.description && <p>{t(profile.description)}</p>}
@@ -705,12 +719,14 @@ export function RuntimeEnvironments({
                     >
                       {t('Check and save environment')}
                     </button>
-                    <button
-                      disabled={locked || unsupported}
-                      onClick={() => void perform('prepare')}
-                    >
-                      {t('Prepare managed environment')}
-                    </button>
+                    {profile.kind === 'container' && (
+                      <button
+                        disabled={locked || unsupported}
+                        onClick={() => void perform('prepare')}
+                      >
+                        {t('Prepare container image')}
+                      </button>
+                    )}
                     {projectId && view?.binding && (
                       <button disabled={locked} onClick={() => void perform('clear')}>
                         {t('Use default environment')}
@@ -735,12 +751,14 @@ export function RuntimeEnvironments({
             pending === 'connection'
               ? 'Saving connection…'
               : pending === 'choosing'
-                ? 'Choosing application…'
+                ? 'Choosing installation…'
                 : pending === 'cancelling'
                   ? 'Cancelling…'
                   : pending === 'detect'
                     ? 'Detecting environment…'
-                    : 'Preparing environment…',
+                    : pending === 'prepare'
+                      ? 'Preparing environment…'
+                      : 'Checking environment…',
           )}{' '}
           {pending !== 'connection' && pending !== 'choosing' && (
             <button disabled={pending === 'cancelling'} onClick={() => void cancel()}>
@@ -749,9 +767,18 @@ export function RuntimeEnvironments({
           )}
         </div>
       )}
-      {pending && progress?.phase && (
+      {pending === 'prepare' && profile?.kind === 'container' && progress?.phase && (
         <p role="status">
-          {t(progressLabels[progress.phase] || 'Preparing environment…')}
+          {t(
+            (
+              {
+                downloading: 'Downloading…',
+                verifying: 'Verifying download…',
+                checking: 'Checking installation…',
+                ready: 'Preparation finished',
+              } as Record<string, string>
+            )[progress.phase] || 'Preparing environment…',
+          )}
           {progress.total
             ? ` · ${Math.round((100 * (progress.downloaded || 0)) / progress.total)}%`
             : ''}

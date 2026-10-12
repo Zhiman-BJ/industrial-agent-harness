@@ -132,6 +132,7 @@ protocol.registerSchemesAsPrivileged([
 ]);
 if (
   [
+    '--runtime-environments-selftest',
     '--task-results-selftest',
     '--viewer-selftest',
     '--kicad-selftest',
@@ -836,59 +837,6 @@ function registerHandlers() {
     require('./domain-repair.cjs').domainRepairHandler({
       manager: packManager,
       isManaged: () => managedPacks,
-      repairLegacy: async (event, request) => {
-        sessions.assertIdle();
-        if (domainMutationActive || desktopEnvironments?.active)
-          throw Error('Domain preparation is already in progress.');
-        installationJournal.begin([request.domain], 'repair');
-        domainMutationActive = true;
-        domainOperationDone = new Promise(resolve => {
-          finishDomainOperation = resolve;
-        });
-        domainController = new AbortController();
-        domainProgress = null;
-        try {
-          await sessions.reset();
-          await projectRuntimes.close();
-          packManager.assertIdle(request.domain);
-          const bundle = packManager.list().find(item => item.domain === request.domain);
-          if (!bundle) throw Error('Domain is not installed.');
-          await packManager.runtimeAssets.ensure(bundle.runtimeAssets, {
-            recheck: true,
-            signal: domainController.signal,
-            onProgress: progress => {
-              domainProgress = { domain: request.domain, ...progress };
-              installationJournal.progress(domainProgress);
-              if (!event.sender.isDestroyed())
-                event.sender.send('domains:progress', { domain: request.domain, ...progress });
-            },
-          });
-          installationJournal.finish('completed');
-          return { installed: installedDomains() };
-        } catch (error) {
-          installationJournal.finish(
-            domainController.signal.aborted ? 'cancelled' : 'failed',
-            error,
-          );
-          throw error;
-        } finally {
-          domainMutationActive = false;
-          domainController = undefined;
-          domainProgress = null;
-          finishDomainOperation?.();
-          finishDomainOperation = undefined;
-          const sender = event.sender;
-          if (!sender.isDestroyed())
-            sender.send('domains:progress', {
-              domain: '',
-              label: '',
-              phase: 'finished',
-              active: false,
-              outcome: installationJournal.snapshot()?.outcome,
-              error: installationJournal.snapshot()?.error,
-            });
-        }
-      },
     }),
   );
   ipcMain.handle('domains:remove', async (_event, request) => {

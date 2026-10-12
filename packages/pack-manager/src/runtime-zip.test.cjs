@@ -127,3 +127,167 @@ test('ZIP installation extracts app, verifies signature/version and reuses cache
   assert.equal(downloads, 1);
   assert.equal(manager.status([asset])[0].ready, true);
 });
+
+test('managed native ZIP preserves complete tree integrity, repairs tampered libraries, and never invokes Docker or codesign', async t => {
+  const root = fixture(t);
+  const archive = zip([
+    { name: 'runtime/bin/tool', bytes: 'launcher' },
+    { name: 'runtime/lib/data', bytes: 'library', mode: 0o100644 },
+  ]);
+  const asset = {
+    id: 'native-tool',
+    label: 'Native tool',
+    version: '1.2.3',
+    type: 'native-runtime-zip',
+    platform: 'darwin-arm64',
+    directory: 'runtime',
+    executable: 'bin/tool',
+    environment: 'INDUSTRIAL_HARNESS_NATIVE_TOOL',
+    probeId: 'version',
+    versionText: 'tool 1.2.3',
+    url: 'https://vendor.example/runtime.zip',
+    sha256: digest(archive),
+    size: archive.length,
+    installedSize: 1024,
+  };
+  const calls = [];
+  const manager = new RuntimeAssetManager({
+    directory: root,
+    platform: 'darwin-arm64',
+    fetchArchive: async (_asset, file) => fs.writeFileSync(file, archive),
+    command: async (file, args) => {
+      calls.push(file);
+      if (file === '/usr/bin/ditto') {
+        await promisify(execFile)(file, args);
+        return '';
+      }
+      assert.deepEqual(args, ['--version']);
+      return 'tool 1.2.3';
+    },
+  });
+  assert.equal((await manager.ensure([asset]))[0].ready, true);
+  assert.equal(
+    calls.some(file => /docker|codesign|hdiutil/.test(file)),
+    false,
+  );
+  const library = path.join(manager.location(asset), 'runtime/lib/data');
+  fs.writeFileSync(library, 'tamper');
+  assert.equal(manager.status([asset])[0].ready, false);
+  assert.equal((await manager.ensure([asset]))[0].ready, true);
+  assert.equal(fs.readFileSync(library, 'utf8'), 'library');
+  const controller = new AbortController();
+  controller.abort();
+  await assert.rejects(manager.ensure([asset], { signal: controller.signal }), {
+    name: 'AbortError',
+  });
+  assert.equal(manager.status([asset])[0].ready, true);
+});
+
+test('mixed profile associates externally prepared runtime directory and CLI while product preparation is refused', async t => {
+  const { RuntimeEnvironmentManager } = require('./runtime-environments.cjs');
+  const root = fixture(t);
+  const archive = zip([{ name: 'runtime/bin/tool', bytes: 'launcher' }]);
+  const managed = {
+    id: 'runtime',
+    label: 'Runtime',
+    version: '1.2.3',
+    type: 'native-runtime-zip',
+    platform: 'darwin-arm64',
+    directory: 'runtime',
+    executable: 'bin/tool',
+    environment: 'INDUSTRIAL_HARNESS_RUNTIME',
+    probeId: 'version',
+    versionText: 'tool 1.2.3',
+    url: 'https://vendor.example/runtime.zip',
+    sha256: digest(archive),
+    size: archive.length,
+    installedSize: 1024,
+  };
+  const external = {
+    id: 'dependency',
+    label: 'Dependency',
+    version: '1.2.3',
+    type: 'native-executable',
+    platform: 'darwin-arm64',
+    environment: 'INDUSTRIAL_HARNESS_DEPENDENCY',
+    probeId: 'version',
+    versionText: 'dependency 1.2.3',
+  };
+  const bundle = {
+    domain: 'drawing',
+    version: '1.0.0',
+    runtimeAssets: [managed, external],
+    executionProfiles: [
+      {
+        id: 'native',
+        label: 'Native',
+        kind: 'native',
+        qualified: true,
+        platforms: ['darwin-arm64'],
+        assetIds: ['runtime', 'dependency'],
+        toolIds: ['drawing.inspect'],
+      },
+    ],
+  };
+  const command = async (file, args) => {
+    if (file === '/usr/bin/ditto') {
+      await promisify(execFile)(file, args);
+      return '';
+    }
+    assert.equal(file.includes('docker'), false);
+    return file.endsWith('dependency') ? 'dependency 1.2.3' : 'tool 1.2.3';
+  };
+  const runtimeAssets = new RuntimeAssetManager({
+    directory: root,
+    platform: 'darwin-arm64',
+    command,
+    fetchArchive: async (_asset, file) => fs.writeFileSync(file, archive),
+  });
+  const manager = {
+    directory: root,
+    list: () => [bundle],
+    withLock: fn => fn(),
+    assertIdle: () => {},
+    runtimeAssets,
+  };
+  const environments = new RuntimeEnvironmentManager({
+    manager,
+    platform: 'darwin-arm64',
+    command,
+  });
+  const prepared = await environments.prepare('drawing', { profileId: 'native' });
+  assert.equal(prepared.status, 'unsupported');
+  assert.equal(prepared.reasons[0].code, 'DEPENDENCY_INSTALLATION_EXTERNAL');
+  assert.equal(environments.describe('drawing').binding, null);
+  assert.equal(runtimeAssets.status([managed])[0].ready, false);
+  const externalArchive = path.join(root, 'externally-provided.zip');
+  const externalDirectory = path.join(root, 'externally-prepared');
+  fs.writeFileSync(externalArchive, archive);
+  fs.mkdirSync(externalDirectory);
+  await promisify(execFile)('/usr/bin/ditto', ['-x', '-k', externalArchive, externalDirectory]);
+  runtimeAssets.ensure = async () => {
+    throw Error('Product must never install dependencies.');
+  };
+  const executable = path.join(root, 'dependency');
+  fs.writeFileSync(executable, 'external dependency', { mode: 0o755 });
+  const associated = await environments.associate('drawing', {
+    profileId: 'native',
+    paths: { runtime: path.join(externalDirectory, 'runtime'), dependency: executable },
+  });
+  assert.equal(associated.status, 'ready');
+  assert.deepEqual(associated.readyToolIds, ['drawing.inspect']);
+  assert.equal(
+    associated.profiles[0].assets.find(asset => asset.id === 'runtime').source,
+    'external',
+  );
+  assert.equal(
+    associated.profiles[0].assets.find(asset => asset.id === 'dependency').source,
+    'external',
+  );
+  assert.equal((await environments.validate(bundle)).status, 'ready');
+  fs.appendFileSync(executable, 'changed');
+  const oldBinding = environments.describe('drawing').binding;
+  const retry = await environments.prepare('drawing', { profileId: 'native' });
+  assert.equal(retry.status, 'unsupported');
+  assert.deepEqual(environments.describe('drawing').binding, oldBinding);
+});

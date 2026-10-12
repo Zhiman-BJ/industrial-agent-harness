@@ -1,0 +1,27 @@
+$ node scripts/check-pack-release.cjs
+✔ acceptance needs content-bound evidence and an explicit independent verifier (2.074917ms)
+✔ artifact identity rejects unsafe paths and unknown schema versions (0.794875ms)
+✔ verified states and mutating tools require declared verification (1.503041ms)
+✔ legacy journals remain readable without inventing missing provenance (1.414708ms)
+✔ external author Pack survives build, installation, Broker disclosure and scope replacement (211.438458ms)
+✔ compatible updates replace resources while corrupt and unsupported updates preserve the active release (16.016584ms)
+✔ resource tampering and symlinks are isolated before installed session disclosure (5.625458ms)
+✔ archives reject traversal, missing entrypoints, source links and oversized Skill resources (4.259334ms)
+✔ external Skill resources stay outside public archives and load only from a matching owned checkout (10.987208ms)
+✔ legacy coreApi 1 installations stay readable and receive integrity receipts on reinstall (4.756583ms)
+✔ public built-in Pack releases retain owned resources and keep the public PCB Runtime independent of private resources (1230.319792ms)
+✔ installed Runtime declarations follow the pinned owner inventory (3.744708ms)
+✔ external resources reject changed, missing, extra or symlinked files before a session can load them (6.073291ms)
+✔ signed catalog installs a Pack and keeps the previous version when an update is corrupt (37.253792ms)
+✔ archive rejects traversal and checks required Skill files (1.538834ms)
+✔ signed HTTPS feed can follow an HTTPS asset redirect but rejects HTTP downgrade (3.6955ms)
+✔ a running Domain blocks update and removal; a damaged Pack is diagnosed (8.172584ms)
+✔ publisher accepts only the exact committed owner sources and intact platform bytes (5.767834ms)
+ℹ tests 18
+ℹ suites 0
+ℹ pass 18
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1658.474959

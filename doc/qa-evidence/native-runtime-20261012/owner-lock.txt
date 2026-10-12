@@ -1,0 +1,3 @@
+
+> @zhiman-bj/industrial-domain-packs@0.7.0 lock:check
+> node scripts/content-lock.cjs --check

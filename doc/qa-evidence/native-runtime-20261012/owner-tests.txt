@@ -1,0 +1,112 @@
+
+> @zhiman-bj/industrial-domain-packs@0.7.0 test
+> node scripts/check-architecture-contract.cjs && node --test tests/*.test.cjs tests/architecture/*.test.cjs
+
+{
+  "revision": "IH-ARCH-001",
+  "role": "domain-packs",
+  "ok": true,
+  "failures": [],
+  "frozenFiles": 0
+}
+✔ both application adapters reject cross-imports and industrial process bypasses (12.920333ms)
+✔ a new domain ID or agent dependency cannot enter generic core (5.362459ms)
+✔ manifest-only adapter and peer dependency violations are rejected before import (4.28625ms)
+✔ satellites cannot publish a competing canonical package (2.648584ms)
+✔ legacy orchestration may shrink but cannot grow or move into another adapter (3.596375ms)
+✔ frozen domain implementations cannot be edited, extended or rebaselined (3.126959ms)
+✔ a feature cannot widen its own exceptions or replace the trusted checker (1.557708ms)
+✔ domain source owns tools but cannot grow an application or canonical core (2.232875ms)
+✔ remote consumers require an exact Pack commit and matching locked integrity (1.125625ms)
+✔ remote domain verification and edits to canonical vendor snapshots are rejected (4.406584ms)
+✔ source and policy paths cannot escape through symlinks or traversal (1.65125ms)
+✔ host consumers resolve canonical Pack identities and verified maintained resources (9.186167ms)
+✔ consumer metadata cannot mutate the pinned registry through a caller reference (0.758083ms)
+✔ gateway transport implementations belong to the pinned owner release (0.691209ms)
+✔ CUDA stays standalone and is absent from the product catalog (0.705666ms)
+✔ remote-client installation requires no local GPU and unsupported hosts do not start inspection (0.626417ms)
+✔ local GPU inventory preserves capacity and stable selection without claiming native qualification (1.584417ms)
+✔ hardware detection rejects unqualified model, driver and compute capability (0.2155ms)
+✔ incomplete or conflicting GPU information cannot admit installation (0.309833ms)
+✔ allocation GPU check occurs before recipe reads, filesystem writes or native worker creation (0.204041ms)
+✔ GPU selection replaces the Evaluator reservation and preserves the GPU-free Compiler (1.127916ms)
+✔ independent project binds reference, bindings and measurements; edits and links are rejected (12.146916ms)
+✔ administrator preparation layers only project files over locked runtime and binds derived image identity (6.913333ms)
+✔ packaged project allocation preserves CPU/GPU and filesystem isolation without an upstream checkout (0.571125ms)
+✔ administrator Harbor acquisition pulls a missing runtime and rejects incorrect immutable identity (0.938709ms)
+✔ paired real HTTP MCP transports keep tool roles, credentials, project scope and tickets distinct (166.245625ms)
+✔ request receipts replay across restart and reject ID reuse, cancelled and interrupted work (25.569083ms)
+✔ actual MCP cancellation quarantines the allocation and records confirmed cleanup (40.256125ms)
+✔ canonical plugin uses both real MCP Servers, saves native artifacts and rejects changed-source tickets (41.65175ms)
+✔ source and verifier boundaries reject links, binaries, receipt substitution and contended measurements (10.245042ms)
+✔ both stdio MCP Server identities perform real initialization and tool discovery (244.253208ms)
+✔ canonical cancellation waits for durable cleanup and saves failure evidence before disposing the MCP session (429.256542ms)
+✔ execution profiles bind existing tool and asset identities with qualified platform scope (5.657875ms)
+✔ component partition excludes software payloads and preserves nested skills (103.920625ms)
+✔ MCP distribution entries preserve the existing protected gateway implementation (7.084125ms)
+✔ committed component release round-trips real bridge calls and rejects lock substitution (860.439292ms)
+✔ CUDA paired service profile preserves the existing canonical runtime protocol without publishing credentials (0.45475ms)
+✔ current product prerequisites distinguish external native installs and explicit container preparation (0.250125ms)
+✔ catalog distinguishes maintained code, private PCB backend and unqualified platforms (1.065792ms)
+✔ migrated Godot reads real source, rejects traversal and retains observation status (2.297625ms)
+✔ migrated FreeCAD rejects script injection and invalid geometry recipes (0.278ms)
+✔ one verifier accepts local/remote evidence and rejects assertion failures or missing native evidence (0.253125ms)
+✔ release integrity rejects changed execution source before use (97.641375ms)
+﹣ private DXF runtime creates, inspects, fails verification, cancels and recovers through canonical Runtime (0.369458ms) # SKIP
+✔ producer declares model, version-bound companions and independent diagnostic report (1.015541ms)
+✔ only successful edits replace the exact input; inspect references that input without replacing it (0.125958ms)
+✔ failure/cancellation declares only actual outputs and never synthesizes a model (0.071208ms)
+✔ installed Godot bridges load Pack-local validation and reject resource substitution (124.487ms)
+﹣ managed CAD/Chip use real containers and canonical evidence (0.332584ms) # Set DOMAIN_RUNTIME_HOST_ROOT and QUALIFY_MANAGED_DOMAIN=cad|chip
+✔ DXF fixture requires genuine report shape and exact source/report binding (2.475583ms)
+✔ DXF fixture distinguishes diameter failure and non-world-XY circles (0.479459ms)
+✔ DXF invalid expectation collections cannot silently remove requested checks (0.701166ms)
+✔ DXF sources reject hidden, dependency and evidence storage at every path depth (0.750917ms)
+✔ CAD domain inventory tracks DXF independently and rejects symlink or oversized source sets (35.667583ms)
+✔ Chip retained PASS fixtures cannot pass cancelled, timed-out, stale or unsuccessful execution (0.450167ms)
+✔ Chip malformed and mismatched native reports never create acceptance (0.130042ms)
+✔ product bridge preserves full upstream fingerprint while allowing design operations (2.352416ms)
+✔ session directory is private and stable (0.56175ms)
+✔ gateway forwards real image blocks and exposes design observations (1.131083ms)
+✔ paged responses retain the original image blocks (0.444ms)
+✔ gateway error stays an execution failure (0.489792ms)
+✔ cancelled calls never reach the backend (0.233583ms)
+✔ concurrent first calls share one Harness session startup (27.824125ms)
+✔ older Harness receives update guidance without shell setup instructions (0.268208ms)
+✔ bench snapshot pins a complete upstream identity (1.254875ms)
+✔ bench tool registry is well formed and unique (1.119791ms)
+✔ product capabilities expose design tools and isolate benchmark submission (1.048917ms)
+✔ vendored actor and skill files match the pinned upstream hashes (3.513125ms)
+✔ consumer metadata routes the new skill and version (0.169541ms)
+✔ runtime inventory and digest stay exact (0.546666ms)
+✔ runtime plugin uses the managed product surface and truthful operation verification (1.265709ms)
+✔ published file whitelist carries the vendored skill tree and actor (0.126625ms)
+✔ installed PCB product gateway and standalone bridge are self-contained and preserve resource confinement (172.239875ms)
+✔ generated receipts do not change input identity but source libraries do (3.653792ms)
+﹣ native managed PCB: new design, checks, images, queued cancellation and recovery (0.749333ms) # SKIP
+✔ platform probe adapter validates identity and native application version (835.302917ms)
+✔ platform probe cancellation and timeout terminate the native process group (152.542292ms)
+✔ platform probe executes the actual installed Godot version (184.210334ms)
+✔ generic probe ID is independent of application name and permits no arbitrary arguments (396.137125ms)
+✔ public professional profiles disclose only Runtime Actions with independent versioned Verifiers (3.356958ms)
+✔ typed scene edits reject arbitrary expressions, unknown/duplicate sections and invalid vectors (0.654083ms)
+✔ scene transform edits reject untyped values before any scene text is produced (0.222209ms)
+✔ Node2D-family scenes accept Vector2 transforms and reject 3D values and scalar rotation (0.125958ms)
+✔ godot.scene.edit rejects invalid changes without touching the source file (1.381042ms)
+✔ KiCad typed requirements reject absent dimensions, invalid placements and arbitrary input fields (0.251208ms)
+✔ only the exact offline Godot TLS bootstrap diagnostic is nonfatal; script, import and other native failures remain failures (0.272209ms)
+✔ installed professional Packs export the exact qualified native downloads and executable mappings (8.062958ms)
+✔ dependency metadata preserves platform limits, managed EDA/DXF and execution requirements (1.005625ms)
+✔ PCB design installation pins its Harbor image and complete prebuilt gateway (0.646375ms)
+✔ every installed native or container runtime uses a verified own-source distribution (1.882125ms)
+✔ CAD native DXF is a private relocatable runtime with an independent native profile (1.047375ms)
+✔ Harbor verifier rejects invalid pins, corrupted bytes and manifest substitution (155.695666ms)
+✔ mirror stages streamed bytes and calculates the complete local hash (14.846833ms)
+ℹ tests 93
+ℹ suites 0
+ℹ pass 90
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 3
+ℹ todo 0
+ℹ duration_ms 2365.84075

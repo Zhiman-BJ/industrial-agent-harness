@@ -6,7 +6,7 @@
 
 项目首页：[English](../README.md) · [简体中文](../README.zh-CN.md)。当前版本为**开发者预览版（Developer Preview）**，许可证见 [MIT License](../LICENSE) 与[第三方清单](../THIRD_PARTY_NOTICES.md)。
 
-这里记录 Industrial Agent Harness 的产品架构与开发计划。当前源码实施 [Runtime 分发 v2](runtime-distribution-v2.md)：四域 Pack（Chip、PCB、Godot、CAD）与软件依赖分别准备，本机、容器和远程 Profile 绑定实际工具范围。兼容现有应用可经检测后关联；托管下载保留为明确操作；当前产品撤下新目录及历史已装 CUDA 条目，独立实现保留。领域卡片清晰分隔，一行用途与折叠依赖；绿色就绪、黄色缺失、红色失败、中性色未检查，最近检查失败覆盖旧 Ready 显示。Docker 仅为 Chip、PCB design、CAD DXF 容器执行前提。Go 组件仅执行固定环境检测。本轮完成和待验范围见 [v2 验收记录](qa-runtime-distribution-v2-20261012.md)；旧 1.0.1-beta.1 的自动安装行为保留为历史记录。
+这里记录 Industrial Agent Harness 的产品架构与开发计划。当前源码实施 [Runtime 分发 v2](runtime-distribution-v2.md)：四域 Pack（Chip、PCB、Godot、CAD）与软件依赖分别准备，本机、容器和远程 Profile 绑定实际工具范围。原生应用与独立本机运行时由用户安装后检测关联；用户自备 Docker 后可显式准备容器镜像；当前产品撤下新目录及历史已装 CUDA 条目，独立实现保留。领域卡片清晰分隔，一行用途与折叠依赖；绿色就绪、黄色缺失、红色失败、中性色未检查，最近检查失败覆盖旧 Ready 显示。Docker 仅为 Chip、PCB design、CAD DXF 容器执行前提。Go 组件仅执行固定环境检测。共用 CLI/目录关联与 DXF 本机路径的实测见 [共用运行时验收](qa-native-runtime-20261012.md)。本轮完成和待验范围见 [v2 验收记录](qa-runtime-distribution-v2-20261012.md)；旧 1.0.1-beta.1 的自动安装行为保留为历史记录。
 
 桌面 MVP、三种内置 EDA Viewer、Godot Web Export Viewer V1、素材 Viewer、KiCad Viewer V1、五种通用文件 Viewer、确定性 Broker 和 Kimi Code 接口已落地；Godot、KiCad 与通用文件示例链路已通过 macOS Electron 实测。Chip 的 MCP 与 RTL Runtime、FreeCAD Runtime、PCB／Godot 的有限公开原生 Runtime 通过共享任务接口供 Desktop/CLI 消费。PCB／Godot 原有 MCP 为历史独立诊断路径；三平台完整工业支持仍未验收。文档中的其余接口与验收项，除明确标为“已落实”的事项外，均为设计提案。
 
@@ -41,7 +41,7 @@ Godot/PCB 的源工程文件另有[受限只读预览](engineering-file-viewers.
 | [共享 Chip Pack MCP](domain-mcp-integration.md)                                                                                                                          | Desktop/CLI 注册、Scope 网关、项目绑定、审批与实测                                 |
 | [PCB／Godot 专业 Runtime](pcb-godot-runtime.md)                                                                                                                          | 公开首批任务、精确依赖、独立验证、安装路径与失败／恢复验收                         |
 | [领域安装体验](install-experience.md)                                                                                                                                    | Pack 与软件分离、Profile 选择、应用关联、显式托管准备、缓存和历史验收边界          |
-| [Runtime 分发 v2](runtime-distribution-v2.md)                                                                                                                            | 共享环境管理器、Go 固定检测、能力过滤、四域目录与发布组件契约                     |
+| [Runtime 分发 v2](runtime-distribution-v2.md)                                                                                                                            | 共享环境管理器、Go 固定检测、能力过滤、四域目录与发布组件契约                      |
 | [分发 v2 验收记录](qa-runtime-distribution-v2-20261012.md)                                                                                                               | owner 测试、真实 Godot 12 帧、GUI/catalog 待补证据和未验项                         |
 | [共享 PCB Bench MCP](pcb-mcp-integration.md)                                                                                                                             | 固定外部 PCB 工具、完整 Skill、资源覆盖、协议验证与原生执行前提                    |
 | [Godot game MCP](godot-mcp-integration.md)                                                                                                                               | 任务范围披露、源场景检查、原生导入与限时运行的证据边界                             |

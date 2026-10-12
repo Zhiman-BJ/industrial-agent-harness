@@ -19,6 +19,7 @@ require('node:readline').createInterface({input:process.stdin}).on('line',line=>
 const request=JSON.parse(line); if(!request.id) return;
 fs.appendFileSync(process.env.SESSION_LOG, JSON.stringify({method:request.method,params:request.params})+'\\n');
 if(request.params?.name==='hang') return;
+if(request.params?.name==='crash') { console.error('fixture recovery startup failed'); process.exit(23); }
 console.log(JSON.stringify({jsonrpc:'2.0',id:request.id,result: request.method==='initialize'?{serverInfo:{name:'fixture'}}:{content:[{type:'text',text:'ok'},{type:'image',mimeType:'image/png',data:'aGVsbG8='}]}}));
 });
 `,
@@ -94,5 +95,83 @@ test('trusted profiles must opt into the bounded bridge network explicitly', t =
   assert.throws(
     () => dockerCommand({ ...f.spec, runtime: { ...f.spec.runtime, network: 'host' } }),
     /network/,
+  );
+});
+
+test('unexpected process exit preserves stderr and exit status before cleanup and for later calls', async t => {
+  const f = fixture(t);
+  const session = await openToolSession(f.spec);
+  await assert.rejects(
+    session.callTool('crash', {}),
+    /Tool process exited \(23\): fixture recovery startup failed/,
+  );
+  await assert.rejects(session.callTool('after-crash', {}), /fixture recovery startup failed/);
+  await session.close();
+  assert.ok(fs.readFileSync(f.log, 'utf8').includes('"rm"'));
+});
+
+test('project session scopes close idle real transports independently and reject opens after disposal', async t => {
+  const { createToolSessionScope } = require('../src/tool-session.cjs');
+  const f = fixture(t);
+  const first = createToolSessionScope(),
+    second = createToolSessionScope();
+  const a = await first.openToolSession(f.spec),
+    b = await second.openToolSession(f.spec);
+  assert.equal(first.close(), first.close());
+  await first.close();
+  assert.equal(a.closing, true);
+  assert.equal(b.closing, false);
+  await assert.rejects(first.openToolSession(f.spec), /scope closed/);
+  await b.callTool('still-live', {});
+  await second.close();
+  const calls = fs.readFileSync(f.log, 'utf8').trim().split('\n').map(JSON.parse);
+  assert.equal(calls.filter(Array.isArray).filter(args => args[0] === 'rm').length, 2);
+});
+
+test('scope disposal waits for late startup cleanup, bounds concurrent starts and reports cleanup failures', async () => {
+  const { createToolSessionScope } = require('../src/tool-session.cjs');
+  let finish,
+    closes = 0,
+    startupSignal;
+  const scope = createToolSessionScope({
+    maxSessions: 1,
+    openSession: async spec => {
+      startupSignal = spec.signal;
+      await new Promise(resolve => {
+        finish = resolve;
+      });
+      return {
+        close: async () => {
+          closes++;
+        },
+      };
+    },
+  });
+  const pending = scope.openToolSession({});
+  await Promise.resolve();
+  await assert.rejects(scope.openToolSession({}), /limit/);
+  const closing = scope.close();
+  assert.equal(startupSignal.aborted, true);
+  let finished = false;
+  closing.then(() => {
+    finished = true;
+  });
+  await Promise.resolve();
+  assert.equal(finished, false);
+  finish();
+  await assert.rejects(pending, /scope closed/);
+  await closing;
+  assert.equal(closes, 1);
+  const failed = createToolSessionScope({
+    openSession: async () => ({
+      close: async () => {
+        throw Error('cleanup not confirmed');
+      },
+    }),
+  });
+  await failed.openToolSession({});
+  await assert.rejects(
+    failed.close(),
+    error => error instanceof AggregateError && error.errors[0].message === 'cleanup not confirmed',
   );
 });

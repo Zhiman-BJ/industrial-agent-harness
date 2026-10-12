@@ -42,7 +42,7 @@ function registryScope(target) {
 }
 
 class Transfer {
-  constructor({ signal, stallMs = 60000, timeoutMs = 20 * 60 * 1000 } = {}) {
+  constructor({ signal, stallMs = 60000, timeoutMs = 6 * 60 * 60 * 1000 } = {}) {
     this.controller = new AbortController();
     this.signal = signal
       ? AbortSignal.any([signal, this.controller.signal])
@@ -83,7 +83,7 @@ class Transfer {
       throw Error('Download failed: registry token service returned no token.');
     return token;
   }
-  async response(url) {
+  async response(url, headers = {}) {
     let authorization;
     let authOrigin;
     for (let hops = 0; hops <= 12; hops++) {
@@ -98,7 +98,7 @@ class Transfer {
       const response = await fetch(url, {
         redirect: 'manual',
         signal: this.signal,
-        ...(authorization ? { headers: { authorization } } : {}),
+        headers: { ...headers, ...(authorization ? { authorization } : {}) },
       });
       this.touch();
       if (response.status === 401 && !authorization) {
@@ -117,6 +117,7 @@ class Transfer {
           await response.body?.cancel();
           throw Error(`Download failed: HTTP ${response.status}`);
         }
+        Object.defineProperty(response, 'transferUrl', { value: target.href });
         return response;
       }
       await response.body?.cancel();

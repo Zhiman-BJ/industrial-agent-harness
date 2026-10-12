@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 2,
+  "kind": "platform-components",
+  "sourceCommit": "1eae41d583bc526c36ae8a8f6c08343504949928",
+  "sourceState": "committed",
+  "sourceFiles": {
+    "mcp/environment-probe/go.mod": "909eac451edbd188a9748b93e344b5cc437ef229be4b2ced4ff83e9d4df28f89",
+    "mcp/environment-probe/main.go": "e69cf21806dbd5f6af828b3412e6e2af02b51464c9f54dc4bc09a68c6487db86",
+    "mcp/environment-probe/main_test.go": "d0e49132a3e76e3e21e0c3930201e2f70f3e79d72e08d087a317a52141479dd1",
+    "mcp/environment-probe/process_unix.go": "d6eb412ddc81f06f1c4c6b40aeb03b14e42cba710c2e07a0e44c2b0913f258a3",
+    "mcp/environment-probe/process_windows.go": "a31e82d8bcd113b22ba68fb4e32d21f707c58c5a796cae63849d0540575445de"
+  },
+  "components": [
+    {
+      "id": "environment-probe",
+      "platform": "darwin-arm64",
+      "file": "darwin-arm64/industrial-environment-probe",
+      "sha256": "f91fefdde089c71365149ed6bc4ef4e3c96a68214916595bd150929e71f0ca57",
+      "sizeBytes": 2131522
+    },
+    {
+      "id": "environment-probe",
+      "platform": "linux-x64",
+      "file": "linux-x64/industrial-environment-probe",
+      "sha256": "1634bb71cb04cf8ad08b781508bef43ce98236a9db59cda5d9fcfea9a6fccb46",
+      "sizeBytes": 2252962
+    }
+  ]
+}

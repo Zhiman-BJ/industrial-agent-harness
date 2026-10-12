@@ -29,6 +29,11 @@ async function prepare(manager, root) {
       if (result.status) throw Error(result.stderr);
     }
   }
+  const executable = path.join(root, 'fixture-cli');
+  const runtime = path.join(root, 'fixture-runtime');
+  fs.mkdirSync(path.join(runtime, 'bin'), { recursive: true });
+  for (const file of [executable, path.join(runtime, 'bin/fixture')])
+    fs.writeFileSync(file, '#!/bin/sh\nprintf "fixture-native-1.0\\n"\n', { mode: 0o755 });
   const source = path.join(root, 'bundle');
   fs.mkdirSync(source, { recursive: true });
   const asset = {
@@ -60,7 +65,36 @@ async function prepare(manager, root) {
     capabilities: [],
     skills: [],
     providerPacks: [],
-    runtimeAssets: [asset],
+    runtimeAssets: [
+      asset,
+      {
+        id: 'fixture-cli',
+        label: 'Fixture command line tool',
+        type: 'native-executable',
+        platform: `${process.platform}-${process.arch}`,
+        version: '1.0.0',
+        environment: 'INDUSTRIAL_HARNESS_FIXTURE_CLI',
+        probeId: 'version',
+        versionText: 'fixture-native-1.0',
+        installUrl: 'https://example.com/cli',
+      },
+      {
+        id: 'fixture-runtime',
+        label: 'Fixture private runtime',
+        type: 'native-runtime-zip',
+        platform: `${process.platform}-${process.arch}`,
+        version: '1.0.0',
+        directory: 'fixture-runtime',
+        executable: 'bin/fixture',
+        environment: 'INDUSTRIAL_HARNESS_FIXTURE_RUNTIME',
+        probeId: 'version',
+        versionText: 'fixture-native-1.0',
+        url: 'https://example.invalid/runtime.zip',
+        sha256: '0'.repeat(64),
+        size: 1,
+        installedSize: 1024,
+      },
+    ],
     executionProfiles: [
       {
         id: 'native',
@@ -70,6 +104,33 @@ async function prepare(manager, root) {
         platforms: [`${process.platform}-${process.arch}`],
         toolIds: ['fixture.inspect'],
         assetIds: ['fixture'],
+      },
+      {
+        id: 'cli',
+        label: 'Fixture external CLI',
+        kind: 'native',
+        qualified: true,
+        platforms: [`${process.platform}-${process.arch}`],
+        toolIds: ['fixture.cli'],
+        assetIds: ['fixture-cli'],
+      },
+      {
+        id: 'runtime',
+        label: 'Fixture runtime folder',
+        kind: 'native',
+        qualified: true,
+        platforms: [`${process.platform}-${process.arch}`],
+        toolIds: ['fixture.runtime'],
+        assetIds: ['fixture-runtime'],
+      },
+      {
+        id: 'container',
+        label: 'Fixture container',
+        kind: 'container',
+        qualified: true,
+        platforms: [`${process.platform}-${process.arch}`],
+        toolIds: [],
+        assetIds: [],
       },
       {
         id: 'unsupported',
@@ -125,7 +186,7 @@ async function prepare(manager, root) {
     size: bytes.length,
     url: 'fixture.hpack',
     platforms: [`${process.platform}-${process.arch}`],
-    runtimeAssets: [asset],
+    runtimeAssets: bundle.runtimeAssets,
   };
   const catalog = signCatalog(
     { schemaVersion: 1, channel: 'beta', packs: [entry] },
@@ -147,7 +208,7 @@ async function prepare(manager, root) {
     );
     return new Response(bytes);
   };
-  return { apps, bundle, root };
+  return { apps, executable, runtime, bundle, root };
 }
 async function run(window, { manager, fixture, environments, dialog }) {
   const evaluate = script => window.webContents.executeJavaScript(script, true);
@@ -662,12 +723,103 @@ async function run(window, { manager, fixture, environments, dialog }) {
   await require('./selftest-capture.cjs').captureSettled(window, {
     output: path.join(fixture.root, '06-damaged-connection-reset.png'),
   });
+  // Native file/folder selection uses production IPC and the shared detector.
+  for (const [profileId, label, selectedPath, property, assetId] of [
+    ['cli', 'Choose executable', fixture.executable, 'openFile', 'fixture-cli'],
+    ['runtime', 'Choose runtime folder', fixture.runtime, 'openDirectory', 'fixture-runtime'],
+  ]) {
+    await evaluate(
+      `(() => {const select=document.querySelector('.ia-runtime-environments select');select.value=${JSON.stringify(profileId)};select.dispatchEvent(new Event('change',{bubbles:true}));})()`,
+    );
+    await wait(`Boolean(document.querySelector('[data-profile="${profileId}"]'))`);
+    assert.equal(
+      await evaluate(
+        `Array.from(document.querySelectorAll('.ia-runtime-environments button')).some(button=>button.textContent==='Prepare managed environment'||button.textContent==='Prepare container image')`,
+      ),
+      false,
+    );
+    await assert.rejects(
+      evaluate(
+        `window.viewerHost.environmentPrepare({domain:'environment-fixture',profileId:${JSON.stringify(profileId)}})`,
+      ),
+      /official source/,
+    );
+    if (profileId === 'cli') {
+      assert.equal(
+        await evaluate(
+          `Array.from(document.querySelectorAll('.ia-runtime-environments button')).some(button=>button.textContent==='Prepare managed environment'||button.textContent==='Prepare container image')`,
+        ),
+        false,
+      );
+      assert.equal(
+        await evaluate(
+          `document.querySelector('.ia-runtime-environments').innerText.includes('Fixture command line tool')`,
+        ),
+        true,
+      );
+    }
+    dialog.showOpenDialog = async options => {
+      assert.deepEqual(options.properties, [property]);
+      return { canceled: false, filePaths: [selectedPath] };
+    };
+    try {
+      await click(label);
+    } finally {
+      dialog.showOpenDialog = original;
+    }
+    await wait(
+      `document.querySelector('[data-asset="${assetId}"] code')?.innerText===${JSON.stringify(selectedPath)}`,
+    );
+    await click('Check and save environment');
+    await wait(
+      `document.querySelector('[data-environment-status]')?.dataset.environmentStatus==='ready' && !Array.from(document.querySelectorAll('.ia-runtime-environments button')).find(button=>button.textContent==='Check and save environment')?.disabled`,
+    );
+    assert.equal(
+      await evaluate(
+        `document.querySelector('[data-asset="${assetId}"]').dataset.dependencyStatus`,
+      ),
+      'ready',
+    );
+  }
+  await evaluate(
+    `(() => {const select=document.querySelector('.ia-runtime-environments select');select.value='container';select.dispatchEvent(new Event('change',{bubbles:true}));})()`,
+  );
+  await wait(`Boolean(document.querySelector('[data-profile="container"]'))`);
+  let containerPrepareCalls = 0;
+  const originalPrepare = environments.prepare;
+  environments.prepare = async () => {
+    containerPrepareCalls++;
+    throw Error('Install and start Docker before preparing the container image.');
+  };
+  try {
+    await click('Prepare container image');
+    await wait(
+      `document.querySelector('.ia-runtime-environments').innerText.includes('Install and start Docker before preparing the container image.') && !Array.from(document.querySelectorAll('.ia-runtime-environments button')).find(button=>button.textContent==='Prepare container image')?.disabled`,
+    );
+    assert.equal(containerPrepareCalls, 1);
+    environments.prepare = async domain => {
+      containerPrepareCalls++;
+      return {
+        ...environments.describe(domain),
+        binding: { profileId: 'container' },
+        lastCheck: { profileId: 'container', status: 'ready', reasons: [], assets: [] },
+      };
+    };
+    await click('Prepare container image');
+    await wait(
+      `document.querySelector('.ia-runtime-environments').innerText.includes('Execution environment saved.')`,
+    );
+    assert.equal(containerPrepareCalls, 2);
+  } finally {
+    environments.prepare = originalPrepare;
+  }
   fs.writeFileSync(
     path.join(fixture.root, 'report.json'),
     JSON.stringify(
       {
         passed: true,
         checks: [
+          'explicit-container-prepare-docker-guidance',
           'pack-only',
           'missing-detection',
           'multiple-installations',
@@ -688,6 +840,9 @@ async function run(window, { manager, fixture, environments, dialog }) {
           'damaged-secure-record-explicit-reset',
           'system-font',
           'dark-narrow-layout',
+          'native-executable-picker-external-guidance',
+          'native-runtime-directory-picker-association',
+          'software-download-entrypoints-rejected',
         ],
       },
       null,

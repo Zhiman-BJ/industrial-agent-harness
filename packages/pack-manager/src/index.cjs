@@ -703,6 +703,13 @@ class PackManager {
       timeoutMs,
     } = {},
   ) {
+    if (prepareRuntime) {
+      const error = Error(
+        'DEPENDENCY_INSTALLATION_EXTERNAL: Pack installation never prepares dependencies. Install native software externally or explicitly prepare a container profile after installing Docker.',
+      );
+      error.code = 'DEPENDENCY_INSTALLATION_EXTERNAL';
+      throw error;
+    }
     if (!allowUnsigned && !this.verifiedEntries.has(entry))
       throw Error('Pack must come from a verified catalog.');
     if (
@@ -754,9 +761,6 @@ class PackManager {
     this.assertIdle(bundle.domain);
     const expandedBytes = files.reduce((sum, file) => sum + file.bytes.length, 0);
     checkSpace(this.directory, footprint(0, expandedBytes), this.space);
-    // A failed toolchain preparation must not activate an unusable Pack update.
-    if (prepareRuntime)
-      await this.runtimeAssets.ensure(bundle.runtimeAssets, { onProgress, signal });
     const parent = path.join(this.directory, bundle.domain);
     const target = path.join(parent, bundle.version);
     const staging = path.join(parent, `.staging-${crypto.randomUUID()}`);

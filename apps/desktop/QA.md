@@ -31,17 +31,17 @@ pnpm --filter @industrial-agent-harness/desktop exec electron . \
   --install-experience-selftest --user-data-dir=/tmp/harness-install-user-unique
 ```
 
-The installation gate covers catalog states, selection, Pack transfer estimates and cancellation, failed update preservation, background installation, external-process preparation status, navigation, both languages and narrow layouts. Native fixture software is explicitly prepared after the source Pack is installed. Pack transfer events and environment preparation events are checked separately. The repair path clicks **Prepare managed environment**; installation alone must not report native readiness.
+The installation gate covers catalog states, selection, Pack transfer estimates and cancellation, failed update preservation, background installation, external-process preparation status, navigation, both languages and narrow layouts. The signed native fixture app is installed externally and explicitly associated after the source Pack is installed; zero native archive requests are asserted. The repair path clicks **Choose installed application → Check and save environment**; installation alone must not report native readiness.
 
-Repeat with `HARNESS_INSTALL_EXPERIENCE_QUIT_TEST=true` to exit normally during an explicit native software download. The source Pack must stay installed, and environment preparation must release locks and incomplete downloads before application exit.
+Repeat with `HARNESS_INSTALL_EXPERIENCE_QUIT_TEST=true` to exit normally during an active Pack transfer. The transfer must cancel and release its installation lock before exit, with no native downloads.
 
 The fixture tests exercise the application and shared lifecycle, not engineering acceptance of FreeCAD, KiCad, Godot, CUDA or an EDA toolchain.
 
 ## Packaged native CAD qualification
 
-`electron/cad-install-selftest.cjs` is the packaged Apple Silicon acceptance flow. Run the release qualification procedure with a real bundled CAD Pack, official dependency archive, pinned native Kimi and controlled model endpoint. Set `HARNESS_CAD_INSTALL_REPORT_DIR` and invoke the installed application with `--cad-install-selftest`; optional archive/runtime caches remain fully validated by production code.
+`electron/cad-install-selftest.cjs` is the packaged Apple Silicon acceptance flow. Run the release qualification procedure with a real bundled CAD Pack, externally installed FreeCAD, pinned native Kimi and controlled model endpoint. Set `HARNESS_CAD_INSTALL_REPORT_DIR` and invoke the installed application with `--cad-install-selftest`; set `HARNESS_CAD_INSTALL_APP_PATH` (or `HARNESS_FREECAD_APP_PATH`) to an externally installed app. The test clones it outside the Pack store before damaging only the test copy.
 
-The gate first installs the source Pack, verifies that no software environment was selected, then explicitly prepares the qualified native profile. It subsequently exercises native build/edit actions, independent readback, the OCCT Viewer, runtime damage and explicit repair. Restart and upgrade modes preserve projects, action evidence, chat history and verified native receipts; the target version comes from the signed bundled catalog.
+The gate first installs the source Pack, verifies that no software environment was selected, then selects the external app and saves the qualified native profile. It subsequently exercises native build/edit actions, independent readback, the OCCT Viewer, runtime damage and explicit repair. Restart and upgrade modes preserve projects, action evidence, chat history and verified native receipts; the target version comes from the signed bundled catalog.
 
 A fixture renderer pass does not replace this packaged native gate. Signing, notarization, public first launch, actual remote services and platforms not exercised must be reported separately.
 
@@ -68,3 +68,5 @@ Saving settings does not select a profile. **Check and save environment** associ
 The environment renderer gate also saves a remote fixture connection through actual IPC and OS encryption, checks ciphertext and returned views for credential leakage, then verifies the configured/unchecked state and explicit association. Actual CUDA paired-service execution still requires the deployed service acceptance gate.
 
 The renderer gate also delays actual environment IPC responses across project switches. Old descriptions, connection results, errors and pending cleanup must not overwrite the newly selected context. Secure saving has no cancellation button because the encrypted write cannot be interrupted once accepted. A damaged encrypted record disables the affected remote profile; **Clear damaged saved connection** explicitly removes that record and allows reconfiguration without requiring decryption or silently selecting another environment.
+
+Native applications and private runtime folders must be installed externally, then selected and associated. Native preparation IPC must refuse before any download. Container profiles alone expose **Prepare container image**; Docker must already be installed and running. Pack installation must never pull images implicitly.

@@ -1,0 +1,10 @@
+✔ standalone legacy Godot transport can import and inspect a bounded scene; canonical acceptance has a separate native suite (10837.331917ms)
+✔ a signed installed Chip Pack executes real Verilator without changing its verified inventory, then factory restart restores acceptance (18759.575125ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 18932.051

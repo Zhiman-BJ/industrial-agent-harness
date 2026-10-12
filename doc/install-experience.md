@@ -2,40 +2,18 @@
 
 ## Current distribution v2 source (2026-10-12)
 
-Current source consumes Domain Packs 0.7.0 at
-`2036b599318267b7a28775ff614915da21ad6fcf`. [PD-072](product-decisions.md#pd-072pack-与软件分离及能力-profile-选择)
-replaces mandatory dependency preparation: installing a Pack installs trusted
-capabilities, Skills and adapters only. Software preparation and selecting an
-execution profile are explicit, separate actions.
+Current source consumes Domain Packs 0.7.0 at 1eae41d583bc526c36ae8a8f6c08343504949928.
+[PD-075](product-decisions.md#pd-075原生软件外部安装与显式容器准备) defines the current boundary: installing a Pack installs trusted capabilities, Skills and adapters only.
 
-Users can associate a compatible existing application, open its official manual
-installation page, or explicitly prepare the selected profile's managed download.
-Godot and native FreeCAD need no Docker; Chip, PCB design and DXF container profiles
-still need a running Docker daemon. PCB's bounded native profile and broader design
-container expose different tool subsets. Unqualified profiles remain unavailable.
-The current product offers Chip, PCB, Godot and CAD. CUDA is withdrawn from
-fresh and legacy installed product entries through owner withdrawal metadata;
-third-party domains are unaffected. Cards use visible borders, a one-line purpose
-and collapsed requirements. Status names missing dependencies and uses green
-ready, yellow missing, red check failure and neutral unchecked. The latest failed
-check overrides saved Ready in the display without deleting the saved binding.
-Pack installation and native Godot/FreeCAD/bounded KiCad checks need no Docker.
+Native applications and private native runtimes are installed externally. Harness opens the official installation page when declared, detects compatible software, and associates an application, executable file or runtime folder. It provides no native download, installation or repair entrypoint. Native prepare IPC/CLI and implicit Pack dependency preparation fail before transfer or installation.
 
-CLI and Desktop share profile bindings, detection, cancellation and environment
-identity checks. User applications are never deleted when a binding is cleared.
-Historical results remain readable without an available execution environment.
-The signed Pack carries a separately built Go component for fixed environment
-probes; it does not replace all domain MCP implementations. Public software/archive
-and container identities remain pinned; explicit managed preparation retains the
-existing transfer, verification, cache and failure cleanup mechanisms.
+Users install and start Docker themselves. For a qualified container profile, Harness can explicitly prepare the pinned image after checking Docker availability. Existing matching images can also be associated without pulling. Installing a Pack never implicitly pulls an image. Missing dependencies name the required component; failed checks cannot display stale green readiness.
 
-Real existing-app Godot association and canonical 12-frame structural verification
-passed for the recorded earlier v2 source. Its GUI IPC and five-domain catalog
-results remain historical evidence; current four-domain/card/status regression
-requires its own evidence;
-see [v2 acceptance](qa-runtime-distribution-v2-20261012.md) and [implemented contract](runtime-distribution-v2.md).
-Older reports below retain their tested version and evidence. No new signed public
-installer, cold-download qualification, Core OTA or Mac CI runner is claimed.
+Godot, FreeCAD, bounded KiCad and the bounded native DXF profile need no Docker. Chip, full PCB design and the optional DXF container profile still require Docker. Their broader native toolchains are not qualified by this change. The catalog offers Chip, PCB, Godot and CAD; withdrawn CUDA and preserved historical records retain the scope recorded in earlier QA.
+
+CLI and Desktop share profile bindings, fixed Go version probes, integrity checks, cancellation and project/global association. Clearing a binding never deletes software. Project Runtime closes the persistent sessions it opened, including idle sessions after cancellation, so reopening releases the workspace lock.
+
+Current acceptance: [shared runtime and final installation policy](qa-native-runtime-20261012.md). This is a local unsigned candidate, not a signed/notarized public release, broader OS qualification or new Mac runner. The old KiCad managed-download defect and transfer regression remain historical evidence; its native download entrypoint is removed from the product.
 
 ## Historical managed source 0.6.0 (2026-10-12)
 

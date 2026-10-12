@@ -125,6 +125,8 @@ CI 参考集：`desktop-package.yml` 跑 `ui language parallel gui-settings` 及
 
 前置检查由 `ci-tests.cjs` 自带：平台/KIMI_EXECUTABLE/FreeCAD/chip venv/verilator/rg 缺一即报错退出。
 
+以下 setup 脚本仅供 CI／维护环境预置测试软件，不是产品安装入口；当前产品原生应用只检测关联，容器可在用户已有 Docker 时显式准备。最新专项复验见 [Agent 安装验收](agent-install-acceptance.md) 和 [本轮证据](qa-native-runtime-20261012.md)。
+
 **native（darwin arm64）完整准备**（与 industrial-core.yml 等价，可直接复制；在仓库根执行）：
 
 ```bash
@@ -145,13 +147,13 @@ export HARNESS_PROFESSIONAL_EVIDENCE="$PWD/dist/ci-reports/professional-evidence
 
 **native-linux（linux x64）准备**只需两步：`node apps/desktop/scripts/setup-kimi.cjs` + 上述 `KIMI_EXECUTABLE` 导出，以及 chip pack 的 `uv sync`（见 industrial-linux.yml）。
 
-| ID    | 命令                                                                                                                                                                                                 | 覆盖                                                                                                                                                                                                                                                                                                                      |
-| ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| T4-1  | 执行上方准备命令块                                                                                                                                                                                   | 受保护 Agent、Harbor 托管 FreeCAD、pcb/godot 原生运行时与独立 CLI/Desktop 打包（professional/freecad 测试入口的绑定来源）                                                                                                                                                                                                 |
-| T4-2  | `pnpm run test:ci -- native`（或 `native-linux`）                                                                                                                                                    | `industrial-core-vertical-slice.test.cjs`（里程碑 Gate：StateProvider→Broker→Scoped Tool→Runtime→Verilator→Artifact→Verifier→Checkpoint 真实闭环）、installed-pack、pcb-godot runtime、freecad-runtime、后台任务、沙箱、会话混沌/资源、MCP 实测；文件清单由 `scripts/ci-tests.cjs` 维护                                   |
-| T4-2a | `pnpm run test:ci -- native-installed`（darwin arm64）                                                                                                                                               | 独立必跑安装组，串行执行 `freecad-installed.test.cjs` 和 `pcb-godot-installed.test.cjs` 的三项全新托管安装与真实工程验收；原断言、执行截止与零跳过要求保留。准备使用 Harbor 中的固定原始归档与独立 CLI/Desktop payload；使用预置归档缓存或暖 Docker 层时必须明确标注，不能计为冷下载，见 `industrial-core.yml` 的安装 job |
-| T4-3  | `node --test tests/integration/headless-package-kimi.test.cjs`                                                                                                                                       | 打包 headless Agent 的生产进程边界                                                                                                                                                                                                                                                                                        |
-| T4-4  | 打包 CLI + 工作区验证：对 chip/pcb/godot 依次 `node scripts/package-headless.cjs dist/workspace-<domain> --domain <domain>` 后 `node scripts/smoke-workspace-cli.cjs <cli> <domain> <evidence.json>` | 三个领域的独立 CLI 真实任务与 MCP                                                                                                                                                                                                                                                                                         |
+| ID    | 命令                                                                                                                                                                                                 | 覆盖                                                                                                                                                                                                                                                                                                                                                                                           |
+| ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| T4-1  | 执行上方准备命令块                                                                                                                                                                                   | 受保护 Agent、Harbor 托管 FreeCAD、pcb/godot 原生运行时与独立 CLI/Desktop 打包（professional/freecad 测试入口的绑定来源）                                                                                                                                                                                                                                                                      |
+| T4-2  | `pnpm run test:ci -- native`（或 `native-linux`）                                                                                                                                                    | `industrial-core-vertical-slice.test.cjs`（里程碑 Gate：StateProvider→Broker→Scoped Tool→Runtime→Verilator→Artifact→Verifier→Checkpoint 真实闭环）、installed-pack、pcb-godot runtime、freecad-runtime、后台任务、沙箱、会话混沌/资源、MCP 实测；文件清单由 `scripts/ci-tests.cjs` 维护                                                                                                        |
+| T4-2a | `pnpm run test:ci -- native-installed`（darwin arm64）                                                                                                                                               | 独立必跑安装组，串行执行 `freecad-installed.test.cjs` 和 `pcb-godot-installed.test.cjs` 的三项全新 Pack 安装、外部应用关联与真实工程验收；原断言、执行截止与零跳过要求保留。应用作为测试前置条件在产品流程外准备，以 HARNESS_FREECAD_APP_PATH / HARNESS_KICAD_APP_PATH / HARNESS_GODOT_APP_PATH 指定；独立 CLI/Desktop payload 与缓存／暖镜像必须如实登记，见 `industrial-core.yml` 的安装 job |
+| T4-3  | `node --test tests/integration/headless-package-kimi.test.cjs`                                                                                                                                       | 打包 headless Agent 的生产进程边界                                                                                                                                                                                                                                                                                                                                                             |
+| T4-4  | 打包 CLI + 工作区验证：对 chip/pcb/godot 依次 `node scripts/package-headless.cjs dist/workspace-<domain> --domain <domain>` 后 `node scripts/smoke-workspace-cli.cjs <cli> <domain> <evidence.json>` | 三个领域的独立 CLI 真实任务与 MCP                                                                                                                                                                                                                                                                                                                                                              |
 
 ### T5 桌面打包与安装冒烟（CI：desktop-package.yml，mac+win）
 
@@ -296,35 +298,34 @@ Profile 操作触发。旧安装报告只证明旧身份／流程，不替代本
 node --test packages/pack-manager/src/runtime-environments.test.cjs \
   apps/desktop/electron/runtime-environments.test.cjs \
   apps/cli/tests/domains.test.cjs
-node --test packages/harness-core/tests/runtime-environment-native.test.cjs
+node --test tests/integration/godot-native.test.cjs
 ```
 
-第二条默认 native opt-in 不启用时跳过，不能计作原生通过。真实 Godot 关联→共享
+第二条已纳入现有 Godot native CI 套件，缺少实际软件会失败。真实 Godot 关联→共享
 canonical Runtime→12 帧验证，在 macOS ARM64、有兼容 Godot 和 owner probe 时执行：
 
 ```sh
-HARNESS_TEST_NATIVE_ENVIRONMENTS=1 \
 HARNESS_TEST_PLATFORM_PROBE=/absolute/industrial-environment-probe \
-node --test packages/harness-core/tests/runtime-environment-native.test.cjs
+node --test tests/integration/godot-native.test.cjs
 ```
 
 GUI selftest 必须先构建桌面 bundle，并使用隔离的 Pack store、截图目录与实际
 Electron renderer/preload/IPC。使用现有 `--runtime-environments-selftest` 入口；
 `INDUSTRIAL_HARNESS_PACK_STORE`、`INDUSTRIAL_UI_SCREENSHOTS` 均指向本轮独立目录。
 测试注入的应用／依赖 fixture 只验交互和 IPC，不计真实软件安装或工程通过。
-五域真实签名目录另验，并记录其中每个 `executionProfiles`、runtime asset 和
+四域真实签名目录另验，并记录其中每个 `executionProfiles`、runtime asset 和
 `platformProbe` 的来源、hash、大小及实际安装消费。
 
-| 项目               | 必须观察的行为                                                                                 |
-| ------------------ | ---------------------------------------------------------------------------------------------- |
-| 空 store Pack-only | 无 Docker／vendor 软件时仍完成 Pack 安装；无隐式软件网络请求；项目与历史可读                   |
-| native 检测与关联  | 缺失、不兼容、多候选、手选路径、官方入口、版本／签名／身份检查；检测不自动关联；解除不删除应用 |
-| Profile 权限       | 真实 projectDir 绑定覆盖全局；规范 Tool IDs 按选定能力收敛；未验证平台不可执行                 |
-| 明确托管准备       | 只准备选定 Profile 资产；进度、取消、失败、重试和旧收据保留；Docker 缺失可恢复                 |
-| Go 平台组件        | 签名 bundle 的实际二进制经过平台／路径／size／hash 检查并被调用；损坏或缺失不静默 fallback     |
-| CUDA 两种远程协议  | 配对 MCP 保留本地 canonical Runtime；配置正确仅 configured；不误跳协调器上传；凭据不进公开轨迹 |
-| 运行／更换／取消   | active lease 防并发换环境；身份变化使旧 Scope／证据失效；取消仍保留实际产物和确认清理诊断      |
-| 历史与重启         | 无可执行环境仍读历史；绑定和已记录状态恢复；旧 Verifier 不被新版本重新解释                     |
+| 项目               | 必须观察的行为                                                                                            |
+| ------------------ | --------------------------------------------------------------------------------------------------------- |
+| 空 store Pack-only | 无 Docker／vendor 软件时仍完成 Pack 安装；无隐式软件网络请求；项目与历史可读                              |
+| native 检测与关联  | 缺失、不兼容、多候选、手选路径、官方入口、版本／签名／身份检查；检测不自动关联；解除不删除应用            |
+| Profile 权限       | 真实 projectDir 绑定覆盖全局；规范 Tool IDs 按选定能力收敛；未验证平台不可执行                            |
+| 显式容器准备       | 仅所选容器 Profile 可以拉取固定镜像，先检查用户已有 Docker；原生 Prepare 拒绝；进度、取消、失败和重试可见 |
+| Go 平台组件        | 签名 bundle 的实际二进制经过平台／路径／size／hash 检查并被调用；损坏或缺失不静默 fallback                |
+| 远程协议兼容测试   | 当前产品不展示 CUDA 配置；保留的通用连接 fixture 与旧 CUDA HTTP 协议测试只算传输兼容证据，不算 GPU 验收   |
+| 运行／更换／取消   | active lease 防并发换环境；身份变化使旧 Scope／证据失效；取消仍保留实际产物和确认清理诊断                 |
+| 历史与重启         | 无可执行环境仍读历史；绑定和已记录状态恢复；旧 Verifier 不被新版本重新解释                                |
 
 本专项不新增 runner，不把 T2 fixture、交叉构建或旧 native 资格冒充新 Mac Docker
-CI、真实五域冷安装、签名／公证安装器或完整工程验收。
+CI、真实四域冷安装、签名／公证安装器或完整工程验收。

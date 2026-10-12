@@ -24,21 +24,19 @@ test('legacy repair IPC refuses v2 Packs without touching any runtime assets', a
     repairLegacy: () => manager.runtimeAssets.ensure(),
   });
   for (const domain of ['v2', 'empty'])
-    await assert.rejects(handler({}, { domain }), /Choose an execution profile/);
+    await assert.rejects(handler({}, { domain }), /official source/);
   assert.equal(ensured, 0);
 });
-test('legacy repair IPC preserves the old bundle handler and request', async () => {
-  const event = { sender: 'fixture' },
-    request = { domain: 'legacy' };
+test('legacy repair IPC rejects old bundles without invoking legacy software download', async () => {
+  let calls = 0;
   const handler = domainRepairHandler({
     manager: { list: () => [{ domain: 'legacy', runtimeAssets: [] }] },
     isManaged: () => true,
-    repairLegacy: async (e, r) => {
-      assert.equal(e, event);
-      assert.equal(r, request);
-      return { installed: [] };
+    repairLegacy: async () => {
+      calls++;
     },
   });
-  assert.deepEqual(await handler(event, request), { installed: [] });
-  await assert.rejects(handler(event, { domain: 'missing' }), /not installed/);
+  await assert.rejects(handler({}, { domain: 'legacy' }), /official source/);
+  await assert.rejects(handler({}, { domain: 'missing' }), /not installed/);
+  assert.equal(calls, 0);
 });

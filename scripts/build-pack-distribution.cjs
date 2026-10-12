@@ -168,9 +168,9 @@ for (const declaration of metadata.domains) {
     sha256: digest(archive),
     size: archive.length,
     executionProfiles: bundle.executionProfiles,
-    runtimeDownloadSize: bundle.runtimeAssets.reduce((sum, asset) => sum + asset.size, 0),
+    runtimeDownloadSize: bundle.runtimeAssets.reduce((sum, asset) => sum + (asset.size || 0), 0),
     runtimeInstalledSize: bundle.runtimeAssets.reduce(
-      (sum, asset) => sum + (asset.installedSize || asset.size * 4),
+      (sum, asset) => sum + (asset.installedSize || (asset.size || 0) * 4),
       0,
     ),
     runtimeAssets: bundle.runtimeAssets,

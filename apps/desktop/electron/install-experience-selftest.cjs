@@ -196,6 +196,11 @@ async function run(window, { manager }) {
     await wait(`Boolean(${selector})`);
     await evaluate(`(${selector}).click()`);
   };
+  const environmentAction = async (id, label) => {
+    const selector = `Array.from(document.querySelectorAll('.ia-runtime-environments[data-domain="${id}"] button')).find(button=>button.textContent===${JSON.stringify(label)}&&!button.disabled)`;
+    await wait(`Boolean(${selector})`);
+    await evaluate(`(${selector}).click()`);
+  };
   const openPacks = async () => {
     await evaluate(`document.querySelector('.ia-settings-button').click()`);
     await wait(
@@ -453,22 +458,15 @@ async function run(window, { manager }) {
       );
     }
     if (quitMode) {
-      assert.ok(asset, 'Native runtime quit regression requires macOS.');
-      delay = 3;
+      delay = 1500;
       await select('sample-a');
-      await evaluate(`document.querySelector('.ia-domains-primary').click()`);
-      await wait(`Boolean(document.querySelector('.ia-domain-setup [data-action="done"]'))`);
       await evaluate(
-        `window.__environmentEvents=[];void window.viewerHost.onEnvironmentProgress(value=>window.__environmentEvents.push(value))`,
+        `window.__installEvents=[];window.viewerHost.onDomainProgress(value=>window.__installEvents.push(value));document.querySelector('.ia-domains-primary').click()`,
       );
-      const prepare = `Array.from(document.querySelectorAll('.ia-runtime-environments[data-domain="sample-a"] button')).find(button=>button.textContent==='Prepare managed environment'&&!button.disabled)`;
-      await wait(`Boolean(${prepare})`);
-      await evaluate(`(${prepare}).click()`);
-      await wait(`window.__environmentEvents.some(value=>value.phase==='downloading')`);
+      await wait(`window.__installEvents.some(value=>value.phase==='downloading')`);
       const beforeQuit = await evaluate(
-        `window.__environmentEvents.findLast(value=>value.phase==='downloading')`,
+        `window.__installEvents.findLast(value=>value.phase==='downloading')`,
       );
-      assert.equal(fs.existsSync(path.join(manager.runtimeAssets.directory, 'prepare.lock')), true);
       const { app } = require('electron');
       app.once('will-quit', () => {
         try {
@@ -476,22 +474,14 @@ async function run(window, { manager }) {
             fs.readFileSync(path.join(manager.directory, '.installation-operation.json'), 'utf8'),
           );
           assert.equal(last.active, false);
-          assert.equal(
-            last.outcome,
-            'completed',
-            'Pack remains installed after cancelling separate preparation.',
-          );
+          assert.equal(last.outcome, 'cancelled', 'Quitting cancels the active Pack transfer.');
           assert.equal(
             fs.existsSync(path.join(manager.runtimeAssets.directory, 'prepare.lock')),
             false,
           );
           assert.equal(fs.existsSync(path.join(manager.directory, 'install.lock')), false);
-          const cache = path.join(manager.runtimeAssets.directory, 'cache');
-          assert.equal(
-            fs.readdirSync(cache).some(name => name.includes('.partial')),
-            false,
-          );
-          assert.equal(manager.list().length, 1);
+          assert.equal(nativeDownloads, 0);
+          assert.equal(manager.list().length, 0);
           assert.equal(
             fs.existsSync(path.join(manager.directory, 'environments', 'sample-a.preparing.json')),
             false,
@@ -501,9 +491,9 @@ async function run(window, { manager }) {
             JSON.stringify(
               {
                 passed: true,
-                check: 'normal-quit-awaits-active-native-runtime-download-cleanup',
+                check: 'normal-quit-awaits-active-pack-transfer-cleanup',
                 packOutcome: last.outcome,
-                environmentOutcome: 'cancelled',
+                nativeDownloads,
                 phaseAtQuit: beforeQuit.phase,
               },
               null,
@@ -620,18 +610,29 @@ async function run(window, { manager }) {
       assert.ok(phases.includes(phase), phase);
     assert.equal(nativeDownloads, 0, 'Pack-only installation does not download native software.');
     if (asset) {
-      const prepare = `Array.from(document.querySelectorAll('.ia-runtime-environments[data-domain="sample-a"] button')).find(button=>button.textContent==='Prepare managed environment'&&!button.disabled)`;
-      await wait(`Boolean(${prepare})`);
-      await evaluate(`(${prepare}).click()`);
+      const { dialog } = require('electron');
+      const originalDialog = dialog.showOpenDialog;
+      dialog.showOpenDialog = async () => ({
+        canceled: false,
+        filePaths: [path.join(root, 'native', 'Fixture.app')],
+      });
+      try {
+        await environmentAction('sample-a', 'Choose installed application');
+      } finally {
+        dialog.showOpenDialog = originalDialog;
+      }
       await wait(
-        `document.querySelector('.ia-runtime-environments[data-domain="sample-a"] [data-environment-status]')?.dataset.environmentStatus==='ready'`,
+        `document.querySelector('.ia-runtime-environments[data-domain="sample-a"] code')?.innerText===${JSON.stringify(path.join(root, 'native', 'Fixture.app'))}`,
       );
-      assert.equal(manager.runtimeAssets.status([asset])[0].ready, true);
-      const preparationPhases = await evaluate(
-        `Array.from(new Set(window.__environmentEvents.map(item=>item.phase)))`,
+      await environmentAction('sample-a', 'Check and save environment');
+      await wait(
+        `document.querySelector('.ia-runtime-environments[data-domain="sample-a"] [data-environment-status]')?.dataset.environmentStatus==='ready' && !Array.from(document.querySelectorAll('.ia-runtime-environments[data-domain="sample-a"] button')).find(button=>button.textContent==='Check and save environment')?.disabled`,
       );
-      for (const phase of ['extracting', 'checking', 'ready'])
-        assert.ok(preparationPhases.includes(phase), phase);
+      assert.equal(nativeDownloads, 0);
+      await assert.rejects(
+        evaluate(`window.viewerHost.environmentPrepare({domain:'sample-a',profileId:'native'})`),
+        /official source/,
+      );
       await screenshot('05a-explicit-environment-ready');
     }
     await evaluate(`document.querySelector('.ia-domain-setup [data-action="model"]').click()`);
@@ -657,7 +658,7 @@ async function run(window, { manager }) {
       `window.viewerHost.domainStatus().then(status=>status.installed.length===3 && !status.operation?.active) && !document.querySelector('.ia-domain-progress')`,
     );
     await wait(
-      `document.querySelector('.ia-pack-card[data-domain="sample-c"] .ia-runtime-environments')?.textContent.includes('Pack installed.')`,
+      `document.querySelector('.ia-pack-card[data-domain="sample-c"] .ia-runtime-environments')?.textContent.includes('This pack has no selectable execution profiles.')`,
     );
     const updatedSource = path.join(root, 'sample-c');
     const updatedBundle = JSON.parse(
@@ -701,17 +702,33 @@ async function run(window, { manager }) {
     );
     await wait(`!document.querySelector('.ia-domain-progress')`);
     if (asset) {
-      const bundle = manager.list().find(item => item.domain === 'sample-a');
-      fs.writeFileSync(manager.runtimeAssets.status(bundle.runtimeAssets)[0].executable, 'broken');
-      await refresh();
+      const executable = path.join(root, 'native', 'Fixture.app', 'Contents', 'MacOS', 'fixture');
+      const bytes = fs.readFileSync(executable);
+      fs.writeFileSync(executable, 'broken');
+      await environmentAction('sample-a', 'Detect environment');
       await wait(
-        `document.querySelector('.ia-pack-card[data-domain="sample-a"]')?.textContent.includes('Needs preparation')`,
+        `document.querySelector('.ia-runtime-environments[data-domain="sample-a"] [data-environment-status]')?.dataset.environmentStatus!=='ready'`,
       );
-      await packAction('sample-a', 'Prepare managed environment');
+      fs.writeFileSync(executable, bytes, { mode: 0o755 });
+      const { dialog } = require('electron');
+      const savedDialog = dialog.showOpenDialog;
+      dialog.showOpenDialog = async () => ({
+        canceled: false,
+        filePaths: [path.join(root, 'native', 'Fixture.app')],
+      });
+      try {
+        await environmentAction('sample-a', 'Choose installed application');
+        await wait(
+          `document.querySelector('.ia-runtime-environments[data-domain="sample-a"] code')?.innerText===${JSON.stringify(path.join(root, 'native', 'Fixture.app'))}`,
+        );
+      } finally {
+        dialog.showOpenDialog = savedDialog;
+      }
+      await environmentAction('sample-a', 'Check and save environment');
       await wait(
-        `document.querySelector('.ia-runtime-environments[data-domain="sample-a"] [data-environment-status]')?.dataset.environmentStatus==='ready'`,
+        `document.querySelector('.ia-runtime-environments[data-domain="sample-a"] [data-environment-status]')?.dataset.environmentStatus==='ready' && !Array.from(document.querySelectorAll('.ia-runtime-environments[data-domain="sample-a"] button')).find(button=>button.textContent==='Check and save environment')?.disabled`,
       );
-      await wait(`!document.querySelector('.ia-domain-progress')`);
+      assert.equal(nativeDownloads, 0);
     }
     await packAction('sample-c', 'Remove');
     await wait(
@@ -846,8 +863,8 @@ async function run(window, { manager }) {
             'multi-select-space',
             'download-speed-eta',
             'cancel-retry',
-            'pack-only-install-before-explicit-environment-prepare',
-            'native-fixture-check-repair',
+            'pack-only-install-before-manual-app-association',
+            'native-fixture-detect-manual-recovery',
             'failure-preserves-installed',
             'failed-update-preserves-version-and-retries',
             'background-reopen-cancel',

@@ -1,0 +1,464 @@
+{
+  "schemaVersion": 1,
+  "channel": "beta",
+  "generatedAt": "2026-10-12T14:08:00.156Z",
+  "packs": [
+    {
+      "domain": "chip",
+      "label": "Chip",
+      "emoji": "💠",
+      "version": "0.7.0",
+      "summary": "Design and verify RTL and EDA projects.",
+      "prerequisites": [
+        "RTL and synthesis: install Docker separately; explicitly prepare the pinned container image in Harness or provide it locally.",
+        "Physical design: project-owned PDK/technology inputs and separate qualification."
+      ],
+      "sha256": "94c67bd7c50be8d6daa84a3128a63e7064e5e10cce7a5297e782b892cf8d2d33",
+      "size": 338468,
+      "executionProfiles": [
+        {
+          "id": "chip-managed-container",
+          "label": "Managed RTL and synthesis",
+          "kind": "container",
+          "platforms": [
+            "darwin-arm64",
+            "linux-x64"
+          ],
+          "qualified": true,
+          "toolIds": [
+            "chip.rtl.verify",
+            "chip.environment.check",
+            "chip.project.describe",
+            "chip.eda.execute"
+          ],
+          "assetIds": [
+            "chip-eda"
+          ],
+          "description": "Qualified managed RTL/assertions/VCD and synthesis only; physical implementation requires project-owned technology inputs and separate qualification."
+        },
+        {
+          "id": "chip-native-detection",
+          "label": "Native EDA detection only",
+          "kind": "native",
+          "platforms": [
+            "darwin-arm64",
+            "linux-x64"
+          ],
+          "qualified": false,
+          "toolIds": [],
+          "assetIds": [],
+          "description": "Native software detection is not a qualified execution profile."
+        }
+      ],
+      "runtimeDownloadSize": 1248464890,
+      "runtimeInstalledSize": 4162985984,
+      "runtimeAssets": [
+        {
+          "id": "chip-eda",
+          "label": "Chip design runtime",
+          "version": "1.0.1",
+          "type": "docker-image",
+          "platform": "darwin-arm64",
+          "image": "harbor.pvg2.zhiman.tech/industrial-runtime-assets/industrial-chip-managed@sha256:80925a7398169e1404d3cf372f217e1743a2e105e986e11f5743bb5eda32d8f2",
+          "imageId": "sha256:896580b33a6be28e84128ae7671257729d678119b7a45bd0c0aecaf847783774",
+          "sha256": "896580b33a6be28e84128ae7671257729d678119b7a45bd0c0aecaf847783774",
+          "imagePlatform": "linux/amd64",
+          "size": 1248464890,
+          "installedSize": 4162985984,
+          "environment": "INDUSTRIAL_HARNESS_EDA_IMAGE",
+          "platforms": [
+            "darwin-arm64",
+            "linux-x64"
+          ]
+        }
+      ],
+      "url": "chip-0.7.0.hpack",
+      "platforms": [
+        "darwin-arm64"
+      ]
+    },
+    {
+      "domain": "pcb",
+      "label": "PCB",
+      "emoji": "🔌",
+      "version": "0.3.1",
+      "summary": "Design and verify KiCad schematics and circuit boards.",
+      "prerequisites": [
+        "Native checks: install KiCad 10.0.6 separately on macOS Apple Silicon, then detect or associate it.",
+        "Full PCB design: install Docker separately; explicitly prepare the pinned container image in Harness or provide it locally."
+      ],
+      "sha256": "40c7af84b73e8d442817c06e3edf3dc374ede025bfe2768979032676713fb7f4",
+      "size": 2171540,
+      "executionProfiles": [
+        {
+          "id": "kicad-bounded-native",
+          "label": "Bounded KiCad board operations",
+          "kind": "native",
+          "platforms": [
+            "darwin-arm64"
+          ],
+          "qualified": true,
+          "toolIds": [
+            "pcb.kicad.edit",
+            "pcb.kicad.verify"
+          ],
+          "assetIds": [
+            "kicad"
+          ]
+        },
+        {
+          "id": "pcb-design-container",
+          "label": "PCB design environment",
+          "kind": "container",
+          "platforms": [
+            "darwin-arm64"
+          ],
+          "qualified": true,
+          "toolIds": [
+            "pcb.design.project_status",
+            "pcb.design.new_project",
+            "pcb.design.add_component",
+            "pcb.design.remove_component",
+            "pcb.design.add_net",
+            "pcb.design.remove_net",
+            "pcb.design.rename_net",
+            "pcb.design.connect_pin",
+            "pcb.design.disconnect_pin",
+            "pcb.design.add_no_connect",
+            "pcb.design.set_component_value",
+            "pcb.design.assign_footprint",
+            "pcb.design.add_power_symbol",
+            "pcb.design.set_net_rule",
+            "pcb.design.set_requirements",
+            "pcb.design.generate_schematic",
+            "pcb.design.view_design",
+            "pcb.design.inspect_schematic",
+            "pcb.design.place_schematic_component",
+            "pcb.design.set_schematic_field",
+            "pcb.design.set_schematic_wire",
+            "pcb.design.remove_schematic_item",
+            "pcb.design.set_schematic_label",
+            "pcb.design.verify_schematic",
+            "pcb.design.generate_pcb",
+            "pcb.design.update_pcb",
+            "pcb.design.inspect_board",
+            "pcb.design.configure_component",
+            "pcb.design.lookup_component",
+            "pcb.design.prepare_component",
+            "pcb.design.bind_model",
+            "pcb.design.qualify_component",
+            "pcb.design.install_component",
+            "pcb.design.create_symbol",
+            "pcb.design.add_symbol_pin",
+            "pcb.design.create_footprint",
+            "pcb.design.add_footprint_pad",
+            "pcb.design.update_symbol_pin",
+            "pcb.design.remove_symbol_pin",
+            "pcb.design.update_footprint_pad",
+            "pcb.design.remove_footprint_pad",
+            "pcb.design.discover_artifacts",
+            "pcb.design.fetch_artifact",
+            "pcb.design.read_datasheet",
+            "pcb.design.run_analysis",
+            "pcb.design.inspect_tool",
+            "pcb.design.list_references",
+            "pcb.design.read_reference",
+            "pcb.design.add_track",
+            "pcb.design.add_arc",
+            "pcb.design.add_via",
+            "pcb.design.unroute",
+            "pcb.design.place_component",
+            "pcb.design.lock_component",
+            "pcb.design.remove_board_item",
+            "pcb.design.set_track_width",
+            "pcb.design.set_pad_zone_connection",
+            "pcb.design.set_component_text",
+            "pcb.design.set_board_outline",
+            "pcb.design.set_layer_count",
+            "pcb.design.add_zone",
+            "pcb.design.add_keepout",
+            "pcb.design.add_text",
+            "pcb.design.fill_zones",
+            "pcb.design.route_differential_pair",
+            "pcb.design.tune_length",
+            "pcb.design.route_board",
+            "pcb.design.checkout_board",
+            "pcb.design.run_drc",
+            "pcb.design.run_erc",
+            "pcb.design.export_netlist",
+            "pcb.design.compare_schematic_pcb",
+            "pcb.design.check_component_datasheet",
+            "pcb.design.check_power_tree",
+            "pcb.design.check_interface",
+            "pcb.design.check_footprints",
+            "pcb.design.add_sheet",
+            "pcb.design.remove_sheet",
+            "pcb.design.assign_sheet",
+            "pcb.design.set_sheet_port",
+            "pcb.design.verify_design",
+            "pcb.design.export_project",
+            "pcb.design.save_project_copy",
+            "pcb.design.prepare_3d_model",
+            "pcb.design.export_3d",
+            "pcb.design.search_components",
+            "pcb.design.inspect_symbol",
+            "pcb.design.run_python"
+          ],
+          "assetIds": [
+            "pcb-design-runtime"
+          ]
+        }
+      ],
+      "runtimeDownloadSize": 2682267617,
+      "runtimeInstalledSize": 10708761902,
+      "runtimeAssets": [
+        {
+          "id": "kicad",
+          "label": "KiCad",
+          "version": "10.0.6",
+          "type": "macos-app-dmg",
+          "platform": "darwin-arm64",
+          "url": "https://harbor.pvg2.zhiman.tech/v2/industrial-runtime-assets/kicad/blobs/sha256:ef4dcd4278c46d3efcd28c8db273d5957d68efda028f6bf79b4811fc5302dc68",
+          "sha256": "ef4dcd4278c46d3efcd28c8db273d5957d68efda028f6bf79b4811fc5302dc68",
+          "size": 1404303659,
+          "installedSize": 5104942382,
+          "app": "KiCad.app",
+          "archiveApp": "KiCad/KiCad.app",
+          "executable": "Contents/MacOS/kicad-cli",
+          "environment": "INDUSTRIAL_HARNESS_KICAD_CLI",
+          "versionArgs": [
+            "--version"
+          ],
+          "versionText": "10.0.6",
+          "environmentExecutables": {
+            "INDUSTRIAL_HARNESS_KICAD_PYTHON": "Contents/Frameworks/Python.framework/Versions/3.9/bin/python3.9"
+          },
+          "discoveryPaths": [
+            "/Applications/KiCad.app",
+            "~/Applications/KiCad.app"
+          ],
+          "installUrl": "https://www.kicad.org/download/"
+        },
+        {
+          "id": "pcb-design-runtime",
+          "label": "PCB design environment",
+          "version": "0.3.1",
+          "type": "docker-image",
+          "platform": "darwin-arm64",
+          "imagePlatform": "linux/amd64",
+          "image": "harbor.pvg2.zhiman.tech/industrial-runtime-assets/industrial-pcb-gateway@sha256:5170d4755fa0c9ccefd0f8a9127f13339b9e922227ffa38319a5dcb35881819b",
+          "imageId": "sha256:c231ae82f7d6941bb5df53cfd855a1fe8ed741151eaa9bf7598e3f1f5c5d7e87",
+          "sha256": "c231ae82f7d6941bb5df53cfd855a1fe8ed741151eaa9bf7598e3f1f5c5d7e87",
+          "size": 1277963958,
+          "installedSize": 5603819520,
+          "environment": "INDUSTRIAL_HARNESS_PCB_RUNTIME_IMAGE"
+        }
+      ],
+      "url": "pcb-0.3.1.hpack",
+      "platforms": [
+        "darwin-arm64"
+      ]
+    },
+    {
+      "domain": "godot",
+      "label": "Godot",
+      "emoji": "🎮",
+      "version": "0.2.4",
+      "summary": "Edit and verify Godot scenes.",
+      "prerequisites": [
+        "Install Godot 4.7.2 separately on macOS Apple Silicon, then detect or associate it."
+      ],
+      "sha256": "bb0d36c4d4e2c5611cc19e1ea026db8e60f0aaacc7ad26624dcc07a7adc4e3aa",
+      "size": 1186019,
+      "executionProfiles": [
+        {
+          "id": "godot-structural-native",
+          "label": "Godot structural scenes",
+          "kind": "native",
+          "platforms": [
+            "darwin-arm64"
+          ],
+          "qualified": true,
+          "toolIds": [
+            "godot.scene.edit",
+            "godot.scene.verify"
+          ],
+          "assetIds": [
+            "godot"
+          ]
+        }
+      ],
+      "runtimeDownloadSize": 170622178,
+      "runtimeInstalledSize": 353682925,
+      "runtimeAssets": [
+        {
+          "id": "godot",
+          "label": "Godot",
+          "version": "4.7.2",
+          "type": "macos-app-zip",
+          "platform": "darwin-arm64",
+          "url": "https://harbor.pvg2.zhiman.tech/v2/industrial-runtime-assets/godot/blobs/sha256:c58a24e31d720be9d62f60cb5627c4e695fb72f21b0cfe1bc9ccaa9a3b3ba63e",
+          "sha256": "c58a24e31d720be9d62f60cb5627c4e695fb72f21b0cfe1bc9ccaa9a3b3ba63e",
+          "size": 170622178,
+          "installedSize": 353682925,
+          "app": "Godot.app",
+          "archiveApp": "Godot.app",
+          "executable": "Contents/MacOS/Godot",
+          "environment": "INDUSTRIAL_HARNESS_GODOT_CMD",
+          "versionArgs": [
+            "--version"
+          ],
+          "versionText": "4.7.2.stable.official.",
+          "upstreamUrl": "https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_macos.universal.zip",
+          "discoveryPaths": [
+            "/Applications/Godot.app",
+            "~/Applications/Godot.app"
+          ],
+          "installUrl": "https://godotengine.org/download/"
+        }
+      ],
+      "url": "godot-0.2.4.hpack",
+      "platforms": [
+        "darwin-arm64"
+      ]
+    },
+    {
+      "domain": "cad",
+      "label": "CAD",
+      "emoji": "📐",
+      "version": "1.1.4-pack.11",
+      "summary": "Create and verify FreeCAD models and DXF drawings.",
+      "prerequisites": [
+        "Native models: install FreeCAD 1.1.4 separately on macOS Apple Silicon, then detect or associate it.",
+        "DXF drawings: manually prepare and associate the private native runtime, or install Docker separately and explicitly prepare the pinned container profile in Harness.",
+        "AutoCAD is optional for DWG and live desktop work."
+      ],
+      "sha256": "d337ca7fc2863d4754c261e0b9888ec26172cfae534ea1efbda39a9136c68e4c",
+      "size": 1226512,
+      "executionProfiles": [
+        {
+          "id": "freecad-native",
+          "label": "FreeCAD parametric solids",
+          "kind": "native",
+          "platforms": [
+            "darwin-arm64"
+          ],
+          "qualified": true,
+          "toolIds": [
+            "cad.freecad.build",
+            "cad.freecad.inspect",
+            "cad.freecad.export",
+            "cad.freecad.edit"
+          ],
+          "assetIds": [
+            "freecad"
+          ]
+        },
+        {
+          "id": "dxf-native",
+          "label": "Native DXF drawings",
+          "kind": "native",
+          "platforms": [
+            "darwin-arm64"
+          ],
+          "qualified": true,
+          "toolIds": [
+            "cad.dxf.create",
+            "cad.dxf.inspect",
+            "cad.dxf.verify"
+          ],
+          "assetIds": [
+            "cad-dxf-native"
+          ]
+        },
+        {
+          "id": "dxf-container",
+          "label": "Bounded DXF drawings",
+          "kind": "container",
+          "platforms": [
+            "darwin-arm64"
+          ],
+          "qualified": true,
+          "toolIds": [
+            "cad.dxf.create",
+            "cad.dxf.inspect",
+            "cad.dxf.verify"
+          ],
+          "assetIds": [
+            "cad-dxf"
+          ]
+        }
+      ],
+      "runtimeDownloadSize": 755707850,
+      "runtimeInstalledSize": 2976692846,
+      "runtimeAssets": [
+        {
+          "id": "freecad",
+          "label": "FreeCAD",
+          "version": "1.1.4",
+          "type": "macos-app-dmg",
+          "platform": "darwin-arm64",
+          "url": "https://harbor.pvg2.zhiman.tech/v2/industrial-runtime-assets/freecad/blobs/sha256:071343b4abb70492b75c973f41eaf1d2528f9b9c7ea018d22a4f46ae14d27ac0",
+          "sha256": "071343b4abb70492b75c973f41eaf1d2528f9b9c7ea018d22a4f46ae14d27ac0",
+          "size": 649760538,
+          "app": "FreeCAD.app",
+          "executable": "Contents/Resources/bin/freecadcmd",
+          "environment": "INDUSTRIAL_HARNESS_FREECAD_CMD",
+          "versionArgs": [
+            "--keep-deprecated-paths",
+            "--version"
+          ],
+          "versionText": "1.1.4",
+          "profileEnvironment": {
+            "FREECAD_USER_HOME": "home",
+            "FREECAD_USER_DATA": "data",
+            "FREECAD_USER_TEMP": "temp"
+          },
+          "installedSize": 2625114576,
+          "upstreamUrl": "https://github.com/FreeCAD/FreeCAD/releases/download/1.1.4/FreeCAD_1.1.4-macOS-arm64-py311.dmg",
+          "discoveryPaths": [
+            "/Applications/FreeCAD.app",
+            "~/Applications/FreeCAD.app"
+          ],
+          "installUrl": "https://www.freecad.org/downloads.php"
+        },
+        {
+          "id": "cad-dxf",
+          "label": "DXF drawing runtime",
+          "version": "1.0.0",
+          "type": "docker-image",
+          "platform": "darwin-arm64",
+          "image": "harbor.pvg2.zhiman.tech/industrial-runtime-assets/industrial-cad-dxf@sha256:150d1240eddd4cfbb71d8dfc57b262ec7121fd1f5b2efc20ce4af8ca483fae99",
+          "imageId": "sha256:9be49aa68af9568a69a38fa75732eb2c99186b29b7b680fdf05f93fdcc23e5d0",
+          "sha256": "9be49aa68af9568a69a38fa75732eb2c99186b29b7b680fdf05f93fdcc23e5d0",
+          "imagePlatform": "linux/amd64",
+          "size": 75805851,
+          "installedSize": 253382656,
+          "environment": "INDUSTRIAL_HARNESS_DXF_IMAGE"
+        },
+        {
+          "id": "cad-dxf-native",
+          "label": "DXF native runtime",
+          "version": "1.0.1",
+          "type": "native-runtime-zip",
+          "platform": "darwin-arm64",
+          "url": "https://harbor.pvg2.zhiman.tech/v2/industrial-runtime-assets/industrial-cad-dxf-native/blobs/sha256:10ff2481aea0661f6315c803bd14407634f240f77fdcadf80bf1cc709cf07318",
+          "sha256": "10ff2481aea0661f6315c803bd14407634f240f77fdcadf80bf1cc709cf07318",
+          "size": 30141461,
+          "installedSize": 98195614,
+          "directory": "dxf-runtime",
+          "executable": "bin/harness-dxf",
+          "environment": "INDUSTRIAL_HARNESS_DXF_EXECUTABLE",
+          "probeId": "version",
+          "versionText": "Harness DXF 1.0.1; ezdxf 1.4.3; Python 3.13.13",
+          "discoveryPaths": [],
+          "installUrl": "https://github.com/Zhiman-BJ/industrial-domain-packs#manual-native-dxf-preparation"
+        }
+      ],
+      "url": "cad-1.1.4-pack.11.hpack",
+      "platforms": [
+        "darwin-arm64"
+      ]
+    }
+  ]
+}

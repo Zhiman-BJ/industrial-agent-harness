@@ -25,7 +25,10 @@ test(
     const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
     // Build an explicit standalone fixture, never the product release catalog.
     const bundleDirectory = path.join(directory, 'bundle');
-    const legacyBundle = require('../fixtures/standalone-cuda.cjs').writeBundle(bundleDirectory);
+    const legacyBundle = require('../fixtures/standalone-cuda.cjs').writeBundle(bundleDirectory, {
+      // Transport-only fixture; no platform GPU qualification is implied.
+      transportFixturePlatform: `${process.platform}-${process.arch}`,
+    });
     const { createArchive, digest } = require('../../packages/pack-manager/src/index.cjs');
     const archive = createArchive(bundleDirectory);
     const catalog = JSON.stringify(
@@ -68,7 +71,7 @@ test(
     }
     await manager.install(entry, {
       bytes: archive,
-      prepareRuntime: true,
+      prepareRuntime: false,
     });
     assert.deepEqual(manager.scan().errors, []);
     const installed = manager.list()[0];

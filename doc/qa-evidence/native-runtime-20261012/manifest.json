@@ -1,0 +1,126 @@
+{
+  "schemaVersion": 1,
+  "purpose": "Local final policy qualification; no credentials, user data or software payloads",
+  "files": [
+    {
+      "file": "architecture.txt",
+      "size": 4423,
+      "sha256": "597e8365cdbe32d64e7de44e171f1b4846c3619293353f613c0a358b9dd97063"
+    },
+    {
+      "file": "build-identity.json",
+      "size": 628,
+      "sha256": "4c636dd03cd1c77ea53cb201bd84b357bd78d1a0d1b5fa81e09fafee2379a2a3"
+    },
+    {
+      "file": "fixture-native-associated.png",
+      "size": 246963,
+      "sha256": "273633014168bead60d4b968e172e2aa581774daf21dd8805ca6d75ae1bdeec0"
+    },
+    {
+      "file": "fixture-native-missing.png",
+      "size": 262832,
+      "sha256": "f73906a6955700b3ee439c563c44be3ef1497214dc38c1d0a7e136177f329e11"
+    },
+    {
+      "file": "install-experience.json",
+      "size": 8811,
+      "sha256": "5f3b78f251625d4107d9a5a9c317179e0cfcb51a3baa8609b78ed06a62b448a2"
+    },
+    {
+      "file": "legacy-cuda-transport.txt",
+      "size": 231,
+      "sha256": "15cc9f79aac19c2fd9ad1e833e048205f148901925e0689ca380f33b1d32f585"
+    },
+    {
+      "file": "native-dxf.txt",
+      "size": 1823,
+      "sha256": "67ef161f4a3f78b543dd3986a150e0b403e68e40d5f1312321797597a2b74a1b"
+    },
+    {
+      "file": "native-godot-chip.txt",
+      "size": 414,
+      "sha256": "5fe528bd2a2578dd8fc55d88d238d34c3a1dd896829011b7fe6569b5b0ee9199"
+    },
+    {
+      "file": "offline-fixture.txt",
+      "size": 540,
+      "sha256": "4e11d047ff910c39c412716a8ff73aefa0f5e337e56489063212cf071754520e"
+    },
+    {
+      "file": "offline-kicad-association.json",
+      "size": 683,
+      "sha256": "3a025114824e27e96eeb4c673e8f93f20c39d59b236da3d164670b43b8c081ff"
+    },
+    {
+      "file": "owner-lock.txt",
+      "size": 95,
+      "sha256": "3f73d3f91425b61bad08999f3fd82f64f26572d7494c38a95874d65c7f55c5e7"
+    },
+    {
+      "file": "owner-tests.txt",
+      "size": 9445,
+      "sha256": "7588893d53197fe77f56b4fa6c6f5da9a1c25af1314ddcd732b85649c8afcbf4"
+    },
+    {
+      "file": "packaged-capability-center-zh.png",
+      "size": 200918,
+      "sha256": "ee38952eacd79c5ab9c657b72965c73099042e6b3545bceb2f4288fa500882c7"
+    },
+    {
+      "file": "packaged-catalog-identity.json",
+      "size": 17008,
+      "sha256": "db1048fb244cf8eb202658c489dd5628819897c91cceb6287fc590977a9f3e87"
+    },
+    {
+      "file": "packaged-catalog.json",
+      "size": 2439,
+      "sha256": "c4c9ae3371ed421a4aa1e0c44e56ad1d8b235134c2f80c9f26e460b102d957b4"
+    },
+    {
+      "file": "packaged-four-domains-zh.png",
+      "size": 164960,
+      "sha256": "640631034558046290cb5b49d6fa75407e6b34fc2e328e50b0cf10eafc43298f"
+    },
+    {
+      "file": "pcb-container.json",
+      "size": 2683,
+      "sha256": "0b9ab8313e3c238ec8fb72bde4a82ca1f61c7bdfe196fa30557d143e15ed3c52"
+    },
+    {
+      "file": "pcb-container.txt",
+      "size": 2874,
+      "sha256": "4be1cd581242ab0f8c64a34e2584a0d082ba92e1575a8563ba34aa35f51ce9c9"
+    },
+    {
+      "file": "platform-probe-index.json",
+      "size": 1237,
+      "sha256": "cdde3622916cd6ed51363fbff73a3a3ec0d02106a8b029c95524f97555c85a25"
+    },
+    {
+      "file": "portable.json",
+      "size": 23159,
+      "sha256": "2771eb5ef81dadfc995d7602e39323fd77eb229f97335eb495dab9ecacd1837b"
+    },
+    {
+      "file": "portable.txt",
+      "size": 53198,
+      "sha256": "77f1dc1aa31e27f4cb7463f7b840c68bf31070accd55054525c99caa9aa8456c"
+    },
+    {
+      "file": "quit-during-pack-transfer.json",
+      "size": 168,
+      "sha256": "8cb495591934128d3d40f73a37c3b9b23873d311abee169df87005125b8e1a29"
+    },
+    {
+      "file": "release.txt",
+      "size": 1964,
+      "sha256": "76311a0fdf7b2fb87ece93e39511a7b762e8dc55ae18075833936232776b6854"
+    },
+    {
+      "file": "renderer.json",
+      "size": 877,
+      "sha256": "ad3f6c7abd26712b363636a08c7d0c52bc3c57f898d1fc72269f6bffaebc0133"
+    }
+  ]
+}

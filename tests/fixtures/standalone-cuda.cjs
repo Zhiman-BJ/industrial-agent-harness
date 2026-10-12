@@ -24,7 +24,7 @@ function registry() {
     }],
   };
 }
-function writeBundle(directory) {
+function writeBundle(directory, { transportFixturePlatform } = {}) {
   fs.mkdirSync(directory, { recursive: true });
   fs.cpSync(source, path.join(directory, 'domain-packs/cuda'), { recursive: true });
   fs.mkdirSync(path.join(directory, 'skills/cuda.kernel.optimize'), { recursive: true });
@@ -33,7 +33,9 @@ function writeBundle(directory) {
     schemaVersion: 1, domain: 'cuda', label: 'CUDA', emoji: '⚡', version: pack.version,
     coreApi: 1, sourceRelease: owner.identity, capabilities: pack.capabilities,
     skills: [skill], providerPacks: [pack], runtimeAssets: [],
-    executionProfiles: pack.executionProfiles,
+    executionProfiles: transportFixturePlatform
+      ? pack.executionProfiles.map(profile => ({ ...profile, platforms: [transportFixturePlatform] }))
+      : pack.executionProfiles,
   };
   fs.writeFileSync(path.join(directory, 'bundle.json'), JSON.stringify(bundle));
   return bundle;

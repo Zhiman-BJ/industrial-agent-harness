@@ -116,10 +116,17 @@ function registerRuntimeEnvironments({
       !bundle.runtimeAssets.some(item => item.id === request.assetId)
     )
       throw Error('Unknown application dependency.');
-    const result = await dialog.showOpenDialog({
-      properties: ['openDirectory', 'openFile'],
-      filters: [{ name: 'Application', extensions: ['app'] }],
-    });
+    const asset = bundle.runtimeAssets.find(item => item.id === request.assetId);
+    const options =
+      asset.type === 'native-executable'
+        ? { properties: ['openFile'] }
+        : asset.type === 'native-runtime-zip'
+          ? { properties: ['openDirectory'] }
+          : {
+              properties: ['openDirectory', 'openFile'],
+              filters: [{ name: 'Application', extensions: ['app'] }],
+            };
+    const result = await dialog.showOpenDialog(options);
     return result.canceled ? null : result.filePaths[0] || null;
   });
   ipcMain.handle('environment:official', async (event, request) => {
@@ -133,7 +140,11 @@ function registerRuntimeEnvironments({
   });
   for (const operation of ['detect', 'associate', 'prepare', 'clear'])
     ipcMain.handle(`environment:${operation}`, async (event, request) => {
-      const { project, options } = context(event, request);
+      const { project, profile, options } = context(event, request);
+      if (operation === 'prepare' && profile?.kind !== 'container')
+        throw Error(
+          'Install missing software from its official source, then detect and save its location.',
+        );
       if (domainBusy()) throw Error('Domain preparation is already in progress.');
       if (controller) throw Error('An environment operation is already in progress.');
       if (operation !== 'clear' && !options.profileId) throw Error('Choose an execution profile.');

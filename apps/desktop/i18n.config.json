@@ -3863,6 +3863,58 @@
     "Bounded DXF drawings": {
       "en": "Bounded DXF drawings",
       "zh-CN": "DXF 绘图（限定范围）"
+    },
+    "Choose executable": {
+      "en": "Choose executable",
+      "zh-CN": "选择可执行文件"
+    },
+    "Choose runtime folder": {
+      "en": "Choose runtime folder",
+      "zh-CN": "选择运行时目录"
+    },
+    "Known installation locations:": {
+      "en": "Known installation locations:",
+      "zh-CN": "已知安装位置："
+    },
+    "Choosing installation…": {
+      "en": "Choosing installation…",
+      "zh-CN": "正在选择安装位置…"
+    },
+    "Choose the installed dependencies, then detect and save this environment.": {
+      "en": "Choose the installed dependencies, then detect and save this environment.",
+      "zh-CN": "选择已安装的依赖，然后检测并保存此环境。"
+    },
+    "DXF native runtime": {
+      "en": "DXF native runtime",
+      "zh-CN": "DXF 本机运行时"
+    },
+    "Native DXF drawings": {
+      "en": "Native DXF drawings",
+      "zh-CN": "本机 DXF 绘图"
+    },
+    "DXF drawings: private native runtime on macOS Apple Silicon; container profile also available.": {
+      "en": "DXF drawings: private native runtime on macOS Apple Silicon; container profile also available.",
+      "zh-CN": "DXF：Apple 芯片 Mac 可用本机运行时，也可选择容器。"
+    },
+    "Install missing software from its official source, choose its location, then detect and save this environment.": {
+      "en": "Install missing software from its official source, choose its location, then detect and save this environment.",
+      "zh-CN": "请从官方来源安装缺失的软件，选择安装位置，然后检测并保存此环境。"
+    },
+    "Install missing software from its official source, then detect and save its location.": {
+      "en": "Install missing software from its official source, then detect and save its location.",
+      "zh-CN": "请从官方来源安装缺失的软件，然后检测并保存安装位置。"
+    },
+    "Checking environment…": {
+      "en": "Checking environment…",
+      "zh-CN": "正在检查环境…"
+    },
+    "Prepare container image": {
+      "en": "Prepare container image",
+      "zh-CN": "准备容器镜像"
+    },
+    "Install and start Docker before preparing the container image.": {
+      "en": "Install and start Docker before preparing the container image.",
+      "zh-CN": "准备容器镜像前，请先安装并启动 Docker。"
     }
   }
 }

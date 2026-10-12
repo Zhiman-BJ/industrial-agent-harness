@@ -6,6 +6,7 @@ const {
   createWorkspacePlugin,
   executeTask,
   openToolSession,
+  createToolSessionScope,
   runtimeFiles,
 } = require('@industrial-agent-harness/domain-runtime');
 const {
@@ -73,13 +74,14 @@ function createProjectRuntime({
     runtimeView && !runtimeView.legacy
       ? new Set(runtimeView.executableToolIds || runtimeView.readyToolIds)
       : null;
+  const sessions = createToolSessionScope({ openSession: openToolSession });
   const plugin = entry
     ? require(entry).createRuntimePlugin({
         environment: { ...environment, ...effectiveEnvironment },
         managed: Boolean(pack.managed),
         runtimeApi: {
           executeTask,
-          openToolSession,
+          openToolSession: spec => sessions.openToolSession(spec),
           runtimeFiles,
           resolveDependency: pack.resolveDependency,
         },
@@ -193,7 +195,17 @@ function createProjectRuntime({
     stateProvider,
     tools: [...workspace.tools, ...(plugin.tools || []), ...external.tools],
     verifiers: { ...workspace.verifiers, ...(plugin.verifiers || {}), ...external.verifiers },
-    dispose: () => Promise.all([external.dispose(), plugin.dispose?.()]),
+    dispose: async () => {
+      const results = await Promise.allSettled([
+        Promise.resolve().then(() => external.dispose()),
+        Promise.resolve().then(() => plugin.dispose?.()),
+        sessions.close(),
+      ]);
+      const failures = results
+        .filter(result => result.status === 'rejected')
+        .map(result => result.reason);
+      if (failures.length) throw new AggregateError(failures, 'Project Runtime cleanup failed.');
+    },
     releaseOwner: ownerId =>
       Promise.all([external.releaseOwner(ownerId), plugin.releaseOwner?.(ownerId)]),
   });

@@ -80,7 +80,7 @@ export function PacksSection({
   }, [status?.managed, revision]);
   const installing = Boolean(progress) || Boolean(status?.operation?.active);
   const disabled = busy || pending || installing || cancelling;
-  async function change(action: 'install' | 'remove' | 'repair', domain: string) {
+  async function change(action: 'install' | 'remove', domain: string) {
     if (disabled) return;
     setPending(true);
     setError('');
@@ -88,9 +88,7 @@ export function PacksSection({
       const host = window.viewerHost!;
       const result = await (action === 'install'
         ? host.domainInstall([domain])
-        : action === 'remove'
-          ? host.domainRemove(domain)
-          : host.domainRepair(domain));
+        : host.domainRemove(domain));
       onChanged(result.installed);
     } catch (reason) {
       try {

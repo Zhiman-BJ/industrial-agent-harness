@@ -146,7 +146,10 @@ test('project binding overrides global binding, mutation requires idle, clear do
   assert.equal(f.env.describe('drawing', { projectDir: project }).status, 'ready');
   const release = f.env.acquireUse('drawing');
   assert.throws(() => f.env.clear('drawing', { projectDir: project }), /in use/);
-  await assert.rejects(f.env.prepare('drawing', { profileId: 'native-editor' }), /in use/);
+  assert.equal(
+    (await f.env.prepare('drawing', { profileId: 'native-editor' })).reasons[0].code,
+    'DEPENDENCY_INSTALLATION_EXTERNAL',
+  );
   release();
   f.env.clear('drawing', { projectDir: project });
   assert.ok(fs.existsSync(f.executable));
@@ -175,18 +178,22 @@ test('unqualified, foreign platform and remote profiles remain unsupported witho
     /Invalid/,
   );
 });
-test('preparation blocks execution leases and binding mutation until completion, then activates managed profile', async t => {
+test('product preparation refuses before locks or installation and preserves an existing binding', async t => {
   const f = setup(t);
-  let finish;
-  f.manager.runtimeAssets.ensure = () => new Promise(resolve => (finish = resolve));
-  const preparing = f.env.prepare('drawing', { profileId: 'native-editor' });
-  assert.throws(() => f.env.acquireUse('drawing'), /preparation/);
-  assert.throws(() => f.env.clear('drawing'), /preparation/);
-  finish();
-  await preparing;
-  assert.equal(f.env.describe('drawing').binding.profileId, 'native-editor');
-  const release = f.env.acquireUse('drawing');
-  release();
+  await f.env.associate('drawing', { profileId: 'native-editor' });
+  const binding = f.env.describe('drawing').binding;
+  f.manager.runtimeAssets.ensure = () => {
+    throw Error('Unexpected dependency installation');
+  };
+  f.manager.withLock = () => {
+    throw Error('Unexpected mutation lock');
+  };
+  const result = await f.env.prepare('drawing', { profileId: 'native-editor' });
+  assert.equal(result.status, 'unsupported');
+  assert.equal(result.reasons[0].code, 'DEPENDENCY_INSTALLATION_EXTERNAL');
+  assert.deepEqual(f.env.describe('drawing').binding, binding);
+  assert.equal(fs.existsSync(f.env.operationFile('drawing')), false);
+  assert.equal(f.env.describe('drawing').profiles[0].assets[0].manageable, false);
 });
 test('multiple compatible installations require explicit selection and the injected version probe receives the chosen executable', async t => {
   const f = setup(t),
@@ -460,4 +467,60 @@ test('corrupt secure connection records are isolated, explicitly replaceable and
     false,
     'legacy environment does not undo explicit unlink',
   );
+});
+
+test('native executable binds selected symlink target, fixed probe, and never invokes Docker or app signature checks', async t => {
+  const f = setup(t);
+  Object.assign(f.asset, {
+    type: 'native-executable',
+    probeId: 'version-short',
+    versionText: 'tool 4.2',
+  });
+  delete f.asset.versionArgs;
+  const selected = path.join(f.directory, 'tool');
+  fs.symlinkSync(f.executable, selected);
+  f.asset.discoveryPaths = [selected];
+  const calls = [];
+  f.env.versionProbe = undefined;
+  f.env.versionProbe = (asset, executable, options) =>
+    f.env.command(executable, require('./runtime-assets.cjs').probeArgs(asset), options);
+  f.env.command = async (file, args) => {
+    calls.push([file, args]);
+    return 'tool 4.2';
+  };
+  const ready = await f.env.associate('drawing', { profileId: 'native-editor' });
+  assert.equal(ready.status, 'ready');
+  assert.deepEqual(calls, [[fs.realpathSync(f.executable), ['-V']]]);
+  assert.equal(ready.profiles[0].assets[0].selectionKind, 'file');
+  assert.equal(ready.profiles[0].assets[0].manageable, false);
+  const second = path.join(f.directory, 'second');
+  fs.copyFileSync(f.executable, second);
+  fs.chmodSync(second, 0o755);
+  fs.unlinkSync(selected);
+  fs.symlinkSync(second, selected);
+  assert.equal(f.env.describe('drawing').status, 'stale');
+  const binding = f.env.describe('drawing').binding;
+  const missing = await f.env.prepare('drawing', { profileId: 'native-editor' });
+  assert.equal(missing.reasons[0].code, 'DEPENDENCY_INSTALLATION_EXTERNAL');
+  assert.deepEqual(f.env.describe('drawing').binding, binding);
+  assert.equal(f.ensureCount(), 0);
+});
+
+test('native runtime directory binds library/data changes and version identity rejects the wrong tool', async t => {
+  const f = setup(t);
+  Object.assign(f.asset, {
+    type: 'native-runtime-zip',
+    probeId: 'version',
+    versionText: 'tool 4.2',
+  });
+  delete f.asset.versionArgs;
+  f.env.versionProbe = async () => 'other 4.2';
+  assert.equal(
+    (await f.env.detect('drawing', { profileId: 'native-editor' })).status,
+    'incompatible',
+  );
+  f.env.versionProbe = async () => 'tool 4.2';
+  assert.equal((await f.env.associate('drawing', { profileId: 'native-editor' })).status, 'ready');
+  fs.writeFileSync(path.join(f.app, 'library.dat'), 'modified library');
+  assert.equal(f.env.describe('drawing').status, 'stale');
 });

@@ -134,6 +134,7 @@ async function openToolSession(spec) {
     stderr = '',
     closed = false,
     closing,
+    terminalError,
     queue = Promise.resolve();
   let exited;
   const exit = new Promise(resolve => {
@@ -174,7 +175,7 @@ async function openToolSession(spec) {
     request(method, params, { signal, timeoutMs = spec.callTimeoutMs || 60000 } = {}) {
       const dispatch = async () => {
         signal?.throwIfAborted();
-        if (closed) throw Error('Tool session is closed.');
+        if (closed) throw terminalError || Error('Tool session is closed.');
         return new Promise((resolve, reject) => {
           const id = ++sequence;
           let timer;
@@ -260,13 +261,16 @@ async function openToolSession(spec) {
     stderr = (stderr + chunk).slice(-8000);
   });
   child.on('error', error => {
+    terminalError = error;
     fail(error);
     exited();
   });
   child.on('close', (code, signal) => {
     closed = true;
+    terminalError ||= Error(`Tool process exited (${signal || code}): ${stderr}`);
+    // Preserve the process diagnostic before cleanup rejects outstanding calls.
+    fail(terminalError);
     if (!closing) cancelSession();
-    fail(Error(`Tool process exited (${signal || code}): ${stderr.slice(-2000)}`));
     exited();
   });
   spec.signal?.addEventListener('abort', cancelSession, { once: true });
@@ -291,4 +295,68 @@ async function openToolSession(spec) {
     throw error;
   }
 }
-module.exports = { openToolSession, dockerCommand };
+// Project lifetime owns backend sessions independently of Pack-local caches.
+// A startup that races disposal is cancelled and must finish cleanup before close resolves.
+function createToolSessionScope({ openSession = openToolSession, maxSessions = 32 } = {}) {
+  if (!Number.isInteger(maxSessions) || maxSessions < 1 || maxSessions > 32)
+    throw Error('Invalid tool session scope limit.');
+  const controller = new AbortController();
+  const sessions = new Set(),
+    opening = new Set();
+  let closed = false,
+    closing;
+  const closeReason = Error('Project tool session scope closed.');
+  return {
+    openToolSession(spec) {
+      if (closed) return Promise.reject(closeReason);
+      if (sessions.size + opening.size >= maxSessions)
+        return Promise.reject(Error('Project tool session limit reached.'));
+      const signal = spec.signal
+        ? AbortSignal.any([spec.signal, controller.signal])
+        : controller.signal;
+      const pending = Promise.resolve().then(async () => {
+        const session = await openSession({ ...spec, signal });
+        const close = session.close.bind(session);
+        session.close = async () => {
+          try {
+            return await close();
+          } finally {
+            sessions.delete(session);
+          }
+        };
+        sessions.add(session);
+        if (closed) {
+          await session.close();
+          throw closeReason;
+        }
+        return session;
+      });
+      opening.add(pending);
+      pending.then(
+        () => opening.delete(pending),
+        () => opening.delete(pending),
+      );
+      return pending;
+    },
+    close() {
+      if (closing) return closing;
+      closed = true;
+      const active = [...sessions],
+        starts = [...opening];
+      controller.abort(closeReason);
+      closing = (async () => {
+        const started = await Promise.allSettled(starts);
+        const results = await Promise.allSettled(
+          [...new Set([...active, ...sessions])].map(session => session.close()),
+        );
+        const failures = [...started, ...results]
+          .filter(result => result.status === 'rejected' && result.reason !== closeReason)
+          .map(result => result.reason);
+        if (failures.length)
+          throw new AggregateError(failures, 'Project tool session cleanup failed.');
+      })();
+      return closing;
+    },
+  };
+}
+module.exports = { openToolSession, dockerCommand, createToolSessionScope };

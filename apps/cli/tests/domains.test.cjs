@@ -370,6 +370,10 @@ test('CLI environment commands share project bindings and never prepare software
   result = await invoke(['repair', 'fixture', '--project-dir', project]);
   assert.match(result.text, /"profileId": "cpu"/);
   assert.equal(result.code, 0);
+  result = await invoke(['prepare', 'fixture', '--profile', 'cpu', '--project-dir', project]);
+  assert.equal(result.code, 1);
+  assert.equal(JSON.parse(result.text).reasons[0].code, 'DEPENDENCY_INSTALLATION_EXTERNAL');
+  assert.equal(manager.list().length, 1);
   result = await invoke(['unbind', 'fixture', '--project-dir', project]);
   assert.equal(JSON.parse(result.text).binding, null);
   assert.equal(fs.existsSync(path.join(store, '.runtime-assets')), false);
@@ -420,4 +424,108 @@ test('CLI parses explicit profile and repeated app selections and rejects ambigu
       ]),
     /Duplicate/,
   );
+});
+
+test('CLI ambiguous native candidates fail checks until explicitly associated; listing and unbind succeed', async t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-cli-candidates-'));
+  const previous = process.env.INDUSTRIAL_HARNESS_PACK_STORE;
+  t.after(() => {
+    fs.rmSync(root, { recursive: true, force: true });
+    if (previous === undefined) delete process.env.INDUSTRIAL_HARNESS_PACK_STORE;
+    else process.env.INDUSTRIAL_HARNESS_PACK_STORE = previous;
+  });
+  const source = path.join(root, 'source'),
+    store = path.join(root, 'store');
+  fs.mkdirSync(source);
+  const candidates = ['first', 'second'].map(name => {
+    const file = path.join(root, name + (process.platform === 'win32' ? '.exe' : ''));
+    if (process.platform === 'win32') fs.copyFileSync(process.execPath, file);
+    else fs.writeFileSync(file, `#!/bin/sh\nprintf '%s\\n' '${process.version}'\n`);
+    fs.chmodSync(file, 0o755);
+    return file;
+  });
+  fs.writeFileSync(
+    path.join(source, 'bundle.json'),
+    JSON.stringify({
+      schemaVersion: 1,
+      coreApi: 1,
+      domain: 'fixture',
+      label: 'Fixture',
+      emoji: 'F',
+      version: '1.0.0',
+      capabilities: [],
+      skills: [],
+      providerPacks: [],
+      runtimeAssets: [
+        {
+          id: 'cli',
+          label: 'Fixture executable',
+          type: 'native-executable',
+          platform: 'darwin-arm64',
+          version: process.version.slice(1),
+          environment: 'INDUSTRIAL_HARNESS_CLI_CANDIDATE_TEST',
+          probeId: 'version',
+          versionText: process.version,
+          discoveryPaths: candidates,
+        },
+      ],
+      executionProfiles: [
+        {
+          id: 'native',
+          label: 'Native fixture',
+          kind: 'native',
+          platforms: [`${process.platform}-${process.arch}`],
+          qualified: true,
+          assetIds: ['cli'],
+          toolIds: [],
+        },
+      ],
+    }),
+  );
+  const bytes = createArchive(source),
+    manager = new PackManager({ directory: store });
+  await manager.install(
+    { domain: 'fixture', version: '1.0.0', sha256: digest(bytes), size: bytes.length },
+    { bytes, allowUnsigned: true },
+  );
+  const invoke = async args => {
+    let text = '';
+    const code = await runDomains([...args, '--store', store], { write: value => (text += value) });
+    return { code, result: JSON.parse(text.slice(text.indexOf('{\n'))) };
+  };
+  for (const command of ['detect', 'associate', 'repair']) {
+    const checked = await invoke([command, 'fixture', '--profile', 'native']);
+    assert.equal(checked.code, 1, command);
+    assert.equal(checked.result.status, 'unchecked', command);
+    const check = checked.result.lastCheck || checked.result;
+    assert.equal(check.reasons[0].code, 'CHOOSE_APPLICATION');
+    assert.equal(check.assets[0].candidates.filter(item => item.status === 'ready').length, 2);
+  }
+  let listed = await invoke(['environments', 'fixture']);
+  assert.equal(listed.code, 0);
+  assert.equal(listed.result.binding, null, 'Ambiguous checks do not select an application.');
+  const associated = await invoke([
+    'associate',
+    'fixture',
+    '--profile',
+    'native',
+    '--path',
+    `cli=${candidates[0]}`,
+  ]);
+  assert.equal(associated.code, 0);
+  assert.equal(
+    fs.realpathSync(associated.result.binding.assets.cli.appPath),
+    fs.realpathSync(candidates[0]),
+  );
+  assert.equal(
+    (await invoke(['repair', 'fixture'])).code,
+    0,
+    'Repair checks the explicitly saved path.',
+  );
+  const unbound = await invoke(['unbind', 'fixture']);
+  assert.equal(unbound.code, 0);
+  assert.equal(unbound.result.binding.disabled, true);
+  assert.equal(fs.existsSync(candidates[0]), true, 'Unbinding preserves external software.');
+  listed = await invoke(['environments', 'fixture']);
+  assert.equal(listed.code, 0);
 });

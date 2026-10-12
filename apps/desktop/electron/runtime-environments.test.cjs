@@ -49,7 +49,8 @@ function setup(connectionStore) {
     ],
   };
   const opened = [];
-  registerRuntimeEnvironments({
+  const dialogs = [];
+  const registration = registerRuntimeEnvironments({
     ipcMain: { handle: (id, handler) => handlers.set(id, handler) },
     connectionStore,
     manager: {
@@ -70,7 +71,8 @@ function setup(connectionStore) {
     sessions: { assertIdle() {}, async reset() {} },
     projectRuntimes: { async close() {}, async reset() {} },
     dialog: {
-      async showOpenDialog() {
+      async showOpenDialog(options) {
+        dialogs.push(options);
         return { canceled: true };
       },
     },
@@ -84,6 +86,9 @@ function setup(connectionStore) {
     call: (id, request) => handlers.get(`environment:${id}`)({}, request),
     directory,
     opened,
+    dialogs,
+    bundle,
+    environments: registration.environments,
   };
 }
 test('environment IPC validates domain, profile, project context and asset paths', async () => {
@@ -182,6 +187,95 @@ test('connection IPC restricts declared fields and returns no saved secret', asy
     const reset = await h.call('connection-reset', request);
     assert.equal(reset.configured, false);
     assert.equal(records.size, 0);
+  } finally {
+    fs.rmSync(h.directory, { recursive: true, force: true });
+  }
+});
+
+test('native dependency picker uses manifest type and rejects undeclared selections', async () => {
+  const h = setup();
+  try {
+    for (const [type, properties] of [
+      ['native-executable', ['openFile']],
+      ['native-runtime-zip', ['openDirectory']],
+      ['macos-app-zip', ['openDirectory', 'openFile']],
+    ]) {
+      h.bundle.runtimeAssets[0].type = type;
+      await h.call('choose-app', {
+        domain: 'fixture',
+        profileId: 'native',
+        assetId: 'app',
+        selectionKind: 'application',
+      });
+      assert.deepEqual(h.dialogs.at(-1).properties, properties);
+      assert.equal(Boolean(h.dialogs.at(-1).filters), type === 'macos-app-zip');
+    }
+    await assert.rejects(
+      h.call('choose-app', { domain: 'fixture', profileId: 'remote', assetId: 'app' }),
+      /Unknown application/,
+    );
+    await assert.rejects(
+      h.call('choose-app', { domain: 'fixture', profileId: 'native', assetId: 'unknown' }),
+      /Unknown application/,
+    );
+    assert.equal(h.dialogs.length, 3);
+  } finally {
+    fs.rmSync(h.directory, { recursive: true, force: true });
+  }
+});
+
+test('Desktop software preparation rejects before shared download or lifecycle changes', async () => {
+  const h = setup();
+  try {
+    let sharedPreparationCalls = 0;
+    h.environments.prepare = async () => {
+      sharedPreparationCalls++;
+      throw Error('unexpected shared preparation');
+    };
+    await assert.rejects(
+      h.call('prepare', { domain: 'fixture', profileId: 'native' }),
+      /official source/,
+    );
+    await assert.rejects(
+      h.call('prepare', { domain: 'fixture', profileId: 'remote' }),
+      /official source/,
+    );
+    assert.equal(sharedPreparationCalls, 0);
+    assert.equal(h.dialogs.length, 0);
+    assert.equal(h.opened.length, 0);
+  } finally {
+    fs.rmSync(h.directory, { recursive: true, force: true });
+  }
+});
+
+test('Desktop container preparation is explicit and reports missing Docker', async () => {
+  const h = setup();
+  try {
+    h.bundle.executionProfiles.push({
+      id: 'container',
+      label: 'Container',
+      kind: 'container',
+      qualified: true,
+      platforms: [`${process.platform}-${process.arch}`],
+      toolIds: [],
+      assetIds: [],
+    });
+    let calls = 0;
+    h.environments.prepare = async (_domain, request) => {
+      calls++;
+      assert.equal(request.profileId, 'container');
+      throw Error('Install and start Docker before preparing the container image.');
+    };
+    await assert.rejects(
+      h.call('prepare', { domain: 'fixture', profileId: 'container' }),
+      /Install and start Docker/,
+    );
+    assert.equal(calls, 1);
+    await assert.rejects(
+      h.call('prepare', { domain: 'fixture', profileId: 'native' }),
+      /official source/,
+    );
+    assert.equal(calls, 1);
   } finally {
     fs.rmSync(h.directory, { recursive: true, force: true });
   }

@@ -9,8 +9,10 @@ const { promisify } = require('node:util');
 const { createProjectRuntime } = require('../../packages/harness-core/src/project-runtime.cjs');
 const {
   PackManager,
+  decodeArchive,
   RuntimeEnvironmentManager,
 } = require('../../packages/pack-manager/src/index.cjs');
+const { prepareNativeApplication } = require('./fixtures/native-application.cjs');
 const { call, plate } = require('./fixtures/freecad.cjs');
 const execute = promisify(execFile);
 const repo = path.resolve(__dirname, '../..');
@@ -54,31 +56,27 @@ test(
     } finally {
       global.fetch = fetch;
     }
-    if (process.env.HARNESS_FREECAD_ARCHIVE) {
-      const asset = require('../../packages/domain-skills/src/packs.cjs')
-        .loadDomainPacks()
-        .find(pack => pack.id === 'freecad-pack').runtimeAssets[0];
-      const cache = path.join(manager.runtimeAssets.directory, 'cache');
-      fs.mkdirSync(cache, { recursive: true });
-      fs.copyFileSync(process.env.HARNESS_FREECAD_ARCHIVE, path.join(cache, asset.sha256 + '.dmg'));
-    }
-    await manager.install(entry, {
-      bytes: fs.readFileSync(path.join(output, path.basename(entry.url))),
-      prepareRuntime: true,
-      onProgress: progress =>
-        console.log(
-          'CAD runtime preparation: ' +
-            JSON.stringify({
-              at: new Date().toISOString(),
-              id: progress.id,
-              phase: progress.phase,
-            }),
-        ),
+    const bytes = fs.readFileSync(path.join(output, path.basename(entry.url)));
+    const { bundle: declaredBundle } = decodeArchive(bytes);
+    const appPath = await prepareNativeApplication({
+      asset: declaredBundle.runtimeAssets.find(asset => asset.id === 'freecad'),
+      packStore: manager.directory,
+      directory: path.join(directory, 'external-applications'),
     });
+    await manager.install(entry, { bytes });
     const selectedBundle = manager.list()[0];
-    await new RuntimeEnvironmentManager({ manager }).associate(selectedBundle.domain, {
-      profileId: selectedBundle.executionProfiles.find(profile => profile.kind === 'native').id,
-    });
+    const selectedProfile = selectedBundle.executionProfiles.find(
+      profile => profile.kind === 'native' && profile.assetIds.includes('freecad'),
+    );
+    assert.ok(selectedProfile);
+    const associated = await new RuntimeEnvironmentManager({ manager }).associate(
+      selectedBundle.domain,
+      {
+        profileId: selectedProfile.id,
+        paths: { freecad: appPath },
+      },
+    );
+    assert.equal(associated.status, 'ready', JSON.stringify(associated));
     const prior = process.env.INDUSTRIAL_HARNESS_PACK_STORE;
     process.env.INDUSTRIAL_HARNESS_PACK_STORE = manager.directory;
     t.after(() => {

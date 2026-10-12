@@ -1,0 +1,7 @@
+{
+  "passed": true,
+  "check": "normal-quit-awaits-active-pack-transfer-cleanup",
+  "packOutcome": "cancelled",
+  "nativeDownloads": 0,
+  "phaseAtQuit": "downloading"
+}
