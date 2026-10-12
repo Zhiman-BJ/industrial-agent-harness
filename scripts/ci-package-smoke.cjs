@@ -15,7 +15,17 @@ function execute(script, arguments_) {
   if (result.error) throw result.error;
   if (result.status !== 0) throw Error(`${script} failed (${result.status}).`);
 }
-for (const domain of ['chip', 'pcb', 'godot', 'cad']) {
+const owner = require('@zhiman-bj/industrial-domain-packs');
+const platform = `${process.platform}-${process.arch}`;
+const declared = owner.consumerMetadata().domains;
+const qualified = declared.filter(domain => domain.qualifiedBundlePlatforms.includes(platform));
+// Platforms without an installable profile still exercise portable source
+// discovery/isolation for every domain, without claiming native qualification.
+const domains = (qualified.length ? qualified : declared).map(domain => domain.id);
+if (!domains.length) throw Error('No declared Domain package profiles.');
+console.log(JSON.stringify({ platform, mode: 'source-package-smoke',
+  installableDomains: qualified.map(domain => domain.id), domains }));
+for (const domain of domains) {
   execute('package-headless.cjs', [path.join(output, `headless-${domain}`), '--domain', domain]);
 }
 execute('smoke-domain-cli.cjs', [output]);
