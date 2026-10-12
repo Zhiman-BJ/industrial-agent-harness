@@ -6,4 +6,6 @@ This package loads fixed release metadata and resources from `@zhiman-bj/industr
 
 Harness packaging assembles unchanged release resources into portable caches/optional installable archives, records release content identity, and preserves licenses. These delivered copies are not editable maintenance sources. Adding a domain, capability, native action, Verifier, dependency recipe or domain Skill requires a Domain Packs release and a consumer pin update.
 
+A runtime declares external JavaScript modules in `runtime.dependencies` as exact package versions. Source packages and signed installed Packs use the same `runtimeApi.resolveDependency(specifier)` callback, which returns an absolute module path from the locked owner's dependency graph. The resolver checks the owner's declaration and actual installed package version; undeclared packages, version mismatches, traversal and modules outside that package are rejected. Project `node_modules`, global search paths and installed Pack directories cannot supply these dependencies. Runtime factories load the returned path with `require()`.
+
 See [shared task and Pack migration](../../doc/shared-task-and-pack-consumption.md) for the exercised boundaries and qualification limits.

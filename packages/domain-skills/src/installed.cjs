@@ -7,6 +7,7 @@ const staticCapabilities = require('@zhiman-bj/industrial-domain-packs').consume
 const { loadDomainPacks } = require('./packs.cjs');
 const staticSkills = require('./consumer.cjs');
 const { listDomains } = require('./domains.cjs');
+const { createDependencyResolver } = require('./runtime-dependencies.cjs');
 
 function builtInPackDirectory(provider) {
   // Resolve deployed pnpm resources from the owning module's ancestors. A
@@ -50,6 +51,7 @@ function loadRegistry() {
           domain: pack.domain,
           version: pack.version,
           runtime: pack.runtime,
+          resolveDependency: createDependencyResolver(pack.runtime.dependencies),
           directory: builtInPackDirectory(pack.provider),
           runtimeProtectedPaths: [require('@zhiman-bj/industrial-domain-packs').root],
         })),
@@ -104,6 +106,7 @@ function loadRegistry() {
         domain: pack.domain,
         version: pack.version,
         runtime: pack.runtime,
+        resolveDependency: createDependencyResolver(pack.runtime.dependencies),
         managed: true,
         runtimeEnvironment: manager.runtimeAssets.environment(bundle.runtimeAssets),
         runtimeProtectedPaths: [manager.runtimeAssets.directory],
