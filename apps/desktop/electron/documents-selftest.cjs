@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const { saveBindings } = require('./project-bindings.cjs');
 const {
   verifyNavigation,
-  verifyWheel,
+  verifyWheelScroll,
   transitionFullscreen,
 } = require('./navigation-selftest.cjs');
 let directory;
@@ -129,7 +129,7 @@ async function run(window) {
       const measure = () =>
         evaluate(`document.querySelector('${selector}').getBoundingClientRect().height`);
       await verifyNavigation(window, measure);
-      await verifyWheel(window, measure, (delta, ctrl) =>
+      await verifyWheelScroll(window, measure, (delta, ctrl) =>
         evaluate(
           `(() => {const element=document.querySelector('.ia-file-view:not([hidden])')?.querySelector('.rp-document-viewport'); const event=new WheelEvent('wheel',{deltaY:${delta},ctrlKey:${ctrl},cancelable:true}); element.dispatchEvent(event); return event.defaultPrevented;})()`,
         ),
