@@ -23,7 +23,10 @@ function normalizeCompression(compression = {}) {
 }
 
 // Build the mapping once per recording. Points keep both clocks so the UI can
-// show original timestamps while playing at compressed pace.
+// show original timestamps while playing at compressed pace. The lead-in
+// before the first event is a gap like any other: it compresses under the
+// same threshold/cap rule and stays raw when compression is off — a raw view
+// must never silently drop recorded time.
 function buildTimeline(records, compression) {
   const { thresholdMs, capMs } = normalizeCompression(compression);
   const points = [];
@@ -31,10 +34,8 @@ function buildTimeline(records, compression) {
   let previousSourceMs = 0;
   for (let index = 0; index < records.length; index++) {
     const sourceMs = records[index].relMs;
-    if (index > 0) {
-      const gap = Math.max(0, sourceMs - previousSourceMs);
-      displayMs += gap > thresholdMs ? capMs : gap;
-    }
+    const gap = Math.max(0, sourceMs - previousSourceMs);
+    displayMs += gap > thresholdMs ? capMs : gap;
     previousSourceMs = sourceMs;
     points.push({ seq: records[index].seq, index, sourceMs, displayMs });
   }
