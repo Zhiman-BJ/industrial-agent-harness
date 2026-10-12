@@ -27,6 +27,67 @@ self-hosted runner is registered as of 2026-10-12. Local native installation
 qualification remains separate evidence; native CI is not reported as passing or
 replaced with skipped tests. An eligible runner is a release infrastructure follow-up.
 
+## Fresh managed-store qualification, 2026-10-12
+
+The local `native-installed` gate passed all three required tests, with zero
+skips, cancellations or TODOs, in 487.1 seconds on macOS 26.5.1 ARM64 / Node
+26.10.0 / Docker Desktop 29.5.2. It consumed owner commit
+`1a777701776cc3c345f4451bdb760a847fb97345` (Domain Packs 0.6.0, content SHA-256
+`fcbe4a33ba2eb81185845c2633e6aacdcad69c4aa081d71497d25da81f06154b`). The
+independently deployed production CLI and Desktop payloads came from the local
+integration working tree; the CLI build marker records source commit `483d10f`
+and `sourceDirty: true`. This is local integration evidence, not a signed Desktop
+release or a GitHub Actions result.
+
+Each signed Pack was installed into a fresh store outside the repositories.
+`HARNESS_RUNTIME_ARCHIVES` / `HARNESS_FREECAD_ARCHIVE` supplied previously
+Harbor-downloaded **original archive bytes** for FreeCAD 1.1.4, KiCad 10.0.6 and
+Godot 4.7.2. No installed application, executable override or successful runtime
+receipt was supplied. Production preparation repeated complete size/SHA-256
+checks, native mounting or extraction, copying where applicable, signature and
+version checks, and activation. The pinned PCB and DXF OCI images reused existing
+Docker layers, and their immutable identities were checked. This establishes
+fresh-store installation from verified archive caches; it does not establish
+cold network throughput or cold Docker-layer download performance.
+
+The exercised samples were a FreeCAD plate with an independent solid/volume
+check; a KiCad mounting board with board-boundary and footprint-position edits;
+and a Godot structural scene with a mesh-size edit. CAD passed installation,
+native creation/verification and restart restoration (208.1 seconds). PCB/Godot
+passed continuous native inspection, edit and independent verification through
+both the production CLI and shared Desktop TaskService, durable history/artifact
+restoration and signed same-version repair (157.2 seconds). Actual Desktop
+composer, approval and chat-history flows also passed for PCB/Godot (121.0
+seconds), with native result screenshots retained. These samples do not qualify
+every design tool, the DXF action surface, Chip or CUDA; their separate owner
+qualification remains necessary.
+
+The gate report is `dist/ci-reports/native-installed.json`. The collected bounded
+evidence is `dist/ci-reports/qualified-native-installed-20261012/`, including the
+payload context, installation progress, native reports, persisted task evidence
+and `pcb-verified.png` / `godot-verified.png`. The original run log was retained at
+`/tmp/qualified-native-installed-20261012.log`; temporary paths are diagnostic
+locations, while this record preserves the exact tested owner and sample scope.
+
+## Download failure and retry boundary, 2026-10-12
+
+The production archive transfer has a 60-second no-progress deadline and a
+20-minute total deadline, including the anonymous Harbor Bearer handshake.
+Cancellation or either deadline aborts the fetch. An early EOF, excess bytes or a
+wrong digest fails preparation: the file descriptor is closed, the `.partial`
+file is removed, and the preparation lock is released. Only a complete matching
+size and SHA-256 is promoted to the archive cache; native readiness is written
+after the subsequent signature/version checks. Pack activation follows successful
+runtime preparation, preserving an existing active Pack on failure.
+
+Retry currently starts a new full archive transfer; there is no automatic retry
+or HTTP Range resume. A connection that needs more than 20 minutes therefore
+fails explicitly even while making progress. A historical slow single-connection
+Harbor attempt that ended early after approximately 90 minutes is not successful
+installation evidence. Independent full-byte Harbor integrity checks and the
+cache-assisted installation gate above establish different facts and must not be
+combined into a cold single-connection reliability claim.
+
 ## Historical installer candidate (0.5.1)
 
 The 1.0.1-beta.1 local desktop candidate addresses issue #60 on macOS Apple Silicon. It consumes Domain Packs 0.5.1 at immutable commit `09c39193e199de61941882f0e92f10ed7789dbd2`; the lockfile binds the archive integrity. Domain dependencies remain maintained by the Pack owner. The Core contains the generic installer, catalog, readiness descriptions and a small durable installation status record shared by CLI and Desktop.
