@@ -168,7 +168,7 @@ pnpm run format:check
 
 - **平台：** 桌面构建与首次启动 CI 目标为 macOS Apple Silicon（arm64）和 Windows x64。Intel Mac 暂不支持，不再发布 Intel 安装包或对应 Pack 目录目标；具备 Intel 测试机并完成安装及运行时验收后再恢复。签名安装器与真实升级仍需单独验收。
 - **受保护执行：** macOS 使用 Seatbelt；Linux x86-64 使用 bubblewrap/seccomp，需允许非特权用户命名空间。Windows 受保护 Agent 执行仍不可用。
-- **工具兼容性：** 旧领域 MCP 写入仍受隔离限制；所有领域都有受控文件编辑、声明任务执行和经 Runtime 审计的外部 MCP。独立 Computer Use 插件仍不可用。
+- **工具兼容性：** 旧领域 MCP 写入仍受隔离限制；所有领域都有受控文件编辑、声明任务执行和经 Runtime 审计的外部 MCP。Computer Use 插件（桌面 GUI 操作）可在设置中开启：工具在宿主侧执行，开启即授权，每次调用记入诊断日志。
 - **工程验收：** 首条 Core 路径验证声明的 RTL/testbench 断言与证据；覆盖率充分性、物理签核和其他领域的完整闭环尚待实现与验收。
 - **打包与评测：** 已记录本地未签名桌面检查和受控模型验证；签名发行、跨平台完整资格验证和正式付费模型比较仍需分别完成。
 

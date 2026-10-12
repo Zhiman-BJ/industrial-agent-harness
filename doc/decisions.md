@@ -54,6 +54,7 @@ Project、Domain 和 Session 的用户交互决定见[产品决策记录](produc
 
 - 日期：2026-09-28
 - 状态：插件已实现并接入桌面与 CLI；GUI 调用的 Domain Runtime Action/Verification 缺口已登记 `prototype-register.json`（`computer-use-plugin`）
+- 2026-10-12 修订：插件声明 `protectedSafe`（宿主侧执行、启用即授权、调用全量记诊断日志），受保护工业会话经 `execution-policy` 放行该插件；未声明 `protectedSafe` 的插件仍被剥离并以 `resources-filtered` 结构化事件呈现。原生沙箱会话路径（`createSession`）同步解除对应用控制插件的硬拒绝，外部 MCP 服务的隔离规则不变。
 - 原因：用户需要在 Harness 中驱动桌面 GUI（含 CAD 应用）。GUI 能力不属于任何工业 Domain，不应进入 Domain Pack、Domain MCP 注册表或 Broker Capability 解析；同时不应修改 Kimi 核心。
 - 决定：
   1. 新增 `packages/computer-use-bridge` 承载全部 computer-use 集成（安装器、MCP stdio 客户端、工具面、Skill 文本）。桌面与 CLI 共享该包，不重复实现。
