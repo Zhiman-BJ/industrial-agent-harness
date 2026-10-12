@@ -20,6 +20,13 @@ simulation, restart and signed same-version repairs without changing Core's modu
 cache or retaining stale engineering acceptance. Source/build and runtime results
 do not constitute a newly signed/notarized Desktop installer or a public release.
 
+The container-backed native CI jobs need a macOS ARM64 machine with a running
+local Linux Docker daemon and working project-directory mounts. The existing
+GitHub-hosted ARM64 Mac runners do not provide that environment, and no repository
+self-hosted runner is registered as of 2026-10-12. Local native installation
+qualification remains separate evidence; native CI is not reported as passing or
+replaced with skipped tests. An eligible runner is a release infrastructure follow-up.
+
 ## Historical installer candidate (0.5.1)
 
 The 1.0.1-beta.1 local desktop candidate addresses issue #60 on macOS Apple Silicon. It consumes Domain Packs 0.5.1 at immutable commit `09c39193e199de61941882f0e92f10ed7789dbd2`; the lockfile binds the archive integrity. Domain dependencies remain maintained by the Pack owner. The Core contains the generic installer, catalog, readiness descriptions and a small durable installation status record shared by CLI and Desktop.
