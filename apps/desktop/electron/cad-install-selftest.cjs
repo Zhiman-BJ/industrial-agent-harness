@@ -39,7 +39,7 @@ async function run(window, { manager, runtime }) {
     diagnostics.lastObservation = {
       at: new Date().toISOString(),
       state: await evaluate(
-        `({badges:Array.from(document.querySelectorAll('.ia-pack-badge')).map(node=>({domain:node.closest('[data-domain]')?.dataset.domain,text:node.textContent,visible:node.getClientRects().length>0})),progress:Array.from(document.querySelectorAll('.ia-domain-progress')).map(node=>({text:node.innerText,visible:node.getClientRects().length>0})),body:document.body.innerText.slice(-5000)})`,
+        `({badges:Array.from(document.querySelectorAll('.ia-runtime-environments [data-environment-status]')).map(node=>({domain:node.closest('[data-domain]')?.dataset.domain,text:node.textContent,visible:node.getClientRects().length>0})),progress:Array.from(document.querySelectorAll('.ia-runtime-environments [role="status"]')).map(node=>({text:node.innerText,visible:node.getClientRects().length>0})),body:document.body.innerText.slice(-5000)})`,
       ),
     };
     saveDiagnostics();
@@ -60,7 +60,7 @@ async function run(window, { manager, runtime }) {
         return;
       }
       const failure = await evaluate(
-        `document.querySelector('.ia-domains-modal [role="alert"], .ia-capability-section > .ia-project-error[role="alert"]')?.textContent || ''`,
+        `document.querySelector('.ia-domains-modal [role="alert"], .ia-capability-section > .ia-project-error[role="alert"], .ia-runtime-environments [role="alert"]')?.textContent || ''`,
       );
       if (failure) throw Error('CAD preparation failed: ' + failure);
       await new Promise(resolve => setTimeout(resolve, 200));
@@ -112,11 +112,21 @@ async function run(window, { manager, runtime }) {
         path.join(process.resourcesPath, 'bootstrap-packs'),
       );
       const targetVersion = bundledCatalog.packs.find(item => item.domain === 'cad')?.version;
-      assert.equal(targetVersion, '1.1.4-pack.7');
+      assert.ok(targetVersion, 'Signed bundled catalog declares the upgrade target.');
       const available = await evaluate('window.viewerHost.domainAvailable()');
       assert.equal(available.find(item => item.domain === 'cad')?.version, targetVersion);
       await evaluate(`window.viewerHost.domainInstall(['cad'])`);
       const updatedBundle = manager.list().find(item => item.domain === 'cad');
+      const upgradeEnvironment = await evaluate(
+        `window.viewerHost.environmentDescribe({domain:'cad'})`,
+      );
+      const upgradeNative = upgradeEnvironment.profiles.find(
+        item => item.kind === 'native' && item.qualified && item.status !== 'unsupported',
+      );
+      assert.ok(upgradeNative, 'Upgraded CAD Pack declares a supported native profile.');
+      await evaluate(
+        `window.viewerHost.environmentPrepare({domain:'cad',profileId:${JSON.stringify(upgradeNative.id)}})`,
+      );
       assert.equal(updatedBundle.version, targetVersion);
       assert.ok(updatedBundle.runtimeAssets[0].installedSize > 0);
       const updatedRuntime = manager.runtimeAssets.status(updatedBundle.runtimeAssets)[0];
@@ -239,7 +249,7 @@ async function run(window, { manager, runtime }) {
     }
   }
   await evaluate(
-    `(()=>{window.__cadInstallProgress=[]; window.viewerHost.onDomainProgress(progress=>window.__cadInstallProgress.push(progress));return true;})()`,
+    `(()=>{window.__cadInstallProgress=[];window.__cadEnvironmentProgress=[];window.viewerHost.onDomainProgress(progress=>window.__cadInstallProgress.push(progress));window.viewerHost.onEnvironmentProgress(progress=>window.__cadEnvironmentProgress.push(progress));return true;})()`,
   );
   await wait(
     `Boolean(document.querySelector('.ia-domain-install-row[data-domain="cad"]:not([data-unavailable]) input:not(:disabled)'))`,
@@ -254,9 +264,49 @@ async function run(window, { manager, runtime }) {
   await wait(`!document.querySelector('.ia-domains-primary').disabled`);
   await evaluate(`document.querySelector('.ia-domains-primary').click()`);
   await wait(
-    `window.viewerHost.domainStatus().then(status=>status.installed.some(item=>item.domain==='cad' && item.runtimeState==='ready') && Boolean(document.querySelector('.ia-domain-setup [data-action="done"]')))`,
+    `window.viewerHost.domainStatus().then(status=>status.installed.some(item=>item.domain==='cad') && Boolean(document.querySelector('.ia-domain-setup [data-action="done"]')))`,
     20 * 60 * 1000,
   );
+  const installedEnvironment = await evaluate(
+    `window.viewerHost.environmentDescribe({domain:'cad'})`,
+  );
+  const nativeProfile = installedEnvironment.profiles.find(
+    item => item.kind === 'native' && item.qualified && item.status !== 'unsupported',
+  );
+  assert.ok(
+    nativeProfile,
+    'The packaged CAD acceptance needs a qualified native execution profile.',
+  );
+  assert.equal(
+    installedEnvironment.binding,
+    null,
+    'Installing the source Pack does not select a software environment.',
+  );
+  assert.equal(
+    await evaluate(
+      `window.__cadInstallProgress.some(item=>item.phase==='mounting') || window.__cadEnvironmentProgress.length>0`,
+    ),
+    false,
+    'Pack installation does not run native software preparation.',
+  );
+  await captureSettled(window, {
+    output: path.join(reportDir, 'pack-installed-before-environment.png'),
+  });
+  await evaluate(
+    `(() => {const select=document.querySelector('.ia-runtime-environments[data-domain="cad"] select');select.value=${JSON.stringify(nativeProfile.id)};select.dispatchEvent(new Event('change',{bubbles:true}));})()`,
+  );
+  const prepare = `Array.from(document.querySelectorAll('.ia-runtime-environments[data-domain="cad"] button')).find(button=>button.textContent==='Prepare managed environment'&&!button.disabled)`;
+  await wait(`Boolean(${prepare})`);
+  await evaluate(`(${prepare}).click()`);
+  await wait(
+    `document.querySelector('.ia-runtime-environments[data-domain="cad"] [data-environment-status]')?.dataset.environmentStatus==='ready' && document.querySelector('.ia-runtime-environments[data-domain="cad"]')?.innerText.includes('Execution environment saved.')`,
+    20 * 60 * 1000,
+  );
+  const selectedEnvironment = await evaluate(
+    `window.viewerHost.environmentDescribe({domain:'cad'})`,
+  );
+  assert.equal(selectedEnvironment.binding.profileId, nativeProfile.id);
+  assert.equal(selectedEnvironment.status, 'ready');
   await evaluate(`document.querySelector('.ia-domain-setup [data-action="done"]').click()`);
   await wait(`!document.querySelector('.ia-domains-modal')`);
   const bundle = manager.list().find(item => item.domain === 'cad');
@@ -386,18 +436,18 @@ async function run(window, { manager, runtime }) {
     `Array.from(document.querySelectorAll('.ia-settings-row')).find(row=>row.textContent.includes('Domains')).querySelector('button').click()`,
   );
   await wait(
-    `document.querySelector('.ia-pack-card[data-domain="cad"] .ia-pack-badge')?.textContent.includes('Needs preparation')`,
+    `Boolean(document.querySelector('.ia-runtime-environments[data-domain="cad"] [data-environment-status]')) && document.querySelector('.ia-runtime-environments[data-domain="cad"] [data-environment-status]').dataset.environmentStatus !== 'ready'`,
   );
   await evaluate(
-    `Array.from(document.querySelectorAll('.ia-pack-actions button')).find(node=>node.textContent.includes('Prepare / retry')).click()`,
+    `Array.from(document.querySelectorAll('.ia-runtime-environments[data-domain="cad"] button')).find(node=>node.textContent==='Prepare managed environment'&&!node.disabled).click()`,
   );
   await wait(
-    `document.querySelector('.ia-pack-card[data-domain="cad"] .ia-pack-badge')?.textContent.includes('Ready to use') && !document.querySelector('.ia-domain-progress')`,
+    `document.querySelector('.ia-runtime-environments[data-domain="cad"] [data-environment-status]')?.dataset.environmentStatus==='ready' && document.querySelector('.ia-runtime-environments[data-domain="cad"]')?.innerText.includes('Execution environment saved.')`,
     10 * 60 * 1000,
   );
   await captureSettled(window, {
     output: path.join(reportDir, 'domain-ready.png'),
-    readyScript: `document.querySelector('.ia-pack-card[data-domain="cad"] .ia-pack-badge')?.textContent.includes('Ready to use') && !document.querySelector('.ia-domain-progress')`,
+    readyScript: `document.querySelector('.ia-runtime-environments[data-domain="cad"] [data-environment-status]')?.dataset.environmentStatus==='ready' && document.querySelector('.ia-runtime-environments[data-domain="cad"]')?.innerText.includes('Execution environment saved.')`,
   });
   assert.equal(manager.runtimeAssets.status(bundle.runtimeAssets)[0].ready, true);
   diagnostics.phase = 'complete';
@@ -415,6 +465,9 @@ async function run(window, { manager, runtime }) {
         readback: geometry,
         viewer: 'OCCT BREP',
         repaired: true,
+        packInstalledBeforeEnvironment: true,
+        selectedExecutionProfile: nativeProfile.id,
+        environmentPreparedExplicitly: true,
         preparationMode: runtimeCacheReuse ? 'warm-runtime-reuse' : 'cold-native-preparation',
         runtimeCacheReuse,
       },

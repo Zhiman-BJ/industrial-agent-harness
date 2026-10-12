@@ -1,0 +1,22 @@
+{
+  "passed": true,
+  "checks": [
+    "pack-only",
+    "missing-detection",
+    "multiple-installations",
+    "explicit-application",
+    "association",
+    "unsupported",
+    "cancellation",
+    "failed-association",
+    "project-binding-isolation",
+    "remote-unconfigured-no-upload",
+    "remote-secure-save-no-secret-return",
+    "remote-configured-requires-runtime-handshake",
+    "delayed-ipc-context-isolation",
+    "secure-save-has-no-fake-cancel",
+    "damaged-secure-record-explicit-reset",
+    "system-font",
+    "dark-narrow-layout"
+  ]
+}

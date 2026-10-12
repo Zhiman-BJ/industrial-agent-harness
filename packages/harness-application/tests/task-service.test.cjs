@@ -239,3 +239,15 @@ test('background tasks retain leases until their native completion; cancel and a
   assert.equal(tasks.sessions.busy(entry), false);
   assert.equal(tasks.history(project, entry.id).turns[0].status, 'completed');
 });
+test('task preparation requests the registry for the bound project rather than a global environment selection', async t => {
+  const f = fixture(t),
+    registry = f.tasks.registry(),
+    seen = [];
+  f.tasks.options.getRegistry = project => {
+    seen.push(project);
+    return registry;
+  };
+  await f.tasks.prepare(f.entry, { task: 'create a project file' });
+  assert.ok(seen.length > 0);
+  assert.ok(seen.every(project => project?.path === f.project.path));
+});

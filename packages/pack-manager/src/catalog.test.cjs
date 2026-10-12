@@ -202,3 +202,12 @@ test('a full disk cannot leave a finished operation permanently active or leak j
   retried.finish('completed');
   assert.equal(journal.snapshot().outcome, 'completed');
 });
+test('catalog installation estimates include only the Pack and disclose software totals as optional', t => {
+  const f = fixture(t),
+    catalog = new PackCatalog(f);
+  const entry = { ...f.entry, runtimeDownloadSize: 1400000000, runtimeInstalledSize: 4000000000 };
+  const summary = catalog.summaries([entry])[0];
+  assert.equal(summary.runtimeDownloadSize, entry.runtimeDownloadSize);
+  assert.equal(summary.installation.downloadBytes, entry.size);
+  assert.ok(summary.installation.installedBytes < 1000000);
+});

@@ -94,24 +94,23 @@ HARNESS_REQUIRE_CORE_NATIVE=1 pnpm run test:industrial-core
 
 需要下载包时，请查看 [GitHub Releases](https://github.com/Zhiman-BJ/industrial-agent-harness/releases)，并按对应版本说明安装。[无界面安装](apps/cli/README.md#github-release-安装)和[领域 CLI 分包](doc/domain-cli-downloads.md)提供校验与外部依赖说明。历史归档不会自动获得当前源码的新功能。
 
-当前源码消费 **Domain Packs 0.6.0**，由各 package manifest 和 lockfile 精确固定。五个领域均有正常 macOS ARM64 bundle，包含 CUDA 远程客户端；Chip 还具备已验收的 Linux x86-64 托管 profile。安装 Pack 时，共享安装器从 `harbor.pvg2.zhiman.tech` 准备声明中的原生应用和预构建工具，校验不可变身份并复用已验证缓存。用户无需构建工具镜像、先安装完整 GUI 套件或手工同步 Python 环境。容器工具需要已运行的 Docker（Mac 使用 Docker Desktop）；CUDA 需要管理员提供配对且已认证的 GPU 服务。模型 API 配置独立完成。进度、取消、修复和就绪状态见[安装体验](doc/install-experience.md)。当前源码验收不代表新签名公众安装包或 Core OTA 已通过。
+当前源码消费 **Domain Packs 0.7.0**，owner 固定为 `4cc46c3f2e5d000e000e60e1ca0697d71484edd0`。安装 Pack 只安装可信能力、Skills 与适配器；原生软件下载、容器准备和远程配置分开操作。在能力中心或项目详情中选择已验证的本机、容器或远程 Profile，可关联兼容的现有软件，或明确准备该 Profile 的托管依赖。本机 FreeCAD、Godot 不要求 Docker；Chip、PCB 设计与 DXF 容器路径仍需 Docker。CUDA 沿用配对认证 MCP 服务和本地 canonical Runtime，与项目协调器远程运行协议分开。Go 平台组件执行固定环境检测，本轮未将所有领域 MCP 重写为 Go。详见[分发 v2](doc/runtime-distribution-v2.md)、[安装体验](doc/install-experience.md)和[本轮验收证据](doc/qa-runtime-distribution-v2-20261012.md)。模型配置、环境就绪与工程验收是不同状态。本次源码改动不代表新的签名公众安装包、Core OTA、新增 Mac CI runner 或更广的平台资格。
 
 **历史本地候选包：** 1.0.1-beta.1 Apple Silicon 桌面候选包列出全部五个领域：Chip、PCB、Godot、CAD 四个 Pack 可直接选择，未配置在线目录也能安装；CUDA 保持可见，明确显示远程服务前提和当前暂无可安装桌面包的状态。选择 PCB、Godot 或 CAD 后，应用自动在用户 Pack 目录准备固定官方 KiCad 10.0.6、Godot 4.7.2 或 FreeCAD 1.1.4；这三项托管工具无需用户运行命令或配置环境变量。Chip 仍需外部 Python、编译器及 EDA/PDK 环境。Core 内置 Kimi Code 2.1.1，模型 API 配置仍需单独完成。安装界面展示大小预估、进度、取消与恢复，完成后分别显示各领域的实际就绪状态。详见[安装体验与发行边界](doc/install-experience.md)及[CAD 安装验收](doc/macos-cad-distribution.md)。本地候选包尚不代表正式签名公众发行或真实 Core OTA 已通过验收。
 
 ## 领域扩展
 
-| 领域 | 当前 0.6.0 能力 | 依赖与已验收范围 |
-| --- | --- | --- |
-| [Chip](https://github.com/Zhiman-BJ/industrial-domain-packs/tree/main/packs/chip) | 托管 EDA 操作、RTL 断言与 VCD、Yosys 综合检查，以及波形／网表／版图查看 | macOS ARM64 与 Linux x86-64，需 Docker；Harbor 预构建镜像内含 Python 与工具。物理流程仍需工程自有 PDK／工艺输入；综合不等于等价性、LVS 或物理签核。 |
-| [PCB](doc/pcb-godot-runtime.md) | 复用 PCBbench 设计工具和 Skill，支持用户工程的原理图／PCB 创建、修复、元件、检查与导出；普通项目无需 benchmark seed 或评分 | macOS ARM64；Harbor 提供 KiCad 10.0.6 与预构建 gateway，需 Docker。实际 ERC／DRC 与适用分析分别记录，不承诺完整电气、合规或制造签核。 |
-| [CAD · FreeCAD / DXF](doc/freecad-domain-pack.md) | FreeCAD 参数化创建／修改、FCStd/STEP/STL 导出及几何回读；受限 DXF 创建／检查／验证 | macOS ARM64；Harbor 提供 FreeCAD 1.1.4 与预构建 ezdxf Docker 运行时。AutoCAD 可选；DXF 仅涵盖声明的二维几何，不承诺通用 DWG/PDF 转换、强度或制造验收。 |
-| [Godot](doc/pcb-godot-runtime.md) | 类型化场景变换／BoxMesh 修改，原生导入／回读／限帧验证；源码与 Web Export Viewer | macOS ARM64；Harbor 提供 Godot 4.7.2。验收限于显式结构属性，不含任意游戏 QA；Web Export 保留独立依赖。 |
-| [CUDA](doc/cuda-domain-pack.md) | 可安装的 macOS 远程客户端，面向用户自有 kernel 工程，保护参考实现／测量配置绑定并记录真实编译与 evaluator 证据 | 管理员提供配对且已认证的 Compiler/Evaluator 服务，已在 RTX 4090 实测。固定 worker 镜像保留在私有 Harbor，凭据仅归管理员；客户端无需本机 CUDA 工具链／GPU 或 registry 凭据，其他 GPU 未验收。 |
+| 领域                                                                              | 当前 0.7.0 能力                                                                                                            | 依赖与已验收范围                                                                                                                                                                             |
+| --------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Chip](https://github.com/Zhiman-BJ/industrial-domain-packs/tree/main/packs/chip) | 托管 EDA 操作、RTL 断言与 VCD、Yosys 综合检查，以及波形／网表／版图查看                                                    | macOS ARM64 与 Linux x86-64，需 Docker；Harbor 预构建镜像内含 Python 与工具。物理流程仍需工程自有 PDK／工艺输入；综合不等于等价性、LVS 或物理签核。                                          |
+| [PCB](doc/pcb-godot-runtime.md)                                                   | 复用 PCBbench 设计工具和 Skill，支持用户工程的原理图／PCB 创建、修复、元件、检查与导出；普通项目无需 benchmark seed 或评分 | macOS ARM64；受限本机板图操作使用兼容 KiCad 10.0.6，完整设计路径使用固定 Docker gateway。实际 ERC／DRC 与适用分析分别记录，不承诺完整电气、合规或制造签核。                                  |
+| [CAD · FreeCAD / DXF](doc/freecad-domain-pack.md)                                 | FreeCAD 参数化创建／修改、FCStd/STEP/STL 导出及几何回读；受限 DXF 创建／检查／验证                                         | macOS ARM64；本机 FreeCAD 1.1.4 与固定 ezdxf Docker 运行时分为两个 Profile。AutoCAD 可选；DXF 仅涵盖声明的二维几何，不承诺通用 DWG/PDF 转换、强度或制造验收。                                |
+| [Godot](doc/pcb-godot-runtime.md)                                                 | 类型化场景变换／BoxMesh 修改，原生导入／回读／限帧验证；源码与 Web Export Viewer                                           | macOS ARM64；关联兼容 Godot 4.7.2，或明确准备托管下载。验收限于显式结构属性，不含任意游戏 QA；Web Export 保留独立依赖。                                                                      |
+| [CUDA](doc/cuda-domain-pack.md)                                                   | 可安装的 macOS 远程客户端，面向用户自有 kernel 工程，保护参考实现／测量配置绑定并记录真实编译与 evaluator 证据             | 管理员提供配对且已认证的 Compiler/Evaluator 服务，已在 RTX 4090 实测。固定 worker 镜像保留在私有 Harbor，凭据仅归管理员；客户端无需本机 CUDA 工具链／GPU 或 registry 凭据，其他 GPU 未验收。 |
 
 共享安装器校验原生归档摘要与容器 manifest／config／platform 身份。Pack 声明设计源与派生证据边界，共享执行后端负责持久工具会话、取消与清理。平台资格按上表分别成立，安装源码 Pack 本身不建立原生能力资格。
 
 按 [Pack 作者教程](doc/pack-authoring.md)独立开发扩展。领域代码留在 Pack 内，共享 Core 与 Broker 不依赖具体领域。已注册、能够显示或原生烟测成功，均不代表完整工业工作流已经验收。[PCB／Godot 原生任务](doc/pcb-godot-runtime.md)及 owner 验收记录列出实际任务边界，不扩大其他工程支持承诺。先前[发布整改记录](doc/release-readiness-20261007.md)保留为历史证据。
-
 
 ### 任务成果
 

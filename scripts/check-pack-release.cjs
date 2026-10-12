@@ -35,5 +35,6 @@ if (
     'packages/domain-skills/src/distribution.test.cjs',
     'packages/domain-skills/src/pack-resources.test.cjs',
     'packages/pack-manager/src/index.test.cjs',
+    'tests/integration/platform-probe-distribution.test.cjs',
   ]);
 }

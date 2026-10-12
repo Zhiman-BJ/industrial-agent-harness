@@ -534,7 +534,18 @@ class IndustrialRuntime {
           reason:
             'Project inputs changed during execution; results do not establish the current state.',
         };
-      action.status = result.executionSucceeded === true ? 'completed' : 'failed';
+      // Host execution validation is an independent acceptance boundary. Keep
+      // collected native receipts but never let a domain verifier override it.
+      if (result.executionVeto && verification.status === 'passed')
+        verification = {
+          ...verification,
+          status: 'insufficient_evidence',
+          reason: String(
+            result.executionVeto.reason || 'Runtime execution validation rejected acceptance.',
+          ).slice(0, 4096),
+        };
+      action.status =
+        result.executionSucceeded === true && !result.executionVeto ? 'completed' : 'failed';
     } catch (error) {
       action.status = 'failed';
       action.diagnostics.push(String(error.message).slice(0, 4096));

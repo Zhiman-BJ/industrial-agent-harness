@@ -6,6 +6,10 @@ const zlib = require('node:zlib');
 const { Transfer, TransferProgress } = require('./transfer.cjs');
 const { availableSpace, footprint, checkSpace } = require('./install-space.cjs');
 const { RuntimeAssetManager, validateRuntimeAssets } = require('./runtime-assets.cjs');
+const {
+  RuntimeEnvironmentManager,
+  validateExecutionProfiles,
+} = require('./runtime-environments.cjs');
 const { InstallationJournal } = require('./installation-journal.cjs');
 
 const MAX_COMPRESSED = 128 * 1024 * 1024;
@@ -55,6 +59,7 @@ function safeRelative(value) {
 
 function validateBundle(bundle) {
   validateRuntimeAssets(bundle?.runtimeAssets);
+  validateExecutionProfiles(bundle?.executionProfiles, bundle?.runtimeAssets || []);
   if (
     bundle?.schemaVersion !== 1 ||
     !ID.test(bundle.domain || '') ||
@@ -68,6 +73,19 @@ function validateBundle(bundle) {
     !Array.isArray(bundle.providerPacks)
   )
     throw Error('Invalid Domain Pack manifest.');
+  if (bundle.platformProbe != null) {
+    const probe = bundle.platformProbe;
+    if (
+      probe.schemaVersion !== 1 ||
+      !/^(darwin|linux|win32)-(arm64|x64)$/.test(probe.platform || '') ||
+      probe.file !== `components/${probe.platform}/industrial-environment-probe` ||
+      !SHA.test(probe.sha256 || '') ||
+      !Number.isSafeInteger(probe.sizeBytes) ||
+      probe.sizeBytes < 1 ||
+      probe.sizeBytes > 32 * 1024 * 1024
+    )
+      throw Error('Invalid platform probe declaration.');
+  }
   const skillIds = new Set();
   const skillDirectories = new Set();
   for (const skill of bundle.skills) {
@@ -317,6 +335,16 @@ function decodeArchive(compressed) {
       !seen.has(`domain-packs/${pack.provider.packDirectory}/${pack.runtime.entry}`)
     )
       throw Error(`Missing Domain runtime: ${pack.id}`);
+  if (bundle.platformProbe) {
+    const probe = files.find(file => file.path === bundle.platformProbe.file);
+    if (
+      !probe ||
+      probe.mode !== 'executable' ||
+      probe.bytes.length !== bundle.platformProbe.sizeBytes ||
+      digest(probe.bytes) !== bundle.platformProbe.sha256
+    )
+      throw Error('Platform probe file identity mismatch.');
+  }
   return { bundle, files };
 }
 
@@ -419,11 +447,13 @@ class PackManager {
     keys = {},
     channel = 'stable',
     space = availableSpace,
+    versionProbe,
   } = {}) {
     this.directory = path.resolve(directory);
     this.keys = keys;
     this.space = space;
     this.channel = channel;
+    this.versionProbe = versionProbe;
     this.verifiedEntries = new WeakSet();
     this.bundledEntries = new WeakMap();
     this.runtimeAssets = new RuntimeAssetManager({ directory: this.directory, space });
@@ -482,7 +512,25 @@ class PackManager {
       fs.rmSync(lock, { force: true });
     }
   }
-  assertIdle(domain) {
+  assertIdle(domain, { allowRuntimePreparation = false } = {}) {
+    if (!allowRuntimePreparation) {
+      const operation = path.join(this.directory, 'environments', domain + '.preparing.json');
+      try {
+        const { pid } = JSON.parse(fs.readFileSync(operation, 'utf8'));
+        if (!Number.isInteger(pid) || pid < 1) throw Error('Invalid runtime preparation lease.');
+        try {
+          process.kill(pid, 0);
+        } catch (error) {
+          if (error.code === 'ESRCH') {
+            fs.rmSync(operation, { force: true });
+          } else throw error;
+        }
+        if (fs.existsSync(operation))
+          throw Error('Runtime environment preparation is in progress.');
+      } catch (error) {
+        if (error.code !== 'ENOENT') throw error;
+      }
+    }
     const directory = path.join(this.directory, 'leases', domain);
     if (!fs.existsSync(directory)) return;
     for (const file of fs.readdirSync(directory)) {
@@ -783,5 +831,7 @@ module.exports = {
   digest,
   validateBundle,
   RuntimeAssetManager,
+  RuntimeEnvironmentManager,
+  validateExecutionProfiles,
   compareVersions,
 };

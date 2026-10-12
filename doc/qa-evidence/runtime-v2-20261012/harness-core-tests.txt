@@ -1,0 +1,45 @@
+$ node --test tests/*.test.cjs
+✔ desktop drafts reuse actual empty chats within the project/domain and preserve existing rows (55.996208ms)
+✔ approval mode is scoped to one chat, persists across stores and cannot change an executing chat (12.317584ms)
+✔ concurrent desktop draft requests from separate processes create only one chat (921.18975ms)
+✔ history survives reopening, separates projects/domains and pages without gaps (69.350375ms)
+✔ receipt times survive stream coalescing and reopening without changing source events (10.418708ms)
+✔ one chat can have several runtime sessions; returning to an old scope starts a new segment (11.320584ms)
+✔ killed process leaves an interrupted turn and an expired approval, without replaying work (292.740042ms)
+✔ stable result event IDs deduplicate across store handles and request history stays isolated (5.026291ms)
+✔ pinned consumer discovers CUDA and its Skill while unconfigured execution stays unavailable (158.867583ms)
+✔ shared factory and Broker use both authenticated MCP identities from the pinned owner (689.422792ms)
+✔ protected Runtime scopes include registered MCP tools and honor disable policy without changing preferences (191.695833ms)
+✔ a project domain constrains capability resolution without a desktop process (1.078042ms)
+✔ a project-disabled skill is absent from scope, detail, and the disclosure trace (1.651708ms)
+✔ shared factory boots an empty project without a Pack and keeps workspace tools at every factual stage (41.0435ms)
+✔ creating actual configuration refreshes professional scope; invalid configuration remains repairable with visible inspection evidence (150.09525ms)
+✔ Pack evidence boundary keeps read-only receipts from invalidating accepted design state (163.576875ms)
+✔ blank deployment settings remain unconfigured and project choices are shared without uploading (35.226375ms)
+✔ sync consent binds exact bytes, destination, project and expiry; symlinks and credentials are excluded (341.92575ms)
+✔ shared factory skips the local pack and executes approved actions with canonical remote evidence (801.323291ms)
+✔ remote cancellation targets the active job and waits for its terminal status without claiming acceptance (606.605625ms)
+✔ service identity changes fail closed and plaintext or credential-bearing endpoints are refused (20.363541ms)
+✔ artifact corruption cannot import acceptance and uncertain submissions are never replayed (600.298167ms)
+✔ global defaults, project overrides and inherit persist and affect actual Broker scope (73.580583ms)
+✔ legacy disabled IDs migrate once; resetting inheritance does not resurrect them (7.840458ms)
+✔ MCP effective policy feeds scope filtering and still withholds out-of-scope providers (30.656375ms)
+﹣ real managed Godot existing application association executes through the shared project Runtime (0.905833ms) # SKIP
+✔ post-execution environment failure preserves actual artifacts and native cleanup diagnostics (167.467083ms)
+✔ cancelled native result reaches canonical collection without an aborted post-probe discarding its receipts (90.031916ms)
+✔ shared admission is atomic across hosts, obeys the stricter limit, and releases failed attempts (92.737833ms)
+✔ idle TTL protects active and pending-interaction resources and keeps persisted data (10.533625ms)
+✔ a full resident pool requests eviction from another host before admitting a new process (88.517667ms)
+✔ slow disposal occupies its slot, bounded admission fails, and revival waits for close (81.668667ms)
+✔ memory pressure rejects starts and retires idle resources without interrupting active work (17.837ms)
+✔ dead owners are reclaimed and failed disposal never reports free capacity (2.737416ms)
+✔ invalid configuration fails explicitly rather than removing resource protection (0.102917ms)
+✔ availability includes reclaimable pages instead of treating cached memory as exhausted (0.084208ms)
+ℹ tests 36
+ℹ suites 0
+ℹ pass 35
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 1
+ℹ todo 0
+ℹ duration_ms 4155.725292

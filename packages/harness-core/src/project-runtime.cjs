@@ -21,7 +21,8 @@ function createProjectRuntime({
   domain,
   directory,
   environment = process.env,
-  registry = loadRegistry(environment),
+  registry,
+  connectionStore,
   remoteSettings = new RemoteSettings({
     directory: defaultResourceDirectory(environment),
     environment,
@@ -29,6 +30,11 @@ function createProjectRuntime({
   onRemoteStatus,
 }) {
   const execution = remoteSettings.project(projectDir, domain);
+  registry ||= loadRegistry(environment, {
+    projectDir,
+    remote: execution.location === 'remote',
+    connectionStore,
+  });
   if (execution.location === 'remote')
     return createRemoteRuntime({
       settings: remoteSettings,
@@ -36,6 +42,7 @@ function createProjectRuntime({
       domain,
       directory,
       registry,
+      connectionStore,
       onStatus: onRemoteStatus,
     });
   const remoteRevision = remoteSettings.identity();
@@ -52,9 +59,23 @@ function createProjectRuntime({
   if (root)
     for (const cached of Object.keys(require.cache))
       if (cached.startsWith(root + path.sep)) delete require.cache[cached];
+  const runtimeView = pack?.runtimeEnvironmentResolver?.({ projectDir });
+  const environmentIdentity = runtimeView?.identity;
+  const configurationIdentity = runtimeView?.configurationIdentity || environmentIdentity;
+  const environmentCurrent = () => {
+    const current = pack?.runtimeEnvironmentResolver?.({ projectDir });
+    return (
+      !current || (current.configurationIdentity || current.identity) === configurationIdentity
+    );
+  };
+  const effectiveEnvironment = runtimeView?.environment || pack?.runtimeEnvironment || {};
+  const allowedTools =
+    runtimeView && !runtimeView.legacy
+      ? new Set(runtimeView.executableToolIds || runtimeView.readyToolIds)
+      : null;
   const plugin = entry
     ? require(entry).createRuntimePlugin({
-        environment: { ...environment, ...pack.runtimeEnvironment },
+        environment: { ...environment, ...effectiveEnvironment },
         managed: Boolean(pack.managed),
         runtimeApi: {
           executeTask,
@@ -64,6 +85,50 @@ function createProjectRuntime({
         },
       })
     : {};
+  if (allowedTools) {
+    plugin.tools = (plugin.tools || []).filter(tool => allowedTools.has(tool.descriptor.id));
+    plugin.capabilities = (plugin.capabilities || [])
+      .map(capability => ({
+        ...capability,
+        tools: capability.tools.filter(tool => allowedTools.has(tool.id)),
+      }))
+      .filter(capability => capability.tools.length);
+  }
+  for (const tool of plugin.tools || []) {
+    const execute = tool.execute;
+    tool.execute = async context => {
+      const release = pack?.acquireRuntimeUse?.();
+      try {
+        if (!environmentCurrent())
+          throw Error('Runtime environment changed. Refresh the project before executing.');
+        await pack?.validateRuntimeEnvironment?.({ projectDir, signal: context.signal });
+        const result = await execute(context);
+        // Native failure/cancellation may already contain receipts and cleanup
+        // evidence. Never throw them away before the canonical collector runs.
+        try {
+          if (result.executionSucceeded === true && !context.signal?.aborted)
+            await pack?.validateRuntimeEnvironment?.({ projectDir });
+          if (!environmentCurrent())
+            throw Error('Runtime environment changed during execution. Check it before retrying.');
+          if (context.signal?.aborted)
+            throw Error('Action was cancelled; retained output does not establish acceptance.');
+        } catch (error) {
+          return {
+            ...result,
+            executionSucceeded: false,
+            executionVeto: {
+              code: 'RUNTIME_VALIDATION_VETO',
+              reason: String(error.message).slice(0, 4096),
+            },
+            diagnostics: [...(result.diagnostics || []), String(error.message)],
+          };
+        }
+        return result;
+      } finally {
+        release?.();
+      }
+    };
+  }
   const protectedPaths = [
     root,
     ...(pack?.runtimeProtectedPaths || []),
@@ -82,6 +147,19 @@ function createProjectRuntime({
     inputRules: plugin.workspaceInputs,
     inspectionDiagnostics: () => stateDiagnostics,
   });
+  // Workspace scripts keep their existing execution rules, while an environment
+  // selection cannot change under any active project action.
+  for (const tool of workspace.tools) {
+    const execute = tool.execute;
+    tool.execute = async context => {
+      const release = pack?.acquireRuntimeUse?.();
+      try {
+        return await execute(context);
+      } finally {
+        release?.();
+      }
+    };
+  }
   const externalRegistry = new ExternalMcpRegistry(defaultResourceDirectory(environment));
   const externalServers = externalRegistry.records();
   const externalRevision = JSON.stringify(
@@ -95,6 +173,10 @@ function createProjectRuntime({
   const matches = () => !plugin.matchesProject || plugin.matchesProject(projectDir);
   const stateProvider = async context => {
     const common = await workspace.stateProvider(context);
+    if (environmentIdentity)
+      common.inputHashes['runtime-identity/environment'] = pack.runtimeEnvironmentResolver({
+        projectDir,
+      }).identity;
     if (!plugin.stateProvider || !matches()) return common;
     let observed;
     try {
@@ -119,6 +201,7 @@ function createProjectRuntime({
   return {
     runtime,
     configurationCurrent: () =>
+      environmentCurrent() &&
       remoteSettings.project(projectDir, domain).location === 'local' &&
       remoteSettings.identity() === remoteRevision &&
       externalRevision ===

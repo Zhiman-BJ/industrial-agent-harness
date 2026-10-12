@@ -1,8 +1,39 @@
 # Installation experience
 
-## Current managed source (2026-10-12)
+## Current distribution v2 source (2026-10-12)
 
-The current source consumes Domain Packs 0.6.0 at the exact commit recorded in the
+Current source consumes Domain Packs 0.7.0 at
+`4cc46c3f2e5d000e000e60e1ca0697d71484edd0`. [PD-072](product-decisions.md#pd-072pack-与软件分离及能力-profile-选择)
+replaces mandatory dependency preparation: installing a Pack installs trusted
+capabilities, Skills and adapters only. Software preparation and selecting an
+execution profile are explicit, separate actions.
+
+Users can associate a compatible existing application, open its official manual
+installation page, or explicitly prepare the selected profile's managed download.
+Godot and native FreeCAD need no Docker; Chip, PCB design and DXF container profiles
+still need a running Docker daemon. PCB's bounded native profile and broader design
+container expose different tool subsets. Unqualified profiles remain unavailable.
+CUDA uses existing paired authenticated MCP settings and the local canonical Runtime;
+coordinator Project execution settings are a different remote protocol. Configuration
+presence does not establish remote readiness or engineer acceptance.
+
+CLI and Desktop share profile bindings, detection, cancellation and environment
+identity checks. User applications are never deleted when a binding is cleared.
+Historical results remain readable without an available execution environment.
+The signed Pack carries a separately built Go component for fixed environment
+probes; it does not replace all domain MCP implementations. Public software/archive
+and container identities remain pinned; explicit managed preparation retains the
+existing transfer, verification, cache and failure cleanup mechanisms.
+
+Real existing-app Godot association and canonical 12-frame structural verification
+passed. GUI IPC fixture and five-domain catalog results are being consolidated;
+see [v2 acceptance](qa-runtime-distribution-v2-20261012.md) and [implemented contract](runtime-distribution-v2.md).
+Older reports below retain their tested version and evidence. No new signed public
+installer, cold-download qualification, Core OTA or Mac CI runner is claimed.
+
+## Historical managed source 0.6.0 (2026-10-12)
+
+The preceding source consumed Domain Packs 0.6.0 at the exact commit recorded in the
 root and adapter package manifests and lockfile. On the qualified macOS Apple
 Silicon client, all five domains enter normal Pack bundles. PCB, CAD and Godot
 native applications, plus the prebuilt PCB, Chip and DXF environments, come from
@@ -20,7 +51,7 @@ simulation, restart and signed same-version repairs without changing Core's modu
 cache or retaining stale engineering acceptance. Source/build and runtime results
 do not constitute a newly signed/notarized Desktop installer or a public release.
 
-The final owner pin is `e7347c14bddc956ed0336570dea0af652ccec296`. Its managed
+The final owner pin for that preceding qualification is `e7347c14bddc956ed0336570dea0af652ccec296`. Its managed
 Chip profile is also qualified on Linux x86-64 with Docker. The real canonical
 container test and signed installed-Pack test passed without skips, exercising
 RTL assertions/VCD, synthesis, an incorrect assertion, active cancellation and

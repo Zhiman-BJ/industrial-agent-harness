@@ -4,6 +4,27 @@ const path = require('node:path');
 const { createArchive, digest, signCatalog } = require('../packages/pack-manager/src/index.cjs');
 const owner = require('@zhiman-bj/industrial-domain-packs');
 const metadata = owner.consumerMetadata();
+const ownerPin =
+  require('../package.json').dependencies['@zhiman-bj/industrial-domain-packs'].match(
+    /\/([a-f0-9]{40})$/,
+  )?.[1];
+const defaultProbeIndex = path.resolve(
+  __dirname,
+  '../dist/platform-probe/platform-probe-index.json',
+);
+const probeIndex =
+  process.env.HARNESS_PLATFORM_PROBE_INDEX ||
+  (fs.existsSync(defaultProbeIndex) ? defaultProbeIndex : null);
+const probes = probeIndex
+  ? require('./platform-probe-input.cjs').inspectPlatformProbe(probeIndex, {
+      owner,
+      sourceCommit: ownerPin,
+    })
+  : null;
+const developmentProbe =
+  process.env.HARNESS_ALLOW_JS_ENVIRONMENT_PROBE === '1' &&
+  process.env.HARNESS_RELEASE_BUILD !== '1' &&
+  !process.env.HARNESS_PACK_SIGNING_KEY_FILE;
 const capabilities = metadata.capabilities;
 const { loadDomainPacks } = require('../packages/domain-skills/src/packs.cjs');
 const { listSkills, skillPackaging } = require('../packages/domain-skills/src/consumer.cjs');
@@ -22,17 +43,50 @@ if (selectedDomains?.some(domain => !metadata.domains.some(item => item.id === d
 for (const declaration of metadata.domains) {
   const { id: domain, label, emoji, version, ...features } = declaration;
   if (selectedDomains && !selectedDomains.includes(domain)) continue;
-  const platforms = (process.env.HARNESS_PACK_PLATFORMS || `${process.platform}-${process.arch}`)
-    .split(',')
-    .filter(
-      platform =>
-        !declaration.qualifiedBundlePlatforms ||
-        declaration.qualifiedBundlePlatforms.includes(platform),
-    );
+  const platforms = [
+    ...new Set(
+      (process.env.HARNESS_PACK_PLATFORMS || `${process.platform}-${process.arch}`).split(','),
+    ),
+  ].filter(
+    platform =>
+      !declaration.qualifiedBundlePlatforms ||
+      declaration.qualifiedBundlePlatforms.includes(platform),
+  );
   if (!platforms.length) continue;
   const directory = path.join(output, domain);
   fs.mkdirSync(directory, { recursive: true });
   const providers = providerPacks.filter(pack => pack.domain === domain);
+  const executionProfiles = providers.flatMap(pack => pack.executionProfiles || []);
+  const nativePlatforms = [
+    ...new Set(
+      executionProfiles
+        .filter(profile => profile.kind === 'native' && profile.assetIds.length)
+        .flatMap(profile => profile.platforms.filter(platform => platforms.includes(platform))),
+    ),
+  ];
+  let platformProbe;
+  if (nativePlatforms.length) {
+    if (nativePlatforms.length !== 1 || platforms.some(platform => platform !== nativePlatforms[0]))
+      throw Error('Build native Pack components for one platform at a time.');
+    const component = probes?.get(nativePlatforms[0]);
+    if (!component && !developmentProbe)
+      throw Error(
+        `Set HARNESS_PLATFORM_PROBE_INDEX to a trusted committed platform build for ${domain}. Source-only development tests may explicitly set HARNESS_ALLOW_JS_ENVIRONMENT_PROBE=1.`,
+      );
+    if (component) {
+      platformProbe = {
+        schemaVersion: 1,
+        platform: component.platform,
+        file: `components/${component.file}`,
+        sha256: component.sha256,
+        sizeBytes: component.sizeBytes,
+      };
+      const target = path.join(directory, platformProbe.file);
+      fs.mkdirSync(path.dirname(target), { recursive: true });
+      fs.copyFileSync(component.source, target);
+      fs.chmodSync(target, 0o755);
+    }
+  }
   const skills = listSkills(domain)
     .filter(item => item.domain !== '*')
     .map(item => ({
@@ -97,6 +151,8 @@ for (const declaration of metadata.domains) {
     skills,
     providerPacks: providers,
     runtimeAssets: providers.flatMap(pack => pack.runtimeAssets || []),
+    executionProfiles,
+    ...(platformProbe ? { platformProbe } : {}),
   };
   fs.writeFileSync(path.join(directory, 'bundle.json'), JSON.stringify(bundle, null, 2) + '\n');
   const archive = createArchive(directory);
@@ -111,6 +167,7 @@ for (const declaration of metadata.domains) {
     prerequisites: bundle.prerequisites,
     sha256: digest(archive),
     size: archive.length,
+    executionProfiles: bundle.executionProfiles,
     runtimeDownloadSize: bundle.runtimeAssets.reduce((sum, asset) => sum + asset.size, 0),
     runtimeInstalledSize: bundle.runtimeAssets.reduce(
       (sum, asset) => sum + (asset.installedSize || asset.size * 4),

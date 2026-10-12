@@ -174,6 +174,7 @@ let domainController;
 let domainOperationDone = Promise.resolve();
 let finishDomainOperation;
 let domainProgress = null;
+let desktopEnvironments;
 let catalogWarning = '';
 let catalogState;
 const installationJournal = new InstallationJournal(packManager);
@@ -193,12 +194,21 @@ function packCatalog() {
     url: process.env.INDUSTRIAL_HARNESS_PACK_CATALOG_URL || config.catalogUrl,
     keys: keysFile ? JSON.parse(fs.readFileSync(keysFile, 'utf8')) : config.publicKeys,
     channel: config.channel || 'beta',
-    bundledDirectory: path.join(process.resourcesPath, 'bootstrap-packs'),
+    bundledDirectory: process.argv.includes('--release-catalog-selftest')
+      ? process.env.HARNESS_RELEASE_CATALOG_BUNDLED_DIR
+      : path.join(process.resourcesPath, 'bootstrap-packs'),
     declaredDomains: require('@zhiman-bj/industrial-domain-packs').consumerMetadata().domains,
   });
 }
-function currentRegistry() {
-  return loadRegistry();
+const connectionStore = require('./connection-secret-store.cjs').createConnectionSecretStore({
+  directory: app.getPath('userData'),
+  safeStorage,
+});
+function currentRegistry(project = activeProject()) {
+  return loadRegistry(process.env, {
+    ...require('./project-registry.cjs').projectRegistryOptions(project, remoteSettings),
+    connectionStore,
+  });
 }
 function installedDomains() {
   return currentRegistry().domains;
@@ -226,6 +236,7 @@ const tasks = new TaskService({
     : undefined,
   contextOptions: contextStoreOptions(),
   runtimeOptions: {
+    connectionStore,
     ...contextStoreOptions(),
     environment: {
       ...process.env,
@@ -755,7 +766,8 @@ function registerHandlers() {
     )
       throw Error('Choose one or more distinct Domains.');
     sessions.assertIdle();
-    if (domainMutationActive) throw Error('Domain preparation is already in progress.');
+    if (domainMutationActive || desktopEnvironments?.active)
+      throw Error('Domain preparation is already in progress.');
     installationJournal.begin(request.domains || [request.domain]);
     domainMutationActive = true;
     domainOperationDone = new Promise(resolve => {
@@ -774,7 +786,7 @@ function registerHandlers() {
       });
       for (const item of selected)
         await manager.install(item, {
-          prepareRuntime: true,
+          prepareRuntime: false,
           signal: domainController.signal,
           onProgress: progress => {
             domainProgress = { domain: item.domain, ...progress };
@@ -806,61 +818,72 @@ function registerHandlers() {
         });
     }
   });
-  ipcMain.handle('domains:repair', async (event, request) => {
-    if (!managedPacks || typeof request?.domain !== 'string') throw Error('Invalid Domain repair.');
-    sessions.assertIdle();
-    if (domainMutationActive) throw Error('Domain preparation is already in progress.');
-    installationJournal.begin([request.domain], 'repair');
-    domainMutationActive = true;
-    domainOperationDone = new Promise(resolve => {
-      finishDomainOperation = resolve;
-    });
-    domainController = new AbortController();
-    domainProgress = null;
-    try {
-      await sessions.reset();
-      await projectRuntimes.close();
-      packManager.assertIdle(request.domain);
-      const bundle = packManager.list().find(item => item.domain === request.domain);
-      if (!bundle) throw Error('Domain is not installed.');
-      await packManager.runtimeAssets.ensure(bundle.runtimeAssets, {
-        recheck: true,
-        signal: domainController.signal,
-        onProgress: progress => {
-          domainProgress = { domain: request.domain, ...progress };
-          installationJournal.progress(domainProgress);
-          if (!event.sender.isDestroyed())
-            event.sender.send('domains:progress', { domain: request.domain, ...progress });
-        },
-      });
-      installationJournal.finish('completed');
-      return { installed: installedDomains() };
-    } catch (error) {
-      installationJournal.finish(domainController.signal.aborted ? 'cancelled' : 'failed', error);
-      throw error;
-    } finally {
-      domainMutationActive = false;
-      domainController = undefined;
-      domainProgress = null;
-      finishDomainOperation?.();
-      finishDomainOperation = undefined;
-      const sender = event.sender;
-      if (!sender.isDestroyed())
-        sender.send('domains:progress', {
-          domain: '',
-          label: '',
-          phase: 'finished',
-          active: false,
-          outcome: installationJournal.snapshot()?.outcome,
-          error: installationJournal.snapshot()?.error,
+  ipcMain.handle(
+    'domains:repair',
+    require('./domain-repair.cjs').domainRepairHandler({
+      manager: packManager,
+      isManaged: () => managedPacks,
+      repairLegacy: async (event, request) => {
+        sessions.assertIdle();
+        if (domainMutationActive || desktopEnvironments?.active)
+          throw Error('Domain preparation is already in progress.');
+        installationJournal.begin([request.domain], 'repair');
+        domainMutationActive = true;
+        domainOperationDone = new Promise(resolve => {
+          finishDomainOperation = resolve;
         });
-    }
-  });
+        domainController = new AbortController();
+        domainProgress = null;
+        try {
+          await sessions.reset();
+          await projectRuntimes.close();
+          packManager.assertIdle(request.domain);
+          const bundle = packManager.list().find(item => item.domain === request.domain);
+          if (!bundle) throw Error('Domain is not installed.');
+          await packManager.runtimeAssets.ensure(bundle.runtimeAssets, {
+            recheck: true,
+            signal: domainController.signal,
+            onProgress: progress => {
+              domainProgress = { domain: request.domain, ...progress };
+              installationJournal.progress(domainProgress);
+              if (!event.sender.isDestroyed())
+                event.sender.send('domains:progress', { domain: request.domain, ...progress });
+            },
+          });
+          installationJournal.finish('completed');
+          return { installed: installedDomains() };
+        } catch (error) {
+          installationJournal.finish(
+            domainController.signal.aborted ? 'cancelled' : 'failed',
+            error,
+          );
+          throw error;
+        } finally {
+          domainMutationActive = false;
+          domainController = undefined;
+          domainProgress = null;
+          finishDomainOperation?.();
+          finishDomainOperation = undefined;
+          const sender = event.sender;
+          if (!sender.isDestroyed())
+            sender.send('domains:progress', {
+              domain: '',
+              label: '',
+              phase: 'finished',
+              active: false,
+              outcome: installationJournal.snapshot()?.outcome,
+              error: installationJournal.snapshot()?.error,
+            });
+        }
+      },
+    }),
+  );
   ipcMain.handle('domains:remove', async (_event, request) => {
     if (!managedPacks || typeof request?.domain !== 'string')
       throw Error('Invalid Domain removal.');
     sessions.assertIdle();
-    if (domainMutationActive) throw Error('Domain preparation is already in progress.');
+    if (domainMutationActive || desktopEnvironments?.active)
+      throw Error('Domain preparation is already in progress.');
     if (projectBindings.projects.some(project => project.domain === request.domain))
       throw Error('A Project still uses this Domain.');
     installationJournal.begin([request.domain], 'remove');
@@ -1025,6 +1048,17 @@ function registerHandlers() {
       throw Error('Open this project before configuring resources.');
     return request?.projectId !== undefined ? activeProject() : null;
   }
+  desktopEnvironments = require('./runtime-environments.cjs').registerRuntimeEnvironments({
+    ipcMain,
+    manager: packManager,
+    connectionStore,
+    resourceProject,
+    sessions,
+    projectRuntimes,
+    dialog,
+    shell,
+    domainBusy: () => domainMutationActive,
+  });
   function executionProject(event, request) {
     const project = resourceProject(event, request);
     if (!project?.domain) throw Error('Choose a project with a domain.');
@@ -1413,6 +1447,15 @@ function registerHandlers() {
 }
 
 async function createWindow() {
+  let environmentFixture;
+  if (process.argv.includes('--runtime-environments-selftest')) {
+    if (!process.env.INDUSTRIAL_HARNESS_PACK_STORE || !process.env.INDUSTRIAL_UI_SCREENSHOTS)
+      throw Error('Environment selftest needs isolated Pack store and evidence directories.');
+    environmentFixture = await require('./runtime-environments-selftest.cjs').prepare(
+      packManager,
+      process.env.INDUSTRIAL_UI_SCREENSHOTS,
+    );
+  }
   if (process.argv.includes('--gui-settings-selftest'))
     require('./gui-settings-selftest.cjs').prepare();
   if (process.argv.includes('--ui-selftest'))
@@ -1525,6 +1568,24 @@ async function createWindow() {
   });
   if (process.env.INDUSTRIAL_DEV_URL) await window.loadURL(process.env.INDUSTRIAL_DEV_URL);
   else await window.loadURL('app://viewer/index.html');
+  if (process.argv.includes('--release-catalog-selftest')) {
+    await require('./release-catalog-selftest.cjs').run(window, {
+      manager: packManager,
+      directory: process.env.HARNESS_RELEASE_CATALOG_BUNDLED_DIR,
+    });
+    app.quit();
+    return;
+  }
+  if (process.argv.includes('--runtime-environments-selftest')) {
+    await require('./runtime-environments-selftest.cjs').run(window, {
+      manager: packManager,
+      fixture: environmentFixture,
+      environments: desktopEnvironments.environments,
+      dialog,
+    });
+    app.quit();
+    return;
+  }
   if (process.argv.includes('--cad-install-selftest')) {
     await require('./selftest-language.cjs').setLanguage(window, 'en');
     await require('./cad-install-selftest.cjs').run(window, {
@@ -2108,6 +2169,7 @@ app.on('before-quit', event => {
   shutdownPromise = (async () => {
     try {
       await domainOperationDone;
+      await desktopEnvironments?.close();
       await tasks.close();
     } finally {
       await guiBridge?.close();

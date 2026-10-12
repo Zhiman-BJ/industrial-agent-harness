@@ -1,0 +1,26 @@
+$ node --test tests/*.test.cjs
+✔ empty and text-only remote histories do not require execution setup or load Packs (127.858875ms)
+✔ persisted remote result records remain readable before remote execution is ready (302.948834ms)
+✔ one history read hashes each recorded file once and the next read detects changed content (1174.542958ms)
+✔ ordinary files automatically register real refs, persist once and open only the recorded contents (88.685375ms)
+✔ explicit replacements preserve history; parallel outputs and optional selection retain all groups (68.067792ms)
+✔ failed request retains visible partial files and does not relabel the preceding success (46.680792ms)
+✔ late results keep the original request, cannot change a newer selection, and background readiness never arms preview (59.102958ms)
+✔ application tools work through the authenticated MCP bridge without an industrial runtime (22.33675ms)
+✔ current selection rejects changed bytes while preserving the recorded check (37.055833ms)
+✔ cancelled requests preserve actual partial outputs and never authorize automatic preview (28.060167ms)
+✔ Desktop task API and CLI persist the same real file Action, verification and refreshed scope (634.756333ms)
+✔ kernel failure releases chat and Pack leases; chat can be resumed and ownership is enforced (133.927084ms)
+✔ shutdown during prepare drains state inspection and prevents a late native session (91.180334ms)
+✔ shutdown during start drains state inspection and prevents a late native session (118.403208ms)
+✔ shutdown during input observation keeps its context database open until the pending write settles (116.058167ms)
+✔ background tasks retain leases until their native completion; cancel and approval use the same session (38.685375ms)
+✔ task preparation requests the registry for the bound project rather than a global environment selection (23.534208ms)
+ℹ tests 17
+ℹ suites 0
+ℹ pass 17
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3311.545625

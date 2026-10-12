@@ -20,7 +20,7 @@ function matchesImage(asset, image) {
 const hash = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
 // Footprint metadata does not change executable identity or invalidate old receipts.
 function declarationHash(asset) {
-  const { installedSize, ...execution } = asset;
+  const { installedSize, discoveryPaths, installUrl, ...execution } = asset;
   return hash(Buffer.from(JSON.stringify(execution)));
 }
 function matchesDeclaration(receipt, asset) {
@@ -40,6 +40,23 @@ function validateRuntimeAssets(assets = []) {
   const ids = new Set(),
     variables = new Set();
   for (const asset of assets) {
+    if (
+      asset.discoveryPaths != null &&
+      (!Array.isArray(asset.discoveryPaths) ||
+        asset.discoveryPaths.length > 32 ||
+        asset.discoveryPaths.some(
+          value =>
+            typeof value !== 'string' ||
+            !(path.isAbsolute(value) || value.startsWith('~/')) ||
+            value.includes('\0'),
+        ))
+    )
+      throw Error('Invalid runtime discovery paths.');
+    if (
+      asset.installUrl != null &&
+      (typeof asset.installUrl !== 'string' || !/^https:\/\//.test(asset.installUrl))
+    )
+      throw Error('Invalid runtime installation URL.');
     if (asset?.type === 'docker-image') {
       const platforms = runtimePlatforms(asset);
       if (

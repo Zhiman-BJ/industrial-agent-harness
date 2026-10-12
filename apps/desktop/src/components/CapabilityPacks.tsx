@@ -1,3 +1,4 @@
+import { RuntimeEnvironments } from './RuntimeEnvironments';
 import { DomainIcon } from '@industrial-agent-harness/viewer-builtin/domain-icon';
 import { useDisplayText } from '@industrial-agent-harness/viewer-builtin/text';
 import { useEffect, useState } from 'react';
@@ -14,7 +15,6 @@ import {
   InstallationOutcome,
   InstallationProgress,
   InstallationSize,
-  RuntimeReadiness,
   UnavailableDomains,
 } from './DomainInstallation';
 
@@ -132,7 +132,11 @@ export function PacksSection({
           {t('Check updates')}
         </button>
       </div>
-      <p>{t('Each pack bundles the skills, MCP servers and runtime for one domain.')}</p>
+      <p>
+        {t(
+          'Packs provide domain capabilities. Configure software and execution environments separately.',
+        )}
+      </p>
       {statusError && (
         <p role="alert" className="ia-project-error">
           {t(statusError)}
@@ -248,7 +252,11 @@ export function PacksSection({
                             {problem.message}
                           </small>
                         ))}
-                        <RuntimeReadiness item={item} />
+                        <RuntimeEnvironments
+                          domain={item.domain}
+                          busy={disabled}
+                          revision={revision}
+                        />
                         {update?.updateAvailable && <InstallationSize pack={update} />}
                       </div>
                       <div className="ia-pack-actions">
@@ -259,18 +267,6 @@ export function PacksSection({
                             onClick={() => void change('install', item.domain)}
                           >
                             {t('Update')}
-                          </button>
-                        )}
-                        {(item.runtimeState === 'ready' ||
-                          item.runtimeState === 'needs-preparation') && (
-                          <button
-                            className="ia-pack-action"
-                            disabled={disabled}
-                            onClick={() => void change('repair', item.domain)}
-                          >
-                            {t(
-                              item.runtimeState === 'ready' ? 'Check / repair' : 'Prepare / retry',
-                            )}
                           </button>
                         )}
                         <button

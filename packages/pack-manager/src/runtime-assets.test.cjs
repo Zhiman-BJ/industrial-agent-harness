@@ -574,3 +574,15 @@ test('disk-full lock writes close descriptors and release both preparation and P
   }
   assert.equal(f.manager.status([f.asset])[0].ready, true);
 });
+test('adding discovery and official install hints preserves existing managed receipts', async t => {
+  const f = fixture(t);
+  await f.manager.ensure([f.asset]);
+  const enriched = {
+    ...f.asset,
+    discoveryPaths: ['/Applications/Modeler.app'],
+    installUrl: 'https://vendor.example/download',
+  };
+  assert.equal(f.manager.status([enriched])[0].ready, true);
+  await f.manager.ensure([enriched]);
+  assert.equal(f.downloads(), 1);
+});

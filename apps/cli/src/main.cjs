@@ -34,7 +34,7 @@ industrial-harness doctor --project-dir DIR --domain DOMAIN
 industrial-harness inspect-log --file FILE
 industrial-harness remote --help
 industrial-harness mcp --help
-industrial-harness domains list|available|install|update|remove [options]
+industrial-harness domains list|available|install|update|remove|repair|environments|detect|associate|prepare|unbind [options]
 
 Options:
   --chat-id ID                 Continue an existing project chat

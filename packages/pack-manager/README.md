@@ -65,3 +65,60 @@ and descriptor so installation can be retried after freeing disk space.
 Managed runtime declarations also support `type: "docker-image"` on the qualified `darwin-arm64` host profile. Each declaration binds a registry `image` by manifest digest, its config `imageId`/`sha256`, `imagePlatform`, compressed/installed sizes and one `INDUSTRIAL_HARNESS_*` environment key. Installation checks the Docker daemon, pulls the immutable reference and verifies the repository digest, config and platform before atomically writing a receipt. Readiness rechecks Docker's local image metadata; missing or changed images yield an empty dependency environment value and require repair. Native and container assets can coexist in one Pack. Docker Desktop must be installed and running; the installer detects and reports this prerequisite. Removing a Pack retains reusable runtime images. Qualification currently covers macOS Apple Silicon only.
 
 HTTPS assets can use public OCI blob endpoints. Anonymous Bearer challenges are resolved with a pull-scoped token and tokens are removed on cross-origin redirects; authenticated private registries remain outside this download path. Exact declared download hashes and sizes still apply.
+
+## Runtime environments
+
+Pack installation activates source and Skills without preparing software by default.
+`install(..., { prepareRuntime: true })` remains an explicit compatibility operation.
+Missing dependencies do not remove installed Packs or canonical project history.
+
+`RuntimeEnvironmentManager({ manager, versionProbe? })` is the shared Desktop/CLI
+API. It consumes signed `bundle.executionProfiles` and `runtimeAssets` declarations:
+
+- `describe(domain, { projectDir? })` returns profiles, structured reasons, the
+  effective binding, environment, `readyToolIds` and a configuration identity.
+- `detect(domain, { profileId, paths?, signal?, onProgress? })` checks existing
+  software and records the last result. It never downloads or associates it.
+  `paths` maps declared asset IDs to absolute application directories. Discovery
+  checks all declared candidates; multiple compatible installations require a
+  selection. Version probes run in a temporary user profile, with macOS signature
+  checks and bounded cancellation-aware process execution.
+- `associate(domain, { profileId, projectDir?, paths?, signal? })` repeats detection
+  and persists a binding only after success. Existing applications stay in place;
+  the manager records their real executable paths/hashes and does not own them.
+- `prepare(domain, { profileId, projectDir?, signal?, onProgress? })` explicitly
+  prepares just that profile's declared assets, then selects it for the project
+  or as the domain default. Existing managed receipts and caches remain reusable.
+- `resolve(bundle, { projectDir? })` synchronously resolves readiness and the
+  environment for a trusted installed bundle. `validate(bundle, options)` repeats
+  external signature/version checks before and after native actions.
+- `clear(domain, { projectDir? })` removes only the selection; a project resumes
+  inheriting the domain default. It deletes no user software, cache or history. A domain-wide clear records an
+  explicit disabled selection, preventing legacy environment migration from reselecting it.
+
+A profile must be qualified on the current platform. Owner-declared runtime-managed
+remote connections expose executable tools after configuration; readiness remains unchecked
+until the existing Runtime handshake verifies service identities and project binding.
+`connectionView` returns safe fields; `configureConnection` requires an injected secure
+connectionStore (read/write/available). Secrets never enter Pack state or public identities.
+Other remote profiles retain the existing RemoteSettings coordinator path. No detection or association uploads project files or falls
+back to another backend. Unsupported declarations never create ready tools.
+
+Project execution leases exclude binding changes, installation and preparation.
+Abandoned preparation leases are reclaimed after their process exits. Managed
+variables override ordinary process environment values. The shared project Runtime
+filters tools and capabilities, includes the environment identity in its source
+state, and invalidates configuration when the binding or executable changes.
+Development registries and older bundles retain their compatibility behavior.
+
+Tests: `node --test packages/pack-manager/src/*.test.cjs`. The real existing-app
+Godot path is exercised separately on macOS Apple Silicon with
+`HARNESS_TEST_NATIVE_ENVIRONMENTS=1 node --test packages/harness-core/tests/runtime-environment-native.test.cjs`.
+
+Secure store read errors isolate only the affected remote profile with
+`CONNECTION_STORAGE_UNAVAILABLE`; they never fall back to process credentials.
+`resetConnection(domain, { profileId })` explicitly removes ciphertext through
+the adapter `remove(key)` without decrypting it. `configureConnection` supports
+`replace: true` for complete replacement of a damaged record. Saving connection
+settings does not select a profile; association is separate. Only legacy process
+environment configuration is eligible for implicit migration.

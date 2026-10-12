@@ -1,0 +1,37 @@
+$ node --test tests/*.test.cjs
+✔ native Action records survive restart and failure never becomes engineering acceptance (42.985417ms)
+✔ canonical history reader does not create a missing store (5.525833ms)
+✔ canonical history reader preserves a live Action and execution lease, then reads it after shutdown (28.956292ms)
+✔ canonical history reader rejects a foreign project binding and an unsupported store version (8.198208ms)
+✔ read-only host checks preserve verified design evidence on success and failure, and still enforce scope (23.634791ms)
+✔ a killed runtime owner is recovered as a failed action with explicit empty artifacts, while a live owner and duplicate object are rejected (1301.773584ms)
+✔ future store versions are refused without changing its lease, and multiple verifiers require a declared aggregate (54.830583ms)
+✔ StateProvider stage changes rotate the persisted state even with identical hashes; replacing the bound directory is rejected (14.98175ms)
+✔ closing or cancelling an idle chat cannot abort another chat action; runtime disposal settles once (15.655666ms)
+✔ observed file facts and checkpoints survive restart and detect changed content (240.999416ms)
+✔ observed artifacts reject project escape and changing domain gets separate state (6.6855ms)
+✔ local output refs bind only to this Action; forged identities and unbound input versions are rejected as display metadata (184.528958ms)
+✔ protected session preserves images, shares process, and confirms container cleanup (1943.391458ms)
+✔ active cancellation cleans container; cancelled queued call is never dispatched (405.697084ms)
+✔ mutable images and unsafe mounts are rejected before launch (1.761ms)
+✔ trusted profiles must opt into the bounded bridge network explicitly (1.492542ms)
+✔ unrelated large assets and symlinks do not prevent inspection or repair; selected task inputs remain checked (146.523417ms)
+✔ workspace input/ignore policy stays deterministic and never hides declared task inputs or control files (151.6915ms)
+✔ incremental hashing catches same-size edits even when mtime is restored, removals and additions (16.782417ms)
+✔ invalid input policy remains inspectable and repairable (191.019125ms)
+✔ approval previews show real file differences and declared task commands, without mutating files (31.907291ms)
+✔ same initialization and file lifecycle works in unrelated domains and retains immutable history (336.886666ms)
+✔ approval, scope and all batch preconditions are checked before any file write (31.124667ms)
+✔ input mutations make accepted evidence stale rather than replacing it with file-write acceptance (137.243708ms)
+✔ partial staging failures preserve original files and rollback prior edits in the batch (93.477417ms)
+✔ symlink, hard-link and reserved output-kind inputs are refused (6.736208ms)
+✔ Pack input boundary ignores changing derived evidence and retains design dependencies (55.258541ms)
+✔ protected file batches can replace and delete existing native source files above 256KiB (86.761125ms)
+ℹ tests 28
+ℹ suites 0
+ℹ pass 28
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2814.716208

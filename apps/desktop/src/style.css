@@ -4600,3 +4600,86 @@ body {
   justify-content: space-between;
   gap: 8px;
 }
+
+/* Environment setup reuses the capability center's flat, ruled surfaces. */
+.ia-runtime-environments {
+  border-top: 1px solid var(--ia-border);
+  margin-top: 12px;
+  padding-top: 12px;
+  min-width: 0;
+}
+.ia-runtime-environments h3 {
+  font-size: 13px;
+  font-weight: 500;
+  margin: 0 0 8px;
+}
+.ia-runtime-environments p {
+  font-size: 12px;
+  margin: 6px 0;
+}
+.ia-runtime-environments label {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+}
+.ia-runtime-environments select {
+  max-width: 100%;
+  min-width: 0;
+  color: var(--ia-text);
+  background: var(--ia-raised);
+  border: 1px solid var(--ia-control-border);
+  border-radius: 6px;
+  padding: 7px;
+}
+.ia-runtime-asset {
+  display: grid;
+  gap: 5px;
+  border-top: 1px solid var(--ia-border);
+  padding: 10px 0;
+}
+.ia-runtime-asset b {
+  font-size: 12px;
+  font-weight: 500;
+}
+.ia-runtime-asset span,
+.ia-runtime-asset small,
+.ia-runtime-profile > small {
+  font-size: 11px;
+  color: var(--ia-muted);
+}
+.ia-runtime-asset code {
+  overflow-wrap: anywhere;
+  font-size: 11px;
+}
+.ia-runtime-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 8px 0;
+}
+.ia-runtime-environments button {
+  font: inherit;
+  font-size: 12px;
+  color: var(--ia-text);
+  background: transparent;
+  border: 1px solid var(--ia-border);
+  border-radius: 6px;
+  padding: 6px 9px;
+  cursor: pointer;
+}
+.ia-runtime-environments button:hover:not(:disabled) {
+  background: var(--ia-hover);
+}
+.ia-runtime-environments button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.ia-runtime-tools {
+  padding-left: 20px;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.ia-runtime-asset small {
+  overflow-wrap: anywhere;
+}

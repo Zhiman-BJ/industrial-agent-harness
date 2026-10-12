@@ -6,6 +6,23 @@ const api = {
   render: request => ipcRenderer.invoke('viewer:render', request),
   netlist: request => ipcRenderer.invoke('viewer:netlist', request),
   resolve: request => ipcRenderer.invoke('broker:resolve', request),
+  onEnvironmentProgress: callback => {
+    const listener = (_event, value) => callback(value);
+    ipcRenderer.on('environment:progress', listener);
+    return () => ipcRenderer.removeListener('environment:progress', listener);
+  },
+  environmentConnectionReset: request =>
+    ipcRenderer.invoke('environment:connection-reset', request),
+  environmentConnectionView: request => ipcRenderer.invoke('environment:connection-view', request),
+  environmentConnectionSave: request => ipcRenderer.invoke('environment:connection-save', request),
+  environmentDescribe: request => ipcRenderer.invoke('environment:describe', request),
+  environmentDetect: request => ipcRenderer.invoke('environment:detect', request),
+  environmentAssociate: request => ipcRenderer.invoke('environment:associate', request),
+  environmentPrepare: request => ipcRenderer.invoke('environment:prepare', request),
+  environmentClear: request => ipcRenderer.invoke('environment:clear', request),
+  environmentCancel: request => ipcRenderer.invoke('environment:cancel', request),
+  environmentChooseApp: request => ipcRenderer.invoke('environment:choose-app', request),
+  environmentOfficial: request => ipcRenderer.invoke('environment:official', request),
   domains: () => ipcRenderer.invoke('broker:domains'),
   domainStatus: () => ipcRenderer.invoke('domains:status'),
   domainAvailable: () => ipcRenderer.invoke('domains:available'),

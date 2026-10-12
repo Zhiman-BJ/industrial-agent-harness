@@ -14,9 +14,22 @@ export function formatBytes(bytes: number, locale: string) {
   return `${new Intl.NumberFormat(locale, { maximumFractionDigits: scale ? 1 : 0 }).format(value / 1024 ** scale)} ${['B', 'KiB', 'MiB', 'GiB'][scale]}`;
 }
 
+function packOnlyFootprint(pack: AvailableDomainPack): InstallationFootprint {
+  const installedBytes =
+    (pack as AvailableDomainPack & { installedSize?: number }).installedSize ?? pack.size * 8;
+  return {
+    downloadBytes: pack.size,
+    installedBytes,
+    requiredBytes: pack.size + installedBytes * 2,
+    availableBytes: pack.installation?.availableBytes,
+    estimated: true,
+    cacheReused: false,
+  };
+}
+
 export function selectedFootprint(packs: AvailableDomainPack[]): InstallationFootprint | undefined {
-  if (!packs.length || packs.some(pack => !pack.installation)) return undefined;
-  const values = packs.map(pack => pack.installation!);
+  if (!packs.length) return undefined;
+  const values = packs.map(packOnlyFootprint);
   const available = values
     .map(value => value.availableBytes)
     .filter((value): value is number => value !== undefined);
@@ -40,9 +53,8 @@ export function InstallationSize({
   compact?: boolean;
 }) {
   const { t, locale } = useDisplayText();
-  const value = footprint || pack?.installation;
-  const download =
-    value?.downloadBytes ?? (pack ? pack.size + (pack.runtimeDownloadSize || 0) : undefined);
+  const value = footprint || (pack ? packOnlyFootprint(pack) : undefined);
+  const download = value?.downloadBytes ?? (pack ? pack.size : undefined);
   if (download === undefined) return null;
   return (
     <small className="ia-pack-meta ia-install-size">

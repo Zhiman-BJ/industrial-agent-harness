@@ -1,0 +1,11 @@
+✔ post-execution environment failure preserves actual artifacts and native cleanup diagnostics (17.781583ms)
+✔ cancelled native result reaches canonical collection without an aborted post-probe discarding its receipts (37.87125ms)
+✔ signed installed CUDA runtime loads pinned dependencies outside node_modules and uses real HTTP MCP (260.423958ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 498.035417

@@ -43,6 +43,14 @@ jobs:
       - name: Install dependencies
         shell: bash
         run: pnpm install --frozen-lockfile
+      - uses: actions/setup-go@v5
+        if: matrix.platform == 'mac'
+        with:
+          go-version: '1.26.2'
+          cache: false
+      - name: Build immutable owner platform components
+        if: matrix.platform == 'mac'
+        run: node scripts/build-platform-probe.cjs
       - name: Build Desktop and stage installable application
         shell: bash
         run: |

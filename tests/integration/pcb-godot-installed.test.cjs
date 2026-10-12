@@ -9,6 +9,7 @@ const { promisify } = require('node:util');
 const { createRequire } = require('node:module');
 const {
   PackManager,
+  RuntimeEnvironmentManager,
   createArchive,
   decodeArchive,
   digest,
@@ -164,6 +165,10 @@ async function install(t, root) {
       bytes,
       prepareRuntime: true,
       onProgress: event => progress.push(event),
+    });
+    const selectedBundle = manager.list().find(bundle => bundle.domain === p.domain);
+    await new RuntimeEnvironmentManager({ manager }).associate(selectedBundle.domain, {
+      profileId: selectedBundle.executionProfiles.find(profile => profile.kind === 'native').id,
     });
     assert.ok(manager.runtimeAssets.status(assets).every(asset => asset.ready));
     for (const asset of assets) {

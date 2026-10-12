@@ -1,3 +1,4 @@
+import { RuntimeEnvironments } from './RuntimeEnvironments';
 import { DomainIcon } from '@industrial-agent-harness/viewer-builtin/domain-icon';
 import { useDisplayText } from '@industrial-agent-harness/viewer-builtin/text';
 import { useEffect, useRef, useState } from 'react';
@@ -16,7 +17,6 @@ import {
   InstallationOutcome,
   InstallationProgress,
   InstallationSize,
-  RuntimeReadiness,
   UnavailableDomains,
   selectedFootprint,
 } from './DomainInstallation';
@@ -128,25 +128,6 @@ export function DomainManager({
       setSelected([]);
       await refresh();
       if (firstRun) setComplete(true);
-    } catch (reason) {
-      const next = await refresh();
-      if (
-        next?.lastOperation?.outcome !== 'cancelled' ||
-        !String(reason).includes('Domain preparation cancelled.')
-      )
-        setError(String(reason));
-    } finally {
-      setSaving(false);
-      setProgress(null);
-    }
-  }
-  async function repair(domain: string) {
-    if (disabled) return;
-    setSaving(true);
-    setError('');
-    try {
-      onChanged((await window.viewerHost!.domainRepair(domain)).installed);
-      await refresh();
     } catch (reason) {
       const next = await refresh();
       if (
@@ -272,7 +253,11 @@ export function DomainManager({
         {complete && !installing && (
           <div className="ia-domain-setup" role="status">
             <h2>{t('Your selected domains are installed')}</h2>
-            <p>{t('Configure your model connection, then create a project to start a task.')}</p>
+            <p>
+              {t(
+                'Packs are installed. Configure software in the capability center, then create a project.',
+              )}
+            </p>
             <div className="ia-domain-setup-actions">
               {onSetupNext && (
                 <>
@@ -360,15 +345,9 @@ export function DomainManager({
                   <div key={item.domain} className="ia-domains-installed-row">
                     <span>
                       <DomainIcon domain={item.domain} /> {t(item.label)} · {item.version}
-                      <RuntimeReadiness item={item} />
+                      <RuntimeEnvironments domain={item.domain} busy={disabled} />
                     </span>
                     <div className="ia-pack-actions">
-                      {(item.runtimeState === 'ready' ||
-                        item.runtimeState === 'needs-preparation') && (
-                        <button disabled={disabled} onClick={() => void repair(item.domain)}>
-                          {t(item.runtimeState === 'ready' ? 'Check / repair' : 'Prepare / retry')}
-                        </button>
-                      )}
                       <button disabled={disabled} onClick={() => void remove(item.domain)}>
                         {t('Remove')}
                       </button>

@@ -314,6 +314,8 @@ test('public built-in Pack releases retain owned resources and keep the public P
   const output = path.join(directory, 'built-in');
   const environment = {
     ...process.env,
+    HARNESS_ALLOW_JS_ENVIRONMENT_PROBE: '1',
+    HARNESS_RELEASE_BUILD: '0',
     HARNESS_PACK_PLATFORMS: `${process.platform}-${process.arch},darwin-arm64`,
   };
   delete environment.HARNESS_PACK_DOMAINS;

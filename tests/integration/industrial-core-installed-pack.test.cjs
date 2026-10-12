@@ -8,6 +8,7 @@ const { execFile } = require('node:child_process');
 const { promisify } = require('node:util');
 const {
   PackManager,
+  RuntimeEnvironmentManager,
   createArchive,
   digest,
   signCatalog,
@@ -57,6 +58,10 @@ test(
     await manager.install(selected, {
       bytes: fs.readFileSync(path.join(output, path.basename(selected.url))),
       prepareRuntime: true,
+    });
+    const selectedBundle = manager.list()[0];
+    await new RuntimeEnvironmentManager({ manager }).associate(selectedBundle.domain, {
+      profileId: selectedBundle.executionProfiles.find(profile => profile.kind === 'container').id,
     });
     const installed = manager.scan();
     assert.deepEqual(installed.errors, []);

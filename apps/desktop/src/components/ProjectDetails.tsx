@@ -1,3 +1,4 @@
+import { RuntimeEnvironments } from './RuntimeEnvironments';
 import { DomainIcon } from '@industrial-agent-harness/viewer-builtin/domain-icon';
 import { useDisplayText } from '@industrial-agent-harness/viewer-builtin/text';
 import { useEffect, useState } from 'react';
@@ -106,6 +107,14 @@ export function ProjectDetails({
             busy={busy}
             onChanged={onResourcesChanged}
             onReady={setExecutionReady}
+          />
+        )}
+        {project.domain && project.executionLocation !== 'remote' && (
+          <RuntimeEnvironments
+            domain={project.domain}
+            projectId={project.id}
+            busy={busy}
+            onChanged={onResourcesChanged}
           />
         )}
         {project.executionLocation !== 'remote' && (

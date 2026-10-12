@@ -6,7 +6,11 @@ const os = require('node:os');
 const path = require('node:path');
 const { execFile } = require('node:child_process');
 const { promisify } = require('node:util');
-const { PackManager, signCatalog } = require('../../packages/pack-manager/src/index.cjs');
+const {
+  RuntimeEnvironmentManager,
+  PackManager,
+  signCatalog,
+} = require('../../packages/pack-manager/src/index.cjs');
 const { createProjectRuntime } = require('../../packages/harness-core/src/index.cjs');
 const { resolveFromState } = require('../../packages/capability-broker/src/index.cjs');
 const owner = require('@zhiman-bj/industrial-domain-packs');
@@ -121,11 +125,39 @@ test(
       environment[prefix + 'TOKEN'] = role + '-token';
       environment[prefix + 'IDENTITY'] = sha256(JSON.stringify(service.identities[role]));
     }
+    const connectionRecords = new Map();
+    const connectionStore = {
+      available: () => true,
+      read: key => connectionRecords.get(key),
+      write: (key, value) => connectionRecords.set(key, value),
+    };
+    const connectionValues = Object.fromEntries(
+      Object.entries(environment).filter(([key]) =>
+        /^INDUSTRIAL_HARNESS_CUDA_(COMPILER|EVALUATOR)_MCP_/.test(key),
+      ),
+    );
+    for (const key of Object.keys(connectionValues)) delete environment[key];
+    const environments = new RuntimeEnvironmentManager({ manager, environment, connectionStore });
+    const selectedProfile = installed.executionProfiles.find(
+      profile => profile.connection?.kind === 'runtime-managed',
+    );
+    const configured = await environments.configureConnection('cuda', {
+      profileId: selectedProfile.id,
+      values: connectionValues,
+    });
+    assert.equal(JSON.stringify(configured).includes('compiler-token'), false);
+    const associated = await environments.associate('cuda', {
+      profileId: selectedProfile.id,
+      projectDir: project,
+    });
+    assert.equal(associated.executable, true);
+    assert.equal(associated.status, 'unchecked');
     const bundle = createProjectRuntime({
       projectDir: project,
       domain: 'cuda',
       directory: path.join(directory, 'state'),
       environment,
+      connectionStore,
     });
     t.after(() => bundle.runtime.close());
     const state = await bundle.runtime.inspect();

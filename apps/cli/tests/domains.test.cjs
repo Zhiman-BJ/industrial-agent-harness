@@ -231,7 +231,11 @@ test('portable registration installs Chip and PCB, then adds Godot; native prepa
   ]) {
     sink.text = '';
     await run({ command: 'run', projectDir: project, domain, task, scopeOnly: true }, sink);
-    assert.ok(JSON.parse(sink.text.split('\n')[0]).scope.capabilityIds.includes(expected));
+    assert.equal(
+      JSON.parse(sink.text.split('\n')[0]).scope.capabilityIds.includes(expected),
+      false,
+      'Pack-only installation must not disclose unprepared execution capabilities',
+    );
   }
   await manager.install(
     catalog.packs.find(item => item.domain === 'godot'),
@@ -308,4 +312,112 @@ test('a platform-only Pack is omitted from other platform catalogs', t => {
   // Chip has passed the real Linux signed installed runtime qualification.
   assert.deepEqual(catalog.packs.map(item => item.domain).sort(), ['chip']);
   assert.ok(catalog.packs.every(item => item.platforms.length > 0));
+});
+test('CLI environment commands share project bindings and never prepare software during detect or repair', async t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-environment-cli-'));
+  const previous = process.env.INDUSTRIAL_HARNESS_PACK_STORE;
+  t.after(() => {
+    fs.rmSync(root, { recursive: true, force: true });
+    if (previous === undefined) delete process.env.INDUSTRIAL_HARNESS_PACK_STORE;
+    else process.env.INDUSTRIAL_HARNESS_PACK_STORE = previous;
+  });
+  const source = path.join(root, 'source'),
+    store = path.join(root, 'store'),
+    project = path.join(root, 'project');
+  fs.mkdirSync(source);
+  fs.mkdirSync(project);
+  const profile = {
+    id: 'cpu',
+    label: 'CPU fixture',
+    kind: 'native',
+    platforms: [process.platform + '-' + process.arch],
+    qualified: true,
+    assetIds: [],
+    toolIds: [],
+  };
+  fs.writeFileSync(
+    path.join(source, 'bundle.json'),
+    JSON.stringify({
+      schemaVersion: 1,
+      coreApi: 1,
+      domain: 'fixture',
+      label: 'Fixture',
+      emoji: 'F',
+      version: '1.0.0',
+      capabilities: [],
+      skills: [],
+      providerPacks: [],
+      executionProfiles: [profile],
+    }),
+  );
+  const bytes = createArchive(source),
+    manager = new PackManager({ directory: store });
+  await manager.install(
+    { domain: 'fixture', version: '1.0.0', sha256: digest(bytes), size: bytes.length },
+    { bytes, allowUnsigned: true },
+  );
+  const invoke = async args => {
+    let text = '';
+    const code = await runDomains([...args, '--store', store], { write: value => (text += value) });
+    return { code, text };
+  };
+  let result = await invoke(['environments', 'fixture', '--project-dir', project]);
+  assert.equal(JSON.parse(result.text).binding, null);
+  result = await invoke(['detect', 'fixture', '--profile', 'cpu']);
+  assert.match(result.text, /"status": "ready"/);
+  result = await invoke(['associate', 'fixture', '--profile', 'cpu', '--project-dir', project]);
+  assert.equal(JSON.parse(result.text.slice(result.text.indexOf('{\n'))).binding.profileId, 'cpu');
+  result = await invoke(['repair', 'fixture', '--project-dir', project]);
+  assert.match(result.text, /"profileId": "cpu"/);
+  assert.equal(result.code, 0);
+  result = await invoke(['unbind', 'fixture', '--project-dir', project]);
+  assert.equal(JSON.parse(result.text).binding, null);
+  assert.equal(fs.existsSync(path.join(store, '.runtime-assets')), false);
+});
+test('CLI parses explicit profile and repeated app selections and rejects ambiguous options', () => {
+  const { parse } = require('../src/domains.cjs');
+  assert.deepEqual(
+    parse([
+      'associate',
+      'design',
+      '--profile',
+      'native',
+      '--path',
+      'editor=/Applications/Editor.app',
+      '--path',
+      'cad=/Applications/CAD.app',
+    ]).paths,
+    { editor: '/Applications/Editor.app', cad: '/Applications/CAD.app' },
+  );
+  assert.throws(() => parse(['detect', 'design']), /profile/);
+  assert.throws(
+    () => parse(['associate', 'design', '--profile', 'native', '--path', 'editor=relative']),
+    /absolute/,
+  );
+  assert.throws(
+    () =>
+      parse([
+        'prepare',
+        'design',
+        '--profile',
+        'native',
+        '--path',
+        'editor=/Applications/Editor.app',
+      ]),
+    /only valid/,
+  );
+  assert.throws(
+    () =>
+      parse([
+        'associate',
+        'design',
+        '--profile',
+        'native',
+        '--path',
+        'editor=/a',
+        '--path',
+        'editor=/b',
+      ]),
+    /Duplicate/,
+  );
 });

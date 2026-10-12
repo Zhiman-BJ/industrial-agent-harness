@@ -1,6 +1,10 @@
 const fs = require('node:fs');
 const path = require('node:path');
-const { defaultPackDirectory, compareVersions } = require('@industrial-agent-harness/pack-manager');
+const {
+  defaultPackDirectory,
+  compareVersions,
+  RuntimeEnvironmentManager,
+} = require('@industrial-agent-harness/pack-manager');
 const {
   PackCatalog,
   describeInstalled,
@@ -12,19 +16,49 @@ industrial-harness domains available --catalog HTTPS_URL --keys-file FILE [--sto
 industrial-harness domains install DOMAIN --catalog HTTPS_URL --keys-file FILE [--store DIR]
 industrial-harness domains update --catalog HTTPS_URL --keys-file FILE [--store DIR]
 industrial-harness domains remove DOMAIN [--store DIR]
-industrial-harness domains repair DOMAIN [--store DIR]
+industrial-harness domains repair DOMAIN [--profile ID] [--project-dir DIR] [--store DIR]
+industrial-harness domains environments DOMAIN [--project-dir DIR] [--store DIR]
+industrial-harness domains detect|associate|prepare DOMAIN --profile ID [--project-dir DIR] [--path ASSET=/abs/App.app] [--store DIR]
+industrial-harness domains unbind DOMAIN [--project-dir DIR] [--store DIR]
 Use a trusted public-key JSON file: {"key-id":"-----BEGIN PUBLIC KEY-----..."}.
 Set INDUSTRIAL_HARNESS_PACK_STORE to the same store for run and bench.\n`;
 
 function parse(argv) {
   if (!argv.length || argv.includes('--help')) return { help: true };
   const command = argv[0];
-  if (!['list', 'available', 'install', 'update', 'remove', 'repair'].includes(command))
+  if (
+    ![
+      'list',
+      'available',
+      'install',
+      'update',
+      'remove',
+      'repair',
+      'environments',
+      'detect',
+      'associate',
+      'prepare',
+      'unbind',
+    ].includes(command)
+  )
     throw Error('Unknown domains command.');
   const options = { command };
   for (let index = 1; index < argv.length; index++) {
     const token = argv[index];
-    if (['--store', '--catalog', '--keys-file'].includes(token)) {
+    if (token === '--path') {
+      const value = argv[++index],
+        separator = value?.indexOf('=');
+      if (!value || separator < 1) throw Error('Use --path ASSET=/absolute/Application.app.');
+      const asset = value.slice(0, separator),
+        appPath = value.slice(separator + 1);
+      if (!/^[a-z][a-z0-9-]{0,63}$/.test(asset) || !path.isAbsolute(appPath))
+        throw Error('Use a declared asset ID and absolute application path.');
+      options.paths ||= {};
+      if (Object.hasOwn(options.paths, asset)) throw Error('Duplicate asset path.');
+      options.paths[asset] = appPath;
+    } else if (
+      ['--store', '--catalog', '--keys-file', '--profile', '--project-dir'].includes(token)
+    ) {
       const value = argv[++index];
       if (!value || value.startsWith('--')) throw Error(`Missing ${token} value.`);
       const key = token.slice(2).replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
@@ -33,8 +67,23 @@ function parse(argv) {
     } else if (!options.domain && !token.startsWith('--')) options.domain = token;
     else throw Error(`Unknown domains option: ${token}`);
   }
-  if (['install', 'remove', 'repair'].includes(command) !== Boolean(options.domain))
-    throw Error('Specify one Domain ID for install or remove.');
+  if (
+    [
+      'install',
+      'remove',
+      'repair',
+      'environments',
+      'detect',
+      'associate',
+      'prepare',
+      'unbind',
+    ].includes(command) !== Boolean(options.domain)
+  )
+    throw Error('Specify one Domain ID for this command.');
+  if (['detect', 'associate', 'prepare'].includes(command) && !options.profile)
+    throw Error('Provide --profile.');
+  if (options.paths && !['detect', 'associate', 'repair'].includes(command))
+    throw Error('--path is only valid for detect, associate or repair.');
   if (
     ['available', 'install', 'update'].includes(command) &&
     (!options.catalog || !options.keysFile)
@@ -61,6 +110,7 @@ async function runDomains(argv, output = process.stdout) {
     declaredDomains: require('@zhiman-bj/industrial-domain-packs').consumerMetadata().domains,
   });
   const manager = catalog.manager;
+  const environments = new RuntimeEnvironmentManager({ manager });
   const journal = new InstallationJournal(manager);
   const finish = (outcome, error) => {
     const receipt = journal.finish(outcome, error);
@@ -90,18 +140,41 @@ async function runDomains(argv, output = process.stdout) {
       journal.progress(progress);
       output.write(`${JSON.stringify({ type: 'runtime_progress', ...progress })}\n`);
     };
-    if (options.command === 'repair') {
-      journal.begin([options.domain], 'repair');
-      const bundle = manager.list().find(item => item.domain === options.domain);
-      if (!bundle) throw Error('Domain is not installed.');
-      await manager.runtimeAssets.ensure(bundle.runtimeAssets, {
-        recheck: true,
-        onProgress,
+    if (
+      ['environments', 'detect', 'associate', 'prepare', 'unbind', 'repair'].includes(
+        options.command,
+      )
+    ) {
+      const projectDir = options.projectDir && path.resolve(options.projectDir);
+      const selected = {
+        profileId: options.profile,
+        projectDir,
+        paths: options.paths,
         signal: controller.signal,
-      });
-      finish('completed');
-      output.write(`${JSON.stringify({ repaired: options.domain })}\n`);
-      return 0;
+        onProgress,
+      };
+      let result;
+      if (options.command === 'environments')
+        result = environments.describe(options.domain, { projectDir });
+      else if (options.command === 'unbind')
+        result = environments.clear(options.domain, { projectDir });
+      else if (options.command === 'repair') {
+        const current = environments.describe(options.domain, { projectDir });
+        const profileId = options.profile || current.binding?.profileId;
+        if (!profileId)
+          throw Error(
+            'Choose --profile before checking an environment. Repair never downloads software; use prepare explicitly.',
+          );
+        const binding = current.binding;
+        const paths =
+          options.paths ||
+          Object.fromEntries(
+            Object.entries(binding?.assets || {}).map(([id, receipt]) => [id, receipt.appPath]),
+          );
+        result = await environments.detect(options.domain, { ...selected, profileId, paths });
+      } else result = await environments[options.command](options.domain, selected);
+      output.write(`${JSON.stringify(result, null, 2)}\n`);
+      return ['missing', 'incompatible', 'unsupported', 'stale'].includes(result.status) ? 1 : 0;
     }
     const available = await catalog.available({ signal: controller.signal });
     if (catalog.snapshot().state === 'unavailable') throw Error(catalog.snapshot().message);
@@ -116,7 +189,7 @@ async function runDomains(argv, output = process.stdout) {
       if (!item) throw Error('Domain is unavailable for this platform.');
       journal.begin([item.domain]);
       const installed = await manager.install(item, {
-        prepareRuntime: true,
+        prepareRuntime: false,
         onProgress,
         signal: controller.signal,
       });
@@ -139,7 +212,7 @@ async function runDomains(argv, output = process.stdout) {
       if (!current.has(item.domain) || compareVersions(item.version, current.get(item.domain)) <= 0)
         continue;
       const installed = await manager.install(item, {
-        prepareRuntime: true,
+        prepareRuntime: false,
         onProgress,
         signal: controller.signal,
       });

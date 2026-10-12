@@ -7,7 +7,10 @@ const crypto = require('node:crypto');
 const { execFile } = require('node:child_process');
 const { promisify } = require('node:util');
 const { createProjectRuntime } = require('../../packages/harness-core/src/project-runtime.cjs');
-const { PackManager } = require('../../packages/pack-manager/src/index.cjs');
+const {
+  PackManager,
+  RuntimeEnvironmentManager,
+} = require('../../packages/pack-manager/src/index.cjs');
 const { call, plate } = require('./fixtures/freecad.cjs');
 const execute = promisify(execFile);
 const repo = path.resolve(__dirname, '../..');
@@ -71,6 +74,10 @@ test(
               phase: progress.phase,
             }),
         ),
+    });
+    const selectedBundle = manager.list()[0];
+    await new RuntimeEnvironmentManager({ manager }).associate(selectedBundle.domain, {
+      profileId: selectedBundle.executionProfiles.find(profile => profile.kind === 'native').id,
     });
     const prior = process.env.INDUSTRIAL_HARNESS_PACK_STORE;
     process.env.INDUSTRIAL_HARNESS_PACK_STORE = manager.directory;
