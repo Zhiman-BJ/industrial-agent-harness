@@ -41,6 +41,16 @@ self-hosted runner is registered as of 2026-10-12. Local native installation
 qualification remains separate evidence; native CI is not reported as passing or
 replaced with skipped tests. An eligible runner is a release infrastructure follow-up.
 
+## First-user installation QA, 2026-10-12
+
+The follow-up [first-user QA report](qa-first-install-20261012.md) separates
+production cold Harbor downloads, an actual freshly built ARM64 DMG with an empty
+profile/store, and missing-prerequisite/cancellation recovery. It records exact
+artifact identities, failures and coverage limits. Its findings take precedence
+over any inference that the cache-assisted tests below establish cold-download
+reliability. Reusable commands and acceptance criteria are in the
+[QA runbook](qa-runbook.md#新用户安装专项t5-补充).
+
 ## Fresh managed-store qualification, 2026-10-12
 
 The local `native-installed` gate passed all three required tests, with zero
@@ -156,7 +166,6 @@ The current source merges the latest main-branch model/project synchronization a
 The source and CI reconciliation is distinct from the already qualified local DMG below. Its owner 0.5.1 identity, source commit, hashes and acceptance results remain historical facts. The new source requires its own CI result and any applicable native acceptance; those results are recorded separately when complete. No new installer qualification follows merely from updating the pin.
 
 The reconciliation also separates fresh managed installation tests into a required `native-installed` job on each supported macOS runner. Native task deadlines and engineering assertions are unchanged. The internal Kimi MCP callback now uses a finite communication watchdog compatible with the existing one-hour generic task contract; the upstream default 60-second request timeout previously cancelled otherwise permitted host execution. A real 65-second Runtime task verifies the transport fix, while short execution deadlines and explicit cancellation still fail and clean up owned processes. Runtime archive caching still validates and copies official archives into each independent store; no installed app is substituted for preparation.
-
 
 ## Integrated delivery
 

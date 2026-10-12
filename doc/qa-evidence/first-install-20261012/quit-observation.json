@@ -1,0 +1,8 @@
+{
+  "observedAt": "2026-10-12T05:38:18.110Z",
+  "uiAction": "Cmd+Q",
+  "windowResult": "noWindowsAvailable",
+  "processStillPresent": "43138 32:16 Ss   /Users/roger/.codex/.chatgpt-projects/g-p-6a97bb9a4c6c8191a842ad700c51e704/implementation/industrial-agent-harness-pcb-product/dist/qa-first-install-20261012/desktop/application/Industrial Agent Harness.app/Contents/MacOS/Industrial Agent Harness --user-data-dir=/Users/roger/.codex/.chatgpt-projects/g-p-6a97bb9a4c6c8191a842ad700c51e704/implementation/industrial-agent-harness-pcb-product/dist/qa-first-install-20261012/desktop/profile",
+  "normalQuitConfirmed": false,
+  "recovery": "SIGTERM owned application process then same profile relaunch"
+}

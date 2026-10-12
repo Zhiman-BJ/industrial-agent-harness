@@ -1,0 +1,44 @@
+{
+  "binarySha256": "c7cccbf8fb143e34e02fd6521e09be2c2b974f0d5db080b19071c9c570718ccf",
+  "owner": {
+    "packageVersion": "0.6.0",
+    "contentSha256": "4388bc7239eb2f322e45700230b4b8ebc28af6ddc99e6c17ff83c34651dfc2f6"
+  },
+  "parentHome": "/Users/roger",
+  "parentLANG": "C.UTF-8",
+  "summaries": [
+    {
+      "mode": "unsandboxed-isolated-home",
+      "status": "COMPLETED",
+      "exitCode": 0,
+      "ownerCompleted": true,
+      "fontReadError": false,
+      "caBootstrapError": false,
+      "errorLines": []
+    },
+    {
+      "mode": "production-sandbox-normal-parent-home",
+      "status": "COMPLETED",
+      "exitCode": 0,
+      "ownerCompleted": false,
+      "fontReadError": true,
+      "caBootstrapError": true,
+      "errorLines": [
+        "ERROR: Can't open file from path '/Users/roger/Library/Fonts/NotoSansCJKsc-Regular.otf'.",
+        "ERROR: Can't open file from path '/Users/roger/Library/Fonts/NotoSansCJKsc-Regular.otf'.",
+        "ERROR: Condition \"ret != noErr\" is true. Returning: \"\""
+      ]
+    },
+    {
+      "mode": "production-sandbox-readonly-fonts-diagnostic",
+      "status": "COMPLETED",
+      "exitCode": 0,
+      "ownerCompleted": true,
+      "fontReadError": false,
+      "caBootstrapError": true,
+      "errorLines": [
+        "ERROR: Condition \"ret != noErr\" is true. Returning: \"\""
+      ]
+    }
+  ]
+}

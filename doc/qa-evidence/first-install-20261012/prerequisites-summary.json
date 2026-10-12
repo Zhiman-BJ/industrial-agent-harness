@@ -1,0 +1,100 @@
+{
+  "startedAt": "2026-10-12T05:16:02.143Z",
+  "commit": "56c13604ca9956a57aa3585c4f920bb7e3409b21",
+  "owner": {
+    "packageVersion": "0.6.0",
+    "contentSha256": "4388bc7239eb2f322e45700230b4b8ebc28af6ddc99e6c17ff83c34651dfc2f6"
+  },
+  "ownerPin": "https://codeload.github.com/Zhiman-BJ/industrial-domain-packs/tar.gz/e7347c14bddc956ed0336570dea0af652ccec296",
+  "platform": "darwin",
+  "arch": "arm64",
+  "node": "v26.10.0",
+  "cases": [
+    {
+      "id": "missing-docker",
+      "status": "pass",
+      "error": "Error: Docker runtime is unavailable. Install and start Docker (Docker Desktop on macOS), then retry preparation. spawn docker ENOENT\nCommand: docker; elapsed: 1 ms",
+      "actionable": true,
+      "falselyReadyOrActivated": false,
+      "freshStore": true,
+      "leftovers": [],
+      "reopenOutcome": "failed"
+    },
+    {
+      "id": "missing-docker-retry",
+      "status": "pass",
+      "installed": "chip",
+      "runtimeState": "ready",
+      "restartedProcess": true
+    },
+    {
+      "id": "unreachable-daemon",
+      "status": "pass",
+      "error": "Error: Docker runtime is unavailable. Install and start Docker (Docker Desktop on macOS), then retry preparation. Runtime preparation failed (1).\nCommand: docker; elapsed: 117 ms\nOutput (last 2000 characters): \nfailed to connect to the docker API at unix:///tmp/harness-qa-46479-0702e0f6.sock; check if the path is correct and if the daemon is running: dial unix /tmp/harness-qa-46479-0702e0f6.sock: connect: no such file or directory\n",
+      "actionable": true,
+      "falselyReadyOrActivated": false,
+      "freshStore": true,
+      "leftovers": [],
+      "reopenOutcome": "failed"
+    },
+    {
+      "id": "unreachable-daemon-retry",
+      "status": "pass",
+      "installed": "chip",
+      "runtimeState": "ready",
+      "restartedProcess": true
+    },
+    {
+      "id": "transfer-cancel-retry",
+      "status": "pass",
+      "transport": "real loopback HTTPS, exact owner Chip archive",
+      "signal": "SIGINT after received > 0",
+      "cancelledJournal": true,
+      "falselyReadyOrActivated": false,
+      "retryRuntimeState": "ready",
+      "leftovers": []
+    },
+    {
+      "id": "chip-after-recovery-native",
+      "status": "pass",
+      "engineering": "passed",
+      "backend": "real Harbor-pinned container, local image cache retained",
+      "ownedContainerRemoved": true
+    },
+    {
+      "id": "cuda-unconfigured",
+      "status": "pass",
+      "runtimeState": "external-dependencies",
+      "runtimeAvailable": false,
+      "executableTools": [],
+      "requestedCanonicalTool": "cuda.candidate.compile",
+      "prerequisites": [
+        "Connect both authenticated remote Compiler and Evaluator MCP services with a matching immutable project reference, bindings and measurement configuration",
+        "Remote clients need no local GPU; native service deployment and credentials are separate administrator prerequisites"
+      ],
+      "toolStatus": "failed",
+      "toolDiagnostics": [
+        "Tool is unavailable in this runtime."
+      ],
+      "engineering": "insufficient_evidence",
+      "limitation": "Tool rejection is generic; service setup directions are supplied in domains list prerequisites."
+    },
+    {
+      "id": "existing-signed-transfer-regression",
+      "status": "pass",
+      "boundary": "real HTTPS and production transfer implementation; synthetic archive/localhost feed, not Harbor download"
+    }
+  ],
+  "boundaries": [
+    "Actual production CLI, Pack verification, runtime preparation and Docker; no installer/fetch mocks.",
+    "QA-signed loopback HTTPS catalog carries exact owner Pack archives; not a production release feed.",
+    "Fresh stores/config/HOME; cached global images retained. No native application installation.",
+    "CUDA service backend and GPU execution are not qualified by this script."
+  ],
+  "verdict": "pass",
+  "cleanup": {
+    "loopbackTlsServerClosed": true,
+    "ephemeralSigningKeyRemoved": true
+  },
+  "finishedAt": "2026-10-12T05:16:25.692Z"
+}

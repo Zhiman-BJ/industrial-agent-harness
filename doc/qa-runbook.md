@@ -52,7 +52,7 @@
 | T2 桌面 UI selftest | darwin（本地开发机）；CI 在 mac+win 打包产物上跑 | 先 `pnpm --filter @industrial-agent-harness/desktop build`（selftest 加载 **built dist/**，不 build 会测到旧代码） | 否 |
 | T3 Transport / Benchmark | 任意 | Transport 需解析 Domain Pack 源 + `uv`（pip 安装 `uv==0.11.6`）+ Python 3.13；Benchmark 需 `iverilog`、`vvp` | 是（首次解析 Pack 源） |
 | T4 Native 工业内核 | darwin arm64（native）或 linux x64（native-linux） | `KIMI_EXECUTABLE`（`node apps/desktop/scripts/setup-kimi.cjs` 生成）；native 另需 `INDUSTRIAL_HARNESS_FREECAD_CMD`；chip pack `eda-harness/.venv`（`uv sync --frozen --no-dev --python 3.13`）；`verilator`、`rg` | 是（setup 脚本下载受保护运行时） |
-| T5 打包与安装冒烟 | mac（DMG + CAD 安装）/ win（dir 产物） | T2 的 build 已完成；`electron-builder` 随 devDependencies 提供；CAD 安装冒烟仅 **darwin arm64** | 是（下载官方 FreeCAD DMG，可用 `HARNESS_CAD_INSTALL_ARCHIVE` 预置缓存） |
+| T5 打包与安装冒烟 | mac（DMG + CAD 安装）/ win（dir 产物） | T2 的 build 已完成；`electron-builder` 随 devDependencies 提供；CAD 安装冒烟仅 **darwin arm64** | 是（从 Harbor 下载固定 FreeCAD 原始 DMG；`HARNESS_CAD_INSTALL_ARCHIVE` 预置缓存仅计缓存安装） |
 | T6 Linux chip 安装器 | linux x64（CI 托管） | Docker；`scripts/package-linux-chip-installer.cjs` 构建产物 | 是 |
 
 说明：
@@ -114,7 +114,7 @@ CI 参考集：`desktop-package.yml` 跑 `ui language parallel gui-settings` 及
 
 | ID | 命令 | 覆盖 | 通过判据 |
 | --- | --- | --- | --- |
-| T3-1 | `pnpm run test:ci -- transport` | 6 个真实传输/策略文件：外部 MCP、domain-mcp-scope（DoD Test G 的 Scope 执行层验证）、pcb-mcp-transport/policy、godot-mcp-policy、chip-runtime-reliability | `transport.json` `ok: true`（允许清单见 §6） |
+| T3-1 | `pnpm run test:ci -- transport` | 7 个真实传输/策略文件：外部 MCP、domain-mcp-scope（DoD Test G 的 Scope 执行层验证）、pcb-mcp-transport/policy、godot-mcp-policy、chip-runtime-reliability，以及 signed installed CUDA 的 HTTP 协议（受控后端，不代表 GPU 验收） | `transport.json` `ok: true`（允许清单见 §6） |
 | T3-2 | `pnpm run test:ci -- benchmark` | `tests/benchmark/paired.test.cjs` 配对工程冒烟（需 iverilog/vvp） | `benchmark.json` `ok: true` |
 
 ### T4 Native 工业内核（CI：industrial-core.yml；native=darwin arm64，native-linux=linux x64）
@@ -128,7 +128,7 @@ python -m pip install uv==0.11.6 && brew install verilator ripgrep
 node apps/desktop/scripts/setup-kimi.cjs
 export KIMI_EXECUTABLE="$(node -p "require('./packages/agent-kimi/src/code-session.cjs').bundledExecutable()")"
 (cd "$(node scripts/pack-source.cjs chip-pack)/eda-harness" && uv sync --frozen --no-dev --python 3.13)
-export INDUSTRIAL_HARNESS_FREECAD_CMD="$(node scripts/setup-freecad.cjs)"   # stdout 即官方 FreeCAD 可执行路径
+export INDUSTRIAL_HARNESS_FREECAD_CMD="$(node scripts/setup-freecad.cjs)"   # stdout 即 Harbor 托管 FreeCAD 可执行路径
 for pack in pcb godot; do node "$(node scripts/pack-source.cjs "$pack-pack")/runtime/setup-native.cjs" "$PWD/dist/$pack-runtime"; done
 node scripts/package-headless.cjs dist/freecad-cli --domain cad
 node scripts/package-headless.cjs dist/professional-cli
@@ -143,9 +143,9 @@ export HARNESS_PROFESSIONAL_EVIDENCE="$PWD/dist/ci-reports/professional-evidence
 
 | ID | 命令 | 覆盖 |
 | --- | --- | --- |
-| T4-1 | 执行上方准备命令块 | 受保护 Agent、官方 FreeCAD、pcb/godot 原生运行时与独立 CLI/Desktop 打包（professional/freecad 测试入口的绑定来源） |
+| T4-1 | 执行上方准备命令块 | 受保护 Agent、Harbor 托管 FreeCAD、pcb/godot 原生运行时与独立 CLI/Desktop 打包（professional/freecad 测试入口的绑定来源） |
 | T4-2 | `pnpm run test:ci -- native`（或 `native-linux`） | `industrial-core-vertical-slice.test.cjs`（里程碑 Gate：StateProvider→Broker→Scoped Tool→Runtime→Verilator→Artifact→Verifier→Checkpoint 真实闭环）、installed-pack、pcb-godot runtime、freecad-runtime、后台任务、沙箱、会话混沌/资源、MCP 实测；文件清单由 `scripts/ci-tests.cjs` 维护 |
-| T4-2a | `pnpm run test:ci -- native-installed`（darwin arm64） | 独立必跑安装组，串行执行 `freecad-installed.test.cjs` 和 `pcb-godot-installed.test.cjs` 的三项全新托管安装与真实工程验收；原断言、执行截止与零跳过要求保留。准备使用固定官方归档与独立 CLI/Desktop payload，见 `industrial-core.yml` 的安装 job |
+| T4-2a | `pnpm run test:ci -- native-installed`（darwin arm64） | 独立必跑安装组，串行执行 `freecad-installed.test.cjs` 和 `pcb-godot-installed.test.cjs` 的三项全新托管安装与真实工程验收；原断言、执行截止与零跳过要求保留。准备使用 Harbor 中的固定原始归档与独立 CLI/Desktop payload；使用预置归档缓存或暖 Docker 层时必须明确标注，不能计为冷下载，见 `industrial-core.yml` 的安装 job |
 | T4-3 | `node --test tests/integration/headless-package-kimi.test.cjs` | 打包 headless Agent 的生产进程边界 |
 | T4-4 | 打包 CLI + 工作区验证：对 chip/pcb/godot 依次 `node scripts/package-headless.cjs dist/workspace-<domain> --domain <domain>` 后 `node scripts/smoke-workspace-cli.cjs <cli> <domain> <evidence.json>` | 三个领域的独立 CLI 真实任务与 MCP |
 
@@ -157,7 +157,33 @@ export HARNESS_PROFESSIONAL_EVIDENCE="$PWD/dist/ci-reports/professional-evidence
 | T5-2 | mac：`./apps/desktop/node_modules/.bin/electron-builder --projectDir dist/desktop-stage-ci --config electron-builder.config.cjs --mac dmg --arm64 --publish never`；win：同参数 `--win dir` | 产出安装产物 | mac/win |
 | T5-3 | `node scripts/smoke-packaged-desktop.cjs` | 打包应用首次启动（域选择首屏）；设 `HARNESS_PACKAGED_SMOKE_SCREENSHOT=<png>` 留证 | mac/win |
 | T5-4 | `node scripts/smoke-packaged-desktop.cjs --domains` | 平台限定域安装 | mac/win |
-| T5-5 | `node scripts/smoke-packaged-cad.cjs <全新证据目录> --dmg` | **真实安装流**：首装 UI 勾选 CAD → 下载官方 FreeCAD DMG（sha256 校验、挂载与原生验证不 mock）→ runtime ready → 重启应用验证依赖/项目绑定/verified actions 持久化。证据目录必须不存在（脚本强制全新）。可用 `HARNESS_CAD_INSTALL_ARCHIVE` 预置官方 DMG 缓存、`HARNESS_CAD_INSTALL_APP` 指定被测可执行文件 | 仅 darwin arm64 |
+| T5-5 | `node scripts/smoke-packaged-cad.cjs <全新证据目录> --dmg` | **真实安装流**：首装 UI 勾选 CAD → 从 Harbor 下载 FreeCAD 原始 DMG（sha256 校验、挂载与原生验证不 mock）→ runtime ready → 重启应用验证依赖/项目绑定/verified actions 持久化。证据目录必须不存在（脚本强制全新）。可用 `HARNESS_CAD_INSTALL_ARCHIVE` 预置原始 DMG 缓存，但此时不计冷下载、`HARNESS_CAD_INSTALL_APP` 指定被测可执行文件 | 仅 darwin arm64 |
+
+### 新用户安装专项（T5 补充）
+
+用于验证当前打包产物的首次使用，不用历史安装器结果替代。只要求此专项时，报告 `scope: first-user-installation`，先运行 T0，并逐项记录下表；不能把专项结果写成全量 T0–T6 已通过。上方 T2-19 使用签名的假域资源验证 UI 状态机，不代表真实领域依赖安装。T4-2a 的全新 store 加预置原始归档证明缓存安装，也不能替代冷下载。
+
+| 用例 | 必须使用的真实路径 | 判定与证据 |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| NEW-1 原始归档冷下载 | 全新 store，使用生产 RuntimeAssetManager 默认下载、超时与哈希校验，直接访问 Harbor；不得设置归档缓存变量或注入完成收据 | 记录 URL/状态、字节数、耗时、失败原因、取消/清理；官方源回退不允许。完整校验成功才 pass，超时/截断是 fail |
+| NEW-2 打包应用首启 | 从当前源码构建独立 DMG，在隔离目录安装 app，使用空 userData/config/Pack store，保留真实 app.asar 和依赖布局 | 首屏显示所有领域及真实前提；实际选择、下载/安装、就绪、完成首个原生任务、退出重开并核对历史。按阶段留截图和状态；仅 staged Electron 不等于打包产物 |
+| NEW-3 Docker 缺失与恢复 | 仅对子进程隔离 PATH/daemon 地址触发缺失/不可达；恢复正常环境后重试真实安装 | 错误可理解，不误报 ready，不激活半成品，临时文件和锁释放；恢复后能安装。不得关闭用户 Docker、清除既有镜像或全局配置 |
+| NEW-4 取消和外部前提 | 真实生产下载取消/重试，CUDA 未配置服务状态 | 取消后可重开/修复；CUDA Pack 安装与服务可用性分别记录，未配服务不得当作工程验收成功 |
+
+每次使用独立证据目录，记录 Harness 完整 commit、dirty 状态、owner commit、OS/架构、打包产物 SHA-256、签名/公证状态和运行参数。归档缓存、Docker 暖层、受控模型/HTTP fixture 必须逐项标注。受控故障只证明错误处理，不算真实冷网络或 GPU 成功。没有干净物理机时明确说明是在开发机上隔离目录测试，不能宣称已经覆盖系统级首次授权、Gatekeeper 或全新系统环境。
+
+本轮记录：[下载](qa-fresh-install-downloads-20261012.md)、[打包桌面](qa-fresh-install-desktop-20261012.md)、[前提与恢复](qa-fresh-install-prerequisites-20261012.md)。完整性和速度是两类证据：分段校验 Harbor 全部字节成功，不能替代生产单次下载器的成功安装。
+
+可复用的专项入口（均在仓库根运行；证据目录必须不存在）：
+
+```bash
+node scripts/qa-first-install-downloads.cjs --output dist/qa-first-user/kicad kicad
+node scripts/qa-first-install-downloads.cjs --output dist/qa-first-user/freecad freecad
+node scripts/qa-first-install-downloads.cjs --output dist/qa-first-user/godot-cancel --cancel-recover godot
+node scripts/qa-fresh-install-prerequisites.cjs dist/qa-first-user/prerequisites
+```
+
+下载脚本只验真实 Harbor 传输、完整哈希及取消清理，不安装原生应用。上述下载命令顺序执行可避免测试自己争用网络；显式同时传入两个资产会并行下载，报告必须注明。前提脚本需要实际可用的 Docker，使用临时签名的 localhost HTTPS 目录分发真实 Owner Pack，保留已有 Docker 层；它不等于线上目录或冷镜像验收。真实 DMG 首启仍需按 NEW-2 操作 UI；`scripts/qa-fresh-desktop-model.cjs` 仅为该操作提供受控模型，不能单独作为通过依据。
 
 ### T6 Linux chip 安装器验收（CI：industrial-linux.yml，linux x64 托管）
 

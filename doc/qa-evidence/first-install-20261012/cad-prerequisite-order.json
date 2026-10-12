@@ -1,0 +1,55 @@
+{
+  "assetOrder": [
+    {
+      "id": "freecad",
+      "type": "macos-app-dmg"
+    },
+    {
+      "id": "cad-dxf",
+      "type": "docker-image"
+    }
+  ],
+  "error": "QA_STOP_BEFORE_BODY",
+  "commands": [],
+  "events": [
+    {
+      "id": "freecad",
+      "label": "FreeCAD",
+      "phase": "verifying"
+    },
+    {
+      "id": "freecad",
+      "label": "FreeCAD",
+      "phase": "checking-space",
+      "downloadBytes": 649760538,
+      "installedBytes": 2625114576,
+      "requiredBytes": 3406130843,
+      "estimated": false,
+      "cacheReused": false,
+      "availableBytes": 17823911936
+    },
+    {
+      "id": "freecad",
+      "label": "FreeCAD",
+      "phase": "downloading",
+      "received": 0,
+      "total": 649760538
+    }
+  ],
+  "status": [
+    {
+      "id": "freecad",
+      "label": "FreeCAD",
+      "version": "1.1.4",
+      "ready": false,
+      "message": "Runtime needs preparation."
+    },
+    {
+      "id": "cad-dxf",
+      "label": "DXF drawing runtime",
+      "version": "1.0.0",
+      "ready": false,
+      "message": "Runtime needs preparation."
+    }
+  ]
+}

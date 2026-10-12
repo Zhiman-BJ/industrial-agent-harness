@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "assessedAt": "2026-10-12T05:31:25.207Z",
+  "verdict": "fail",
+  "reason": "KiCad and FreeCAD first complete-download attempts hit the unchanged production total timeout.",
+  "productionLimits": {
+    "stallMs": 60000,
+    "totalMs": 1200000
+  },
+  "concurrency": {
+    "largeArchiveDownloads": 2,
+    "externalGodotDesktopInstall": {
+      "start": "2026-10-12T05:08:26.772Z",
+      "ready": "2026-10-12T05:21:15.182Z",
+      "downloadEnd": "not independently recorded; within installation window"
+    },
+    "godotDownloadOnly": 1,
+    "scope": "No assertion about serial large-archive performance or a unique failure cause."
+  },
+  "originalWrapper": {
+    "name": "scripts/qa-first-install-downloads-20261012.cjs",
+    "scope": "First KiCad/FreeCAD attempts before final wrapper hardening; production downloader unchanged; raw evidence not rewritten; no retries."
+  },
+  "finalWrapper": {
+    "name": "scripts/qa-first-install-downloads.cjs",
+    "scope": "Godot real cancellation/recovery plus stronger QA exit checks and own-store cleanup."
+  },
+  "cases": [
+    {
+      "id": "kicad",
+      "status": "fail",
+      "elapsedSeconds": 1200.088609333,
+      "lastReportedBytes": 367033965,
+      "partialFilesCleaned": true,
+      "archiveRetained": false,
+      "runtimeReady": false,
+      "officialFallbackObserved": false,
+      "evidence": "kicad-first-attempt.json"
+    },
+    {
+      "id": "freecad",
+      "status": "fail",
+      "elapsedSeconds": 1200.146925584,
+      "lastReportedBytes": 477159022,
+      "partialFilesCleaned": true,
+      "archiveRetained": false,
+      "runtimeReady": false,
+      "officialFallbackObserved": false,
+      "evidence": "freecad-first-attempt.json"
+    },
+    {
+      "id": "godot",
+      "status": "pass",
+      "scope": "download-only cancellation/recovery, complete production and independent hash; no app installation",
+      "evidence": [
+        "godot-isolated/godot-cancellation.json",
+        "godot-isolated/godot-recovery.json"
+      ]
+    }
+  ],
+  "originalFailedStoreInspection": [
+    {
+      "id": "kicad",
+      "cacheFilesBeforeCleanup": [],
+      "appLocationExists": false,
+      "runtimeReady": false
+    },
+    {
+      "id": "freecad",
+      "cacheFilesBeforeCleanup": [],
+      "appLocationExists": false,
+      "runtimeReady": false
+    }
+  ],
+  "originalTemporaryStoresCleaned": true
+}

@@ -1,0 +1,105 @@
+{
+  "id": "godot",
+  "attempt": "recovery",
+  "startedAt": "2026-10-12T05:26:24.365Z",
+  "status": "download-verified",
+  "hostCommit": "56c13604ca9956a57aa3585c4f920bb7e3409b21",
+  "ownerPin": "https://codeload.github.com/Zhiman-BJ/industrial-domain-packs/tar.gz/e7347c14bddc956ed0336570dea0af652ccec296",
+  "mode": "production-RuntimeAssetManager-fetchArchive-download-only",
+  "temporaryStore": "/var/folders/z0/8fqzv4jn6zb32j82pxz8mw2r0000gn/T/harness-first-download-SKSUix/godot",
+  "initialCacheFiles": [],
+  "parallelDownloadsInThisInvocation": 1,
+  "externalTraffic": "Not measured by this process; consult coordinated Desktop evidence.",
+  "url": "https://harbor.pvg2.zhiman.tech/v2/industrial-runtime-assets/godot/blobs/sha256:c58a24e31d720be9d62f60cb5627c4e695fb72f21b0cfe1bc9ccaa9a3b3ba63e",
+  "expectedSize": 170622178,
+  "expectedSha256": "c58a24e31d720be9d62f60cb5627c4e695fb72f21b0cfe1bc9ccaa9a3b3ba63e",
+  "downloaderOverrides": false,
+  "defaultStallMs": 60000,
+  "defaultTotalTimeoutMs": 1200000,
+  "requests": [
+    {
+      "startedAt": "2026-10-12T05:26:24.381Z",
+      "origin": "https://harbor.pvg2.zhiman.tech",
+      "path": "/v2/industrial-runtime-assets/godot/blobs/sha256:c58a24e31d720be9d62f60cb5627c4e695fb72f21b0cfe1bc9ccaa9a3b3ba63e",
+      "status": 401,
+      "contentLength": "152",
+      "completedHeadersAt": "2026-10-12T05:26:24.493Z"
+    },
+    {
+      "startedAt": "2026-10-12T05:26:24.493Z",
+      "origin": "https://harbor.pvg2.zhiman.tech",
+      "path": "/service/token",
+      "status": 200,
+      "contentLength": "953",
+      "completedHeadersAt": "2026-10-12T05:26:24.636Z"
+    },
+    {
+      "startedAt": "2026-10-12T05:26:24.637Z",
+      "origin": "https://harbor.pvg2.zhiman.tech",
+      "path": "/v2/industrial-runtime-assets/godot/blobs/sha256:c58a24e31d720be9d62f60cb5627c4e695fb72f21b0cfe1bc9ccaa9a3b3ba63e",
+      "status": 200,
+      "contentLength": "170622178",
+      "completedHeadersAt": "2026-10-12T05:26:24.741Z"
+    }
+  ],
+  "progress": [
+    {
+      "at": "2026-10-12T05:26:24.381Z",
+      "received": 0,
+      "partialBytes": 0
+    },
+    {
+      "at": "2026-10-12T05:26:54.383Z",
+      "received": 24120942,
+      "partialBytes": 24645230
+    },
+    {
+      "at": "2026-10-12T05:27:24.382Z",
+      "received": 46153326,
+      "partialBytes": 46870126
+    },
+    {
+      "at": "2026-10-12T05:27:54.382Z",
+      "received": 74473070,
+      "partialBytes": 74690158
+    },
+    {
+      "at": "2026-10-12T05:28:24.383Z",
+      "received": 92302958,
+      "partialBytes": 92438126
+    },
+    {
+      "at": "2026-10-12T05:28:54.383Z",
+      "received": 123768430,
+      "partialBytes": 124358254
+    },
+    {
+      "at": "2026-10-12T05:29:24.383Z",
+      "received": 143695470,
+      "partialBytes": 144686702
+    },
+    {
+      "at": "2026-10-12T05:29:54.383Z",
+      "received": 162569838,
+      "partialBytes": 163229294
+    }
+  ],
+  "retries": 1,
+  "userCancellationRequested": false,
+  "actualSize": 170622178,
+  "actualSha256": "c58a24e31d720be9d62f60cb5627c4e695fb72f21b0cfe1bc9ccaa9a3b3ba63e",
+  "finishedAt": "2026-10-12T05:30:06.702Z",
+  "elapsedSeconds": 222.32241987499998,
+  "lastReportedReceived": 170622178,
+  "remainingCacheFiles": [
+    "c58a24e31d720be9d62f60cb5627c4e695fb72f21b0cfe1bc9ccaa9a3b3ba63e.zip"
+  ],
+  "partialFilesCleaned": true,
+  "archiveRetained": true,
+  "appInstalled": false,
+  "runtimeReady": false,
+  "officialFallbackObserved": false,
+  "cancellationValidated": true,
+  "qaPassed": true,
+  "temporaryStoreCleaned": true
+}

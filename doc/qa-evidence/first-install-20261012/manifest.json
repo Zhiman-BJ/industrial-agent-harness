@@ -1,0 +1,119 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "56c13604ca9956a57aa3585c4f920bb7e3409b21",
+  "ownerCommit": "e7347c14bddc956ed0336570dea0af652ccec296",
+  "scope": "first-user-installation",
+  "overall": "fail",
+  "files": [
+    {
+      "file": "README.md",
+      "bytes": 3468,
+      "sha256": "3cc05979b435d083e1cdf5ab84e0f95e41062cbf47c327a493dd3be8563bfa1c"
+    },
+    {
+      "file": "cad-prerequisite-order.json",
+      "bytes": 1085,
+      "sha256": "fd69d9a61938abbf06a78188e3335daabc9e2e30bd1343ad9bce64462bef4691"
+    },
+    {
+      "file": "desktop-cleanup.json",
+      "bytes": 319,
+      "sha256": "70e62698f32c961472d1c7e93c4e1b57713ce6e86d09c5489eadd1cc81d69e85"
+    },
+    {
+      "file": "desktop-summary.json",
+      "bytes": 2502,
+      "sha256": "10594934ef42654d44798f262ba0de9873262442a222ae035e747351b8f1076a"
+    },
+    {
+      "file": "download-qa-assessment.json",
+      "bytes": 2385,
+      "sha256": "6e75723099c8fd270cd3261cbdc1ee1920e482522778a1386f897b7fc2235ab6"
+    },
+    {
+      "file": "first-launch.png",
+      "bytes": 392689,
+      "sha256": "6105c556828f37c6cf63523acb345a7b3c9d0fe593fdef4629af1932c897cc9d"
+    },
+    {
+      "file": "freecad-first-attempt.json",
+      "bytes": 6824,
+      "sha256": "1ffb035ffa14954eaea9c8b184721de811ab48913e5d68f5aab0e446172ec24b"
+    },
+    {
+      "file": "godot-approval.png",
+      "bytes": 227414,
+      "sha256": "54cb56755f5032309c696e18643edff3f86d5ae41c57fbfea5e13fd60a3f225d"
+    },
+    {
+      "file": "godot-cancellation.json",
+      "bytes": 2651,
+      "sha256": "1aa975551a9d8f660dcaf4a35d8aecbe9b3d147408f6d7815b605922d1a49f02"
+    },
+    {
+      "file": "godot-downloading.png",
+      "bytes": 410043,
+      "sha256": "7a983e7644bc62bd5e9ac1739799149ff0c052f6a0da804da02784ba91933429"
+    },
+    {
+      "file": "godot-first-task-failed.png",
+      "bytes": 242485,
+      "sha256": "1385d1d8bb7e6ee884b02fbfaa80101bb5e58615dea1e7ccb4f71285fe8645ef"
+    },
+    {
+      "file": "godot-first-task-import.json",
+      "bytes": 5742,
+      "sha256": "6081cd854723db0a27f2bd808668a8b16af57dc55e1eb41a60ebaa7cfaef7fb0"
+    },
+    {
+      "file": "godot-font-diagnostic.json",
+      "bytes": 1352,
+      "sha256": "66aefc03f455f2b7a17086f791caaa3355dbad9bcad8cfa2850da31037753f0c"
+    },
+    {
+      "file": "godot-ready-card.png",
+      "bytes": 425115,
+      "sha256": "83d23bcad081bd3e3f547cec0c225379b9cc8d53afa92814730bbfdcf0794ac3"
+    },
+    {
+      "file": "godot-recovery.json",
+      "bytes": 3522,
+      "sha256": "df77a2d1972d4c9cebe0fba1f92c9050d15f4365c8f83f91316a42700e17cf57"
+    },
+    {
+      "file": "kicad-first-attempt.json",
+      "bytes": 6812,
+      "sha256": "b5533514cb857376d7593dabfee629617e769f1b4d10cfa1a52418beaa34b6ac"
+    },
+    {
+      "file": "payload.json",
+      "bytes": 699,
+      "sha256": "65381f947554601f4f296bfe3d1bec7e52c15e8c966fc3c537f959293c7c4c50"
+    },
+    {
+      "file": "prerequisites-summary.json",
+      "bytes": 4019,
+      "sha256": "c108c7a168b64fdd5c0e53d9cfda9dd9c983999f45282c4eaf43941caba6c6d0"
+    },
+    {
+      "file": "quit-observation.json",
+      "bytes": 701,
+      "sha256": "17ec65a5f87f7e6e98ae0617b923d794933197d2fa534a0a3e1f013a7a43a853"
+    },
+    {
+      "file": "restart-domain-status.png",
+      "bytes": 426105,
+      "sha256": "d76b149841286928265249d304db9d462c844dbda3305532c266f82187bec49c"
+    },
+    {
+      "file": "restart-history.png",
+      "bytes": 250150,
+      "sha256": "f3d5ada685de836e82297e9adae235501240d1daf1c3806d1c30a4ad6f56703f"
+    },
+    {
+      "file": "restart-observation.json",
+      "bytes": 1281,
+      "sha256": "9d5098ead8af8534413758d51a1128030f5668a56a162d592b14d1c966265cfc"
+    }
+  ]
+}

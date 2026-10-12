@@ -1,0 +1,259 @@
+{
+  "id": "freecad",
+  "startedAt": "2026-10-12T05:05:29.026Z",
+  "status": "failed",
+  "hostCommit": "56c13604ca9956a57aa3585c4f920bb7e3409b21",
+  "ownerPin": "https://codeload.github.com/Zhiman-BJ/industrial-domain-packs/tar.gz/e7347c14bddc956ed0336570dea0af652ccec296",
+  "mode": "production-RuntimeAssetManager-fetchArchive-download-only",
+  "temporaryStore": "/var/folders/z0/8fqzv4jn6zb32j82pxz8mw2r0000gn/T/harness-first-download-uolHU3/freecad",
+  "initialCacheFiles": [],
+  "url": "https://harbor.pvg2.zhiman.tech/v2/industrial-runtime-assets/freecad/blobs/sha256:071343b4abb70492b75c973f41eaf1d2528f9b9c7ea018d22a4f46ae14d27ac0",
+  "expectedSize": 649760538,
+  "expectedSha256": "071343b4abb70492b75c973f41eaf1d2528f9b9c7ea018d22a4f46ae14d27ac0",
+  "downloaderOverrides": false,
+  "defaultStallMs": 60000,
+  "defaultTotalTimeoutMs": 1200000,
+  "requests": [
+    {
+      "startedAt": "2026-10-12T05:05:29.036Z",
+      "origin": "https://harbor.pvg2.zhiman.tech",
+      "path": "/v2/industrial-runtime-assets/freecad/blobs/sha256:071343b4abb70492b75c973f41eaf1d2528f9b9c7ea018d22a4f46ae14d27ac0",
+      "status": 401,
+      "contentLength": "152",
+      "completedHeadersAt": "2026-10-12T05:05:29.214Z"
+    },
+    {
+      "startedAt": "2026-10-12T05:05:29.214Z",
+      "origin": "https://harbor.pvg2.zhiman.tech",
+      "path": "/service/token",
+      "status": 200,
+      "contentLength": "956",
+      "completedHeadersAt": "2026-10-12T05:05:29.275Z"
+    },
+    {
+      "startedAt": "2026-10-12T05:05:29.277Z",
+      "origin": "https://harbor.pvg2.zhiman.tech",
+      "path": "/v2/industrial-runtime-assets/freecad/blobs/sha256:071343b4abb70492b75c973f41eaf1d2528f9b9c7ea018d22a4f46ae14d27ac0",
+      "status": 200,
+      "contentLength": "649760538",
+      "completedHeadersAt": "2026-10-12T05:05:29.516Z"
+    }
+  ],
+  "progress": [
+    {
+      "at": "2026-10-12T05:05:29.036Z",
+      "received": 0,
+      "partialBytes": 0
+    },
+    {
+      "at": "2026-10-12T05:05:59.037Z",
+      "received": 29376110,
+      "partialBytes": 29978222
+    },
+    {
+      "at": "2026-10-12T05:06:29.037Z",
+      "received": 75517550,
+      "partialBytes": 76197486
+    },
+    {
+      "at": "2026-10-12T05:06:59.038Z",
+      "received": 103829102,
+      "partialBytes": 104566382
+    },
+    {
+      "at": "2026-10-12T05:07:29.039Z",
+      "received": 121654894,
+      "partialBytes": 122621550
+    },
+    {
+      "at": "2026-10-12T05:07:59.040Z",
+      "received": 141577838,
+      "partialBytes": 142274158
+    },
+    {
+      "at": "2026-10-12T05:08:29.041Z",
+      "received": 166751854,
+      "partialBytes": 167177838
+    },
+    {
+      "at": "2026-10-12T05:08:59.069Z",
+      "received": 184577646,
+      "partialBytes": 185114222
+    },
+    {
+      "at": "2026-10-12T05:09:29.069Z",
+      "received": 203452014,
+      "partialBytes": 203665006
+    },
+    {
+      "at": "2026-10-12T05:09:59.069Z",
+      "received": 220229230,
+      "partialBytes": 220671598
+    },
+    {
+      "at": "2026-10-12T05:10:29.069Z",
+      "received": 237006446,
+      "partialBytes": 237837934
+    },
+    {
+      "at": "2026-10-12T05:10:59.069Z",
+      "received": 250646126,
+      "partialBytes": 251342446
+    },
+    {
+      "at": "2026-10-12T05:11:29.070Z",
+      "received": 259034734,
+      "partialBytes": 259178094
+    },
+    {
+      "at": "2026-10-12T05:11:59.071Z",
+      "received": 264281710,
+      "partialBytes": 264666734
+    },
+    {
+      "at": "2026-10-12T05:12:29.072Z",
+      "received": 271621742,
+      "partialBytes": 271986286
+    },
+    {
+      "at": "2026-10-12T05:12:59.072Z",
+      "received": 276864622,
+      "partialBytes": 276901486
+    },
+    {
+      "at": "2026-10-12T05:13:29.073Z",
+      "received": 283156078,
+      "partialBytes": 283340398
+    },
+    {
+      "at": "2026-10-12T05:13:59.074Z",
+      "received": 286301806,
+      "partialBytes": 286387822
+    },
+    {
+      "at": "2026-10-12T05:14:29.075Z",
+      "received": 289447534,
+      "partialBytes": 290451054
+    },
+    {
+      "at": "2026-10-12T05:14:59.076Z",
+      "received": 292593262,
+      "partialBytes": 293494382
+    },
+    {
+      "at": "2026-10-12T05:15:29.077Z",
+      "received": 295738990,
+      "partialBytes": 296337006
+    },
+    {
+      "at": "2026-10-12T05:15:59.079Z",
+      "received": 303079022,
+      "partialBytes": 303943278
+    },
+    {
+      "at": "2026-10-12T05:16:29.079Z",
+      "received": 312516206,
+      "partialBytes": 313269870
+    },
+    {
+      "at": "2026-10-12T05:16:59.081Z",
+      "received": 323010158,
+      "partialBytes": 323026542
+    },
+    {
+      "at": "2026-10-12T05:17:29.083Z",
+      "received": 333495918,
+      "partialBytes": 333626990
+    },
+    {
+      "at": "2026-10-12T05:17:59.086Z",
+      "received": 343981678,
+      "partialBytes": 344235630
+    },
+    {
+      "at": "2026-10-12T05:18:29.035Z",
+      "received": 351329902,
+      "partialBytes": 352333422
+    },
+    {
+      "at": "2026-10-12T05:18:59.037Z",
+      "received": 360767086,
+      "partialBytes": 360857198
+    },
+    {
+      "at": "2026-10-12T05:19:29.037Z",
+      "received": 366009966,
+      "partialBytes": 366853742
+    },
+    {
+      "at": "2026-10-12T05:19:59.038Z",
+      "received": 371252846,
+      "partialBytes": 372063854
+    },
+    {
+      "at": "2026-10-12T05:20:29.039Z",
+      "received": 376495726,
+      "partialBytes": 376835694
+    },
+    {
+      "at": "2026-10-12T05:20:59.039Z",
+      "received": 382787182,
+      "partialBytes": 383299182
+    },
+    {
+      "at": "2026-10-12T05:21:29.041Z",
+      "received": 388030062,
+      "partialBytes": 388812398
+    },
+    {
+      "at": "2026-10-12T05:21:59.041Z",
+      "received": 396418670,
+      "partialBytes": 396824174
+    },
+    {
+      "at": "2026-10-12T05:22:29.042Z",
+      "received": 407953006,
+      "partialBytes": 408931950
+    },
+    {
+      "at": "2026-10-12T05:22:59.042Z",
+      "received": 418438766,
+      "partialBytes": 419225198
+    },
+    {
+      "at": "2026-10-12T05:23:29.043Z",
+      "received": 429973102,
+      "partialBytes": 429973102
+    },
+    {
+      "at": "2026-10-12T05:23:59.042Z",
+      "received": 441507438,
+      "partialBytes": 442338926
+    },
+    {
+      "at": "2026-10-12T05:24:29.044Z",
+      "received": 456187502,
+      "partialBytes": 456380014
+    },
+    {
+      "at": "2026-10-12T05:24:59.044Z",
+      "received": 467721838,
+      "partialBytes": 468360814
+    }
+  ],
+  "retries": 0,
+  "userCancellationRequested": false,
+  "error": {
+    "name": "Error",
+    "message": "Download timed out. Please retry."
+  },
+  "finishedAt": "2026-10-12T05:25:29.130Z",
+  "elapsedSeconds": 1200.146925584,
+  "lastReportedReceived": 477159022,
+  "remainingCacheFiles": [],
+  "partialFilesCleaned": true,
+  "archiveRetained": false,
+  "appInstalled": false,
+  "runtimeReady": false,
+  "officialFallbackObserved": false
+}

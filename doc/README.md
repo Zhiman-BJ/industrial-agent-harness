@@ -40,7 +40,7 @@ Godot/PCB 的源工程文件另有[受限只读预览](engineering-file-viewers.
 | [Godot Viewer V1](godot-viewer.md) | Web Export 准备、Scene Tree 与 Viewer Bridge 的当前接入边界 |
 | [共享 Chip Pack MCP](domain-mcp-integration.md) | Desktop/CLI 注册、Scope 网关、项目绑定、审批与实测 |
 | [PCB／Godot 专业 Runtime](pcb-godot-runtime.md) | 公开首批任务、精确依赖、独立验证、安装路径与失败／恢复验收 |
-| [领域安装体验](install-experience.md) | 1.0.1-beta.1 五域展示、四域安装、官方依赖准备、取消恢复、旧版数据保留验收及正式发行边界 |
+| [领域安装体验](install-experience.md) | 五领域托管安装、Harbor 依赖、缓存与冷下载验收、取消恢复、历史升级记录及正式发行边界 |
 | [共享 PCB Bench MCP](pcb-mcp-integration.md) | 固定外部 PCB 工具、完整 Skill、资源覆盖、协议验证与原生执行前提 |
 | [Godot game MCP](godot-mcp-integration.md) | 任务范围披露、源场景检查、原生导入与限时运行的证据边界 |
 | [Godot 与 PCB Viewer 文件优先级](game-pcb-viewer-priorities.md) | 现有支持及值得增加的工程文件查看能力 |
@@ -56,6 +56,7 @@ Godot/PCB 的源工程文件另有[受限只读预览](engineering-file-viewers.
 | [Kimi 原生机制兼容性审计](kimi-native-compatibility-audit.md) | 项目发现、输入命令、配置、会话、环境和执行边界的实际差异及修复 |
 | [CI 回归与托管环境](ci-regression.md) | 四种原生 OS/架构环境、分层门禁、测试证据与覆盖缺口 |
 | [QA 测试用例与自动执行手册](qa-runbook.md) | T0–T6 分层用例目录、命令与通过判据；Agent 自动执行整个 QA 流程的唯一入口 |
+| [新用户安装专项 QA（2026-10-12）](qa-first-install-20261012.md) | 无缓存下载、真实 DMG 首启、前提缺失与重试的实测结果、截图和未修复问题 |
 | [Node SDK](sdk.md) | 项目绑定、聊天恢复、流事件、取消和 stdio RPC |
 | [配对评测基线](benchmark-baseline.md) | 原生 Kimi/Harness、冻结输入、独立验收与正式结果边界 |
 | [早期开发计划](development-plan.md) | 两份原始 Plan 的阶段性整理；里程碑顺序以新的实施路线图为准 |

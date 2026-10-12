@@ -1,0 +1,69 @@
+{
+  "id": "godot",
+  "attempt": "cancellation",
+  "startedAt": "2026-10-12T05:26:22.264Z",
+  "status": "cancelled",
+  "hostCommit": "56c13604ca9956a57aa3585c4f920bb7e3409b21",
+  "ownerPin": "https://codeload.github.com/Zhiman-BJ/industrial-domain-packs/tar.gz/e7347c14bddc956ed0336570dea0af652ccec296",
+  "mode": "production-RuntimeAssetManager-fetchArchive-download-only",
+  "temporaryStore": "/var/folders/z0/8fqzv4jn6zb32j82pxz8mw2r0000gn/T/harness-first-download-SKSUix/godot",
+  "initialCacheFiles": [],
+  "parallelDownloadsInThisInvocation": 1,
+  "externalTraffic": "Not measured by this process; consult coordinated Desktop evidence.",
+  "url": "https://harbor.pvg2.zhiman.tech/v2/industrial-runtime-assets/godot/blobs/sha256:c58a24e31d720be9d62f60cb5627c4e695fb72f21b0cfe1bc9ccaa9a3b3ba63e",
+  "expectedSize": 170622178,
+  "expectedSha256": "c58a24e31d720be9d62f60cb5627c4e695fb72f21b0cfe1bc9ccaa9a3b3ba63e",
+  "downloaderOverrides": false,
+  "defaultStallMs": 60000,
+  "defaultTotalTimeoutMs": 1200000,
+  "requests": [
+    {
+      "startedAt": "2026-10-12T05:26:22.292Z",
+      "origin": "https://harbor.pvg2.zhiman.tech",
+      "path": "/v2/industrial-runtime-assets/godot/blobs/sha256:c58a24e31d720be9d62f60cb5627c4e695fb72f21b0cfe1bc9ccaa9a3b3ba63e",
+      "status": 401,
+      "contentLength": "152",
+      "completedHeadersAt": "2026-10-12T05:26:22.513Z"
+    },
+    {
+      "startedAt": "2026-10-12T05:26:22.513Z",
+      "origin": "https://harbor.pvg2.zhiman.tech",
+      "path": "/service/token",
+      "status": 200,
+      "contentLength": "954",
+      "completedHeadersAt": "2026-10-12T05:26:22.645Z"
+    },
+    {
+      "startedAt": "2026-10-12T05:26:22.647Z",
+      "origin": "https://harbor.pvg2.zhiman.tech",
+      "path": "/v2/industrial-runtime-assets/godot/blobs/sha256:c58a24e31d720be9d62f60cb5627c4e695fb72f21b0cfe1bc9ccaa9a3b3ba63e",
+      "status": 200,
+      "contentLength": "170622178",
+      "completedHeadersAt": "2026-10-12T05:26:22.891Z"
+    }
+  ],
+  "progress": [
+    {
+      "at": "2026-10-12T05:26:22.290Z",
+      "received": 0,
+      "partialBytes": 0
+    }
+  ],
+  "retries": 0,
+  "userCancellationRequested": true,
+  "cancellationRequestedAt": "2026-10-12T05:26:24.360Z",
+  "error": {
+    "name": "Error",
+    "message": "QA user cancellation after first production download progress."
+  },
+  "finishedAt": "2026-10-12T05:26:24.364Z",
+  "elapsedSeconds": 2.074288917,
+  "lastReportedReceived": 1052270,
+  "remainingCacheFiles": [],
+  "partialFilesCleaned": true,
+  "archiveRetained": false,
+  "appInstalled": false,
+  "runtimeReady": false,
+  "officialFallbackObserved": false,
+  "temporaryStoreCleaned": true
+}
