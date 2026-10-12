@@ -66,7 +66,7 @@ async function run(window) {
     // The guest is a separate process: no preload, no host bridge, no Node.
     assert.equal(
       await evaluate(
-        `document.querySelector('.ia-browser webview').executeJavaScript('typeof window.viewerHost + \"|\" + typeof process')`,
+        `document.querySelector('.ia-browser webview').executeJavaScript("typeof window.viewerHost + '|' + typeof process")`,
       ),
       'undefined|undefined',
     );
@@ -80,7 +80,7 @@ async function run(window) {
     // Popups (target=_blank / window.open) never spawn native windows; the URL
     // is redirected into the same guest frame.
     await evaluate(
-      `document.querySelector('.ia-browser webview').executeJavaScript('window.open(\"https://example.com/popup-target\")')`,
+      `document.querySelector('.ia-browser webview').executeJavaScript("window.open('https://example.com/popup-target')")`,
     );
     await wait(
       `(() => {const w=document.querySelector('.ia-browser webview'); try{return w.getURL().includes('example.com/popup-target')}catch{return false}})()`,
