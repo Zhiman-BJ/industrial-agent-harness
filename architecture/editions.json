@@ -45,6 +45,17 @@
       "decisionStatus": "decided"
     },
     {
+      "id": "root.agent-instructions",
+      "edition": "public",
+      "kind": "meta",
+      "paths": ["AGENTS.md", "AGENT.md"],
+      "dependencyClass": "meta",
+      "publicStatementSource": "README.md#Development and contributions",
+      "requiredTests": ["tests/architecture/editions-manifest.test.cjs"],
+      "decisionStatus": "decided",
+      "decisionNote": "用户 2026-10-12 决定：根 agent 指令随公开面发布，与 #119 分层 AGENTS.md（公共包路径下天然公开）保持一致；PD-069 修订记录见 doc/product-decisions.md。CLAUDE.md/PRODUCT.md 及其余治理机械仍属内部。"
+    },
+    {
       "id": "architecture.editions-manifest",
       "edition": "public",
       "kind": "meta",
@@ -356,8 +367,6 @@
       "edition": "internal",
       "kind": "meta",
       "paths": [
-        "AGENTS.md",
-        "AGENT.md",
         "CLAUDE.md",
         "PRODUCT.md",
         "architecture/policy.json",
