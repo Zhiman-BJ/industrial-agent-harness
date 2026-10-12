@@ -235,9 +235,23 @@ async function run(window, { manager, fixture, environments, dialog }) {
     ),
     fixture.apps[1],
   );
+  await evaluate(
+    `document.querySelector('.ia-runtime-environments').scrollIntoView({block:'start'})`,
+  );
   await require('./selftest-capture.cjs').captureSettled(window, {
     output: path.join(fixture.root, '01-associated.png'),
   });
+  const readyColor = await evaluate(
+    `getComputedStyle(document.querySelector('[data-environment-status]')).color`,
+  );
+  assert.equal(
+    await evaluate(`document.querySelector('[data-environment-status]').classList.contains('ok')`),
+    true,
+  );
+  assert.equal(
+    await evaluate(`document.querySelector('[data-asset="fixture"]').dataset.dependencyStatus`),
+    'ready',
+  );
   await evaluate(
     `(() => { const select=document.querySelector('.ia-runtime-environments select');select.value='unsupported';select.dispatchEvent(new Event('change',{bubbles:true})); })()`,
   );
@@ -285,9 +299,84 @@ async function run(window, { manager, fixture, environments, dialog }) {
   await wait(
     `document.querySelector('[data-environment-status]')?.dataset.environmentStatus!=='ready'`,
   );
+  assert.equal(
+    await evaluate(
+      `document.querySelector('[data-environment-status]').classList.contains('warn')`,
+    ),
+    true,
+  );
+  assert.notEqual(
+    await evaluate(`getComputedStyle(document.querySelector('[data-environment-status]')).color`),
+    readyColor,
+  );
+  assert.equal(
+    await evaluate(`document.querySelector('[data-asset="fixture"]').dataset.dependencyStatus`),
+    'missing',
+  );
+  assert.equal(
+    await evaluate(
+      `document.querySelector('.ia-runtime-environments').innerText.includes('Needs attention: Fixture application')`,
+    ),
+    true,
+  );
+  assert.equal(
+    await evaluate(
+      `document.querySelector('.ia-runtime-environments select').selectedOptions[0].textContent.includes('Ready')`,
+    ),
+    false,
+    'Failed new choice must override stale saved readiness in the selector.',
+  );
+  assert.equal(
+    await evaluate(
+      `document.querySelector('.ia-runtime-environments').innerText.includes('Saved choice retained')`,
+    ),
+    true,
+  );
+  assert.equal(
+    (await environments.describe('environment-fixture')).binding.assets.fixture.appPath,
+    fixture.apps[1],
+    'Failed new selection retains the prior binding.',
+  );
+  await evaluate(
+    `document.querySelector('.ia-runtime-environments').scrollIntoView({block:'start'})`,
+  );
   await require('./selftest-capture.cjs').captureSettled(window, {
     output: path.join(fixture.root, '02-missing.png'),
   });
+  const originalDetect = environments.detect;
+  try {
+    environments.detect = async () => {
+      throw Error('Fixture detection unavailable');
+    };
+    await click('Detect environment');
+    await wait(
+      `document.querySelector('[data-environment-status]')?.dataset.environmentStatus==='failed'`,
+    );
+    assert.equal(
+      await evaluate(
+        `document.querySelector('[data-environment-status]').classList.contains('error')`,
+      ),
+      true,
+    );
+    assert.notEqual(
+      await evaluate(`getComputedStyle(document.querySelector('[data-environment-status]')).color`),
+      readyColor,
+    );
+    assert.equal(
+      await evaluate(
+        `document.querySelector('.ia-runtime-environments select').selectedOptions[0].textContent.includes('Check failed')`,
+      ),
+      true,
+    );
+    await evaluate(
+      `document.querySelector('.ia-runtime-environments').scrollIntoView({block:'start'})`,
+    );
+    await require('./selftest-capture.cjs').captureSettled(window, {
+      output: path.join(fixture.root, '02b-detection-failed.png'),
+    });
+  } finally {
+    environments.detect = originalDetect;
+  }
   // Project binding is saved through the same production IPC and shared API.
   const projectDir = path.join(fixture.root, 'project');
   fs.mkdirSync(projectDir, { recursive: true });
@@ -587,6 +676,9 @@ async function run(window, { manager, fixture, environments, dialog }) {
           'unsupported',
           'cancellation',
           'failed-association',
+          'ready-green-missing-amber-named-dependency',
+          'latest-failure-overrides-saved-readiness',
+          'detection-exception-red',
           'project-binding-isolation',
           'remote-unconfigured-no-upload',
           'remote-secure-save-no-secret-return',

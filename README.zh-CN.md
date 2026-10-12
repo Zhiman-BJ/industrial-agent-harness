@@ -94,7 +94,7 @@ HARNESS_REQUIRE_CORE_NATIVE=1 pnpm run test:industrial-core
 
 需要下载包时，请查看 [GitHub Releases](https://github.com/Zhiman-BJ/industrial-agent-harness/releases)，并按对应版本说明安装。[无界面安装](apps/cli/README.md#github-release-安装)和[领域 CLI 分包](doc/domain-cli-downloads.md)提供校验与外部依赖说明。历史归档不会自动获得当前源码的新功能。
 
-当前源码消费 **Domain Packs 0.7.0**，owner 固定为 `4cc46c3f2e5d000e000e60e1ca0697d71484edd0`。安装 Pack 只安装可信能力、Skills 与适配器；原生软件下载、容器准备和远程配置分开操作。在能力中心或项目详情中选择已验证的本机、容器或远程 Profile，可关联兼容的现有软件，或明确准备该 Profile 的托管依赖。本机 FreeCAD、Godot 不要求 Docker；Chip、PCB 设计与 DXF 容器路径仍需 Docker。CUDA 沿用配对认证 MCP 服务和本地 canonical Runtime，与项目协调器远程运行协议分开。Go 平台组件执行固定环境检测，本轮未将所有领域 MCP 重写为 Go。详见[分发 v2](doc/runtime-distribution-v2.md)、[安装体验](doc/install-experience.md)和[本轮验收证据](doc/qa-runtime-distribution-v2-20261012.md)。模型配置、环境就绪与工程验收是不同状态。本次源码改动不代表新的签名公众安装包、Core OTA、新增 Mac CI runner 或更广的平台资格。
+当前源码消费 **Domain Packs 0.7.0**，owner 固定为 `2036b599318267b7a28775ff614915da21ad6fcf`。安装 Pack 只安装可信能力、Skills 与适配器；原生软件下载、容器准备和远程配置分开操作。在能力中心或项目详情中选择已验证的本机、容器或远程 Profile，可关联兼容的现有软件，或明确准备该 Profile 的托管依赖。本机 FreeCAD、Godot 不要求 Docker；Chip、PCB 设计与 DXF 容器路径仍需 Docker。产品提供 Chip、PCB、Godot、CAD 四个领域；新目录和历史已装条目均撤下 CUDA，独立实现保留。领域卡片有清晰边框、一行用途与折叠依赖说明；绿色就绪、黄色缺失、红色检查失败、中性色未检查，并明确依赖名称。最近检查失败覆盖旧 Ready 显示。Go 平台组件执行固定环境检测，本轮未将所有领域 MCP 重写为 Go。详见[分发 v2](doc/runtime-distribution-v2.md)、[安装体验](doc/install-experience.md)和[本轮验收证据](doc/qa-runtime-distribution-v2-20261012.md)。模型配置、环境就绪与工程验收是不同状态。本次源码改动不代表新的签名公众安装包、Core OTA、新增 Mac CI runner 或更广的平台资格。
 
 **历史本地候选包：** 1.0.1-beta.1 Apple Silicon 桌面候选包列出全部五个领域：Chip、PCB、Godot、CAD 四个 Pack 可直接选择，未配置在线目录也能安装；CUDA 保持可见，明确显示远程服务前提和当前暂无可安装桌面包的状态。选择 PCB、Godot 或 CAD 后，应用自动在用户 Pack 目录准备固定官方 KiCad 10.0.6、Godot 4.7.2 或 FreeCAD 1.1.4；这三项托管工具无需用户运行命令或配置环境变量。Chip 仍需外部 Python、编译器及 EDA/PDK 环境。Core 内置 Kimi Code 2.1.1，模型 API 配置仍需单独完成。安装界面展示大小预估、进度、取消与恢复，完成后分别显示各领域的实际就绪状态。详见[安装体验与发行边界](doc/install-experience.md)及[CAD 安装验收](doc/macos-cad-distribution.md)。本地候选包尚不代表正式签名公众发行或真实 Core OTA 已通过验收。
 
@@ -106,7 +106,6 @@ HARNESS_REQUIRE_CORE_NATIVE=1 pnpm run test:industrial-core
 | [PCB](doc/pcb-godot-runtime.md)                                                   | 复用 PCBbench 设计工具和 Skill，支持用户工程的原理图／PCB 创建、修复、元件、检查与导出；普通项目无需 benchmark seed 或评分 | macOS ARM64；受限本机板图操作使用兼容 KiCad 10.0.6，完整设计路径使用固定 Docker gateway。实际 ERC／DRC 与适用分析分别记录，不承诺完整电气、合规或制造签核。                                  |
 | [CAD · FreeCAD / DXF](doc/freecad-domain-pack.md)                                 | FreeCAD 参数化创建／修改、FCStd/STEP/STL 导出及几何回读；受限 DXF 创建／检查／验证                                         | macOS ARM64；本机 FreeCAD 1.1.4 与固定 ezdxf Docker 运行时分为两个 Profile。AutoCAD 可选；DXF 仅涵盖声明的二维几何，不承诺通用 DWG/PDF 转换、强度或制造验收。                                |
 | [Godot](doc/pcb-godot-runtime.md)                                                 | 类型化场景变换／BoxMesh 修改，原生导入／回读／限帧验证；源码与 Web Export Viewer                                           | macOS ARM64；关联兼容 Godot 4.7.2，或明确准备托管下载。验收限于显式结构属性，不含任意游戏 QA；Web Export 保留独立依赖。                                                                      |
-| [CUDA](doc/cuda-domain-pack.md)                                                   | 可安装的 macOS 远程客户端，面向用户自有 kernel 工程，保护参考实现／测量配置绑定并记录真实编译与 evaluator 证据             | 管理员提供配对且已认证的 Compiler/Evaluator 服务，已在 RTX 4090 实测。固定 worker 镜像保留在私有 Harbor，凭据仅归管理员；客户端无需本机 CUDA 工具链／GPU 或 registry 凭据，其他 GPU 未验收。 |
 
 共享安装器校验原生归档摘要与容器 manifest／config／platform 身份。Pack 声明设计源与派生证据边界，共享执行后端负责持久工具会话、取消与清理。平台资格按上表分别成立，安装源码 Pack 本身不建立原生能力资格。
 
@@ -118,7 +117,7 @@ HARNESS_REQUIRE_CORE_NATIVE=1 pnpm run test:industrial-core
 
 读取聊天历史不要求执行配置完成，远程项目也可直接新建／读取聊天。已有成果从记录库只读查询，不加载 Pack；单次读取复用文件校验，下次读取及打开文件重新检查内容。
 
-Owner 已整理[全部五领域、六个 Pack 的声明草案与扩展计划](https://github.com/Zhiman-BJ/industrial-domain-packs/blob/cf72a46b6b4ba927b091ded71b2d52d227db0351/docs/result-presentation-plan.md)。当前接入任务成果的领域生产者为 FreeCAD；其他领域的成果接入仍属待实施项。当前消费版本保留 main 已接入的 CUDA 支持。
+Owner 已整理[全部五领域、六个 Pack 的声明草案与扩展计划](https://github.com/Zhiman-BJ/industrial-domain-packs/blob/cf72a46b6b4ba927b091ded71b2d52d227db0351/docs/result-presentation-plan.md)。当前接入任务成果的领域生产者为 FreeCAD；其他领域的成果接入仍属待实施项。当前产品目录已撤下 CUDA；历史独立实现保留。
 
 ## 已接入的 Viewer
 
@@ -189,8 +188,8 @@ pnpm run format:check
 
 ### 内置远程运行（内部体验）
 
-项目可选择本机或知满远程，首次上传展示目的地和文件清单，聊天内显示任务状态。Desktop/CLI 共用 Remote Runtime，已准入领域工具在现有有限 CPU 沙箱池执行。公网地址与登录默认配置留空；已验证 macOS Apple Silicon 客户端连接 H200 Linux 进行真实 RTL 检查，公网接入及 CPU 池其他领域仍待验收；CUDA 使用上述独立配置的配对 GPU 服务。见[内置远程运行](doc/remote-execution.md)。
+项目可选择本机或知满远程，首次上传展示目的地和文件清单，聊天内显示任务状态。Desktop/CLI 共用 Remote Runtime，已准入领域工具在现有有限 CPU 沙箱池执行。公网地址与登录默认配置留空；已验证 macOS Apple Silicon 客户端连接 H200 Linux 进行真实 RTL 检查，公网接入及 CPU 池其他领域仍待验收；当前产品目录已撤下 CUDA。见[内置远程运行](doc/remote-execution.md)。
 
 CLI 和 Desktop 现共用 Harness 任务服务；领域声明、Skill 和实现来自一个固定版本的 Domain Packs。见[消费迁移与验收](doc/shared-task-and-pack-consumption.md)。
 
-当前源码以不可变提交固定 Domain Packs 0.6.0，由通用 Pack Manager 准备声明中的 Harbor 产物。macOS ARM64 验收涵盖声明的 CAD、PCB、Godot profile 与 CUDA 远程客户端；托管 Chip 另已通过 Linux x86-64 安装和原生检查。具体证据与边界见[安装体验](doc/install-experience.md)及各领域验收记录。历史预览归档保留其原有依赖与范围。
+此前托管版本以不可变提交固定 Domain Packs 0.6.0，由通用 Pack Manager 准备声明中的 Harbor 产物。以下为该版本历史证据。macOS ARM64 验收涵盖声明的 CAD、PCB、Godot profile 与 CUDA 远程客户端；托管 Chip 另已通过 Linux x86-64 安装和原生检查。具体证据与边界见[安装体验](doc/install-experience.md)及各领域验收记录。历史预览归档保留其原有依赖与范围。

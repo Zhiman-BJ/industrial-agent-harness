@@ -11,6 +11,7 @@ import type {
 import {
   cancelInstallation,
   CatalogEmpty,
+  DomainRequirements,
   CatalogNotice,
   InstallationOutcome,
   InstallationProgress,
@@ -192,11 +193,7 @@ export function PacksSection({
                       </div>
                       {item.summary && <p className="ia-pack-summary">{t(item.summary)}</p>}
                       <InstallationSize pack={item} />
-                      {item.prerequisites?.length ? (
-                        <small className="ia-pack-meta">
-                          {t('Needs:')} {item.prerequisites.map(text => t(text)).join('; ')}
-                        </small>
-                      ) : null}
+                      <DomainRequirements prerequisites={item.prerequisites} />
                     </div>
                     <button
                       className="ia-pack-action"

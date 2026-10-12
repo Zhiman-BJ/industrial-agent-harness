@@ -3810,6 +3810,9 @@ body,
   overflow-wrap: anywhere;
 }
 .ia-pack-badge {
+  color: var(--ia-muted);
+}
+.ia-pack-badge.ok {
   color: var(--ia-success);
 }
 .ia-pack-badge.warn {
@@ -4196,7 +4199,8 @@ body {
   margin-top: 1px;
   flex: none;
 }
-.ia-domain-install-row > span:last-child {
+.ia-domain-install-row > span:last-child,
+.ia-domain-install-body {
   display: grid;
   gap: 4px;
   flex: 1;
@@ -4682,4 +4686,64 @@ body {
 
 .ia-runtime-asset small {
   overflow-wrap: anywhere;
+}
+
+/* Keep domain boundaries readable while retaining flat capability surfaces. */
+.ia-packs-section .ia-pack-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+}
+.ia-packs-section .ia-pack-card {
+  padding: 16px;
+  border: 1px solid var(--ia-border);
+  border-radius: 8px;
+  background: var(--ia-panel);
+}
+.ia-domain-install-row {
+  border-bottom: 1px solid var(--ia-control-border);
+}
+.ia-domain-requirements {
+  font-size: 11px;
+  color: var(--ia-muted);
+  min-width: 0;
+}
+.ia-domain-requirements summary {
+  cursor: pointer;
+  width: fit-content;
+  padding: 5px 0;
+}
+.ia-domain-requirements ul {
+  margin: 4px 0 8px;
+  padding-left: 18px;
+  overflow-wrap: anywhere;
+}
+.ia-runtime-status.neutral {
+  color: var(--ia-muted);
+}
+.ia-runtime-status.ok {
+  color: var(--ia-success);
+}
+.ia-runtime-status.warn {
+  color: var(--ia-warning);
+}
+.ia-runtime-status.error {
+  color: var(--ia-danger);
+}
+.ia-runtime-environments select,
+.ia-runtime-environments input {
+  width: 100%;
+  box-sizing: border-box;
+}
+.ia-runtime-environments p {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 760px) {
+  .ia-packs-section .ia-pack-card {
+    padding: 12px;
+    flex-wrap: wrap;
+  }
+  .ia-pack-title {
+    flex-wrap: wrap;
+  }
 }

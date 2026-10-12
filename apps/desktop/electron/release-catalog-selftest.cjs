@@ -29,15 +29,16 @@ async function run(window, { manager, directory }) {
     );
   };
   await require('./selftest-language.cjs').setLanguage(window, 'en');
-  const domains = ['chip', 'pcb', 'godot', 'cad', 'cuda'];
+  const domains = ['chip', 'pcb', 'godot', 'cad'];
   const available = await evaluate('window.viewerHost.domainAvailable()');
+  assert.deepEqual(available.map(item => item.domain).sort(), [...domains].sort());
   for (const domain of domains)
     assert.ok(
       available.some(item => item.domain === domain),
       `Actual release catalog must distribute ${domain}.`,
     );
   await wait(
-    `document.querySelectorAll('.ia-domain-install-row:not([data-unavailable]').length>=5`,
+    `document.querySelectorAll('.ia-domain-install-row:not([data-unavailable]').length>=4`,
   );
   for (const domain of domains) {
     assert.equal(
@@ -57,7 +58,26 @@ async function run(window, { manager, directory }) {
     require('./selftest-capture.cjs').captureSettled(window, {
       output: path.join(root, name + '.png'),
     });
-  await screenshot('01-actual-five-domain-catalog');
+  assert.equal(
+    await evaluate(`document.querySelectorAll('.ia-domain-requirements[open]').length`),
+    0,
+    'Execution requirements are collapsed initially.',
+  );
+  assert.equal(await evaluate(`Boolean(document.querySelector('[data-domain="cuda"]'))`), false);
+  const rowBorder = await evaluate(
+    `getComputedStyle(document.querySelector('.ia-domain-install-row')).borderBottomWidth`,
+  );
+  assert.notEqual(rowBorder, '0px', 'Domain rows have a visible divider.');
+  await require('./selftest-language.cjs').setLanguage(window, 'zh-CN');
+  assert.equal(
+    await evaluate(
+      `document.querySelector('.ia-domain-install-row[data-domain="chip"]').innerText.includes('设计并验证 RTL 与 EDA 项目')`,
+    ),
+    true,
+  );
+  await screenshot('00-four-domain-catalog-zh');
+  await require('./selftest-language.cjs').setLanguage(window, 'en');
+  await screenshot('01-actual-four-domain-catalog');
   for (const domain of domains)
     await evaluate(
       `document.querySelector('.ia-domain-install-row[data-domain="${domain}"] input').click()`,
@@ -66,7 +86,7 @@ async function run(window, { manager, directory }) {
     `(window.__releaseEnvironmentEvents=[],void window.viewerHost.onEnvironmentProgress(value=>window.__releaseEnvironmentEvents.push(value)))`,
   );
   await wait(`!document.querySelector('.ia-domains-primary').disabled`);
-  await screenshot('02-five-domain-pack-selection');
+  await screenshot('02-four-domain-pack-selection');
   await evaluate(`document.querySelector('.ia-domains-primary').click()`);
   await wait(`Boolean(document.querySelector('.ia-domain-setup [data-action="done"]'))`);
   const installed = manager.list();
@@ -83,7 +103,7 @@ async function run(window, { manager, directory }) {
     0,
     'Source Pack installation must not prepare software implicitly.',
   );
-  await screenshot('03-five-source-packs-installed');
+  await screenshot('03-four-source-packs-installed');
   await evaluate(`document.querySelector('.ia-domain-setup [data-action="done"]').click()`);
   await wait(`!document.querySelector('.ia-domains-modal')`);
   await evaluate(`document.querySelector('.ia-settings-button').click()`);
@@ -93,8 +113,10 @@ async function run(window, { manager, directory }) {
   await evaluate(
     `Array.from(document.querySelectorAll('.ia-settings-row')).find(row=>row.innerText.includes('Domains')).querySelector('button').click()`,
   );
-  await wait(`document.querySelectorAll('.ia-pack-card .ia-runtime-environments').length>=5`);
-  await screenshot('04-five-domain-capability-center');
+  await wait(`document.querySelectorAll('.ia-pack-card .ia-runtime-environments').length>=4`);
+  await screenshot('04-four-domain-capability-center');
+  await require('./selftest-language.cjs').setLanguage(window, 'zh-CN');
+  await screenshot('05-capability-center-zh');
   const environmentViews = {};
   for (const domain of domains)
     environmentViews[domain] = await evaluate(
@@ -133,6 +155,6 @@ async function run(window, { manager, directory }) {
       2,
     ),
   );
-  process.stdout.write('Actual five-domain catalog renderer selftest passed.\n');
+  process.stdout.write('Actual four-domain catalog renderer selftest passed.\n');
 }
 module.exports = { run };

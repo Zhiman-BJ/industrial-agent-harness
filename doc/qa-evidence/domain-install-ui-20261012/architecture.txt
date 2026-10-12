@@ -1,0 +1,63 @@
+$ node scripts/check-architecture-contract.cjs && node --test tests/architecture/*.test.cjs
+{
+  "revision": "IH-ARCH-001",
+  "role": "harness",
+  "ok": true,
+  "failures": [],
+  "frozenFiles": 0
+}
+✔ core, contracts and runtime cannot depend on Kimi or Electron (4.375792ms)
+✔ core packages cannot grow concrete domain IDs (2.2285ms)
+✔ Broker cannot import concrete runtimes, domains or viewers (0.424083ms)
+✔ known agent domain mapping is frozen until ToolDescriptor replaces it (0.681708ms)
+✔ Desktop and CLI cannot directly spawn industrial executables (8.7455ms)
+✔ Viewer dispatch uses a registry and static Capability IDs cannot expand (2.685584ms)
+✔ prototype exceptions are explicit and core milestone cannot be claimed early (0.293583ms)
+✔ mutating capability tools must declare verification (66.458042ms)
+✔ a stale scoped Agent tool call is rejected at its handler (108.021083ms)
+✔ unscoped direct Domain MCP servers cannot be added before a Gateway (7.508541ms)
+✔ the computer-use plugin tool surface is frozen (1.008458ms)
+✔ the computer-use binary is only referenced by the bridge package source (8.005333ms)
+✔ both adapters consume TaskService and have no remaining lifecycle exceptions (1.054708ms)
+✔ fork and same-repository PRs fetch only the canonical PR ref and verify exact SHA (359.038625ms)
+✔ fetch failure, stale head, malformed identity and existing destination fail closed (63.813ms)
+✔ raw Git paths, symlinks, gitlinks, duplicates and resource limits are rejected (0.322292ms)
+✔ failed materialization removes partial data and never overwrites a trusted sibling (137.376958ms)
+✔ actual Git symlink and submodule entries are rejected without materialization (206.505709ms)
+✔ Git subprocesses ignore inherited config and object-directory overrides (93.332875ms)
+✔ candidate scripts, checker, policy, attributes and Git hooks cannot authorize or execute a violation (189.41525ms)
+✔ workflow separates read-only candidate inspection from status publishing and uses only trusted code (0.37425ms)
+✔ a scoped fetch token rides only as a GitHub-URL header, never raw (0.149625ms)
+✔ both application adapters reject cross-imports and industrial process bypasses (7.705084ms)
+✔ a new domain ID or agent dependency cannot enter generic core (3.33375ms)
+✔ manifest-only adapter and peer dependency violations are rejected before import (3.785666ms)
+✔ satellites cannot publish a competing canonical package (1.769292ms)
+✔ legacy orchestration may shrink but cannot grow or move into another adapter (3.448833ms)
+✔ frozen domain implementations cannot be edited, extended or rebaselined (3.694083ms)
+✔ a feature cannot widen its own exceptions or replace the trusted checker (1.232583ms)
+✔ domain source owns tools but cannot grow an application or canonical core (1.7655ms)
+✔ remote consumers require an exact Pack commit and matching locked integrity (0.979375ms)
+✔ remote domain verification and edits to canonical vendor snapshots are rejected (2.333208ms)
+✔ source and policy paths cannot escape through symlinks or traversal (1.531166ms)
+✔ real repository: every module and resource is classified and the dev gate passes (67.307792ms)
+✔ real repository: the release gate blocks on undecided external name, license and pending isolation (39.156833ms)
+✔ a new unclassified repository path fails validation (1.908375ms)
+✔ longest declared path wins, so an internal file overrides its public package prefix (0.065583ms)
+✔ relative and workspace-package imports resolve to repository paths (0.147375ms)
+✔ planned-internal reference budget may shrink but never grow (2.920375ms)
+✔ enforced-internal entries reject any public import (1.792958ms)
+✔ a configured and fully isolated manifest passes the release gate (1.567875ms)
+✔ schema validation rejects structural mistakes (0.157958ms)
+✔ public entries must cite an existing public statement with its anchor (1.525667ms)
+✔ required tests must exist for every entry that declares them (1.439834ms)
+✔ the superseding decision PD-070 is recorded and names the clause it replaces (0.347209ms)
+✔ AGENTS.md carries the qualified replay rule instead of the absolute ban (0.132958ms)
+✔ the governance hash ledger matches the revised AGENTS.md bytes (0.365375ms)
+ℹ tests 47
+ℹ suites 0
+ℹ pass 47
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1116.922875

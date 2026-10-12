@@ -1,13 +1,12 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { capabilities } = require('./index.cjs');
-const { listDomains } = require('./domains.cjs');
+const { listDomains, isDomainOffered } = require('./domains.cjs');
 
 test('domain options include registered Viewer-only domains', () => {
   assert.deepEqual(listDomains(capabilities), [
     { id: 'cad', label: 'CAD', emoji: '📐' },
     { id: 'chip', label: 'Chip', emoji: '💠' },
-    { id: 'cuda', label: 'CUDA', emoji: '⚡' },
     { id: 'godot', label: 'Godot', emoji: '🎮' },
     { id: 'pcb', label: 'PCB', emoji: '🔌' },
   ]);
@@ -17,4 +16,11 @@ test('domain options include registered Viewer-only domains', () => {
     ),
     { id: 'mechanical_cad', label: 'Mechanical Cad', emoji: '⚙️' },
   );
+});
+
+test('withdrawal hides current choices while legacy and independent domains stay readable', () => {
+  assert.equal(isDomainOffered('cuda'), false);
+  assert.equal(isDomainOffered('third-party-domain'), true);
+  assert.equal(isDomainOffered('chip'), true);
+  assert.ok(listDomains([{ domain: 'cuda' }]).some(item => item.id === 'cuda'));
 });

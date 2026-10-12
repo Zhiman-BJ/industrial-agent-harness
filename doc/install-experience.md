@@ -3,7 +3,7 @@
 ## Current distribution v2 source (2026-10-12)
 
 Current source consumes Domain Packs 0.7.0 at
-`4cc46c3f2e5d000e000e60e1ca0697d71484edd0`. [PD-072](product-decisions.md#pd-072pack-与软件分离及能力-profile-选择)
+`2036b599318267b7a28775ff614915da21ad6fcf`. [PD-072](product-decisions.md#pd-072pack-与软件分离及能力-profile-选择)
 replaces mandatory dependency preparation: installing a Pack installs trusted
 capabilities, Skills and adapters only. Software preparation and selecting an
 execution profile are explicit, separate actions.
@@ -13,9 +13,13 @@ installation page, or explicitly prepare the selected profile's managed download
 Godot and native FreeCAD need no Docker; Chip, PCB design and DXF container profiles
 still need a running Docker daemon. PCB's bounded native profile and broader design
 container expose different tool subsets. Unqualified profiles remain unavailable.
-CUDA uses existing paired authenticated MCP settings and the local canonical Runtime;
-coordinator Project execution settings are a different remote protocol. Configuration
-presence does not establish remote readiness or engineer acceptance.
+The current product offers Chip, PCB, Godot and CAD. CUDA is withdrawn from
+fresh and legacy installed product entries through owner withdrawal metadata;
+third-party domains are unaffected. Cards use visible borders, a one-line purpose
+and collapsed requirements. Status names missing dependencies and uses green
+ready, yellow missing, red check failure and neutral unchecked. The latest failed
+check overrides saved Ready in the display without deleting the saved binding.
+Pack installation and native Godot/FreeCAD/bounded KiCad checks need no Docker.
 
 CLI and Desktop share profile bindings, detection, cancellation and environment
 identity checks. User applications are never deleted when a binding is cleared.
@@ -26,7 +30,9 @@ and container identities remain pinned; explicit managed preparation retains the
 existing transfer, verification, cache and failure cleanup mechanisms.
 
 Real existing-app Godot association and canonical 12-frame structural verification
-passed. GUI IPC fixture and five-domain catalog results are being consolidated;
+passed for the recorded earlier v2 source. Its GUI IPC and five-domain catalog
+results remain historical evidence; current four-domain/card/status regression
+requires its own evidence;
 see [v2 acceptance](qa-runtime-distribution-v2-20261012.md) and [implemented contract](runtime-distribution-v2.md).
 Older reports below retain their tested version and evidence. No new signed public
 installer, cold-download qualification, Core OTA or Mac CI runner is claimed.
@@ -233,3 +239,5 @@ Windows retains its existing build/first-run scope. These changes do not qualify
 The shared installer accepts immutable prebuilt OCI runtime declarations alongside native applications. Harbor-hosted archives use anonymous registry Bearer downloads and retain exact size/hash checks. Container assets use `docker pull --platform` against a manifest digest, then validate the config digest and platform before activation. Cache/readiness checks support both classic Docker and the containerd image store. No local image build or manual package synchronization is required by this path. Docker Desktop remains a detected host prerequisite on the exercised Apple Silicon platform; a missing or stopped daemon produces actionable preparation failure. Pack readiness and engineering verification remain separate.
 
 Persistent Pack tool containers are owned by the execution backend. The common scanner respects Pack-declared derived evidence roots, so generating read-only receipts does not silently turn an accepted source state stale. Actual design inputs and dependencies remain hashed. Returned images are forwarded to image-capable model sessions as observations, without changing verification or claiming visual inspection.
+
+Current four-domain installation UI and withdrawal follow-up: [2026-10-12 UI QA](qa-domain-install-ui-20261012.md).

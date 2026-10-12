@@ -123,6 +123,21 @@ export function CatalogEmpty({
   );
 }
 
+export function DomainRequirements({ prerequisites }: { prerequisites?: string[] }) {
+  const { t } = useDisplayText();
+  if (!prerequisites?.length) return null;
+  return (
+    <details className="ia-domain-requirements">
+      <summary>{t('Execution requirements')}</summary>
+      <ul>
+        {prerequisites.map(text => (
+          <li key={text}>{t(text)}</li>
+        ))}
+      </ul>
+    </details>
+  );
+}
+
 export function RuntimeReadiness({ item }: { item: InstalledDomainPack }) {
   const { t } = useDisplayText();
   const state = item.runtimeState || 'installed';
@@ -139,11 +154,7 @@ export function RuntimeReadiness({ item }: { item: InstalledDomainPack }) {
       >
         {t(label)}
       </small>
-      {item.prerequisites?.length ? (
-        <small className="ia-pack-meta">
-          {t('Needs:')} {item.prerequisites.map(text => t(text)).join('; ')}
-        </small>
-      ) : null}
+      <DomainRequirements prerequisites={item.prerequisites} />
     </>
   );
 }
@@ -170,18 +181,14 @@ export function UnavailableDomains({
     >
       {selection && <input type="checkbox" disabled aria-label={t(item.label)} />}
       <DomainIcon domain={item.domain} size={18} />
-      <span className={selection ? undefined : 'ia-pack-body'}>
+      <div className={selection ? 'ia-domain-install-body' : 'ia-pack-body'}>
         <span className={selection ? 'ia-domain-install-title' : 'ia-pack-title'}>
           <b>{t(item.label)}</b>
           <small>{t(reasons[item.reason])}</small>
         </span>
         {item.summary && <small className="ia-pack-meta">{t(item.summary)}</small>}
-        {item.prerequisites?.length ? (
-          <small className="ia-pack-meta">
-            {t('Needs:')} {item.prerequisites.map(text => t(text)).join('; ')}
-          </small>
-        ) : null}
-      </span>
+        <DomainRequirements prerequisites={item.prerequisites} />
+      </div>
     </div>
   ));
 }

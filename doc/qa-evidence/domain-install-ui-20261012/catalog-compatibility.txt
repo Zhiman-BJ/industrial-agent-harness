@@ -1,0 +1,14 @@
+✔ domain options include registered Viewer-only domains (6.951875ms)
+✔ withdrawal hides current choices while legacy and independent domains stay readable (0.122667ms)
+✔ default consumer offers four domains and no standalone CUDA resources (9.367042ms)
+✔ explicit standalone CUDA runtime remains unavailable without remote configuration (11.843417ms)
+✔ shared factory and Broker use both authenticated MCP identities from the pinned owner (90.00675ms)
+✔ signed installed CUDA runtime loads pinned dependencies outside node_modules and uses real HTTP MCP (156.441416ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 341.754667

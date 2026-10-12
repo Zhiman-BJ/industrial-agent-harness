@@ -26,25 +26,26 @@ is introduced.
 | PCB design container              | Explicitly prepared pinned design gateway and Docker; existing design-tool subset                                                                                       |
 | Chip managed container            | Qualified managed RTL/assertions/VCD and synthesis on macOS ARM64/Linux x64 with Docker; physical flows retain separate technology-input and qualification requirements |
 | Chip native detection declaration | Unqualified, with no executable tool IDs; installed software does not enable it                                                                                         |
-| CUDA paired remote MCP            | Existing authenticated Compiler/Evaluator services, identity and reference binding; local canonical Runtime performs the handshake and preserves evidence               |
 
-CUDA paired services are different from the generic coordinator Project execution
-protocol. The latter still owns file confirmation, uploads, grants and job recovery.
-A remote profile's `platforms` describes clients; `executionPlatforms` can separately
-describe service hosts. Configuration format checks establish only configured and
-eligible-to-handshake status, not verified remote readiness.
+The current product offers Chip, PCB, Godot and CAD. Owner metadata declares
+`withdrawnDomains: ["cuda"]`; fresh and legacy installed CUDA entries are suppressed
+without excluding third-party domains. Standalone CUDA sources and historical
+service contracts remain outside this product catalog.
+
+Cards have clear borders, a one-line purpose and collapsed requirements. Status
+names actual missing dependencies: green ready, yellow missing, red failed check,
+neutral unchecked. A latest failed check overrides saved Ready in the display;
+the saved association remains available for recovery. Docker is required only for
+Chip, PCB design and CAD DXF container execution, not Pack installation or native
+Godot, FreeCAD and bounded KiCad checks.
 
 ## Maintained declarations and generated artifacts
 
-Owner commit `4cc46c3f2e5d000e000e60e1ca0697d71484edd0` (Domain Packs 0.7.0)
+Owner commit `2036b599318267b7a28775ff614915da21ad6fcf` (Domain Packs 0.7.0)
 maintains `executionProfiles`: `id`, `label`, `kind`, client `platforms`, `qualified`,
 canonical `toolIds`, `assetIds` and optional `description`. Asset IDs bind existing
 `runtimeAssets`. Native assets add application-root `discoveryPaths` and official
 manual `installUrl`; existing executable/version/archive identities remain intact.
-The CUDA `connection` declaration uses `kind: runtime-managed`, named environment
-fields typed as `endpoint`, `secret`, `sha256`, and `verification: runtime-handshake`.
-No endpoint or credential value is published in that declaration.
-
 The existing manifests and content lock remain the authoritative source. Owner
 component packaging reads committed Git objects and emits source, Skill and bridge
 archives plus release indexes. Complete vendor applications and image layers are
@@ -95,9 +96,12 @@ real installed Godot version tests passed. The shared Host canonical Runtime als
 passed the existing-app Godot association and explicit 12-frame structural check.
 These are bounded native results, not general gameplay or all-domain qualification.
 
-GUI IPC tests, the actual five-domain bootstrap catalog and packaged app installation,
+The earlier v2 QA record covers GUI IPC tests, the then-current five-domain bootstrap catalog and packaged app installation,
 remote secure configuration/controlled authenticated HTTP execution, and Host regression
-gates passed. The QA record distinguishes fixture services from native software and
+gates. Those results are historical evidence for their recorded source, not the
+current four-domain catalog and card/status changes. The QA record distinguishes fixture services from native software and
 historical domain qualification. The follow-up [REA plan review](dependency-plan-review-20261012.md)
 describes automatic inspection, immutable plans and capability Doctor work not yet implemented. No new cold-download, signed/notarized DMG,
 public Gatekeeper, Core OTA or new CI runner result is claimed.
+
+Current four-domain installation UI and withdrawal follow-up: [2026-10-12 UI QA](qa-domain-install-ui-20261012.md).

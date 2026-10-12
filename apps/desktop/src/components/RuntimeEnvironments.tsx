@@ -110,6 +110,13 @@ const statusLabels: Record<string, string> = {
   cancelled: 'Cancelled',
 };
 
+function statusTone(status: string) {
+  if (status === 'ready') return 'ok';
+  if (['failed', 'invalid', 'incompatible'].includes(status)) return 'error';
+  if (['missing', 'stale', 'ambiguous'].includes(status)) return 'warn';
+  return 'neutral';
+}
+
 export function RuntimeEnvironments({
   domain,
   projectId,
@@ -175,6 +182,25 @@ export function RuntimeEnvironments({
     [domain, projectId],
   );
   const profile = view?.profiles.find(item => item.id === selected);
+  // A binding records a choice; a newer check is the current readiness evidence.
+  const latestCheck = detected || view?.lastCheck;
+  const activeCheck = latestCheck?.profileId === selected ? latestCheck : undefined;
+  const currentStatus = activeCheck?.status || profile?.status || 'unchecked';
+  const currentAssets =
+    profile?.assets.map(asset => {
+      if (!activeCheck) return asset;
+      const check = activeCheck.assets.find(item => item.id === asset.id);
+      return {
+        ...asset,
+        status: 'unchecked',
+        reasons: [],
+        candidates: [],
+        appPath: undefined,
+        source: undefined,
+        ...check,
+      };
+    }) || [];
+  const missingAssets = currentAssets.filter(asset => asset.status !== 'ready');
   const remote = profile?.kind === 'remote';
   const managedRemote = remote && profile.connection?.kind === 'runtime-managed';
   useEffect(() => {
@@ -196,10 +222,10 @@ export function RuntimeEnvironments({
     };
   }, [domain, projectId, revision, selected, managedRemote]);
   const connectionConfigured =
-    connection?.configured ?? detected?.configured ?? profile?.configured;
+    connection?.configured ?? activeCheck?.configured ?? profile?.configured;
   const connectionFields =
     connection?.connectionFields ||
-    detected?.connectionFields ||
+    activeCheck?.connectionFields ||
     profile?.connectionFields ||
     profile?.connection?.environment ||
     [];
@@ -258,8 +284,18 @@ export function RuntimeEnvironments({
         }
       }
     } catch (reason) {
-      if (current === generation.current && !String(reason).includes('cancelled'))
+      if (current === generation.current && !String(reason).includes('cancelled')) {
         setError(String(reason));
+        if (operation !== 'clear') {
+          setDetected({
+            profileId: selected,
+            status: 'failed',
+            reasons: [],
+            assets: [],
+            checkedAt: new Date().toISOString(),
+          });
+        }
+      }
     } finally {
       if (current === generation.current) setPending('');
     }
@@ -339,7 +375,6 @@ export function RuntimeEnvironments({
       aria-label={t('Execution environments')}
     >
       <h3>{t(projectId ? 'Project execution environment' : 'Execution environments')}</h3>
-      <p>{t('Pack installed. Software and execution readiness are checked separately.')}</p>
       {!view && !error && <p role="status">{t('Loading…')}</p>}
       {view?.legacy && <p>{t('This pack has no selectable execution profiles.')}</p>}
       {Boolean(view?.profiles.length) && (
@@ -368,7 +403,12 @@ export function RuntimeEnvironments({
                         ? 'Container on this computer'
                         : 'Remote',
                   )}{' '}
-                  · {t(statusLabels[item.status] || item.status)}
+                  ·{' '}
+                  {t(
+                    statusLabels[
+                      latestCheck?.profileId === item.id ? latestCheck.status : item.status
+                    ] || item.status,
+                  )}
                   {item.selected ? ` · ${t('Selected')}` : ''}
                 </option>
               ))}
@@ -376,22 +416,51 @@ export function RuntimeEnvironments({
           </label>
           {profile && (
             <div className="ia-runtime-profile" data-profile={profile.id}>
-              {profile.description && <p>{t(profile.description)}</p>}
-              <p role="status" data-environment-status={detected?.status || profile.status}>
+              <p
+                role="status"
+                className={`ia-runtime-status ${statusTone(currentStatus)}`}
+                data-environment-status={currentStatus}
+              >
                 {t(
-                  managedRemote && connectionConfigured
+                  managedRemote &&
+                    connectionConfigured &&
+                    !activeCheck?.reasons.length &&
+                    currentStatus !== 'failed'
                     ? 'Configured; verified when executing'
-                    : statusLabels[detected?.status || profile.status] ||
-                        detected?.status ||
-                        profile.status,
+                    : statusLabels[currentStatus] || currentStatus,
                 )}
               </p>
-              {(!remote || managedRemote) &&
-                (connection?.reasons || detected?.reasons || profile.reasons).map(reason => (
-                  <p key={`${reason.code}:${reason.message}`} className="ia-capability-note">
-                    {t(reason.message)}
+              {!remote && missingAssets.length > 0 && (
+                <p className={`ia-runtime-status ${statusTone(currentStatus)}`}>
+                  {t('Needs attention: {0}', {
+                    '0': missingAssets.map(asset => t(asset.label || asset.id)).join(', '),
+                  })}
+                </p>
+              )}
+              {view?.binding?.profileId === profile.id &&
+                activeCheck &&
+                activeCheck.status !== 'ready' &&
+                !activeCheck.executable && (
+                  <p className="ia-capability-note">
+                    {t('Saved choice retained. Latest check is not ready.')}
                   </p>
-                ))}
+                )}
+              {(!remote || managedRemote) &&
+                (activeCheck?.reasons || connection?.reasons || profile.reasons)
+                  .filter(
+                    reason =>
+                      remote ||
+                      !currentAssets.some(asset =>
+                        asset.reasons?.some(
+                          item => item.code === reason.code && item.message === reason.message,
+                        ),
+                      ),
+                  )
+                  .map(reason => (
+                    <p key={`${reason.code}:${reason.message}`} className="ia-capability-note">
+                      {t(reason.message)}
+                    </p>
+                  ))}
               {remote ? (
                 <>
                   {managedRemote ? (
@@ -542,11 +611,18 @@ export function RuntimeEnvironments({
               ) : (
                 <>
                   {profile.assets.map(asset => {
-                    const check = detected?.assets.find(item => item.id === asset.id) || asset;
+                    const check = currentAssets.find(item => item.id === asset.id) || asset;
                     return (
-                      <div className="ia-runtime-asset" key={asset.id} data-asset={asset.id}>
+                      <div
+                        className="ia-runtime-asset"
+                        key={asset.id}
+                        data-asset={asset.id}
+                        data-dependency-status={check.status}
+                      >
                         <b>{t(asset.label || asset.id)}</b>
-                        <span>{t(statusLabels[check.status] || check.status)}</span>
+                        <span className={`ia-runtime-status ${statusTone(check.status)}`}>
+                          {t(statusLabels[check.status] || check.status)}
+                        </span>
                         {(paths[asset.id] || check.appPath) && (
                           <code>{paths[asset.id] || check.appPath}</code>
                         )}
@@ -600,19 +676,25 @@ export function RuntimeEnvironments({
                       </div>
                     );
                   })}
-                  <p className="ia-capability-note">
-                    {t('Only the listed capabilities are enabled when this environment is ready.')}
-                  </p>
-                  <ul className="ia-runtime-tools">
-                    {profile.toolIds.map(tool => (
-                      <li key={tool}>
-                        <code>{tool}</code>
-                      </li>
-                    ))}
-                  </ul>
-                  {!profile.toolIds.length && (
-                    <p>{t('No supported execution capabilities in this profile.')}</p>
-                  )}
+                  <details className="ia-domain-requirements">
+                    <summary>{t('Environment details')}</summary>
+                    {profile.description && <p>{t(profile.description)}</p>}
+                    <p className="ia-capability-note">
+                      {t(
+                        'Only the listed capabilities are enabled when this environment is ready.',
+                      )}
+                    </p>
+                    <ul className="ia-runtime-tools">
+                      {profile.toolIds.map(tool => (
+                        <li key={tool}>
+                          <code>{tool}</code>
+                        </li>
+                      ))}
+                    </ul>
+                    {!profile.toolIds.length && (
+                      <p>{t('No supported execution capabilities in this profile.')}</p>
+                    )}
+                  </details>
                   <div className="ia-runtime-actions">
                     <button disabled={locked || unsupported} onClick={() => void perform('detect')}>
                       {t('Detect environment')}
@@ -637,9 +719,10 @@ export function RuntimeEnvironments({
                   </div>
                 </>
               )}
-              {profile.checkedAt && (
+              {(activeCheck?.checkedAt || profile.checkedAt) && (
                 <small>
-                  {t('Last checked:')} {new Date(profile.checkedAt).toLocaleString()}
+                  {t('Last checked:')}{' '}
+                  {new Date((activeCheck?.checkedAt || profile.checkedAt)!).toLocaleString()}
                 </small>
               )}
             </div>

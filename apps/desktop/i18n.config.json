@@ -3618,15 +3618,15 @@
     },
     "No compatible application was found.": {
       "en": "No compatible application was found.",
-      "zh-CN": "未发现兼容软件。"
+      "zh-CN": "未找到兼容的应用。"
     },
     "This execution profile is not qualified on this platform.": {
       "en": "This execution profile is not qualified on this platform.",
-      "zh-CN": "此执行方案尚未在当前平台完成支持验收。"
+      "zh-CN": "此执行方案尚未通过当前平台验证。"
     },
     "Configure remote execution using project RemoteSettings.": {
       "en": "Configure remote execution using project RemoteSettings.",
-      "zh-CN": "请在项目执行设置中配置远程连接。"
+      "zh-CN": "请在项目远程设置中配置执行环境。"
     },
     "This remote profile needs a compatible service connection. Its configuration entry is not available yet, so it cannot be selected for execution.": {
       "en": "This remote profile needs a compatible service connection. Its configuration entry is not available yet, so it cannot be selected for execution.",
@@ -3715,6 +3715,154 @@
     "Clear damaged saved connection": {
       "en": "Clear damaged saved connection",
       "zh-CN": "清除损坏的连接配置"
+    },
+    "Execution requirements": {
+      "en": "Execution requirements",
+      "zh-CN": "执行要求"
+    },
+    "Environment details": {
+      "en": "Environment details",
+      "zh-CN": "环境详情"
+    },
+    "Needs attention: {0}": {
+      "en": "Needs attention: {0}",
+      "zh-CN": "待处理：{0}"
+    },
+    "Saved choice retained. Latest check is not ready.": {
+      "en": "Saved choice retained. Latest check is not ready.",
+      "zh-CN": "已保留所选环境，最新检测未就绪。"
+    },
+    "Design and verify RTL and EDA projects.": {
+      "en": "Design and verify RTL and EDA projects.",
+      "zh-CN": "设计并验证 RTL 与 EDA 项目。"
+    },
+    "Design and verify KiCad schematics and circuit boards.": {
+      "en": "Design and verify KiCad schematics and circuit boards.",
+      "zh-CN": "设计并验证 KiCad 原理图和电路板。"
+    },
+    "Edit and verify Godot scenes.": {
+      "en": "Edit and verify Godot scenes.",
+      "zh-CN": "编辑并验证 Godot 场景。"
+    },
+    "Create and verify FreeCAD models and DXF drawings.": {
+      "en": "Create and verify FreeCAD models and DXF drawings.",
+      "zh-CN": "创建并验证 FreeCAD 模型和 DXF 图纸。"
+    },
+    "RTL and synthesis: managed container; Docker required.": {
+      "en": "RTL and synthesis: managed container; Docker required.",
+      "zh-CN": "RTL 与综合：使用托管容器，需安装 Docker。"
+    },
+    "Physical design: project-owned PDK/technology inputs and separate qualification.": {
+      "en": "Physical design: project-owned PDK/technology inputs and separate qualification.",
+      "zh-CN": "物理设计：需项目提供 PDK／工艺输入并单独验证。"
+    },
+    "Native checks: KiCad 10.0.6 on macOS Apple Silicon.": {
+      "en": "Native checks: KiCad 10.0.6 on macOS Apple Silicon.",
+      "zh-CN": "本机检查：macOS Apple Silicon 上的 KiCad 10.0.6。"
+    },
+    "Full PCB design: managed container; Docker required.": {
+      "en": "Full PCB design: managed container; Docker required.",
+      "zh-CN": "完整 PCB 设计：使用托管容器，需安装 Docker。"
+    },
+    "Native: Godot 4.7.2 on macOS Apple Silicon.": {
+      "en": "Native: Godot 4.7.2 on macOS Apple Silicon.",
+      "zh-CN": "本机执行：macOS Apple Silicon 上的 Godot 4.7.2。"
+    },
+    "Native models: FreeCAD 1.1.4 on macOS Apple Silicon.": {
+      "en": "Native models: FreeCAD 1.1.4 on macOS Apple Silicon.",
+      "zh-CN": "本机建模：macOS Apple Silicon 上的 FreeCAD 1.1.4。"
+    },
+    "DXF drawings: managed container; Docker required.": {
+      "en": "DXF drawings: managed container; Docker required.",
+      "zh-CN": "DXF 绘图：使用托管容器，需安装 Docker。"
+    },
+    "AutoCAD is optional for DWG and live desktop work.": {
+      "en": "AutoCAD is optional for DWG and live desktop work.",
+      "zh-CN": "DWG 与实时桌面操作可选用 AutoCAD。"
+    },
+    "This connection requires an explicitly supported Runtime handshake.": {
+      "en": "This connection requires an explicitly supported Runtime handshake.",
+      "zh-CN": "此连接需要受支持的运行时握手协议。"
+    },
+    "Secure connection settings cannot be read. Reset or replace this connection.": {
+      "en": "Secure connection settings cannot be read. Reset or replace this connection.",
+      "zh-CN": "无法读取安全连接设置，请重置或替换连接。"
+    },
+    "Invalid connection declaration.": {
+      "en": "Invalid connection declaration.",
+      "zh-CN": "连接声明无效。"
+    },
+    "The environment probe changed; check the application again.": {
+      "en": "The environment probe changed; check the application again.",
+      "zh-CN": "检测程序已变更，请重新检测应用。"
+    },
+    "The application declaration changed; check it again.": {
+      "en": "The application declaration changed; check it again.",
+      "zh-CN": "应用声明已变更，请重新检测。"
+    },
+    "The associated application changed; check it again.": {
+      "en": "The associated application changed; check it again.",
+      "zh-CN": "所选应用已变更，请重新检测。"
+    },
+    "Runtime dependency needs preparation.": {
+      "en": "Runtime dependency needs preparation.",
+      "zh-CN": "运行依赖尚未准备好。"
+    },
+    "Runtime needs preparation.": {
+      "en": "Runtime needs preparation.",
+      "zh-CN": "运行环境尚未准备好。"
+    },
+    "Multiple compatible applications were found. Choose an application.": {
+      "en": "Multiple compatible applications were found. Choose an application.",
+      "zh-CN": "找到多个兼容应用，请选择一个。"
+    },
+    "Remote services are prepared by their administrator. Associate existing trusted connection settings instead.": {
+      "en": "Remote services are prepared by their administrator. Associate existing trusted connection settings instead.",
+      "zh-CN": "远程服务由管理员准备，请关联已有的可信连接。"
+    },
+    "Chip design runtime": {
+      "en": "Chip design runtime",
+      "zh-CN": "芯片设计环境"
+    },
+    "Managed RTL and synthesis": {
+      "en": "Managed RTL and synthesis",
+      "zh-CN": "托管 RTL 与综合"
+    },
+    "Native EDA detection only": {
+      "en": "Native EDA detection only",
+      "zh-CN": "仅检测本机 EDA 软件"
+    },
+    "Qualified managed RTL/assertions/VCD and synthesis only; physical implementation requires project-owned technology inputs and separate qualification.": {
+      "en": "Qualified managed RTL/assertions/VCD and synthesis only; physical implementation requires project-owned technology inputs and separate qualification.",
+      "zh-CN": "支持已验证的托管 RTL、断言、VCD 与综合；物理实现需项目提供工艺输入并单独验证。"
+    },
+    "Native software detection is not a qualified execution profile.": {
+      "en": "Native software detection is not a qualified execution profile.",
+      "zh-CN": "本机软件检测尚未通过执行方案验证。"
+    },
+    "PCB design environment": {
+      "en": "PCB design environment",
+      "zh-CN": "PCB 设计环境"
+    },
+    "Bounded KiCad board operations": {
+      "en": "Bounded KiCad board operations",
+      "zh-CN": "KiCad 电路板操作（限定范围）"
+    },
+    "Godot structural scenes": {
+      "en": "Godot structural scenes",
+      "zh-CN": "Godot 结构化场景"
+    },
+    "DXF drawing runtime": {
+      "en": "DXF drawing runtime",
+      "zh-CN": "DXF 绘图环境"
+    },
+    "FreeCAD parametric solids": {
+      "en": "FreeCAD parametric solids",
+      "zh-CN": "FreeCAD 参数化实体"
+    },
+    "Bounded DXF drawings": {
+      "en": "Bounded DXF drawings",
+      "zh-CN": "DXF 绘图（限定范围）"
     }
   }
 }

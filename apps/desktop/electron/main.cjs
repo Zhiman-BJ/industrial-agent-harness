@@ -94,7 +94,7 @@ const {
   defaultChatDirectory,
   ExternalMcpRegistry,
 } = require('@industrial-agent-harness/harness-core');
-const { loadRegistry } = require('@industrial-agent-harness/domain-skills');
+const { loadRegistry, isDomainOffered } = require('@industrial-agent-harness/domain-skills');
 const {
   validatePromptImages,
 } = require('@industrial-agent-harness/agent-kimi/src/image-input.cjs');
@@ -215,7 +215,7 @@ function installedDomains() {
 }
 async function availablePacks(options = {}) {
   const catalog = packCatalog();
-  const packs = await catalog.available(options);
+  const packs = (await catalog.available(options)).filter(pack => isDomainOffered(pack.domain));
   catalogState = catalog.snapshot();
   catalogWarning = catalogState.state === 'unavailable' ? catalogState.message : '';
   return { manager: catalog.manager, packs, catalog };
@@ -361,6 +361,12 @@ const resourceSettings = new ResourceSettings(
 const externalRegistry = new ExternalMcpRegistry(path.dirname(resourceSettings.file));
 const remoteSettings = new RemoteSettings({ directory: path.dirname(resourceSettings.file) });
 const projectRuntimes = tasks.projects;
+const {
+  productResourceCatalog: filterProductResources,
+} = require('./product-resource-catalog.cjs');
+function productResourceCatalog(domain) {
+  return filterProductResources(resourceCatalog(domain));
+}
 function resourceCatalog(domain) {
   return baseResourceCatalog(domain, externalRegistry.records());
 }
@@ -715,7 +721,9 @@ function registerHandlers() {
   ipcMain.handle('agent:log-record', (event, request) =>
     diagnosticRequest('record', event, request),
   );
-  ipcMain.handle('broker:domains', () => installedDomains());
+  ipcMain.handle('broker:domains', () =>
+    installedDomains().filter(item => isDomainOffered(item.id)),
+  );
   ipcMain.handle('update:status', () => coreUpdater.snapshot());
   ipcMain.handle('update:check', () => coreUpdater.check());
   ipcMain.handle('update:install', () => coreUpdater.install());
@@ -735,13 +743,18 @@ function registerHandlers() {
         ? { ...installationJournal.snapshot(), source: 'external', cancellable: false }
         : null,
     installed: managedPacks
-      ? packManager.list().map(item => describeInstalled(packManager, item))
-      : installedDomains().map(item => ({
-          domain: item.id,
-          version: 'development',
-          label: item.label,
-          emoji: item.emoji,
-        })),
+      ? packManager
+          .list()
+          .filter(item => isDomainOffered(item.domain))
+          .map(item => describeInstalled(packManager, item))
+      : installedDomains()
+          .filter(item => isDomainOffered(item.id))
+          .map(item => ({
+            domain: item.id,
+            version: 'development',
+            label: item.label,
+            emoji: item.emoji,
+          })),
     errors: managedPacks ? packManager.scan().errors : [],
   }));
   ipcMain.handle('domains:available', async () => {
@@ -915,7 +928,7 @@ function registerHandlers() {
         });
     }
   });
-  ipcMain.handle('resource:catalog', () => resourceCatalog(activeProject()?.domain));
+  ipcMain.handle('resource:catalog', () => productResourceCatalog(activeProject()?.domain));
   ipcMain.handle('broker:resolve', async (event, request) => {
     chatRequest(event);
     if (changingResources) throw Error('Resource settings are being saved.');
@@ -1012,7 +1025,8 @@ function registerHandlers() {
   ipcMain.handle('project:bindings', () => projectSnapshot());
   ipcMain.handle('project:set-domain', async (_event, request) => {
     const { id, domain } = request || {};
-    if (!installedDomains().some(item => item.id === domain)) throw Error('Unknown domain.');
+    if (!isDomainOffered(domain) || !installedDomains().some(item => item.id === domain))
+      throw Error('Unknown domain.');
     const project = projectBindings.projects.find(item => item.id === id);
     if (!project) throw Error('Unknown project.');
     if (id !== projectBindings.activeId)
@@ -1130,7 +1144,7 @@ function registerHandlers() {
   });
   ipcMain.handle('resource:get', (event, request) => {
     const project = resourceProject(event, request);
-    return resourceSettings.snapshot(resourceCatalog(project?.domain), project?.path);
+    return resourceSettings.snapshot(productResourceCatalog(project?.domain), project?.path);
   });
   async function setResource(event, request) {
     const project = resourceProject(event, request);
@@ -1141,7 +1155,7 @@ function registerHandlers() {
       await sessions.reset(project?.id);
       resourceProject(event, request);
       const snapshot = resourceSettings.set(
-        resourceCatalog(project?.domain),
+        productResourceCatalog(project?.domain),
         request,
         project?.path,
       );
@@ -1212,7 +1226,11 @@ function registerHandlers() {
     return result.canceled ? null : fs.realpathSync(result.filePaths[0]);
   });
   ipcMain.handle('project:create', async (_event, request) => {
-    if (!request || !installedDomains().some(item => item.id === request.domain))
+    if (
+      !request ||
+      !isDomainOffered(request.domain) ||
+      !installedDomains().some(item => item.id === request.domain)
+    )
       throw Error('Choose a valid project domain.');
     if (typeof request.directory !== 'string' || typeof request.name !== 'string')
       throw Error('Invalid project details.');

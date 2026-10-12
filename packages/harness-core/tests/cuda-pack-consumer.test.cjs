@@ -37,29 +37,39 @@ const cleanup = root => {
   };
 };
 
-test('pinned consumer discovers CUDA and its Skill while unconfigured execution stays unavailable', async t => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cuda-consumer-'));
+test('default consumer offers four domains and no standalone CUDA resources', t => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'offered-catalog-'));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const registry = loadRegistry();
+  assert.deepEqual(registry.domains.map(domain => domain.id).sort(), [
+    'cad',
+    'chip',
+    'godot',
+    'pcb',
+  ]);
+  assert(!registry.runtimePacks.some(pack => pack.id === 'cuda-pack'));
+  assert(!registry.skills.some(skill => skill.domain === 'cuda'));
+  assert(!registry.capabilities.some(capability => capability.domain === 'cuda'));
+  assert.throws(
+    () => materializeSkills({ skills: ['cuda.kernel.optimize'] }, directory),
+    /Unknown/,
+  );
+});
+
+test('explicit standalone CUDA runtime remains unavailable without remote configuration', async t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cuda-standalone-unconfigured-'));
   const cleaner = cleanup(root);
   t.after(() => cleaner.run());
   const projectDir = path.join(root, 'project');
   fs.mkdirSync(projectDir);
   fs.writeFileSync(path.join(projectDir, 'model.py'), 'reference');
   fs.writeFileSync(path.join(projectDir, 'model_new.py'), 'candidate');
-  const registry = loadRegistry();
-  assert(registry.domains.some(domain => domain.id === 'cuda'));
-  assert(registry.runtimePacks.some(pack => pack.id === 'cuda-pack'));
-  const staged = materializeSkills({ skills: ['cuda.kernel.optimize'] }, path.join(root, 'skills'));
-  assert(
-    fs
-      .readFileSync(path.join(staged, 'cuda-kernel-optimize/SKILL.md'), 'utf8')
-      .includes('cuda.candidate.compile'),
-  );
   const bound = createProjectRuntime({
     projectDir,
     domain: 'cuda',
     directory: path.join(root, 'store'),
     environment: { INDUSTRIAL_HARNESS_CONFIG_DIR: path.join(root, 'config') },
-    registry,
+    registry: require('../../../tests/fixtures/standalone-cuda.cjs').registry(),
   });
   cleaner.bind(bound);
   const state = await bound.runtime.inspect();
@@ -103,7 +113,7 @@ test('shared factory and Broker use both authenticated MCP identities from the p
     domain: 'cuda',
     directory: path.join(root, 'store'),
     environment,
-    registry: loadRegistry(),
+    registry: require('../../../tests/fixtures/standalone-cuda.cjs').registry(),
   });
   cleaner.bind(bound);
   for (const role of ['compiler', 'evaluator']) {

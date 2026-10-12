@@ -1,0 +1,18 @@
+$ node --test tests/integration/industrial-core*.test.cjs
+✔ a signed installed Chip Pack executes real Verilator without changing its verified inventory, then factory restart restores acceptance (25354.105875ms)
+✔ real Verilator: StateProvider → Broker → runtime → artifacts → assertions → durable state/checkpoint; stale inputs and restart retain evidence (11875.147084ms)
+✔ real native timeout preserves diagnostics and no engineering acceptance (2355.599166ms)
+✔ cancellation before native startup records failure without starting a tool (624.884208ms)
+✔ real native cancellation waits for simulation readiness and owned descendant cleanup (8688.881333ms)
+✔ input changes after real simulation readiness never become current acceptance (7479.870792ms)
+✔ the real Pack subprocess receives engineering environment without inherited model credentials (626.144958ms)
+✔ real failed assertion and compiler failure remain distinct engineering outcomes; denied scope/approval creates no native run (11500.972459ms)
+✔ real CLI + pinned Kimi denies native Shell bypass and executes approved host RTL tool with a durable engineering result (10473.11725ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 53809.324542

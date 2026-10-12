@@ -12,6 +12,7 @@ import type {
 import {
   cancelInstallation,
   CatalogEmpty,
+  DomainRequirements,
   CatalogNotice,
   formatBytes,
   InstallationOutcome,
@@ -281,13 +282,15 @@ export function DomainManager({
               {selectable.map(item => {
                 const current = installedById.get(item.domain);
                 return (
-                  <label
+                  <div
                     key={item.domain}
                     className="ia-domain-install-row"
                     data-domain={item.domain}
                   >
                     <input
                       type="checkbox"
+                      id={`install-domain-${item.domain}`}
+                      aria-label={t(item.label || current?.label || item.domain)}
                       checked={selected.includes(item.domain)}
                       disabled={disabled || loading}
                       onChange={() =>
@@ -299,22 +302,21 @@ export function DomainManager({
                       }
                     />
                     <DomainIcon domain={item.domain} size={18} />
-                    <span>
-                      <span className="ia-domain-install-title">
+                    <div className="ia-domain-install-body">
+                      <label
+                        className="ia-domain-install-title"
+                        htmlFor={`install-domain-${item.domain}`}
+                      >
                         <b>{t(item.label || current?.label || item.domain)}</b>
                         <small>
                           {current ? `${current.version} → ${item.version}` : `v${item.version}`}
                         </small>
                         <InstallationSize pack={item} compact />
-                      </span>
+                      </label>
                       {item.summary && <small>{t(item.summary)}</small>}
-                      {item.prerequisites?.length ? (
-                        <small>
-                          {t('Needs:')} {item.prerequisites.map(text => t(text)).join('; ')}
-                        </small>
-                      ) : null}
-                    </span>
-                  </label>
+                      <DomainRequirements prerequisites={item.prerequisites} />
+                    </div>
+                  </div>
                 );
               })}
               <UnavailableDomains status={status} selection />
