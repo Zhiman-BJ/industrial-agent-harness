@@ -138,6 +138,7 @@ if (
     '--kicad-selftest',
     '--godot-selftest',
     '--documents-selftest',
+    '--browser-selftest',
     '--language-selftest',
     '--ui-selftest',
     '--messages-selftest',
@@ -1518,6 +1519,8 @@ async function createWindow() {
     void startGuiInstall();
   if (process.argv.includes('--documents-selftest'))
     require('./documents-selftest.cjs').prepare(projectConfigDir());
+  if (process.argv.includes('--browser-selftest'))
+    require('./browser-selftest.cjs').prepare(projectConfigDir());
   if (process.argv.includes('--language-selftest'))
     require('./language-selftest.cjs').prepare(projectConfigDir());
   if (process.argv.includes('--engineering-selftest'))
@@ -1551,6 +1554,17 @@ async function createWindow() {
     return viewerProtocol.handle(request);
   });
   registerHandlers();
+  // Webview guests (the workspace browser tab) never spawn native windows;
+  // a popup request just navigates the same guest frame instead. The load is
+  // deferred: called synchronously inside the open handler it gets aborted
+  // together with the denied popup.
+  app.on('web-contents-created', (_event, contents) => {
+    if (contents.getType() !== 'webview') return;
+    contents.setWindowOpenHandler(({ url }) => {
+      if (/^https?:\/\//.test(url)) setImmediate(() => void contents.loadURL(url));
+      return { action: 'deny' };
+    });
+  });
   const productIcon = path.join(desktopRoot, 'dist', 'app-icon.png');
   if (fs.existsSync(productIcon)) app.dock?.setIcon(productIcon);
   const window = new BrowserWindow({
@@ -1569,6 +1583,9 @@ async function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      // The workspace browser tab embeds web content in a guest process with
+      // no preload and no Node integration; the host window stays sandboxed.
+      webviewTag: true,
       // Pixel assertions must keep receiving frames when another test app or
       // a hosted desktop temporarily covers this window.
       backgroundThrottling: !process.argv.some(
@@ -1751,6 +1768,11 @@ async function createWindow() {
   }
   if (process.argv.includes('--documents-selftest')) {
     await require('./documents-selftest.cjs').run(window);
+    app.quit();
+    return;
+  }
+  if (process.argv.includes('--browser-selftest')) {
+    await require('./browser-selftest.cjs').run(window);
     app.quit();
     return;
   }

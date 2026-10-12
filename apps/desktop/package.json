@@ -14,6 +14,7 @@
     "test:kicad": "electron . --kicad-selftest",
     "test:godot": "electron . --godot-selftest",
     "test:documents": "electron . --documents-selftest",
+    "test:browser": "electron . --browser-selftest",
     "test:language": "electron . --language-selftest",
     "test:ui": "electron . --ui-selftest",
     "test:messages": "electron . --messages-selftest",
