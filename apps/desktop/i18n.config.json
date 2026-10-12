@@ -1972,6 +1972,46 @@
       "en": "HTML Preview",
       "zh-CN": "HTML 预览"
     },
+    "Browser": {
+      "en": "Browser",
+      "zh-CN": "浏览器"
+    },
+    "Open browser": {
+      "en": "Open browser",
+      "zh-CN": "打开浏览器"
+    },
+    "Back": {
+      "en": "Back",
+      "zh-CN": "后退"
+    },
+    "Forward": {
+      "en": "Forward",
+      "zh-CN": "前进"
+    },
+    "Reload": {
+      "en": "Reload",
+      "zh-CN": "刷新"
+    },
+    "Stop": {
+      "en": "Stop",
+      "zh-CN": "停止"
+    },
+    "Go": {
+      "en": "Go",
+      "zh-CN": "前往"
+    },
+    "Address": {
+      "en": "Address",
+      "zh-CN": "地址栏"
+    },
+    "Enter an address or search": {
+      "en": "Enter an address or search",
+      "zh-CN": "输入地址或搜索内容"
+    },
+    "Cannot load this page:": {
+      "en": "Cannot load this page:",
+      "zh-CN": "无法加载页面："
+    },
     "{0}… (see Source)": {
       "en": "{0}… (see Source)",
       "zh-CN": "{0}…（查看原文）"

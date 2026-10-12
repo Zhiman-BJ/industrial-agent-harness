@@ -12,6 +12,7 @@ import {
   FilePlus2,
   Folder,
   FolderOpen,
+  Globe,
   Maximize,
   PanelsTopLeft,
   Pin,
@@ -757,6 +758,21 @@ export function App() {
   function browseFiles() {
     setRightOpen(true);
     setFileTreeOpen(true);
+    setWorkbenchFocus('workspace');
+  }
+  // The embedded browser is a workspace tab like any file, just without an
+  // artifact: pinned so file previews never replace it, and reused on repeat
+  // clicks so there is exactly one browser at a time.
+  function openBrowser() {
+    const existing = openFilesRef.current.find(file => file.browser);
+    const id = existing?.id || `browser-${Date.now()}`;
+    if (!existing)
+      setOpenFiles(current => [
+        ...current,
+        { id, path: 'about:browser', name: t('Browser'), browser: true, preview: false },
+      ]);
+    setActiveFileId(id);
+    setRightOpen(true);
     setWorkbenchFocus('workspace');
   }
   function closeFile(id: string) {
@@ -2024,6 +2040,14 @@ export function App() {
                       {viewerFullscreen ? <Minimize size={15} /> : <Maximize size={15} />}
                     </button>
                     <button
+                      className="ia-browser-toggle"
+                      onClick={openBrowser}
+                      title={t('Open browser')}
+                      aria-label={t('Open browser')}
+                    >
+                      <Globe size={15} />
+                    </button>
+                    <button
                       className="ia-file-tree-toggle"
                       onClick={() => setFileTreeOpen(value => !value)}
                       title={fileTreeOpen ? t('Hide file tree') : t('Show file tree')}
@@ -2063,7 +2087,7 @@ export function App() {
                 <div className="ia-workspace-body">
                   <div className="ia-workspace-content">
                     <div className="ia-workspace-breadcrumb">
-                      {selectedProjectFile || projectName}
+                      {activeFile?.browser ? t('Browser') : selectedProjectFile || projectName}
                     </div>
                     {openFiles.map(file => (
                       <WorkspaceFileView

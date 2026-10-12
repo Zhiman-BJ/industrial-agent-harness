@@ -4651,3 +4651,58 @@ body {
   justify-content: space-between;
   gap: 8px;
 }
+.ia-browser {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+.ia-browser-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--ia-border, #e5e6e3);
+  color: var(--ia-muted, #777d80);
+  flex-shrink: 0;
+}
+.ia-browser-bar button {
+  padding: 5px 8px;
+  color: var(--ia-text, #202325);
+  border: 1px solid var(--ia-border, #e5e6e3);
+  border-radius: 5px;
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.ia-browser-bar button:disabled {
+  opacity: 0.4;
+}
+.ia-browser-bar input {
+  flex: 1;
+  min-width: 0;
+  padding: 5px 8px;
+  background: var(--ia-code, #f4f5f4);
+  color: var(--ia-text, #202325);
+  border: 1px solid var(--ia-border, #e5e6e3);
+  border-radius: 5px;
+  font: inherit;
+}
+.ia-browser-host {
+  flex: 1;
+  min-height: 0;
+}
+.ia-browser-frame {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #fff;
+}
+.ia-browser-notice {
+  margin: 0;
+  padding: 9px 12px;
+  font-size: 12px;
+  background: var(--ia-panel, #f7f7f5);
+  border-bottom: 1px solid var(--ia-border, #e5e6e3);
+}
