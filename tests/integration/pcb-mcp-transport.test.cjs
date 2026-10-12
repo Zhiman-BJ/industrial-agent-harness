@@ -5,11 +5,8 @@ const os = require('node:os');
 const path = require('node:path');
 const { execFile } = require('node:child_process');
 const { promisify } = require('node:util');
-const { domainPacks, materializeSkills } = require('../../packages/domain-skills/src/index.cjs');
-const { resolveProjectTask } = require('../../packages/harness-core/src/index.cjs');
-const { prepareSessionFiles } = require('../../packages/agent-kimi/src/index.cjs');
+const { materializeSkills } = require('../../packages/domain-skills/src/index.cjs');
 const execute = promisify(execFile);
-const root = path.resolve(__dirname, '../..');
 const python =
   process.env.INDUSTRIAL_HARNESS_PCB_GATEWAY_PYTHON ||
   path.join(
@@ -140,62 +137,78 @@ test(
     const packDirectory = path.dirname(
       require.resolve('@zhiman-bj/industrial-domain-packs/packs/pcb/legacy-harness-pack.json'),
     );
-    const legacy = require(path.join(packDirectory, 'legacy-harness-pack.json'));
-    // The frozen legacy manifest predates the vendored snapshot; rebuild the
-    // gateway provider view from the current pinned bench-upstream snapshot
-    // so the checkout inventory (INDUSTRIAL_HARNESS_PCB_BENCH_DIR at the
-    // pinned commit) validates against what the pack ships today.
-    const { bridgeProvider } = require(path.join(packDirectory, 'runtime/bench-gateway.cjs'));
     const snapshot = JSON.parse(
       fs.readFileSync(path.join(packDirectory, 'runtime/bench-upstream.json'), 'utf8'),
     );
-    const provider = bridgeProvider(legacy.provider, snapshot);
-    const { scope } = resolveProjectTask(
-      'pcb',
-      { task: 'pcb mcp' },
-      undefined,
-      legacy.capabilities,
+    const product = require(path.join(packDirectory, 'harness-pack.json'));
+    const designTools = product.provider.tools.filter(tool => tool.id.startsWith('pcb.design.'));
+    assert.equal(snapshot.tools.length, 89, 'the full pinned native inventory is still checked');
+    assert.equal(designTools.length, 88);
+    assert.ok(!designTools.some(tool => tool.name === 'finalize_claims'));
+    const sourceFiles = Object.fromEntries(
+      Object.keys(snapshot.sourceFiles)
+        .sort()
+        .map(file => [file, snapshot.sourceFiles[file]]),
     );
-    fs.writeFileSync(path.join(fixture.directory, 'config.toml'), 'default_model = "industrial"\n');
+    const sourceDirectory = require(
+      path.join(packDirectory, '../../lib/resources.cjs'),
+    ).validateResources(process.env.INDUSTRIAL_HARNESS_PCB_BENCH_DIR, {
+      title: 'PCB design source',
+      sourceFiles,
+      resourceRoots: ['pcb-agent', 'skills/pcb-design-e2e'],
+      sourceSha256: require('node:crypto')
+        .createHash('sha256')
+        .update(JSON.stringify(sourceFiles))
+        .digest('hex'),
+    });
+    // The standalone protocol fixture deliberately denies raw Python as well
+    // as product-excluded claims. Its schema handshake still checks all 89
+    // native definitions before exposing any permitted operation.
+    const allowedNames = new Set(designTools.map(tool => tool.name));
+    allowedNames.delete('run_python');
+    const policy = {
+      ...fixture.policy,
+      sourceDir: sourceDirectory,
+      fixtureSourceDir: sourceDirectory,
+      tools: snapshot.tools,
+      toolSchemaSha256: snapshot.toolSchemaSha256,
+      allowedToolIds: snapshot.tools
+        .filter(tool => allowedNames.has(tool.name))
+        .map(tool => tool.id),
+    };
+    assert.equal(policy.allowedToolIds.length, 87);
+    fs.writeFileSync(fixture.policyFile, JSON.stringify(policy));
     const session = path.join(fixture.directory, 'standalone-session');
     fs.mkdirSync(session);
-    require('../../packages/domain-mcp/src/gateway.cjs').gatewayConfig(
-      session,
-      { ...provider, allowedToolIds: scope.tools },
-      fixture.project,
-      environment,
-    );
-    require('../../packages/domain-mcp/src/index.cjs').writeMcpConfig(
-      session,
-      [{ ...provider, allowedToolIds: scope.tools }],
-      { projectDir: fixture.project, environment },
-    );
-    t.after(() => fs.rmSync(session, { recursive: true, force: true }));
-    const generated = path.join(session, 'mcp-pcb-bench.tools.policy.json');
-    const policy = JSON.parse(fs.readFileSync(generated));
-    assert.equal(policy.tools.length, 89);
-    policy.allowedToolIds = policy.allowedToolIds.filter(id => id !== 'pcb.bench.run_python');
-    policy.fixtureSourceDir = process.env.INDUSTRIAL_HARNESS_PCB_BENCH_DIR;
-    fs.writeFileSync(generated, JSON.stringify(policy));
     fs.mkdirSync(path.join(fixture.project, 'session'));
-    const { stdout } = await execute(python, [client, path.join(session, 'mcp.json'), 'source'], {
+    const { stdout } = await execute(python, [client, fixture.config, 'source'], {
       timeout: 30000,
     });
     assert.deepEqual(JSON.parse(stdout), {
       ok: true,
       realSourceSchema: true,
       hostExecutionRejected: true,
-      tools: 88,
+      tools: 87,
     });
-    // The complete vendored skill tree materializes into the session from
-    // the pack itself (upstream verbatim, no integration suffix).
+    // The complete product Skill tree comes from its installed owner Pack.
     materializeSkills({ skills: ['pcb.design.e2e'] }, session, environment);
-    const skills = path.join(session, 'skills/pcb-design-e2e');
-    assert.ok(fs.existsSync(path.join(skills, 'assets/constraints.example.yaml')));
-    assert.equal(fs.readdirSync(path.join(skills, 'references')).length, 9);
+    const productSkill = require('@zhiman-bj/industrial-domain-packs').skillResource(
+      'pcb.design.e2e',
+    ).directory;
+    const skills = path.join(session, 'skills', path.basename(productSkill));
+    const referenceSkill = path.join(sourceDirectory, 'skills/pcb-design-e2e');
+    assert.ok(fs.existsSync(path.join(referenceSkill, 'assets/constraints.example.yaml')));
+    assert.equal(fs.readdirSync(path.join(referenceSkill, 'references')).length, 9);
+    const relativeFiles = directory =>
+      fs
+        .readdirSync(directory, { recursive: true, withFileTypes: true })
+        .filter(entry => entry.isFile())
+        .map(entry => path.relative(directory, path.join(entry.parentPath, entry.name)))
+        .sort();
+    assert.deepEqual(relativeFiles(skills), relativeFiles(productSkill));
     assert.equal(
       fs.readFileSync(path.join(skills, 'SKILL.md'), 'utf8'),
-      fs.readFileSync(path.join(packDirectory, 'skills/pcb-design-e2e/SKILL.md'), 'utf8'),
+      fs.readFileSync(path.join(productSkill, 'SKILL.md'), 'utf8'),
     );
     materializeSkills({ skills: ['pcb.layout.inspect'] }, session, environment);
     assert.ok(

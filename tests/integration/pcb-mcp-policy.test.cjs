@@ -55,19 +55,19 @@ test('real CLI scopes typed PCB Runtime Actions without starting any native proc
   assert.deepEqual(rows[0].scope.tools, ['pcb.kicad.edit', 'pcb.kicad.verify']);
   assert.equal(rows.at(-1).status, 'scoped');
 });
-test('PCB bench tool names resolve the declared bench surface through the Broker without standalone MCP servers', () => {
+test('PCB product design scope exports atomic design tools without benchmark claims or standalone MCP servers', () => {
   const scope = resolveProjectTask('pcb', {
-    task: 'pcb.bench.place_component verify_design finalize_claims',
+    task: 'PCB design place_component verify_design finalize_claims',
   }).scope;
-  const bench = scope.tools.filter(id => id.startsWith('pcb.bench.'));
-  assert.equal(bench.length, 89);
-  assert.ok(bench.includes('pcb.bench.project_status'));
-  assert.ok(bench.includes('pcb.bench.run_python'));
-  // The bounded native profile stays reachable on its own keywords.
+  const design = scope.tools.filter(id => id.startsWith('pcb.design.'));
+  assert.equal(design.length, 88);
+  assert.ok(design.includes('pcb.design.project_status'));
+  assert.ok(design.includes('pcb.design.run_python'));
+  assert.ok(design.includes('pcb.design.verify_design'));
+  assert.ok(design.includes('pcb.design.export_project'));
+  assert.ok(!scope.tools.some(id => /bench|finalize_claims/.test(id)));
   const native = resolveProjectTask('pcb', { task: 'KiCad board edit' }).scope;
   assert.deepEqual(native.tools, ['pcb.kicad.edit', 'pcb.kicad.verify']);
-  // Bench execution rides industrial_action_call through the pack runtime;
-  // the standalone MCP gateway transport stays undisclosed.
   assert.deepEqual(selectMcpServers(scope), []);
   assert.deepEqual(selectMcpServers(native), []);
 });

@@ -3,61 +3,91 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { execFile } = require('node:child_process');
-const { promisify } = require('node:util');
+const crypto = require('node:crypto');
 const {
-  resolveProjectTask,
+  createProjectRuntime,
   resourceCatalog,
 } = require('../../packages/harness-core/src/index.cjs');
+const { resolveFromState } = require('../../packages/capability-broker/src/index.cjs');
 const { prepareSessionFiles } = require('../../packages/agent-kimi/src/index.cjs');
-const { providerRuntime } = require('../../packages/domain-mcp/src/gateway.cjs');
 const { selectMcpServers } = require('../../packages/domain-mcp/src/index.cjs');
-const execute = promisify(execFile);
-let runtime;
-try {
-  runtime = providerRuntime(
-    selectMcpServers(resolveProjectTask('chip', { task: 'project status' }).scope)[0],
-  );
-} catch {}
 
-test(
-  'shared Project → Broker → Kimi config → real scoped MCP rejects undeclared and cross-project calls',
-  { timeout: 60000, skip: !runtime },
-  async t => {
-    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'industrial-mcp-scope-'));
-    t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
-    // No EDA job or image is needed to exercise persistent project context through MCP.
-    fs.writeFileSync(
-      path.join(directory, 'eda.yaml'),
-      'name: mcp-test\ntop: top\nruntime:\n  kind: local\ninputs: {}\nactions: {}\nrequired_verification: []\n',
+test('shared Project → Broker → Kimi config → canonical Runtime rejects undeclared and cross-project calls', async t => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'industrial-runtime-scope-'));
+  const project = path.join(directory, 'project');
+  fs.mkdirSync(project);
+  fs.writeFileSync(path.join(project, 'source.txt'), 'bound source');
+  fs.writeFileSync(path.join(directory, 'outside.txt'), 'other project');
+  fs.writeFileSync(path.join(directory, 'config.toml'), 'default_model = "industrial"\n');
+  const bound = createProjectRuntime({
+    projectDir: project,
+    domain: 'chip',
+    directory: path.join(directory, 'store'),
+    environment: { INDUSTRIAL_HARNESS_CONFIG_DIR: path.join(directory, 'config') },
+  });
+  t.after(async () => {
+    await bound.runtime.close();
+    fs.rmSync(directory, { recursive: true, force: true });
+  });
+  assert.deepEqual(resourceCatalog('chip').mcpServers, []);
+  assert.deepEqual(resourceCatalog('pcb').mcpServers, []);
+  const state = await bound.runtime.inspect();
+  const scope = resolveFromState({ task: 'read project files', state }, bound.capabilities).scope;
+  assert.ok(scope.tools.includes('project.files.read'));
+  assert.deepEqual(selectMcpServers(scope), []);
+  const session = prepareSessionFiles(
+    scope,
+    { shareDir: directory, disabledMcpServers: [] },
+    undefined,
+    project,
+  );
+  t.after(() => fs.rmSync(session, { recursive: true, force: true }));
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(session, 'mcp.json'))).mcpServers, {});
+  const call = (request = {}, policy = {}) =>
+    bound.runtime.execute(
+      {
+        schemaVersion: '1',
+        projectId: state.projectId,
+        domain: 'chip',
+        toolId: 'project.files.read',
+        expectedStateId: state.id,
+        inputs: { path: 'source.txt' },
+        ...request,
+      },
+      { scope, ...policy },
     );
-    fs.writeFileSync(path.join(directory, 'config.toml'), 'default_model = "industrial"\n');
-    const catalog = resourceCatalog('chip');
-    assert.equal(catalog.mcpServers[0].id, 'chip-pack.eda');
-    assert.deepEqual(resourceCatalog('pcb').mcpServers, []);
-    const { scope } = resolveProjectTask('chip', { task: 'project status' });
-    const session = prepareSessionFiles(
-      scope,
-      { shareDir: directory, disabledMcpServers: [] },
-      undefined,
-      directory,
-    );
-    t.after(() => fs.rmSync(session, { recursive: true, force: true }));
-    const config = path.join(session, 'mcp.json');
-    const { stdout } = await execute(
-      runtime.python,
-      [path.join(__dirname, 'fixtures/domain-mcp-client.py'), config],
-      { timeout: 40000, maxBuffer: 1024 * 1024 },
-    );
-    const result = JSON.parse(stdout.trim());
-    assert.equal(result.ok, true);
-    assert.equal(result.rejections, 6);
-    assert.equal(result.projectDir, fs.realpathSync(directory));
-    assert.ok(fs.existsSync(path.join(directory, '.eda')));
-    const disabled = resolveProjectTask('chip', { task: 'project status' }, undefined, undefined, {
-      mcpServers: ['chip-pack.eda'],
-    });
-    assert.ok(!disabled.scope.tools.some(id => id.startsWith('eda.harness.')));
-    assert.deepEqual(selectMcpServers(disabled.scope), []);
-  },
-);
+  const allowed = await call();
+  assert.equal(allowed.action.status, 'completed');
+  assert.ok(allowed.artifacts.length > 0);
+  const cases = [
+    [{ toolId: 'chip.eda.execute', inputs: { action: 'rtl.simulate' } }, {}, /outside.*scope/],
+    [{}, { scope: { ...scope, projectId: 'a'.repeat(64) } }, /different.*project/],
+    [{ projectId: 'b'.repeat(64) }, {}, /different.*project/],
+    [{ inputs: { path: '../outside.txt' } }, {}, /path|project/i],
+    [{ expectedStateId: crypto.randomUUID() }, {}, /stale/],
+    [
+      {
+        toolId: 'project.files.apply',
+        inputs: {
+          changes: [
+            {
+              path: 'source.txt',
+              content: 'unauthorized',
+              expectedSha256: state.inputHashes['source.txt'],
+            },
+          ],
+        },
+      },
+      { scope: { ...scope, tools: [...scope.tools, 'project.files.apply'] } },
+      /approval/,
+    ],
+  ];
+  for (const [request, policy, diagnostic] of cases) {
+    const result = await call(request, policy);
+    assert.equal(result.action.status, 'failed');
+    assert.equal(result.verification.status, 'insufficient_evidence');
+    assert.match(result.action.diagnostics.join('\n'), diagnostic);
+  }
+  assert.equal(fs.readFileSync(path.join(project, 'source.txt'), 'utf8'), 'bound source');
+  assert.equal(fs.readFileSync(path.join(directory, 'outside.txt'), 'utf8'), 'other project');
+});

@@ -66,7 +66,8 @@ async def main():
             image = await session.call_tool("domain_tool_call", {"toolId": "pcb.bench.view_design"})
             image_enabled = mode == "vision"
             assert any(block.type == "image" for block in image.content) == image_enabled
-            assert data(image)["images"][0]["delivered"] == image_enabled
+            assert data(image)["images"][0]["forwarded"] == image_enabled
+            assert data(image)["images"][0]["delivered"] is False
             large = data(await session.call_tool("domain_tool_call", {"toolId": "pcb.bench.inspect_tool", "arguments": {"name": "project_status"}}))
             assert large["paged"]
             chunks, offset = [], 0
