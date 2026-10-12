@@ -8,7 +8,7 @@
 
 **面向工程项目的 AI 工作台：按范围使用专业工具，保留可核验的结果。**
 
-Industrial Agent Harness 通过桌面工作台和无界面 CLI，将本地工程、Kimi Code、专业软件与工程证据连接起来。各领域通过 Domain Pack 提供知识、工具和验证方法。
+Industrial Agent Harness 通过桌面工作台，将本地工程、Kimi Code、专业软件与工程证据连接起来。各领域通过 Domain Pack 提供知识、工具和验证方法。
 
 > [!IMPORTANT]
 > **开发者预览版（Developer Preview）。** 当前处于 Workbench MVP 阶段，已跑通首条持久化 RTL 验证路径。API、Pack 接口和运行时行为仍在迭代。本页描述当前源码；已发布的预览归档以各自版本说明为准。
@@ -22,7 +22,7 @@ Industrial Agent Harness 通过桌面工作台和无界面 CLI，将本地工程
 - **使用项目指导。** 自动发现 `.skill/`、`.skills/` 与标准项目技能目录，通过 Kimi 原生机制加载项目 `AGENTS.md`。剩余限制见[兼容性审计](doc/kimi-native-compatibility-audit.md)。
 - **保留工程证据。** RTL 运行时记录输入、动作、产物、验证和检查点；输入变化使当前证据失效，中断记录在重启后仍可追踪。
 - **在工作台内查看产物。** 查看波形、网表、版图、KiCad 设计、Godot 素材和通用工程文件。
-- **接入自动化与扩展。** 使用 CLI 的 JSON Lines 事件、Node SDK 或 stdio JSON-RPC；独立构建 Domain Pack，保留完整 Skill 资源并检查安装完整性。
+- **以 Domain Pack 扩展。** 独立构建 Domain Pack，保留完整 Skill 资源并检查安装完整性。
 
 Kimi Code 负责 Agent 循环、对话历史和上下文压缩；Harness 负责工程上下文、工具范围和证据。Agent 回合结束或进程退出成功，均不能直接判定工程验收通过。
 
@@ -49,19 +49,7 @@ npm install --global pnpm@11.1.3
 pnpm install --frozen-lockfile
 ```
 
-### 1. 无模型体验 CLI
-
-```sh
-pnpm cli run \
-  --project-dir ./examples/chip-sobel \
-  --domain chip \
-  --task "Inspect netlist signals" \
-  --scope-only
-```
-
-该命令输出已注册的能力范围和披露过程，无需 API Key 或原生工程工具，不执行工程动作，也不验证设计。
-
-### 2. 启动桌面工作台
+### 1. 启动桌面工作台
 
 ```sh
 pnpm --filter @industrial-agent-harness/desktop setup:kimi
@@ -76,9 +64,9 @@ pnpm dev
 
 **API 格式**按模型服务选择，与 Kimi Agent 内核分开。官方 MiniMax Chat Completions 使用兼容 OpenAI 配置；思考开关和档位因模型、协议而异，当前实测与缺口见[模型 API 兼容说明](doc/model-api-compatibility.md)。
 
-准备脚本检查随包 **Kimi Code 2.1.1**，桌面和 CLI 共用认证 Server API 接入，不需要单独安装 Python Kimi。历史、诊断与兼容性边界见[迁移记录](doc/kimi-code-migration.md)。版图查看另需 KLayout Python，可运行 `pnpm --filter @industrial-agent-harness/desktop setup:layout`，或设置 `KLAYOUT_PYTHON`。
+准备脚本检查随包 **Kimi Code 2.1.1**，不需要单独安装 Python Kimi。历史、诊断与兼容性边界见[迁移记录](doc/kimi-code-migration.md)。版图查看另需 KLayout Python，可运行 `pnpm --filter @industrial-agent-harness/desktop setup:layout`，或设置 `KLAYOUT_PYTHON`。
 
-### 3. 在 macOS Apple Silicon 验证真实 RTL 闭环
+### 2. 在 macOS Apple Silicon 验证真实 RTL 闭环
 
 完成上述 Kimi 准备后，安装 Verilator，并准备 C++ 工具链与 Chip Python 环境：
 
@@ -89,10 +77,6 @@ HARNESS_REQUIRE_CORE_NATIVE=1 pnpm run test:industrial-core
 ```
 
 测试运行真实 RTL 仿真，检查断言、波形、失败处理、安装态 Pack 完整性和重启恢复。模型响应来自本地受控提供方，不消耗模型 API 额度，也不用于衡量模型能力。真实任务的准备方式和证据边界见[工业运行时说明](doc/p0-industrial-runtime.md)。
-
-Linux x86-64 芯片用户可使用[一键安装](releases/chip-linux-installer-v0.1.0-preview.3.md)，自动准备私有运行时、受保护 Agent 和 EDA 镜像。
-
-需要下载包时，请查看 [GitHub Releases](https://github.com/Zhiman-BJ/industrial-agent-harness/releases)，并按对应版本说明安装。[无界面安装](apps/cli/README.md#github-release-安装)和[领域 CLI 分包](doc/domain-cli-downloads.md)提供校验与外部依赖说明。历史归档不会自动获得当前源码的新功能。
 
 1.0.1-beta.1 本地 Apple Silicon 桌面候选包列出全部五个领域：Chip、PCB、Godot、CAD 四个 Pack 可直接选择，未配置在线目录也能安装；CUDA 保持可见，明确显示远程服务前提和当前暂无可安装桌面包的状态。选择 PCB、Godot 或 CAD 后，应用自动在用户 Pack 目录准备固定官方 KiCad 10.0.6、Godot 4.7.2 或 FreeCAD 1.1.4；这三项托管工具无需用户运行命令或配置环境变量。Chip 仍需外部 Python、编译器及 EDA/PDK 环境。Core 内置 Kimi Code 2.1.1，模型 API 配置仍需单独完成。安装界面展示大小预估、进度、取消与恢复，完成后分别显示各领域的实际就绪状态。详见[安装体验与发行边界](doc/install-experience.md)及[CAD 安装验收](doc/macos-cad-distribution.md)。本地候选包尚不代表正式签名公众发行或真实 Core OTA 已通过验收。
 
@@ -111,7 +95,7 @@ Linux x86-64 芯片用户可使用[一键安装](releases/chip-linux-installer-v
 
 ### 任务成果
 
-工具产生文件后，共享任务服务自动登记紧凑成果条目，辅助报告收在“附件与报告”中，文件和检查详情按需展开；CLI 输出同一分组和文件引用。主入口查看成果，原生文件／导出入口取走文件，检查摘要只对应记录版本。明确替代关系保留历史，并列方案全部可见。当前前台请求结束、只有一个支持的只读预览且未手动换文件／标签／聊天时，最多自动打开一次；历史、后台、失败和多方案不抢焦点。部分结果和文件变化明确提示，Agent 的 `select_result` 可选。FreeCAD 生成→连续修改→检查→卡片→OCCT 已在 macOS arm64 源码态验证，并另行记录真实模型演示；未扩大安装包或平台支持。[行为、契约和验收](doc/task-results.md)。
+工具产生文件后，共享任务服务自动登记紧凑成果条目，辅助报告收在“附件与报告”中，文件和检查详情按需展开。主入口查看成果，原生文件／导出入口取走文件，检查摘要只对应记录版本。明确替代关系保留历史，并列方案全部可见。当前前台请求结束、只有一个支持的只读预览且未手动换文件／标签／聊天时，最多自动打开一次；历史、后台、失败和多方案不抢焦点。部分结果和文件变化明确提示，Agent 的 `select_result` 可选。FreeCAD 生成→连续修改→检查→卡片→OCCT 已在 macOS arm64 源码态验证，并另行记录真实模型演示；未扩大安装包或平台支持。[行为、契约和验收](doc/task-results.md)。
 
 读取聊天历史不要求执行配置完成，远程项目也可直接新建／读取聊天。已有成果从记录库只读查询，不加载 Pack；单次读取复用文件校验，下次读取及打开文件重新检查内容。
 
@@ -145,7 +129,6 @@ Harness 自有 Viewer 控件跟随 **设置 → 语言**（简体中文 / Englis
 | 阅读入口                                                                       | 内容                                                                           |
 | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ |
 | [文档索引](doc/README.md)                                                      | 架构、产品决策与模块说明，详细文档目前以中文为主。                             |
-| [CLI](apps/cli/README.md) · [Node SDK](doc/sdk.md)                             | 任务、流事件、聊天恢复、取消与 stdio JSON-RPC。                                |
 | [Pack 开发](doc/pack-authoring.md) · [版本化契约](doc/contracts-versioning.md) | 独立开发、资源、兼容性与规范工业事实。                                         |
 | [当前交付与验证](doc/harness-quality-three-tracks.md)                          | 已实现范围、验证记录与剩余工作；历史架构提案不代表实现承诺。                   |
 | [配对评测基线](doc/benchmark-baseline.md)                                      | 原生 Kimi/Harness 对比、冻结输入与独立验收，正式模型成功率和成本结果尚待运行。 |
@@ -162,7 +145,7 @@ pnpm run test:release
 pnpm run format:check
 ```
 
-[Harness CI 门禁](.github/workflows/ci.yml)在 Linux x64/arm64、macOS arm64、Windows x64 执行共享包与独立 CLI 包回归，在 macOS/Windows 验证桌面安装，在 Apple Silicon 与 Linux x86-64 验证工业 Core 闭环，Linux 还检查实际安装的 Chip CLI。[CI 回归说明](doc/ci-regression.md)列出依赖、保留证据与明确的覆盖缺口；跳过不代表支持。安全问题按 [SECURITY.md](SECURITY.md) 的流程报告。
+[Harness CI 门禁](.github/workflows/ci.yml)在 Linux x64/arm64、macOS arm64、Windows x64 执行共享包回归，在 macOS/Windows 验证桌面安装，在 Apple Silicon 与 Linux x86-64 验证工业 Core 闭环。[CI 回归说明](doc/ci-regression.md)列出依赖、保留证据与明确的覆盖缺口；跳过不代表支持。安全问题按 [SECURITY.md](SECURITY.md) 的流程报告。
 
 ## 预览版范围
 
@@ -186,8 +169,8 @@ pnpm run format:check
 
 ### 内置远程运行（内部体验）
 
-项目可选择本机或知满远程，首次上传展示目的地和文件清单，聊天内显示任务状态。Desktop/CLI 共用 Remote Runtime，已准入领域工具在现有有限 CPU 沙箱池执行。公网地址与登录默认配置留空；已验证 macOS Apple Silicon 客户端连接 H200 Linux 进行真实 RTL 检查，公网接入及其他远程领域仍待验收。见[内置远程运行](doc/remote-execution.md)。
+项目可选择本机或知满远程，首次上传展示目的地和文件清单，聊天内显示任务状态。Desktop 使用共享 Remote Runtime，已准入领域工具在现有有限 CPU 沙箱池执行。公网地址与登录默认配置留空；已验证 macOS Apple Silicon 客户端连接 H200 Linux 进行真实 RTL 检查，公网接入及其他远程领域仍待验收。见[内置远程运行](doc/remote-execution.md)。
 
-CLI 和 Desktop 现共用 Harness 任务服务；领域声明、Skill 和实现来自一个固定版本的 Domain Packs。见[消费迁移与验收](doc/shared-task-and-pack-consumption.md)。
+Harness 任务服务由 Desktop 与内部无界面入口共用；领域声明、Skill 和实现来自一个固定版本的 Domain Packs。见[消费迁移与验收](doc/shared-task-and-pack-consumption.md)。
 
 PCB 与 Godot 专业 Runtime Actions 提供有限的 macOS Apple Silicon 原生任务，领域实现统一维护在精确固定的 Domain Packs 包中。当前 1.0.1-beta.1 源码消费端固定 Domain Packs 0.5.2 提交 `b9759342cace66df0be0c4559b7c24fb28ea07d9`，由通用 Pack Manager 准备声明中的官方原生软件。见[任务边界、依赖与验收](doc/pcb-godot-runtime.md)；其他平台与远端仍未验收。

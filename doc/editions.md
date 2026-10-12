@@ -12,12 +12,13 @@
 - **internal edition**：本仓库（私有）。包含全部功能与开发历史，是唯一的开发与 PR 落地点。
 - **public（OSS）edition**：由 #106 导出器从固定 source ref 生成的版本快照。只包含清单标记为 `public` 的模块。
 
-默认公开面（PD-069）：**已实现且可验证的核心任务流程、必要的错误/状态/记录、选定 Viewer 和扩展接口**。以下四类能力不进入公开源码或发行物：
+默认公开面（PD-069，PD-071 收窄）：**已实现且可验证的核心任务流程、必要的错误/状态/记录、选定 Viewer 和扩展接口**。以下五类能力不进入公开源码或发行物：
 
 1. Debug 面板与完整诊断（提示词、原始 SDK 事件、完整工具参数/返回、上下文快照、诊断浏览器、`inspect-log`）；
 2. 轨迹录制与 Demo 重放（#103–#105 新增能力）；
 3. 内部文档中心与 `doc/` 内部文档；
-4. 内部发行流水线与治理机械（架构合约 checker/policy、发行脚本、内部 release 工作流与记录）。
+4. 内部发行流水线与治理机械（架构合约 checker/policy、发行脚本、内部 release 工作流与记录）；
+5. Headless CLI 与 Node SDK（headless 打包链、Linux Chip 安装器、bench CLI runner 及其驱动契约，PD-071）。
 
 Domain Packs 按既有外部仓库（industrial-domain-packs）所有权消费固定版本，不在本清单中展开领域实现，也不自动把领域内容纳入公开面。
 
@@ -27,19 +28,21 @@ Domain Packs 按既有外部仓库（industrial-domain-packs）所有权消费�
 
 | 模块 ID | 内容 | Edition | 依赖分类 | 决策状态 |
 | --- | --- | --- | --- | --- |
-| `apps.desktop` / `apps.cli` | Desktop 与 CLI 适配器（Debug/Logs、inspect-log 除外） | public | adapter | 已确定 |
+| `apps.desktop` | Desktop 工作台适配器（Debug/Logs 面板除外） | public | adapter | 已确定 |
 | `packages.contracts` | 工业事实/状态/运行/工件/验证/检查点契约 | public | canonical-contracts | 已确定 |
 | `packages.harness-core` / `capability-broker` / `domain-runtime` / `harness-application` | 共享 Core、Broker、通用 Runtime、共享任务 API | public | core-runtime | 已确定 |
 | `packages.agent-kimi` | Kimi 固定内核接入（诊断日志文件除外） | public | agent-kernel | 已确定 |
 | `packages.pack-manager` / `domain-skills` / `domain-mcp` | Pack 消费、默认 Skill/MCP 声明（冻结领域快照除外） | public | pack-consumption | 已确定 |
 | `packages.computer-use-bridge` | GUI 横切插件 | public | cross-cutting-plugin | 已确定 |
 | `packages.viewer-core` / `viewer-builtin` | 只读 Viewer 内核与内置 Viewer | public | viewer | 已确定 |
-| `packages.sdk` | Node SDK 与 stdio JSON-RPC | public | adapter | 已确定 |
 | `examples.public` | 示例工程（Sobel、bench 烟测等） | public | examples | 已确定 |
 | `tests.public-core` | 核心闭环/共享契约/传输/会话等测试 | public | meta | 已确定 |
 | `scripts.dev-tooling` | 开发工具（含 release-notices：公开许可证物料测试消费） | public | meta | 已确定 |
 | `github.ci-public` | 公开 CI 脚手架（ci/structure/industrial-core/industrial-linux） | public | meta | 已确定 |
-| `internal.diagnostics.*`（4 条目） | 诊断日志、读取器、Debug 面板、inspect-log、agent-log selftest | internal | diagnostics-internal | 已确定（隔离由 #102 完成） |
+| `internal.apps.cli` | Headless CLI（headless 打包/安装器链、bench runner、inspect-log 诊断） | internal | adapter | 已确定（PD-071） |
+| `internal.packages.sdk` | Node SDK 与 stdio JSON-RPC（运行契约：驱动内部打包的 headless CLI） | internal | adapter | 已确定（PD-071） |
+| `internal.diagnostics.*`（3 条目） | 诊断日志、读取器、Debug 面板、agent-log selftest | internal | diagnostics-internal | 已确定（隔离由 #102 完成） |
+| `internal.recording` / `internal.replay` / `internal.docs-center` | 轨迹录制、重放引擎、文档中心数据核心（PD-070 同批内部能力） | internal | recording/replay/docs-center-internal | 已确定 |
 | `internal.docs` | `doc/` 内部文档 | internal | docs-internal | 已确定 |
 | `internal.releases` | 内部发行记录 | internal | release-internal | 已确定 |
 | `internal.governance` | IH-ARCH-001 治理机械、AGENTS.md、policy | internal | governance-internal | 已确定 |
@@ -56,7 +59,7 @@ Domain Packs 按既有外部仓库（industrial-domain-packs）所有权消费�
 
 1. **schema 健康**：字段类型、枚举、路径安全（拒绝绝对路径/`..`/反斜杠）、路径唯一归属。
 2. **全仓覆盖**：仓库内每个文件必须命中至少一个条目（最长前缀优先）。**新增未分类路径（例如新的顶层目录、新的根文件）直接失败**——这就是“新增未分类公开候选会使校验失败”。
-3. **依赖方向**：public 文件不得 import 解析到 internal 条目的路径。`isolation.status=enforced` 的条目出现任何引用即失败；`planned` 条目（当前诊断四条目，台账 6/1/1/3）记录 `legacyReferences` 上限，**只减不增**，#102 完成组合层隔离后归零并转为 enforced。
+3. **依赖方向**：public 文件不得 import 解析到 internal 条目的路径。`isolation.status=enforced` 的条目出现任何引用即失败；`planned` 条目（当前诊断三条目台账 6/1/3，CLI/SDK 条目台账 2/3，PD-071）记录 `legacyReferences` 上限，**只减不增**，#102 完成组合层隔离后归零并转为 enforced。
 4. **公开说明可溯**：`publicStatementSource` 指向的文件必须存在、属 public 条目，且锚点文本真实出现。
 5. **必需测试存在**：条目声明的测试文件必须在仓库中存在。
 
