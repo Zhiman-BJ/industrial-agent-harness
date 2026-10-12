@@ -216,7 +216,28 @@ async function run(window, store) {
         `Array.from(document.querySelectorAll('.ia-sidebar-chat')).find(item=>item.innerText.includes('first turn')).click()`,
       );
       await wait(`document.querySelectorAll('.ia-chat-turn').length===3`);
-      await evaluate(`document.querySelector('button[aria-label="Delete chat New chat"]').click()`);
+      // Row actions live in the per-chat menu (issue #79): rename the draft,
+      // then delete it from the same menu.
+      await evaluate(
+        `document.querySelector('button[aria-label="Chat actions for New chat"]').click()`,
+      );
+      await wait(`Boolean(document.querySelector('.ia-chat-menu'))`);
+      await evaluate(
+        `Array.from(document.querySelectorAll('.ia-chat-menu button')).find(item=>item.innerText.includes('Rename chat')).click()`,
+      );
+      await evaluate(
+        `(() => {const input=document.querySelector('.ia-chat-rename');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,'Renamed draft');input.dispatchEvent(new Event('input',{bubbles:true}));input.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}));})()`,
+      );
+      await wait(
+        `Array.from(document.querySelectorAll('.ia-sidebar-chat')).some(item=>item.innerText.includes('Renamed draft'))`,
+      );
+      await evaluate(
+        `document.querySelector('button[aria-label="Chat actions for Renamed draft"]').click()`,
+      );
+      await wait(`Boolean(document.querySelector('.ia-chat-menu'))`);
+      await evaluate(
+        `document.querySelector('button[aria-label="Delete chat Renamed draft"]').click()`,
+      );
       await wait(`document.querySelectorAll('.ia-sidebar-chat').length===2`);
       // A historical scope must not restore resources disabled since the last turn.
       await evaluate(
