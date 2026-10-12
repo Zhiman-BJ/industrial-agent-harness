@@ -24,6 +24,8 @@ function dockerCommand(spec) {
     if (!Number.isFinite(value) || value < min || value > max)
       throw Error('Invalid container resource limit.');
   }
+  const network = runtime.network || 'none';
+  if (!['none', 'bridge'].includes(network)) throw Error('Unsupported container network.');
   const capabilities = runtime.capabilities || [];
   if (
     !Array.isArray(capabilities) ||
@@ -62,7 +64,7 @@ function dockerCommand(spec) {
     '--name',
     name,
     '--network',
-    'none',
+    network,
     '--cap-drop',
     'ALL',
     ...capabilities.flatMap(value => ['--cap-add', value]),

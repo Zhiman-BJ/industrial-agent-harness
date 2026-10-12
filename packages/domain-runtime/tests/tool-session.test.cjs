@@ -86,3 +86,13 @@ test('mutable images and unsafe mounts are rejected before launch', t => {
     /mount/,
   );
 });
+
+test('trusted profiles must opt into the bounded bridge network explicitly', t => {
+  const f = fixture(t);
+  const result = dockerCommand({ ...f.spec, runtime: { ...f.spec.runtime, network: 'bridge' } });
+  assert.equal(result.args[result.args.indexOf('--network') + 1], 'bridge');
+  assert.throws(
+    () => dockerCommand({ ...f.spec, runtime: { ...f.spec.runtime, network: 'host' } }),
+    /network/,
+  );
+});
