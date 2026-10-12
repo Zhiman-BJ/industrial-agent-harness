@@ -106,6 +106,8 @@ Linux x86-64 芯片用户可使用[一键安装](releases/chip-linux-installer-v
 | [Godot](doc/pcb-godot-runtime.md)                                                                                               | 类型化场景变换／BoxMesh 修改，原生导入／回读／限帧验证；源码与 Web Export Viewer                     | macOS Apple Silicon，打包桌面版自动准备 Godot 4.7.2；验证显式结构约束，无完整游戏 QA。Web Export 保留独立依赖。  |
 | [CAD · FreeCAD](doc/freecad-domain-pack.md)                                                                                     | 参数化草图、拉伸、打孔、布尔建模和版本化参数/轮廓修改；FCStd/STEP/STL 导出、独立回读验证与 OCCT 查看 | 打包桌面版自动准备 FreeCAD 1.1.4 macOS arm64；只支持受限原生特征，不验收机械强度或可制造性。           |
 
+托管运行环境支持固定 OCI 预构建容器及 Harbor 镜像中的原生安装包。共享安装器校验不可变镜像与配置身份，并复用缓存；容器任务需要已安装且运行中的 Docker Desktop。Pack 声明设计源与派生证据边界，共享执行后端负责持久工具会话、取消与清理。当前宿主资格仅覆盖 macOS Apple Silicon。
+
 按 [Pack 作者教程](doc/pack-authoring.md)独立开发扩展。领域代码留在 Pack 内，共享 Core 与 Broker 不依赖具体领域。已注册、能够显示或原生烟测成功，均不代表完整工业工作流已经验收。[PCB／Godot 原生任务](doc/pcb-godot-runtime.md) 已为显式首批任务补齐共享 Runtime；不扩大其他工程支持承诺。先前[发布整改记录](doc/release-readiness-20261007.md)保留为历史证据。
 
 

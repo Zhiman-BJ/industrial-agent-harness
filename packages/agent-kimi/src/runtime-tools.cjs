@@ -110,7 +110,19 @@ function runtimeTools(
           diagnostics: result.action.diagnostics,
           ...(results ? { results } : {}),
         });
-        return { output, message: result.verification.reason };
+        return {
+          output:
+            imageInput && result.images?.length
+              ? [
+                  { type: 'text', text: output },
+                  ...result.images.map(part => ({
+                    type: 'image_url',
+                    image_url: { url: `data:${part.mimeType};base64,${part.data}` },
+                  })),
+                ]
+              : output,
+          message: result.verification.reason,
+        };
       },
     }),
   ];

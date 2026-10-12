@@ -90,3 +90,37 @@ test('approval reviews a separate snapshot; changes while awaiting approval cann
   await tool.handler(request);
   assert.deepEqual(received.inputs, { value: 'approved' });
 });
+
+test('industrial image observations reach image-capable models with unchanged action evidence', async () => {
+  const runtime = {
+    descriptors: () => [{ id: 'example.view', risk: 'read-only' }],
+    execute: async () => ({
+      run: { id: randomUUID() },
+      action: { id: randomUUID(), status: 'completed', diagnostics: [] },
+      artifacts: [],
+      verification: { status: 'not_run', reason: 'Observation only' },
+      state: { id: randomUUID(), status: 'unverified' },
+      checkpoint: { id: randomUUID() },
+      images: [{ type: 'image', mimeType: 'image/png', data: 'aGVsbG8=' }],
+    }),
+  };
+  const scope = { tools: ['example.view'] };
+  const action = runtimeTools(
+    runtime,
+    () => scope,
+    async () => true,
+    () => {},
+    { imageInput: true },
+  ).find(tool => tool.name === 'industrial_action_call');
+  const result = await action.handler({
+    toolId: 'example.view',
+    expectedStateId: randomUUID(),
+    inputs: {},
+  });
+  assert.equal(result.output[0].type, 'text');
+  assert.equal(JSON.parse(result.output[0].text).verification.status, 'not_run');
+  assert.deepEqual(result.output[1], {
+    type: 'image_url',
+    image_url: { url: 'data:image/png;base64,aGVsbG8=' },
+  });
+});

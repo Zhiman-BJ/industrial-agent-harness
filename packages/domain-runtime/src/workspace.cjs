@@ -132,9 +132,10 @@ function createWorkspacePlugin({
   domain,
   environment = process.env,
   protectedPaths = [],
+  inputRules = {},
   inspectionDiagnostics = () => [],
 }) {
-  const indexer = createInputIndexer();
+  const indexer = createInputIndexer(inputRules);
   const tool = (id, risk, execute, effect) => ({
     descriptor: {
       schemaVersion: '1',

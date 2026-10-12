@@ -5,6 +5,7 @@ const {
   IndustrialRuntime,
   createWorkspacePlugin,
   executeTask,
+  openToolSession,
   runtimeFiles,
 } = require('@industrial-agent-harness/domain-runtime');
 const {
@@ -55,7 +56,7 @@ function createProjectRuntime({
     ? require(entry).createRuntimePlugin({
         environment: { ...environment, ...pack.runtimeEnvironment },
         managed: Boolean(pack.managed),
-        runtimeApi: { executeTask, runtimeFiles },
+        runtimeApi: { executeTask, openToolSession, runtimeFiles },
       })
     : {};
   const protectedPaths = [
@@ -65,11 +66,15 @@ function createProjectRuntime({
     ...(plugin.protectedPaths || []),
     ...(plugin.workspaceProtectedPaths?.(projectDir) || []),
   ].filter(Boolean);
+  for (const relative of runtimeFiles.validateInputRules(plugin.workspaceInputs)) {
+    protectedPaths.push(path.join(fs.realpathSync(projectDir), ...relative.split('/')));
+  }
   let stateDiagnostics = [];
   const workspace = createWorkspacePlugin({
     domain,
     environment,
     protectedPaths,
+    inputRules: plugin.workspaceInputs,
     inspectionDiagnostics: () => stateDiagnostics,
   });
   const externalRegistry = new ExternalMcpRegistry(defaultResourceDirectory(environment));

@@ -352,3 +352,26 @@ test('symlink, hard-link and reserved output-kind inputs are refused', async t =
     false,
   );
 });
+
+test('Pack input boundary ignores changing derived evidence and retains design dependencies', async t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'pack-input-boundary-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  for (const name of [
+    'design.kicad_pcb',
+    'session/receipt.json',
+    '.pcb/reports/status.json',
+    '.pcb/libraries/custom.lib',
+  ]) {
+    fs.mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
+    fs.writeFileSync(path.join(root, name), name);
+  }
+  const indexer = createInputIndexer({ ignore: ['session', '.pcb/reports'] });
+  const first = await indexer.index(root);
+  assert.deepEqual(Object.keys(first).sort(), ['.pcb/libraries/custom.lib', 'design.kicad_pcb']);
+  fs.writeFileSync(path.join(root, 'session/new-receipt.json'), 'read-only status evidence');
+  fs.writeFileSync(path.join(root, '.pcb/reports/status.json'), 'new observation');
+  assert.deepEqual(await indexer.index(root), first);
+  fs.writeFileSync(path.join(root, '.pcb/libraries/custom.lib'), 'changed design dependency');
+  assert.notDeepEqual(await indexer.index(root), first);
+  await assert.rejects(createInputIndexer({ ignore: ['../escape'] }).index(root));
+});

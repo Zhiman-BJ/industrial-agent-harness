@@ -166,3 +166,70 @@ test('creating actual configuration refreshes professional scope; invalid config
   assert.equal(fixed.state.stage, 'review');
   assert.deepEqual(bundle.stateDiagnostics, []);
 });
+
+test('Pack evidence boundary keeps read-only receipts from invalidating accepted design state', async t => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'core-pack-boundary-'));
+  const project = path.join(directory, 'project'),
+    pack = path.join(directory, 'pack');
+  fs.mkdirSync(project);
+  fs.mkdirSync(pack);
+  fs.writeFileSync(path.join(project, 'design.txt'), 'actual design');
+  fs.writeFileSync(
+    path.join(pack, 'index.cjs'),
+    `const fs=require('node:fs'),path=require('node:path');
+    exports.createRuntimePlugin=({runtimeApi})=>{
+      if(typeof runtimeApi.openToolSession!=='function')throw Error('Missing execution backend');
+      return {workspaceInputs:{ignore:['session']},stateProvider:()=>({stage:'ready',inputHashes:{}}),
+        tools:[{descriptor:{schemaVersion:'1',id:'example.accept',version:'1',risk:'mutating',verification:['example.check']},execute:()=>({executionSucceeded:true,artifacts:[]})},
+          {descriptor:{schemaVersion:'1',id:'example.status',version:'1',risk:'read-only',verification:[]},execute:({projectDir})=>{fs.mkdirSync(path.join(projectDir,'session'),{recursive:true});fs.writeFileSync(path.join(projectDir,'session',Date.now()+'.json'),'derived receipt');return {executionSucceeded:true,artifacts:[]};}}],
+        verifiers:{'example.check':()=>({status:'passed',reason:'Fixture design check',metrics:{}})}};
+    };`,
+  );
+  const bundle = createProjectRuntime({
+    projectDir: project,
+    domain: 'example',
+    directory: path.join(directory, 'state'),
+    environment: { INDUSTRIAL_HARNESS_CONFIG_DIR: path.join(directory, 'config') },
+    registry: {
+      runtimePacks: [
+        {
+          id: 'test',
+          domain: 'example',
+          version: '1',
+          directory: pack,
+          runtime: { entry: 'index.cjs' },
+        },
+      ],
+    },
+  });
+  t.after(() => {
+    bundle.runtime.close();
+    fs.rmSync(directory, { recursive: true, force: true });
+  });
+  const execute = async (toolId, inputs = {}) => {
+    const state = await bundle.runtime.inspect();
+    return bundle.runtime.execute(
+      { toolId, inputs, expectedStateId: state.id },
+      {
+        approval: true,
+        scope: {
+          domain: 'example',
+          projectId: state.projectId,
+          stateId: state.id,
+          tools: bundle.runtime.descriptors().map(tool => tool.id),
+        },
+      },
+    );
+  };
+  const accepted = await execute('example.accept');
+  assert.equal(accepted.state.status, 'verified');
+  const observed = await execute('example.status');
+  assert.equal(observed.state.id, accepted.state.id);
+  assert.equal(observed.verification.status, 'not_run');
+  const refused = await execute('project.files.apply', {
+    changes: [{ path: 'session/forged.json', content: 'fake', expectedSha256: null }],
+  });
+  assert.equal(refused.action.status, 'failed');
+  fs.writeFileSync(path.join(project, 'design.txt'), 'edited design');
+  assert.equal((await bundle.runtime.inspect()).status, 'stale');
+});

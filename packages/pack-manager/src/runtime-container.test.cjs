@@ -1,0 +1,96 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const { RuntimeAssetManager, validateRuntimeAssets } = require('./runtime-assets.cjs');
+const asset = {
+  id: 'example-runtime',
+  version: '1.0.0',
+  label: 'Example runtime',
+  type: 'docker-image',
+  platform: 'darwin-arm64',
+  image: 'example.test/runtime/tool@sha256:' + 'b'.repeat(64),
+  imageId: 'sha256:' + 'a'.repeat(64),
+  sha256: 'a'.repeat(64),
+  imagePlatform: 'linux/amd64',
+  size: 100,
+  installedSize: 200,
+  environment: 'INDUSTRIAL_HARNESS_EXAMPLE_IMAGE',
+};
+function fixture(t, override = {}) {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-image-test-'));
+  const calls = [];
+  const manager = new RuntimeAssetManager({
+    directory,
+    platform: 'darwin-arm64',
+    command: async (command, args) => {
+      calls.push([command, ...args]);
+      return 'linux';
+    },
+    inspectImage: () => ({
+      Id: asset.imageId,
+      Os: 'linux',
+      Architecture: 'amd64',
+      RepoDigests: [asset.image],
+    }),
+    space: () => 10 ** 10,
+    ...override,
+  });
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  return { manager, calls };
+}
+test('managed image pull pins digest and config, then reuses verified Docker cache', async t => {
+  const { manager, calls } = fixture(t);
+  await manager.ensure([asset]);
+  assert.equal(manager.status([asset])[0].ready, true);
+  assert.equal(manager.environment([asset])[asset.environment], asset.image);
+  assert.deepEqual(calls[1], ['docker', 'pull', '--platform', 'linux/amd64', asset.image]);
+  await manager.ensure([asset]);
+  assert.equal(calls.length, 2);
+  manager.inspectImage = () => ({
+    Id: asset.imageId,
+    Os: 'linux',
+    Architecture: 'amd64',
+    RepoDigests: [],
+  });
+  assert.equal(manager.status([asset])[0].ready, false);
+  assert.equal(manager.environment([asset])[asset.environment], '');
+});
+test('wrong config/platform and unavailable daemon cannot activate an image', async t => {
+  const { manager } = fixture(t, {
+    inspectImage: () => ({
+      Id: asset.imageId,
+      Os: 'linux',
+      Architecture: 'arm64',
+      RepoDigests: [asset.image],
+    }),
+  });
+  await assert.rejects(manager.ensure([asset]), /identity verification/);
+  assert.equal(manager.status([asset])[0].ready, false);
+  manager.command = async () => {
+    throw Error('daemon offline');
+  };
+  await assert.rejects(manager.ensure([asset]), /Install and start Docker Desktop/);
+});
+test('mutable or inconsistently pinned container declarations fail validation', () => {
+  assert.throws(
+    () => validateRuntimeAssets([{ ...asset, image: 'example.test/runtime:latest' }]),
+    /container/,
+  );
+  assert.throws(() => validateRuntimeAssets([{ ...asset, sha256: 'c'.repeat(64) }]), /container/);
+});
+
+test('containerd Docker image store verifies descriptor config plus repository digest', async t => {
+  const { manager } = fixture(t, {
+    inspectImage: () => ({
+      Id: 'sha256:' + 'b'.repeat(64),
+      Descriptor: { annotations: { 'config.digest': asset.imageId } },
+      Os: 'linux',
+      Architecture: 'amd64',
+      RepoDigests: [asset.image],
+    }),
+  });
+  await manager.ensure([asset]);
+  assert.equal(manager.status([asset])[0].ready, true);
+});

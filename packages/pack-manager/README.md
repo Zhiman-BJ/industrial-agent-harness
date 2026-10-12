@@ -61,3 +61,7 @@ Task leases and installation ownership are acquired under the same store lock. A
 domain being prepared or repaired by another process, and preparation cannot begin while that domain has a
 live task lease. Unrelated installed domains remain usable. Failure to write a lock owner releases the file
 and descriptor so installation can be retried after freeing disk space.
+
+Managed runtime declarations also support `type: "docker-image"` on the qualified `darwin-arm64` host profile. Each declaration binds a registry `image` by manifest digest, its config `imageId`/`sha256`, `imagePlatform`, compressed/installed sizes and one `INDUSTRIAL_HARNESS_*` environment key. Installation checks the Docker daemon, pulls the immutable reference and verifies the repository digest, config and platform before atomically writing a receipt. Readiness rechecks Docker's local image metadata; missing or changed images yield an empty dependency environment value and require repair. Native and container assets can coexist in one Pack. Docker Desktop must be installed and running; the installer detects and reports this prerequisite. Removing a Pack retains reusable runtime images. Qualification currently covers macOS Apple Silicon only.
+
+HTTPS assets can use public OCI blob endpoints. Anonymous Bearer challenges are resolved with a pull-scoped token and tokens are removed on cross-origin redirects; authenticated private registries remain outside this download path. Exact declared download hashes and sizes still apply.

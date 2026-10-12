@@ -5,8 +5,18 @@ const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
 const crypto = require('node:crypto');
-const { spawn } = require('node:child_process');
+const { spawn, spawnSync } = require('node:child_process');
 
+function matchesImage(asset, image) {
+  // Classic Docker reports the config digest as Id; the containerd image store
+  // reports the manifest digest and supplies config.digest on its descriptor.
+  const config = image.Descriptor?.annotations?.['config.digest'] || image.Id;
+  return (
+    config === asset.imageId &&
+    image.Os + '/' + image.Architecture === asset.imagePlatform &&
+    (image.RepoDigests || []).includes(asset.image)
+  );
+}
 const hash = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
 // Footprint metadata does not change executable identity or invalidate old receipts.
 function declarationHash(asset) {
@@ -28,6 +38,32 @@ function validateRuntimeAssets(assets = []) {
   const ids = new Set(),
     variables = new Set();
   for (const asset of assets) {
+    if (asset?.type === 'docker-image') {
+      if (
+        !/^[a-z][a-z0-9-]{0,63}$/.test(asset.id || '') ||
+        ids.has(asset.id) ||
+        !/^[0-9]+\.[0-9]+\.[0-9]+(?:-[a-z0-9.-]+)?$/.test(asset.version || '') ||
+        typeof asset.label !== 'string' ||
+        !asset.label ||
+        asset.platform !== 'darwin-arm64' ||
+        !/^[a-z0-9.-]+(?::[0-9]+)?\/[a-z0-9._/-]+@sha256:[a-f0-9]{64}$/.test(asset.image || '') ||
+        !/^sha256:[a-f0-9]{64}$/.test(asset.imageId || '') ||
+        asset.sha256 !== asset.imageId.slice(7) ||
+        !/^linux\/(amd64|arm64)$/.test(asset.imagePlatform || '') ||
+        !Number.isSafeInteger(asset.size) ||
+        asset.size < 1 ||
+        asset.size > 64 * 1024 ** 3 ||
+        !Number.isSafeInteger(asset.installedSize) ||
+        asset.installedSize < 1 ||
+        asset.installedSize > 128 * 1024 ** 3 ||
+        !/^INDUSTRIAL_HARNESS_[A-Z0-9_]+$/.test(asset.environment || '') ||
+        variables.has(asset.environment)
+      )
+        throw Error('Invalid managed container declaration.');
+      ids.add(asset.id);
+      variables.add(asset.environment);
+      continue;
+    }
     if (
       !/^[a-z][a-z0-9-]{0,63}$/.test(asset?.id || '') ||
       ids.has(asset.id) ||
@@ -258,6 +294,7 @@ class RuntimeAssetManager {
     command = run,
     fetchArchive = download,
     space = availableSpace,
+    inspectImage,
   } = {}) {
     if (!directory) throw Error('Runtime asset store is required.');
     this.directory = path.join(path.resolve(directory), '.runtime-assets');
@@ -265,6 +302,20 @@ class RuntimeAssetManager {
     this.command = command;
     this.fetchArchive = fetchArchive;
     this.space = space;
+    this.inspectImage =
+      inspectImage ||
+      (image => {
+        const result = spawnSync('docker', ['image', 'inspect', image], {
+          encoding: 'utf8',
+          timeout: 10000,
+        });
+        if (result.status !== 0)
+          throw Error(
+            'Docker runtime is unavailable. Install and start Docker Desktop, then retry preparation. ' +
+              String(result.stderr || result.error || '').slice(0, 1000),
+          );
+        return JSON.parse(result.stdout)[0];
+      });
   }
   location(asset) {
     validateRuntimeAssets([asset]);
@@ -326,6 +377,24 @@ class RuntimeAssetManager {
           throw Error('Runtime does not support this platform.');
         const location = this.location(asset),
           receipt = JSON.parse(fs.readFileSync(path.join(location, 'receipt.json'), 'utf8'));
+        if (asset.type === 'docker-image') {
+          const image = this.inspectImage(asset.image);
+          if (
+            receipt.sha256 !== asset.sha256 ||
+            !matchesDeclaration(receipt, asset) ||
+            !matchesImage(asset, image)
+          )
+            throw Error('Managed container identity changed.');
+          return {
+            id: asset.id,
+            label: asset.label,
+            version: asset.version,
+            ready: true,
+            executable: asset.image,
+            executables: { [asset.environment]: asset.image },
+            checkedAt: receipt.checkedAt,
+          };
+        }
         const executable = path.join(location, asset.app, asset.executable);
         const executables = this.executables(asset, location);
         if (
@@ -403,6 +472,54 @@ class RuntimeAssetManager {
       fs.rmSync(profile, { recursive: true, force: true });
     }
   }
+  async ensureImage(asset, target, { signal, report, recheck }) {
+    if (!recheck && this.status([asset])[0].ready) {
+      report({ phase: 'ready' });
+      return;
+    }
+    report({ phase: 'checking' });
+    await this.command('docker', ['info', '--format', '{{.OSType}}'], {
+      signal,
+      timeout: 15000,
+    }).catch(error => {
+      throw Error(
+        'Docker runtime is unavailable. Install and start Docker Desktop, then retry preparation. ' +
+          error.message,
+      );
+    });
+    const estimate = footprint(asset.size, asset.installedSize);
+    report({ phase: 'checking-space', ...checkSpace(this.directory, estimate, this.space) });
+    report({ phase: 'downloading', received: 0, total: asset.size });
+    await this.command('docker', ['pull', '--platform', asset.imagePlatform, asset.image], {
+      signal,
+      timeout: 30 * 60 * 1000,
+    });
+    signal?.throwIfAborted();
+    report({ phase: 'verifying' });
+    const image = this.inspectImage(asset.image);
+    if (!matchesImage(asset, image)) throw Error('Managed container identity verification failed.');
+    fs.mkdirSync(target, { recursive: true, mode: 0o700 });
+    const temporary = path.join(target, 'receipt.' + crypto.randomUUID() + '.partial');
+    try {
+      fs.writeFileSync(
+        temporary,
+        JSON.stringify({
+          schemaVersion: 1,
+          sha256: asset.sha256,
+          declarationHash: declarationHash(asset),
+          checkedAt: new Date().toISOString(),
+          image: asset.image,
+          imageId: asset.imageId,
+        }),
+        { flag: 'wx', mode: 0o600 },
+      );
+      signal?.throwIfAborted();
+      fs.renameSync(temporary, path.join(target, 'receipt.json'));
+    } finally {
+      fs.rmSync(temporary, { force: true });
+    }
+    report({ phase: 'ready' });
+  }
   async ensure(assets = [], { onProgress = () => {}, signal, recheck = false } = {}) {
     validateRuntimeAssets(assets);
     if (!assets.length) return [];
@@ -435,6 +552,10 @@ class RuntimeAssetManager {
           throw Error('Runtime does not support this platform.');
         const report = state => onProgress({ id: asset.id, label: asset.label, ...state });
         const target = this.location(asset);
+        if (asset.type === 'docker-image') {
+          await this.ensureImage(asset, target, { signal, report, recheck });
+          continue;
+        }
         if (this.status([asset])[0].ready) {
           if (!recheck) {
             report({ phase: 'ready' });

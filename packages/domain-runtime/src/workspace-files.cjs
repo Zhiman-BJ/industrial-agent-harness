@@ -43,7 +43,20 @@ function readBytes(file, maximum = 262144) {
   if (fs.statSync(file).size > maximum) throw Error('File exceeds the bounded read size.');
   return fs.readFileSync(file);
 }
-function* scanCandidates(projectDir, protectedPaths, diagnostics) {
+function validateInputRules(inputRules = {}) {
+  const ignored = inputRules.ignore || [];
+  if (!Array.isArray(ignored)) throw Error('Invalid Pack input rules.');
+  for (const root of ignored) {
+    ProjectPathSchema.parse(root);
+    if (['harness.tasks.json', 'harness.project.json'].includes(root))
+      throw Error('Pack evidence rules cannot hide project control files.');
+  }
+  return ignored;
+}
+function* scanCandidates(projectDir, protectedPaths, diagnostics, inputRules = {}) {
+  const packIgnored = validateInputRules(inputRules);
+  const isPackEvidence = name =>
+    packIgnored.some(root => name === root || name.startsWith(root + '/'));
   const seen = new Set(),
     protectedRoots = protectedPaths.map(canonicalPath);
   const note = (name, reason) => {
@@ -62,6 +75,10 @@ function* scanCandidates(projectDir, protectedPaths, diagnostics) {
     ...Object.values(declaration.tasks).flatMap(task => task.inputs),
   ]);
   for (const name of [...required].sort()) {
+    if (isPackEvidence(name)) {
+      note(name, 'Declared input overlaps Pack evidence storage.');
+      continue;
+    }
     if (!fs.lstatSync(path.join(projectDir, name), { throwIfNoEntry: false })) {
       if (!['harness.tasks.json', 'harness.project.json'].includes(name))
         note(name, 'Declared input is missing.');
@@ -74,7 +91,12 @@ function* scanCandidates(projectDir, protectedPaths, diagnostics) {
   let count = 0,
     stopped = false;
   function* visit(name, depth = 0) {
-    if (stopped || ignored.some(root => name === root || name.startsWith(root + '/'))) return;
+    if (
+      stopped ||
+      isPackEvidence(name) ||
+      ignored.some(root => name === root || name.startsWith(root + '/'))
+    )
+      return;
     if (name.split('/').some(part => excluded.has(part))) return;
     const file = path.join(projectDir, name);
     if (protectedRoots.some(root => inside(file, root))) return;
@@ -127,12 +149,12 @@ function indexFile(projectDir, name, protectedPaths, total) {
     throw Error('Input exceeds the bounded workspace size.');
   return { file, stat, size: Number(stat.size), identity: fileIdentity(stat) };
 }
-function inputIndex(projectDir, protectedPaths = []) {
+function inputIndex(projectDir, protectedPaths = [], inputRules = {}) {
   projectDir = fs.realpathSync(projectDir);
   const entries = {},
     diagnostics = [];
   let total = 0;
-  for (const { name } of scanCandidates(projectDir, protectedPaths, diagnostics)) {
+  for (const { name } of scanCandidates(projectDir, protectedPaths, diagnostics, inputRules)) {
     try {
       const info = indexFile(projectDir, name, protectedPaths, total);
       entries[name] = hash(readBytes(info.file, 64 * 1024 * 1024));
@@ -143,7 +165,7 @@ function inputIndex(projectDir, protectedPaths = []) {
   }
   return entries;
 }
-function createInputIndexer() {
+function createInputIndexer(inputRules = {}) {
   const cache = new Map();
   let diagnostics = [],
     tail = Promise.resolve();
@@ -154,7 +176,7 @@ function createInputIndexer() {
       notes = [];
     let total = 0,
       count = 0;
-    for (const { name } of scanCandidates(projectDir, protectedPaths, notes)) {
+    for (const { name } of scanCandidates(projectDir, protectedPaths, notes, inputRules)) {
       try {
         const info = indexFile(projectDir, name, protectedPaths, total);
         const cached = cache.get(info.file);
@@ -323,6 +345,7 @@ module.exports = {
   projectFile,
   inputIndex,
   createInputIndexer,
+  validateInputRules,
   applyFiles,
   manifest,
   runDirectory,

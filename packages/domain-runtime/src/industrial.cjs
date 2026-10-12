@@ -21,6 +21,26 @@ const now = () => new Date().toISOString();
 const sameInputs = (a, b) =>
   JSON.stringify(Object.entries(a).sort()) === JSON.stringify(Object.entries(b).sort());
 const activeStores = new Set();
+// Images are transient model observations, never engineering acceptance facts.
+function boundedImages(images = []) {
+  if (!Array.isArray(images)) throw Error('Invalid tool images.');
+  let bytes = 0;
+  return images
+    .slice(0, 4)
+    .filter(part => {
+      if (
+        part?.type !== 'image' ||
+        !['image/png', 'image/jpeg', 'image/webp'].includes(part.mimeType) ||
+        typeof part.data !== 'string' ||
+        !/^[A-Za-z0-9+/]*={0,2}$/.test(part.data)
+      )
+        return false;
+      bytes += Buffer.byteLength(part.data);
+      return bytes <= 12 * 1024 * 1024;
+    })
+    .map(({ type, mimeType, data }) => ({ type, mimeType, data }));
+}
+
 const { bindPresentation } = require('./presentation.cjs');
 const { displayInputs, boundedPreview } = require('./approval-preview.cjs');
 const schemas = {
@@ -569,6 +589,7 @@ class IndustrialRuntime {
     this.put('presentation', action.id, presentation);
     return {
       presentation,
+      images: boundedImages(result?.images),
       run,
       action,
       artifacts,
