@@ -20,7 +20,7 @@ Harness 自有控件消费 `./text` 导出的只读展示 `DisplayTextProvider`�
 | `src/godot` | Godot Web Export 隔离 iframe、会话资源管理和 Viewer Bridge |
 | `src/engineering` | Godot 场景/脚本/资源与 PCB 库/制造文件/3D 素材的受限只读预览 |
 | `src/cad` | OCCT BREP/STL 实体、封口剖切、面/边选择与名义几何测量；FreeCAD 原生草图/尺寸/约束高亮，共享导航与全屏，macOS arm64 Electron 验证 |
-| `src/documents` | 不依赖 Domain 的 CSV/TSV、JSON、JSONL/NDJSON、Markdown、TXT/LOG；只读、原文入口、有界解析与分页 |
+| `src/documents` | 不依赖 Domain 的 CSV/TSV、JSON、JSONL/NDJSON、Markdown、TXT/LOG、HTML/HTM；只读、原文入口、有界解析与分页；HTML 在沙箱隔离源 iframe 中预览，阻断远程加载 |
 
 `src/api.ts` 定义桌面 Viewer Host 当前需要的接口，`src/viewer-styles.css` 保留 demo 工作台及 Viewer 样式。`fixtures/` 是明确标识的参考数据；`tests/` 检查渲染和文件访问边界。运行：
 

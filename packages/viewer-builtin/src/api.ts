@@ -167,7 +167,7 @@ export interface EngineeringData {
   animation?: AssetData;
   mode: 'structure' | 'source' | 'metadata' | 'media' | 'geometry';
 }
-export type DocumentKind = 'table' | 'json' | 'jsonl' | 'markdown' | 'text';
+export type DocumentKind = 'table' | 'json' | 'jsonl' | 'markdown' | 'text' | 'html';
 export interface DocumentData {
   text: string;
   rows?: string[][];
@@ -176,6 +176,8 @@ export interface DocumentData {
   records?: number;
   error?: string;
   warning?: string;
+  /** Registered app://html preview URL; present only for the HTML kind. */
+  url?: string;
 }
 
 export type OpenedViewer =

@@ -19,6 +19,7 @@ const extensions = Object.freeze({
   jsonl: ['.jsonl', '.ndjson'],
   markdown: ['.md', '.markdown'],
   text: ['.txt', '.log'],
+  html: ['.html', '.htm'],
 });
 
 function readDocument(file, projectRoot, artifact, limit) {
@@ -193,7 +194,7 @@ function parseDocument(kind, text, extension) {
   return data;
 }
 
-function createDocumentPlugins({ projectRoot }) {
+function createDocumentPlugins({ projectRoot, serveHtml }) {
   return Object.entries(extensions).map(([id, formats]) => ({
     id,
     autoPreview: true,
@@ -205,10 +206,18 @@ function createDocumentPlugins({ projectRoot }) {
         artifact,
         id === 'markdown' ? limits.markdownBytes : limits.bytes,
       );
+      const data = parseDocument(id, text, path.extname(file).toLowerCase());
+      if (id === 'html') {
+        // The preview iframe loads from the host's registered URL so the page
+        // gets its own origin and CSP; srcdoc would inherit the workbench CSP
+        // and could never run scripts. Hosts without a protocol cannot preview.
+        if (!serveHtml) throw Error('HTML preview is unavailable in this host.');
+        data.url = serveHtml(file);
+      }
       return {
         kind: id,
         artifact,
-        data: parseDocument(id, text, path.extname(file).toLowerCase()),
+        data,
       };
     },
   }));

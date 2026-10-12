@@ -15,6 +15,7 @@ import { useViewNavigation, useWheelZoom } from '../navigation';
 import { TableView } from './TableView';
 import { JsonView } from './JsonView';
 import { TextView } from './TextView';
+import HtmlView from './HtmlView';
 const MarkdownView = lazy(() => import('./MarkdownView'));
 
 function MarkdownFailure({ message }: { message: string }) {
@@ -64,7 +65,10 @@ export function DocumentViewport({
   const { t } = useDisplayText();
   const [source, setSource] = useState(Boolean(data.error || data.warning));
   const [zoom, setZoom] = useState(1);
-  const [ready, setReady] = useState(kind !== 'markdown' || source);
+  // Markdown waits for its lazy renderer; HTML waits for the sandboxed frame
+  // to load — but only when the host actually registered a preview URL.
+  const waitsForRender = kind === 'markdown' || (kind === 'html' && Boolean(data.url));
+  const [ready, setReady] = useState(!waitsForRender || source);
   const [query, setQuery] = useState('');
   const [renderError, setRenderError] = useState('');
   const deferredQuery = useDeferredValue(query);
@@ -80,8 +84,8 @@ export function DocumentViewport({
     setSource(true);
   }, []);
   useEffect(() => {
-    if (kind !== 'markdown' || source) notifyReady();
-  }, [kind, source, notifyReady]);
+    if (!waitsForRender || source) notifyReady();
+  }, [waitsForRender, source, notifyReady]);
   const changeZoom = (factor: number) =>
     setZoom(value => Math.max(0.5, Math.min(3, value * factor)));
   const fit = () => {
@@ -95,7 +99,7 @@ export function DocumentViewport({
     ready,
     percent: Math.round(zoom * 100),
   });
-  // 文档视口承载的全是文本类内容（文本/表格/JSON/Markdown）：
+  // 文档视口承载的全是文本类内容（文本/表格/JSON/Markdown/HTML）：
   // 普通滚轮保持原生滚动，触控板捏合（Ctrl+wheel）仍可缩放。
   useWheelZoom(viewport, changeZoom, false);
   const description =
@@ -107,7 +111,9 @@ export function DocumentViewport({
           ? 'JSON'
           : kind === 'markdown'
             ? 'Markdown'
-            : 'Text';
+            : kind === 'html'
+              ? 'HTML'
+              : 'Text';
   const error = data.error || renderError;
   let content: ReactNode;
   if (source || kind === 'text') content = <TextView text={data.text} query={deferredQuery} />;
@@ -122,6 +128,12 @@ export function DocumentViewport({
     );
   else if (kind === 'json' || kind === 'jsonl')
     content = <JsonView text={data.text} lines={kind === 'jsonl'} />;
+  else if (kind === 'html')
+    content = data.url ? (
+      <HtmlView url={data.url} onReady={notifyReady} />
+    ) : (
+      <TextView text={data.text} query={deferredQuery} />
+    );
   else
     content = (
       <MarkdownBoundary text={data.text} onFailure={markdownFailed}>
