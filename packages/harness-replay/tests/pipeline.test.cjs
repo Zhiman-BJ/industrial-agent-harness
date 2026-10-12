@@ -144,8 +144,10 @@ test('a two-turn recorded task replays end to end with honest running flips', ()
   assert.equal(description.initialTurns.length, 1);
   assert.equal(final.phase, 'paused');
   assert.ok(final.atEnd);
-  // running: mid-turn true -> false at turn-1 done -> true on turn-2 -> false.
-  assert.deepEqual(runningFlips, [true, false, true, false]);
+  // running: false through the (now honest) lead-in while nothing is
+  // revealed, then true mid-turn -> false at turn-1 done -> true on turn-2
+  // -> false at its done.
+  assert.deepEqual(runningFlips, [false, true, false, true, false]);
   const texts = final.display.filter(event => event.type === 'text').map(event => event.text);
   assert.ok(
     texts.includes('检查这版布局，重点看电源网络。'),
@@ -179,12 +181,13 @@ test('a 90-second tool wait compresses to the cap and can stay raw', () => {
   recorder.stop();
 
   const { engine } = pipelineChecks(directory);
-  // First point pins displayMs to 0; gaps: 250 + compressed 1500 + 250 + 250.
-  assert.equal(engine.timeline.durationMs, 2250);
+  // Lead-in 250 + gap 250 + compressed 1500 + 250 + 250: the lead-in is a
+  // gap like any other (it used to be silently pinned to displayMs 0).
+  assert.equal(engine.timeline.durationMs, 2500);
   const raw = createReplayEngine(loadBundle(directory).events, {
     compression: { thresholdMs: Infinity, capMs: 1 },
   });
-  assert.equal(raw.timeline.durationMs, 91000);
+  assert.equal(raw.timeline.durationMs, 91250);
 });
 
 test('a cancelled run replays with a cancelled outcome', () => {
