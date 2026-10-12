@@ -1884,6 +1884,14 @@
       "en": "Wheel to zoom · Shift+wheel to scroll",
       "zh-CN": "滚轮缩放 · Shift+滚轮滚动"
     },
+    "Scroll to browse · Pinch to zoom": {
+      "en": "Scroll to browse · Pinch to zoom",
+      "zh-CN": "滚轮滚动 · 双指捏合缩放"
+    },
+    "· Pinch to zoom": {
+      "en": "· Pinch to zoom",
+      "zh-CN": "· 双指捏合缩放"
+    },
     "Cannot preview": {
       "en": "Cannot preview",
       "zh-CN": "无法预览"

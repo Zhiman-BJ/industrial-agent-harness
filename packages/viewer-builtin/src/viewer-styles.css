@@ -2758,3 +2758,16 @@
   color: #8ac5ed;
   font-weight: 600;
 }
+.rp-engineering-comment {
+  color: #7d8b94;
+  font-style: italic;
+}
+.rp-engineering-string {
+  color: #97c279;
+}
+.rp-engineering-annotation {
+  color: #e0a75e;
+}
+.rp-engineering-number {
+  color: #c49ae0;
+}
