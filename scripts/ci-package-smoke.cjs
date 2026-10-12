@@ -23,8 +23,14 @@ const qualified = declared.filter(domain => domain.qualifiedBundlePlatforms.incl
 // discovery/isolation for every domain, without claiming native qualification.
 const domains = (qualified.length ? qualified : declared).map(domain => domain.id);
 if (!domains.length) throw Error('No declared Domain package profiles.');
-console.log(JSON.stringify({ platform, mode: 'source-package-smoke',
-  installableDomains: qualified.map(domain => domain.id), domains }));
+console.log(
+  JSON.stringify({
+    platform,
+    mode: 'source-package-smoke',
+    installableDomains: qualified.map(domain => domain.id),
+    domains,
+  }),
+);
 for (const domain of domains) {
   execute('package-headless.cjs', [path.join(output, `headless-${domain}`), '--domain', domain]);
 }

@@ -296,7 +296,10 @@ function applyFiles(projectDir, changes, protectedPaths = []) {
           fs.closeSync(fd);
           opened = false;
           projectFile(projectDir, plan.path, protectedPaths);
-          if (plan.before !== null && hash(readBytes(plan.file, 16 * 1024 * 1024)) !== plan.expectedSha256)
+          if (
+            plan.before !== null &&
+            hash(readBytes(plan.file, 16 * 1024 * 1024)) !== plan.expectedSha256
+          )
             throw Error('File changed before writing: ' + plan.path);
           if (plan.before === null) fs.linkSync(temporary, plan.file);
           else fs.renameSync(temporary, plan.file);

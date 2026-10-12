@@ -10,19 +10,25 @@ function createDependencyResolver(dependencies = {}) {
   const ownerEntry = require.resolve('@zhiman-bj/industrial-domain-packs');
   const ownerRoot = path.dirname(path.dirname(ownerEntry));
   const ownerRequire = createRequire(ownerEntry);
-  const declared = JSON.parse(fs.readFileSync(path.join(ownerRoot, 'package.json'))).dependencies || {};
+  const declared =
+    JSON.parse(fs.readFileSync(path.join(ownerRoot, 'package.json'))).dependencies || {};
   const roots = new Map();
   for (const [name, version] of Object.entries(dependencies)) {
-    if (!/^(?:@[a-z0-9._-]+\/)?[a-z0-9._-]+$/.test(name) ||
-        !/^\d+\.\d+\.\d+(?:-[a-z0-9.-]+)?$/.test(version) || declared[name] !== version)
+    if (
+      !/^(?:@[a-z0-9._-]+\/)?[a-z0-9._-]+$/.test(name) ||
+      !/^\d+\.\d+\.\d+(?:-[a-z0-9.-]+)?$/.test(version) ||
+      declared[name] !== version
+    )
       throw Error('Runtime dependency is not pinned by the published Pack owner: ' + name);
     let root = path.dirname(ownerRequire.resolve(name + '/package.json'));
     while (true) {
       const file = path.join(root, 'package.json');
       const manifest = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file)) : {};
       if (manifest.name === name) {
-        if (manifest.version !== version) throw Error('Runtime dependency version differs from its declaration: ' + name);
-        roots.set(name, fs.realpathSync(root)); break;
+        if (manifest.version !== version)
+          throw Error('Runtime dependency version differs from its declaration: ' + name);
+        roots.set(name, fs.realpathSync(root));
+        break;
       }
       const parent = path.dirname(root);
       if (parent === root) throw Error('Runtime dependency package identity is missing: ' + name);
@@ -30,8 +36,11 @@ function createDependencyResolver(dependencies = {}) {
     }
   }
   return request => {
-    if (typeof request !== 'string' || request.includes('\\') ||
-        request.split('/').some(part => !part || part === '.' || part === '..'))
+    if (
+      typeof request !== 'string' ||
+      request.includes('\\') ||
+      request.split('/').some(part => !part || part === '.' || part === '..')
+    )
       throw Error('Invalid Runtime dependency request.');
     const parts = request.split('/');
     const name = request.startsWith('@') ? parts.slice(0, 2).join('/') : parts[0];

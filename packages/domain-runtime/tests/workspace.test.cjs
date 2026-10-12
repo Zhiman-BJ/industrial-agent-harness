@@ -311,7 +311,11 @@ test('partial staging failures preserve original files and rollback prior edits 
     try {
       failed = await execute('project.files.apply', {
         changes: [
-          { path: 'first', content: 'new first'.repeat(100000), expectedSha256: hash(Buffer.from(large)) },
+          {
+            path: 'first',
+            content: 'new first'.repeat(100000),
+            expectedSha256: hash(Buffer.from(large)),
+          },
           { path: 'second', content: 'new second', expectedSha256: hash(Buffer.from('two')) },
         ],
       });
@@ -380,11 +384,22 @@ test('Pack input boundary ignores changing derived evidence and retains design d
 test('protected file batches can replace and delete existing native source files above 256KiB', t => {
   const { project } = open(t);
   const { applyFiles } = require('../src/workspace-files.cjs');
-  const before = 'a'.repeat(1024 * 1024), after = 'b'.repeat(2 * 1024 * 1024);
+  const before = 'a'.repeat(1024 * 1024),
+    after = 'b'.repeat(2 * 1024 * 1024);
   fs.writeFileSync(path.join(project, 'large.dxf'), before);
-  applyFiles(project, [{ path: 'large.dxf', content: after, expectedSha256: hash(Buffer.from(before)) }]);
+  applyFiles(project, [
+    { path: 'large.dxf', content: after, expectedSha256: hash(Buffer.from(before)) },
+  ]);
   assert.equal(fs.readFileSync(path.join(project, 'large.dxf'), 'utf8'), after);
-  assert.throws(() => applyFiles(project, [{ path: 'large.dxf', content: 'stale', expectedSha256: hash(Buffer.from(before)) }]), /stale/);
-  applyFiles(project, [{ path: 'large.dxf', content: null, expectedSha256: hash(Buffer.from(after)) }]);
+  assert.throws(
+    () =>
+      applyFiles(project, [
+        { path: 'large.dxf', content: 'stale', expectedSha256: hash(Buffer.from(before)) },
+      ]),
+    /stale/,
+  );
+  applyFiles(project, [
+    { path: 'large.dxf', content: null, expectedSha256: hash(Buffer.from(after)) },
+  ]);
   assert.equal(fs.existsSync(path.join(project, 'large.dxf')), false);
 });

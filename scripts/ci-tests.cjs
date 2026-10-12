@@ -45,6 +45,7 @@ function testConcurrency(suite) {
 }
 const transportFiles = [
   'tests/integration/external-mcp.test.cjs',
+  'tests/integration/industrial-cuda-installed-pack.test.cjs',
   'tests/integration/domain-mcp-scope.test.cjs',
   'tests/integration/pcb-mcp-transport.test.cjs',
   'tests/integration/pcb-mcp-policy.test.cjs',

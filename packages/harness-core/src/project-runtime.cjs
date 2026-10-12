@@ -56,7 +56,12 @@ function createProjectRuntime({
     ? require(entry).createRuntimePlugin({
         environment: { ...environment, ...pack.runtimeEnvironment },
         managed: Boolean(pack.managed),
-        runtimeApi: { executeTask, openToolSession, runtimeFiles, resolveDependency: pack.resolveDependency },
+        runtimeApi: {
+          executeTask,
+          openToolSession,
+          runtimeFiles,
+          resolveDependency: pack.resolveDependency,
+        },
       })
     : {};
   const protectedPaths = [
