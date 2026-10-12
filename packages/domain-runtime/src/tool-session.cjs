@@ -92,17 +92,29 @@ function dockerCommand(spec) {
     command: docker,
     args,
     environment,
-    cleanup: () => {
-      const result = spawnSync(docker, ['rm', '--force', name], {
-        env: environment,
-        encoding: 'utf8',
-        timeout: 15000,
-      });
-      if (result.status !== 0 && !/No such container/.test(result.stderr || ''))
-        throw Error(
-          'Container cleanup could not be confirmed: ' +
-            String(result.stderr || result.error).slice(0, 2000),
-        );
+    cleanup: async () => {
+      for (let attempt = 0; attempt < 30; attempt++) {
+        const result = spawnSync(docker, ['rm', '--force', name], {
+          env: environment,
+          encoding: 'utf8',
+          timeout: 15000,
+        });
+        if (result.status === 0 || /No such container/.test(result.stderr || '')) return;
+        if (!/removal.*already in progress/i.test(result.stderr || ''))
+          throw Error(
+            'Container cleanup could not be confirmed: ' +
+              String(result.stderr || result.error).slice(0, 2000),
+          );
+        const inspection = spawnSync(docker, ['inspect', name], {
+          env: environment,
+          encoding: 'utf8',
+          timeout: 10000,
+        });
+        if (inspection.status !== 0 && /No such (object|container)/i.test(inspection.stderr || ''))
+          return;
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      throw Error('Container removal did not finish within the cleanup deadline.');
     },
   };
 }
@@ -154,7 +166,7 @@ async function openToolSession(spec) {
         } finally {
           clearTimeout(force);
           spec.signal?.removeEventListener('abort', cancelSession);
-          launch.cleanup();
+          await launch.cleanup();
         }
       })();
       return closing;
