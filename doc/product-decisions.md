@@ -686,6 +686,8 @@ CSV/TSV 显示表格并提供表头开关、全文筛选与分页；普通 JSON 
 - 机器清单：`architecture/editions.json`（IH-EDITIONS-001）是公开/内部归属的唯一事实源，`scripts/check-editions-manifest.cjs` 强制全仓分类（新增未分类路径失败）、公开代码不引用内部路径（未完成隔离的诊断模块记录只减不增的引用台账）、发布门禁在外部仓库名或许可证待定时显式阻断真实发布。导出器（#106）与发行（#108）只消费该清单，不得各自维护排除规则。
 - 边界：公开/内部拆分不改变 IH-ARCH-001 所有权与 Core Vertical Slice 里程碑；已安装版、应用身份与下载/更新地址的迁移策略见 [editions.md 第 6 节](editions.md)，由 #108/#109 执行。
 
+2026-10-12 修订：根 `AGENTS.md` 与 `AGENT.md`（agent 指令入口）改为随公开面发布——与 #119 分层 AGENTS.md 已位于公共包路径的现状保持一致，也为开源仓库的 agent 辅助贡献者提供同等指令。`CLAUDE.md`、`PRODUCT.md` 与其余治理机械（policy.json、架构契约脚本与测试、CODEOWNERS、architecture workflow）仍属内部。根 AGENTS.md 以反引号提及若干内部 doc 路径，属已知文字性引用：#106 导出器在生成公开树时按既定的版本化转换处理，不视为引用违规。
+
 ## PD-070：内部 Demo 重放许可（取代绝对禁止条款）
 
 - 日期：2026-10-10。
