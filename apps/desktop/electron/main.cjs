@@ -724,7 +724,12 @@ const viewerRegistry = createViewerRegistry([
     }),
   },
   // Generic formats are fallbacks; preserve specialized JSON/HTML detection.
-  ...createDocumentPlugins({ projectRoot: () => projectDir }),
+  // HTML previews are served through the viewer protocol so the sandboxed
+  // frame gets its own origin and CSP instead of inheriting the workbench's.
+  ...createDocumentPlugins({
+    projectRoot: () => projectDir,
+    serveHtml: file => viewerProtocol.registerHtml(file),
+  }),
 ]);
 
 function registerHandlers() {

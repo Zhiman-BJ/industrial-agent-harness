@@ -696,3 +696,11 @@ CSV/TSV 显示表格并提供表头开关、全文筛选与分页；普通 JSON 
 - 决定：允许在**内部 edition** 增加只读的轨迹录制与 Demo 重放能力（#103 录制、#104 脱敏、#105 重放/录屏），用于内部演示与回归演示。公开 edition 不包含任何重放能力。
 - 边界：重放是离线、只读的演示路径——不初始化执行 Runtime、不产生新的 Action/State/Verification/Checkpoint、不计作实时执行或工程验收，不替代 Core Vertical Slice 或任何真实工业闭环；Core Vertical Slice 优先级（AGENTS.md 里程碑条款）不变。诊断日志查看面板“只读取、不回放执行”的既有边界（PD-009 补充）不变。
 
+
+## PD-071：HTML 文件在 Viewer 中沙箱预览
+
+- 日期：2026-10-12。
+- 状态：已确定。
+- 来源：2026-10-12 Browser Use 验收反馈——工作台应能直接打开项目里的 `.html` 文件（此前 Viewer 不识别 HTML，报 "No registered Viewer supports this file"）。
+- 决定：通用文档 Viewer 新增 `.html`/`.htm` 预览，取代 `doc/document-viewers.md` 中"不预览任意 HTML"的范围限制。预览在 `sandbox="allow-scripts"` 的隔离源 iframe 中渲染：内联脚本可运行（多数页面离开 JS 无法呈现），但无法访问宿主页面、存储或顶层导航；iframe CSP 阻断一切远程/网络加载，相对路径的本地资源不解析。保留原文切换入口。
+- 边界：预览是只读展示，不构成工程验收；Markdown Viewer 不执行嵌入 HTML 的既有边界不变；外部浏览器打开文件仍走独立的授权路径。

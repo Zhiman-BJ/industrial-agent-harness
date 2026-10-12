@@ -12,6 +12,7 @@
 | `events.jsonl` | 带源行号的 JSON 记录 |
 | `events.ndjson` | 同样支持的 NDJSON 扩展名 |
 | `run.log`、`notes.txt` | 行号、文本筛选、自动换行 |
+| `page.html` | 沙箱 iframe 中的 HTML 预览：内联脚本可运行，远程与本地资源加载被阻断；可切回原文 |
 | `README.md` | Markdown 标题、列表、引用、代码块、表格和任务列表；可切回原文 |
 
 所有 Viewer 支持标题栏缩放、Fit 与全屏，Esc 退出。滚轮或触控板捏合缩放，Shift+滚轮和滚动条用于滚动。查看不会保存或修改这些文件。

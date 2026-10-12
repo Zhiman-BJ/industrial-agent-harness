@@ -1964,6 +1964,14 @@
       "en": "Text",
       "zh-CN": "文本"
     },
+    "HTML": {
+      "en": "HTML",
+      "zh-CN": "HTML"
+    },
+    "HTML Preview": {
+      "en": "HTML Preview",
+      "zh-CN": "HTML 预览"
+    },
     "{0}… (see Source)": {
       "en": "{0}… (see Source)",
       "zh-CN": "{0}…（查看原文）"
