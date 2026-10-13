@@ -198,8 +198,16 @@ test('portable registration installs Chip and PCB, then adds Godot; native prepa
     new Response(fs.readFileSync(path.join(outputDir, path.basename(new URL(url).pathname))));
   if (process.platform !== 'darwin' || process.arch !== 'arm64') {
     const catalog = JSON.parse(fs.readFileSync(path.join(outputDir, 'catalog.json'))).payload;
-    assert.ok(!catalog.packs.some(item => ['pcb', 'godot'].includes(item.domain)));
-    assert.ok(catalog.packs.some(item => item.domain === 'chip'));
+    // The built catalog must mirror the owner's bundle-platform qualification
+    // exactly: native domains stay darwin-only, chip keeps its linux-x64
+    // evidence, and platforms without qualified bundles offer none.
+    const platform = `${process.platform}-${process.arch}`;
+    const qualified = require('@zhiman-bj/industrial-domain-packs')
+      .consumerMetadata()
+      .domains.filter(domain => domain.qualifiedBundlePlatforms?.includes(platform))
+      .map(domain => domain.id)
+      .sort();
+    assert.deepEqual(catalog.packs.map(item => item.domain).sort(), qualified);
     return;
   }
   const store = path.join(root, 'packs');

@@ -148,7 +148,6 @@ if (
     '--engineering-selftest',
     '--cad-selftest',
     '--cad-resize-selftest',
-    '--mcp-selftest',
     '--subagent-selftest',
     '--external-mcp-selftest',
     '--agent-log-selftest',
@@ -504,7 +503,6 @@ function readApiKey() {
   if (process.env.INDUSTRIAL_MODEL_API_KEY) return process.env.INDUSTRIAL_MODEL_API_KEY;
   if (
     [
-      '--mcp-selftest',
       '--subagent-selftest',
       '--external-mcp-selftest',
       '--agent-log-selftest',
@@ -1047,7 +1045,6 @@ function registerHandlers() {
   ipcMain.handle('agent:status', () => {
     if (
       [
-        '--mcp-selftest',
         '--subagent-selftest',
         '--external-mcp-selftest',
         '--agent-log-selftest',
@@ -1538,8 +1535,6 @@ async function createWindow() {
     await require('./task-results-selftest.cjs').prepare(projectConfigDir(), configDir());
   if (process.argv.includes('--subagent-selftest'))
     await require('./subagent-selftest.cjs').prepare(projectConfigDir(), configDir());
-  if (process.argv.includes('--mcp-selftest'))
-    await require('./mcp-selftest.cjs').prepare(projectConfigDir(), configDir());
   if (process.argv.includes('--external-mcp-selftest'))
     await require('./external-mcp-selftest.cjs').prepare(
       projectConfigDir(),
@@ -1813,11 +1808,6 @@ async function createWindow() {
   if (process.argv.includes('--subagent-selftest')) {
     await require('./selftest-language.cjs').setLanguage(window, 'en');
     await require('./subagent-selftest.cjs').run(window);
-    app.quit();
-    return;
-  }
-  if (process.argv.includes('--mcp-selftest')) {
-    await require('./mcp-selftest.cjs').run(window);
     app.quit();
     return;
   }

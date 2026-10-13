@@ -93,10 +93,13 @@ test(
       assert.ok(!names.some(name => name === 'domain_tool_call' || name === 'new_project'));
       const initial = JSON.stringify(requests[0].messages);
       assert.ok(initial.includes('project.work'));
+      // Skills are disclosed through the Kimi skill surface (pcb-design) and
+      // the Broker scope carries the canonical dotted id.
       assert.ok(
-        initial.includes('pcb-design-e2e'),
+        initial.includes('pcb.design.e2e') && initial.includes('pcb-design'),
         'The public board Runtime discloses its local Skill without private actor setup',
       );
+
       if (approval === 'approve') {
         assert.match(
           JSON.stringify(requests.at(-1).messages.filter(message => message.role === 'tool')),

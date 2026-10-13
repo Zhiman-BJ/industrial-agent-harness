@@ -122,6 +122,12 @@ function allowedSkips(suite, platform = process.platform) {
     skips.push(
       'timeout and cancellation kill descendants and close the result promise',
       'natural parent exit also cleans up orphaned tools before close',
+      // The fake container daemon is a shebang script over a unix transport;
+      // the real Windows daemon is docker.exe over a named pipe.
+      'protected session preserves images, shares process, and confirms container cleanup',
+      'active cancellation cleans container; cancelled queued call is never dispatched',
+      'unexpected process exit preserves stderr and exit status before cleanup and for later calls',
+      'project session scopes close idle real transports independently and reject opens after disposal',
     );
   }
   return skips;

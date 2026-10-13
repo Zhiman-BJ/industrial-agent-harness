@@ -4797,6 +4797,7 @@ body {
   .ia-pack-title {
     flex-wrap: wrap;
   }
+}
 .ia-browser {
   display: flex;
   flex-direction: column;

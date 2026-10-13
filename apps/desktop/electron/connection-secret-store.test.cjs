@@ -50,7 +50,10 @@ test('connection store saves only encrypted opaque records and reports decrypt f
       fs.readdirSync(path.join(directory, 'runtime-connections'))[0],
     );
     assert.equal(fs.readFileSync(file).includes(Buffer.from('private-token')), false);
-    assert.equal(fs.statSync(file).mode & 0o777, 0o600);
+    // POSIX permission bits are the store's access control; Windows only
+    // reflects the read-only attribute, so the restriction is asserted where
+    // it is enforceable.
+    if (process.platform !== 'win32') assert.equal(fs.statSync(file).mode & 0o777, 0o600);
     assert.deepEqual(store.read('fixture/remote'), {
       token: 'private-token',
       endpoint: 'https://service.example',

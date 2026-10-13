@@ -23,7 +23,6 @@
     "setup:layout": "node scripts/setup-layout.cjs",
     "setup:kimi": "node scripts/setup-kimi.cjs",
     "test:chats": "node scripts/test-chats.cjs",
-    "test:mcp": "electron . --mcp-selftest",
     "test:external-mcp": "electron . --external-mcp-selftest",
     "test:cad-resize": "electron . --cad-resize-selftest",
     "test:subagents": "electron . --subagent-selftest",

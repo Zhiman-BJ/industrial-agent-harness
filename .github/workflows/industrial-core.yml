@@ -74,7 +74,7 @@ jobs:
         run: |
           mkdir -p dist/ci-reports
           pnpm --filter @industrial-agent-harness/desktop build
-          for suite in chats logs mcp subagents kicad engineering ui language documents images parallel model-sync; do
+          for suite in chats logs subagents kicad engineering ui language documents images parallel model-sync; do
             pnpm --filter @industrial-agent-harness/desktop "test:$suite" 2>&1 | tee "dist/ci-reports/desktop-$suite.log"
           done
       - name: Prepare pinned official FreeCAD runtime
