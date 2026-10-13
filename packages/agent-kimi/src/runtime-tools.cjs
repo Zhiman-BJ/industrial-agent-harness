@@ -40,7 +40,7 @@ function runtimeTools(
       parameters: z.object({ toolId: z.string().min(1) }),
       handler: async ({ toolId }) => ({
         output: JSON.stringify({
-          ...runtime.describeTool(toolId, getScope()),
+          ...(await runtime.describeTool(toolId, getScope())),
           actionTransport:
             'Prefer industrial_action_call.inputsJson: serialize the declared inputs as a JSON string, preserving JSON numbers and arrays. Do not copy example values as user requirements.',
         }),

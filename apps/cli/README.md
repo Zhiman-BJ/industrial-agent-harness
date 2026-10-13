@@ -120,7 +120,11 @@ Pack 声明的托管运行环境由 `domains install/update` 从 Harbor 准备�
 
 ## 内置远程体验
 
-`remote status|connect|use|sync|task|cancel` 与桌面共用项目运行配置。用户无需手填服务名或 URL，首次上传需选择文件并显式传入 `--confirm-upload`。公网与登录配置留空时显示尚未配置；内部连接、原生检查验收和当前限制见[内置远程运行](../../doc/remote-execution.md)。
+`remote status|connect|use|rebind|sync|session|task|terminate|artifacts|download` 与桌面共用 Gateway v1.1 项目/聊天配置。Kimi/Agent 留本地，专业软件、领域 MCP 和执行沙箱由远端服务提供；用户无需手填服务名或 URL。`sync` 默认仅预览，每次实际上传都需 `--confirm-upload`，本地文件变化后须重新上传。`session` / `task` 需要 `--chat-id`；`terminate` 另需查询所得的 `--session-id`。`artifacts` 列出远端产物；`download --artifact-id UUID --destination project-relative/path` 核验大小和摘要并拒绝覆盖本地文件。
+
+`rebind --project-dir DIR --domain DOMAIN` 默认只预览；显式增加 `--confirm-new-project` 后检查当前服务并创建新远端项目，保留当前项目的旧绑定历史，不改其他项目，不迁移旧 job/工程事实。存在旧运行中或未知调用时拒绝重绑；新绑定必须重新确认上传文件。
+
+旧 `remote cancel` 已移除；中断 CLI 仅停止本地等待，不承诺远端软件已退出。未知调用按持久 invocation ID 查询，不自动重放。连接成功不表示领域/worker 已通过资格，旧 0.2 项目/job 绑定也不自动迁移。完整命令、历史证据及待验范围见[远程运行](../../doc/remote-execution.md)。
 
 任务生命周期已由共享 `harness-application` TaskService 负责；领域源码、声明与 Skill 来自固定 Domain Packs 消费包，原生版本和平台限制见[迁移说明](../../doc/shared-task-and-pack-consumption.md)。独立叶子工具的历史 Release 保持其原有安装路径。
 

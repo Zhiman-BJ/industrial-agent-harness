@@ -233,6 +233,7 @@ export interface ViewerHostApi {
   remoteCheck(): Promise<RemoteServiceState>;
   remoteProject(request: { projectId: string }): Promise<RemoteProjectState>;
   remoteFiles(request: { projectId: string }): Promise<string[]>;
+  remoteRebind(request: { projectId: string }): ReturnType<ViewerHostApi['projectBindings']>;
   remoteSetLocation(request: {
     projectId: string;
     location: 'local' | 'remote';
@@ -242,12 +243,19 @@ export interface ViewerHostApi {
     projectId: string;
     reviewId: string;
   }): ReturnType<ViewerHostApi['projectBindings']>;
-  remoteTask(request: { projectId: string }): Promise<RemoteTaskState | null>;
-  remoteCancel(request: {
+  remoteTask(request: { projectId: string; chatId: string }): Promise<RemoteTaskState | null>;
+  remoteSession(request: { projectId: string; chatId: string }): Promise<RemoteSessionState | null>;
+  remoteTerminate(request: {
     projectId: string;
-    requestId: string;
-    jobId: string;
-  }): Promise<RemoteTaskState | null>;
+    chatId: string;
+    applicationSessionId: string;
+  }): Promise<RemoteSessionState>;
+  remoteArtifacts(request: { projectId: string }): Promise<RemoteArtifact[]>;
+  remoteDownload(request: {
+    projectId: string;
+    artifactId: string;
+    relativePath: string;
+  }): Promise<unknown>;
   externalMcpList(): Promise<ExternalMcpSummary[]>;
   externalMcpAdd(request: { configuration: string }): Promise<ExternalMcpSummary[]>;
   externalMcpRefresh(id: string): Promise<ExternalMcpSummary[]>;
@@ -875,17 +883,39 @@ export interface DiagnosticViewPage {
 export interface RemoteServiceState {
   status: 'not_configured' | 'credentials_missing' | 'unchecked' | 'connected' | 'unavailable';
   domains: string[];
+  executableDomains?: string[];
+  protocol?: string;
+  reason?: string;
+  capabilities?: { snapshots?: boolean; artifacts?: boolean; protectedExecution?: boolean };
+  profiles?: Array<{
+    domain: string;
+    qualification: string;
+    software?: Array<{ name: string; version: string }>;
+  }>;
 }
 export interface RemoteTaskState {
-  requestId: string;
-  jobId: string | null;
+  invocationId: string;
   status: string;
-  queuePosition: number | null;
+  outcome?: string;
+}
+export interface RemoteSessionState {
+  id: string;
+  status: string;
+  callLocked?: boolean;
+  sandboxId?: string | null;
+}
+export interface RemoteArtifact {
+  id: string;
+  relativePath: string;
+  kind: string;
+  sha256: string;
+  sizeBytes: number;
 }
 export interface RemoteProjectState {
   location: 'local' | 'remote';
   files: string[];
   syncedAt: string | null;
+  hasRemoteProject?: boolean;
   service: RemoteServiceState;
   task: RemoteTaskState | null;
 }

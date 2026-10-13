@@ -106,6 +106,16 @@ class TaskService {
     if (!registry.domains.some(item => item.id === entry.project.domain))
       throw Error('Choose a valid project domain.');
     entry.runtimeBundle = preview ? undefined : this.projects.get(entry.project, registry);
+    if (entry.runtimeBundle?.runtime.forSession) {
+      const bundle = entry.runtimeBundle;
+      entry.runtimeBundle = {
+        ...bundle,
+        runtime: bundle.runtime.forSession(entry.id),
+        get capabilities() {
+          return bundle.capabilities;
+        },
+      };
+    }
     entry.externalServers = entry.runtimeBundle?.runtime.hostRuntimeOnly
       ? []
       : this.external.records();
@@ -123,9 +133,10 @@ class TaskService {
   }
   async diagnose(project) {
     const bundle = this.projects.get(project, this.registry(project));
-    const state = await bundle.runtime.inspect(),
+    const runtime = bundle.runtime.diagnosticsRuntime || bundle.runtime;
+    const state = await runtime.inspect(),
       toolId = 'project.environment.inspect';
-    const result = await bundle.runtime.execute(
+    const result = await runtime.execute(
       { toolId, inputs: {}, expectedStateId: state.id },
       {
         scope: {
@@ -138,7 +149,7 @@ class TaskService {
     );
     if (result.action.status !== 'completed') throw Error(result.action.diagnostics.join('\n'));
     return {
-      report: JSON.parse(bundle.runtime.readArtifact(result.artifacts[0].id).content),
+      report: JSON.parse(runtime.readArtifact(result.artifacts[0].id).content),
       actionId: result.action.id,
     };
   }

@@ -188,9 +188,11 @@ export function App() {
   }>();
   const [agentEvents, setAgentEvents] = useState<AgentEvent[]>([]);
   const [agentBusy, setAgentBusy] = useState(false);
-  const [remoteExecution, setRemoteExecution] = useState<{ projectId: string; ready: boolean }>();
-  const remoteExecutionReady =
-    remoteExecution?.projectId === activeProjectId && remoteExecution.ready;
+  const [remoteExecution, setRemoteExecution] = useState<{
+    projectId: string;
+    chatId: string | null;
+    ready: boolean;
+  }>();
   const [approvalMode, setApprovalMode] = useState<'ask' | 'auto'>('ask');
   const [approvalModeBusy, setApprovalModeBusy] = useState(false);
   const [agentOwned, setAgentOwned] = useState(false);
@@ -207,6 +209,10 @@ export function App() {
   const projectIdRef = useRef<string | null>(null);
   projectIdRef.current = activeProjectId;
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
+  const remoteExecutionReady =
+    remoteExecution?.projectId === activeProjectId &&
+    remoteExecution?.chatId === activeChatId &&
+    remoteExecution.ready;
   const chatIdRef = useRef<string | null>(null);
   const [turns, setTurns] = useState<ChatTurn[]>([]);
   const [historyBefore, setHistoryBefore] = useState<string | null>(null);
@@ -1607,9 +1613,17 @@ export function App() {
                   )}
                   {activeProject?.executionLocation === 'remote' && (
                     <RemoteTaskStatus
-                      key={activeProject.id}
+                      key={`${activeProject.id}:${activeChatId}`}
                       projectId={activeProject.id}
-                      onReady={ready => setRemoteExecution({ projectId: activeProject.id, ready })}
+                      domain={activeProject.domain || ''}
+                      chatId={activeChatId}
+                      onReady={ready =>
+                        setRemoteExecution({
+                          projectId: activeProject.id,
+                          chatId: activeChatId,
+                          ready,
+                        })
+                      }
                       onConfigure={() => showPage('project')}
                     />
                   )}
