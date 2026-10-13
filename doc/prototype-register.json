@@ -59,6 +59,22 @@
         "computer-use.clipboard.write"
       ],
       "replacement": "Domain Runtime Action 层统一承接插件调用与 Verification"
+    },
+    {
+      "id": "workbench-browser-plugin",
+      "path": "packages/computer-use-bridge/src/workbench-browser.cjs",
+      "signature": "const WORKBENCH_BROWSER_TOOLS = Object.freeze([",
+      "allowedCanonicalToolIds": [
+        "workbench-browser.navigate",
+        "workbench-browser.snapshot",
+        "workbench-browser.click",
+        "workbench-browser.type",
+        "workbench-browser.scroll",
+        "workbench-browser.back",
+        "workbench-browser.wait",
+        "workbench-browser.screenshot"
+      ],
+      "replacement": "Domain Runtime Action 层统一承接插件调用与 Verification"
     }
   ]
 }

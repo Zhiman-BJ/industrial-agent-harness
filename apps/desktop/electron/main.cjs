@@ -115,6 +115,7 @@ const {
   status: guiBridgeStatus,
 } = require('@industrial-agent-harness/computer-use-bridge');
 const { readSettings, saveSettings } = require('./harness-settings.cjs');
+const { registerGuest, createWorkbenchBrowserPlugin } = require('./browser-driver.cjs');
 const {
   readProfile,
   saveProfile,
@@ -299,7 +300,7 @@ const tasks = new TaskService({
   resourcePolicy: project => projectResourcePolicy(project),
   getConfig: entry => runtimeConfig(entry.project, entry.externalServers, entry.id),
   logDirectory: diagnosticDirectory(),
-  plugins: () => [guiPlugin()],
+  plugins: () => [guiPlugin(), browserPlugin()],
   createSession: process.argv.includes('--parallel-selftest')
     ? require('./parallel-selftest.cjs').createSession
     : process.argv.includes('--image-input-selftest')
@@ -334,8 +335,21 @@ const coreUpdater = new CoreUpdater({
 });
 let sessionApiKey = '';
 let modelRevision = 0;
-let appSettings = { guiPluginEnabled: false };
+let appSettings = { guiPluginEnabled: false, browserAutomationEnabled: false };
 let guiBridge;
+let browserAutomation;
+// The workspace browser driver needs no download and no OS permission: the
+// enable toggle alone authorizes it, and the guest is located lazily (the
+// browser tab may not exist yet when the first tool call arrives).
+function browserPlugin() {
+  if (!browserAutomation) {
+    browserAutomation = createWorkbenchBrowserPlugin({
+      enabled: () => appSettings.browserAutomationEnabled,
+      getWindow: () => mainWindow,
+    });
+  }
+  return browserAutomation;
+}
 const chats = tasks.chats;
 let activeChatId;
 function chatList() {
@@ -974,6 +988,22 @@ function registerHandlers() {
   ipcMain.handle('broker:trace', () => selectedSession().trace);
   ipcMain.handle('model:get', () => modelStatus());
   ipcMain.handle('settings:gui-state', () => guiBridgeState());
+  ipcMain.handle('settings:browser-automation-state', () => ({
+    enabled: Boolean(appSettings.browserAutomationEnabled),
+  }));
+  ipcMain.handle('settings:set-browser-automation', (event, { enabled }) => {
+    if (
+      event.sender !== mainWindow?.webContents ||
+      event.senderFrame !== mainWindow.webContents.mainFrame
+    )
+      throw Error('Settings require the main app window.');
+    if (typeof enabled !== 'boolean') throw Error('Invalid browser automation setting.');
+    appSettings = { ...appSettings, browserAutomationEnabled: enabled };
+    saveSettings(configDir(), appSettings);
+    // Enabling is the authorization. KimiSession detects the changed plugin
+    // set (plugins_changed) and rebuilds on the next run of each chat.
+    return { enabled: appSettings.browserAutomationEnabled };
+  });
   ipcMain.handle('settings:gui-permission-settings', async (event, permission) => {
     if (
       event.sender !== mainWindow?.webContents ||
@@ -1560,6 +1590,9 @@ async function createWindow() {
   // together with the denied popup.
   app.on('web-contents-created', (_event, contents) => {
     if (contents.getType() !== 'webview') return;
+    // Every webview guest in this app is a workspace browser tab; register it
+    // so the workbench-browser plugin's driver can find and drive it.
+    registerGuest(contents);
     contents.setWindowOpenHandler(({ url }) => {
       if (/^https?:\/\//.test(url)) setImmediate(() => void contents.loadURL(url));
       return { action: 'deny' };

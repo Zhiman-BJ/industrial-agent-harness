@@ -44,6 +44,14 @@
       "en": "Computer Use",
       "zh-CN": "桌面操作"
     },
+    "Browser Automation": {
+      "en": "Browser Automation",
+      "zh-CN": "浏览器自动操作"
+    },
+    "Let the agent drive the workspace browser tab. No download or system permission needed.": {
+      "en": "Let the agent drive the workspace browser tab. No download or system permission needed.",
+      "zh-CN": "允许 Agent 操作工作区浏览器标签页。无需下载组件，也不需要系统权限。"
+    },
     "Language": {
       "en": "Language",
       "zh-CN": "语言"

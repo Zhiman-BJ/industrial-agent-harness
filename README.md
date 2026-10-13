@@ -23,6 +23,7 @@ Industrial Agent Harness connects local projects, Kimi Code, professional softwa
 - **Keep engineering evidence.** The RTL runtime records inputs, actions, artifacts, verification and checkpoints. Input changes invalidate current evidence; interrupted work remains visible after restart.
 - **Inspect artifacts in the workbench.** View waveforms, netlists, layouts, KiCad designs, Godot assets and ordinary project files.
 - **Browse the web in the workspace.** Open the embedded browser tab for references and searches; pages run in an isolated guest process with an in-memory session, and popups stay in the same frame.
+- **Let the agent drive that browser.** Enable Browser Automation in Settings and the agent can navigate, read, click and type in the same visible tab (8 `web_*` tools, host-side driver, every call logged) — no download or system permission needed.
 - **Automate and extend.** Use the CLI's JSON Lines events, the Node SDK or stdio JSON-RPC; build independent Domain Packs with complete Skill resources and installation integrity checks.
 
 Kimi Code owns the agent loop, conversation history and compaction. Harness supplies project context, scoped engineering tools and evidence. A completed agent turn or a successful process exit does not establish engineering acceptance.

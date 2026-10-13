@@ -45,3 +45,20 @@ MCP server 子进程在**首次工具调用**时懒启动,进程生命周期内�
 GUI 动作不进 Domain Runtime 的 Run/Action/Verification；现有 Runtime 已有供 Godot 网关使用的
 ActionJournal，GUI 尚未接入。GUI 调用证据目前只在 diagnostic log。替换目标:Domain Runtime Action 层统一承接
 插件调用与 Verification。
+
+## 工作区浏览器自动操作(workbench-browser)
+
+同一包里的第二个插件面:不驱动外部桌面,而是驱动**工作区内嵌浏览器**(PD-072 的
+`<webview>` 标签页),让 Agent 在用户眼前开网页、读页面、点击、输入。
+
+- **工具面(8 个 canonical,冻结)**:`src/workbench-browser.cjs` 的 `WORKBENCH_BROWSER_TOOLS`
+  (`web_navigate`/`web_snapshot`/`web_click`/`web_type`/`web_scroll`/`web_back`/`web_wait`/`web_screenshot`),
+  canonical id 冻结在 `doc/prototype-register.json`(`workbench-browser-plugin`),架构测试强制比对。
+  命名刻意避开 `browser_*`——那是上游 server 的 Chrome 工具(不暴露)。
+- **桌面侧驱动**:`apps/desktop/electron/browser-driver.cjs`。主进程定位浏览器 guest
+  (web-contents-created 注册),经 executeJavaScript 读页面快照(带元素 ref)、
+  sendInputEvent/insertText 操作;无标签页时发 `browser:open` 让工作台自动打开。
+  所有操作经 FIFO 串行,避免并发会话把 ref 快照打乱。
+- **独立开关,无需二进制/系统权限**:桌面设置「浏览器自动操作」默认关,开启即授权;
+  与 GUI 插件的安装、macOS 权限完全解耦。
+- **桌面端独有**:CLI adapter 没有工作区,不注册该插件。

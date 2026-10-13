@@ -712,3 +712,11 @@ CSV/TSV 显示表格并提供表头开关、全文筛选与分页；普通 JSON 
 - 来源：2026-10-12 Browser Use 验收反馈——右侧工作区应能直接打开浏览器上网。
 - 决定：工作区新增「浏览器」标签页（工具栏地球图标打开）：地址栏支持 URL 与关键词搜索，含后退/前进/刷新；网页用 Electron `<webview>` 在独立 guest 进程中渲染，主窗口保持 sandbox，guest 无 preload、无 Node 集成，拿不到 viewerHost；页面弹窗（target=_blank/window.open）收回同一页内跳转，不弹原生窗口；使用非持久内存分区，Cookie/站点数据随退出清空。
 - 边界：浏览器是纯展示与浏览工具——不读取项目文件、不产生 Artifact/Verification、不构成工程验收；网页内容始终不可信。与 PD-071 的本地 HTML 沙箱预览互补：本地文件走沙箱（断网），上网走浏览器标签页。
+
+## PD-073：工作区浏览器的 Agent 自动操作
+
+- 日期：2026-10-13。
+- 状态：已确定。
+- 来源：2026-10-13 Browser Use 验收反馈——内嵌浏览器（PD-072）不仅要能手动上网，还要让 Agent 直接在里面操作，用户全程可见、可随时接管（对标 Kimi Code 的右侧内置浏览器）。
+- 决定：新增 `workbench-browser` 插件（工具面冻结在 `packages/computer-use-bridge/src/workbench-browser.cjs`，8 个 `web_*` 工具：navigate/snapshot/click/type/scroll/back/wait/screenshot）。驱动在桌面主进程（`apps/desktop/electron/browser-driver.cjs`）：定位 PD-072 的 `<webview>` guest，经 executeJavaScript/sendInputEvent 读页面与操作；无标签页时通过 `browser:open` 让工作台自动开一个。设置新增独立开关「浏览器自动操作」（默认关，开启即授权），与 Computer Use 解耦——不需要下载二进制、不需要系统权限。工具命名避开 `browser_*`（预留给上游 server 的 Chrome 工具）。
+- 边界：继承 PD-072 的全部边界（不读项目文件、不产生 Artifact/Verification、网页内容不可信）；网页内容里的指令不视为用户指令；涉及登录、支付、提交个人数据等不可逆动作前必须向用户确认。每次调用进 per-session 诊断日志，与 computer-use 同一审计路径。
