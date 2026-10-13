@@ -43,6 +43,7 @@ function engineImagePull(asset, { signal, timeout = 30 * 60 * 1000, onProgress }
     const layers = new Map();
     let buffer = '',
       status = 200,
+      failureMessage = '',
       settled = false;
     const finish = (error, value) => {
       if (settled) return;
@@ -82,6 +83,7 @@ function engineImagePull(asset, { signal, timeout = 30 * 60 * 1000, onProgress }
         finish(Error(String(event.error || event.errorDetail.message || 'Image pull failed.')));
         return;
       }
+      if (event.message && status >= 400) failureMessage = String(event.message);
       if (event.id && event.progressDetail?.total)
         layers.set(event.id, {
           current: event.progressDetail.current || 0,
@@ -114,8 +116,15 @@ function engineImagePull(asset, { signal, timeout = 30 * 60 * 1000, onProgress }
         response.on('end', () => {
           if (buffer.trim()) handle(buffer);
           if (settled) return;
-          if (status >= 400) finish(Error(`Image pull failed with status ${status}.`));
-          else finish(null);
+          if (status >= 400) {
+            const error = Error(
+              `Image pull failed with status ${status}.` +
+                (failureMessage ? ' ' + failureMessage : ''),
+            );
+            // Daemons older than Docker 25 reject API v1.43; fall back to the CLI.
+            if (/client version .* too new/i.test(failureMessage)) error.code = 'EAPIUNSUPPORTED';
+            finish(error);
+          } else finish(null);
         });
       },
     );
@@ -745,7 +754,12 @@ class RuntimeAssetManager {
       error => {
         // Only connection-setup failures fall back to the CLI pull; mid-stream
         // registry or transfer errors must not restart a partial download.
-        if (!['ENOENT', 'ECONNREFUSED', 'EACCES', 'EPROTOTYPE'].includes(error?.code)) throw error;
+        if (
+          !['ENOENT', 'ECONNREFUSED', 'EACCES', 'EPROTOTYPE', 'EAPIUNSUPPORTED'].includes(
+            error?.code,
+          )
+        )
+          throw error;
         return this.command('docker', ['pull', '--platform', asset.imagePlatform, asset.image], {
           signal,
           timeout: 30 * 60 * 1000,

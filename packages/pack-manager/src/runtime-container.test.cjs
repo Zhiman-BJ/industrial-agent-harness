@@ -369,3 +369,36 @@ test('engine API pull surfaces registry stream errors and missing sockets', asyn
   if (host === undefined) delete process.env.DOCKER_HOST;
   else process.env.DOCKER_HOST = host;
 });
+
+test('daemons older than the pinned API version reject it and fall back to the CLI pull', async t => {
+  const socketPath = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-docker-')), 'd.sock');
+  const server = require('node:http').createServer((request, response) => {
+    response.writeHead(400, { 'content-type': 'application/json' });
+    response.end(
+      JSON.stringify({
+        message: 'client version 1.43 is too new. Maximum supported API version is 1.41',
+      }) + '\n',
+    );
+  });
+  await new Promise(resolve => server.listen(socketPath, resolve));
+  t.after(() => {
+    server.closeAllConnections?.();
+    server.close();
+  });
+  const host = process.env.DOCKER_HOST;
+  process.env.DOCKER_HOST = `unix://${socketPath}`;
+  t.after(() => {
+    if (host === undefined) delete process.env.DOCKER_HOST;
+    else process.env.DOCKER_HOST = host;
+  });
+  await assert.rejects(engineImagePull(asset), error => error.code === 'EAPIUNSUPPORTED');
+  const { manager, calls } = fixture(t, {
+    streamPull: (pulled, options) => engineImagePull(pulled, options),
+  });
+  await manager.ensure([asset]);
+  assert.deepEqual(
+    calls.find(call => call[1] === 'pull'),
+    ['docker', 'pull', '--platform', 'linux/amd64', asset.image],
+  );
+  assert.equal(manager.status([asset])[0].ready, true);
+});
