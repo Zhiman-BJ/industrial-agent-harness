@@ -72,7 +72,8 @@ test(
       // PD-075: without an installed Docker CLI and daemon, preparation must
       // refuse explicitly instead of half-preparing. The full Verilator path
       // runs on the Docker-equipped native lane.
-      assert.equal(prepared.status, 'unsupported');
+      assert.equal(prepared.status, 'missing');
+      assert.equal(prepared.executable, false);
       return;
     }
     const installed = manager.scan();
