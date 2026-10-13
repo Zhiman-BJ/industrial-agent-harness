@@ -352,3 +352,36 @@ test('symlink, hard-link and reserved output-kind inputs are refused', async t =
     false,
   );
 });
+
+test('invalid JSON content for .json files is rejected before any write', async t => {
+  const { project, execute } = open(t);
+  fs.writeFileSync(path.join(project, 'spec.json'), '{"a":1}\n');
+  fs.writeFileSync(path.join(project, 'notes.txt'), 'plain');
+  const specSha = hash(fs.readFileSync(path.join(project, 'spec.json')));
+  const notesSha = hash(fs.readFileSync(path.join(project, 'notes.txt')));
+  // A model slip producing truncated JSON must fail the whole batch and leave
+  // every file untouched, instead of corrupting the project on disk (#142).
+  const failed = await execute('project.files.apply', {
+    changes: [
+      { path: 'notes.txt', content: 'changed', expectedSha256: notesSha },
+      { path: 'spec.json', content: '{"a": ', expectedSha256: specSha },
+    ],
+  });
+  assert.equal(failed.action.status, 'failed');
+  assert.match(JSON.stringify(failed.action), /Invalid JSON content for spec\.json/);
+  assert.equal(fs.readFileSync(path.join(project, 'spec.json'), 'utf8'), '{"a":1}\n');
+  assert.equal(fs.readFileSync(path.join(project, 'notes.txt'), 'utf8'), 'plain');
+  assert.ok(!fs.readdirSync(project).some(name => name.startsWith('.harness-edit-')));
+  // Valid JSON still applies, and non-JSON files remain unrestricted.
+  const applied = await execute('project.files.apply', {
+    changes: [
+      { path: 'spec.json', content: '{"a":2}', expectedSha256: specSha },
+      { path: 'notes.txt', content: 'not json at all: {', expectedSha256: notesSha },
+      { path: 'added.json', content: '[1,2,3]', expectedSha256: null },
+    ],
+  });
+  assert.equal(applied.action.status, 'completed');
+  assert.equal(fs.readFileSync(path.join(project, 'spec.json'), 'utf8'), '{"a":2}');
+  assert.equal(fs.readFileSync(path.join(project, 'notes.txt'), 'utf8'), 'not json at all: {');
+  assert.equal(fs.readFileSync(path.join(project, 'added.json'), 'utf8'), '[1,2,3]');
+});
