@@ -1,0 +1,30 @@
+$ node --test tests/*.test.cjs
+{"type":"scenario","id":"matched","passed":true,"failures":[],"outputFile":"/var/folders/z0/8fqzv4jn6zb32j82pxz8mw2r0000gn/T/industrial-bench-test-QXxUZ3/results/matched.jsonl"}
+{"type":"scenario","id":"gap","passed":false,"failures":["capabilityIds: [\"chip.eda.managed\"]"],"outputFile":"/var/folders/z0/8fqzv4jn6zb32j82pxz8mw2r0000gn/T/industrial-bench-test-QXxUZ3/results/gap.jsonl"}
+✔ bench keeps per-scenario evidence and fails on a wrong capability expectation (167.734667ms)
+✔ bench rejects duplicate scenario IDs before writing results (2.29025ms)
+✔ headless CLI resolves a domain task as JSON Lines without Electron or a model key (229.504583ms)
+✔ CLI requires one task source and a known domain (14.531916ms)
+✔ CLI disable flag removes a repository skill from the resolved scope (79.479625ms)
+✔ artifact manifest cannot reference files outside its project (1.253209ms)
+✔ headless CLI runs a task and emits agent and approval events (156.954084ms)
+✔ headless clarification preserves the question and stops without inventing a user answer (224.503708ms)
+✔ CLI uses the same persisted global and per-project policy as Desktop (64.485709ms)
+✔ CLI lists shared project chats without a model key and validates resume ownership (39.398208ms)
+✔ doctor reports a missing declared executable before model startup and retains a read-only Action (2814.083792ms)
+✔ CLI installs a signed new Domain, loads its Broker scope, then removes it (168.422334ms)
+✔ portable registration installs Chip and PCB, then adds Godot; native preparation is qualified separately (2452.642541ms)
+✔ a platform-only Pack is omitted from other platform catalogs (169.248542ms)
+✔ CLI environment commands share project bindings and never prepare software during detect or repair (7.516291ms)
+✔ CLI parses explicit profile and repeated app selections and rejects ambiguous options (0.333875ms)
+✔ log inspector reports full tool bytes and detects missing records (13.424792ms)
+✔ packaged headless entry runs outside the workspace with Broker, Skills and pinned Kimi Code (7611.236541ms)
+✔ CLI built-in service needs no name or URL and saves the same project execution preference as Desktop (27.99225ms)
+ℹ tests 19
+ℹ suites 0
+ℹ pass 19
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7953.995125

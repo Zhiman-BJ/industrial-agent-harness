@@ -8,6 +8,7 @@ const { execFile } = require('node:child_process');
 const { promisify } = require('node:util');
 const {
   PackManager,
+  RuntimeEnvironmentManager,
   createArchive,
   digest,
   signCatalog,
@@ -54,9 +55,14 @@ test(
       global.fetch = originalFetch;
     });
     const selected = (await manager.catalog('https://qualification.example/catalog.json')).packs[0];
+    global.fetch = originalFetch;
     await manager.install(selected, {
       bytes: fs.readFileSync(path.join(output, path.basename(selected.url))),
-      prepareRuntime: true,
+      prepareRuntime: false,
+    });
+    const selectedBundle = manager.list()[0];
+    await new RuntimeEnvironmentManager({ manager }).prepare(selectedBundle.domain, {
+      profileId: selectedBundle.executionProfiles.find(profile => profile.kind === 'container').id,
     });
     const installed = manager.scan();
     assert.deepEqual(installed.errors, []);
@@ -175,7 +181,7 @@ test(
       );
       global.fetch = async () => new Response(JSON.stringify(repaired));
       const repair = (await manager.catalog('https://qualification.example/catalog.json')).packs[0];
-      await manager.install(repair, { bytes: archive, prepareRuntime: true });
+      await manager.install(repair, { bytes: archive, prepareRuntime: false });
       assert.deepEqual(manager.scan().errors, []);
       bundle = open();
       const current = await bundle.runtime.inspect();

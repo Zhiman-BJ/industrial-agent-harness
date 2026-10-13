@@ -1,0 +1,106 @@
+{
+  "passed": true,
+  "source": "actual release bootstrap catalog; no fixture transport",
+  "directory": "/Users/roger/.codex/.chatgpt-projects/g-p-6a97bb9a4c6c8191a842ad700c51e704/implementation/industrial-agent-harness-runtime-v2/dist/catalog-ui-20261012",
+  "platform": "darwin-arm64",
+  "available": [
+    {
+      "domain": "chip",
+      "version": "0.7.0"
+    },
+    {
+      "domain": "pcb",
+      "version": "0.3.0"
+    },
+    {
+      "domain": "godot",
+      "version": "0.2.3"
+    },
+    {
+      "domain": "cad",
+      "version": "1.1.4-pack.10"
+    }
+  ],
+  "installed": [
+    {
+      "domain": "chip",
+      "version": "0.7.0"
+    },
+    {
+      "domain": "pcb",
+      "version": "0.3.0"
+    },
+    {
+      "domain": "godot",
+      "version": "0.2.3"
+    },
+    {
+      "domain": "cad",
+      "version": "1.1.4-pack.10"
+    }
+  ],
+  "environments": {
+    "chip": {
+      "status": "unchecked",
+      "profiles": [
+        {
+          "id": "chip-managed-container",
+          "kind": "container",
+          "qualified": true,
+          "status": "missing"
+        },
+        {
+          "id": "chip-native-detection",
+          "kind": "native",
+          "qualified": false,
+          "status": "unsupported"
+        }
+      ]
+    },
+    "pcb": {
+      "status": "unchecked",
+      "profiles": [
+        {
+          "id": "kicad-bounded-native",
+          "kind": "native",
+          "qualified": true,
+          "status": "missing"
+        },
+        {
+          "id": "pcb-design-container",
+          "kind": "container",
+          "qualified": true,
+          "status": "missing"
+        }
+      ]
+    },
+    "godot": {
+      "status": "unchecked",
+      "profiles": [
+        {
+          "id": "godot-structural-native",
+          "kind": "native",
+          "qualified": true,
+          "status": "missing"
+        }
+      ]
+    },
+    "cad": {
+      "status": "unchecked",
+      "profiles": [
+        {
+          "id": "freecad-native",
+          "kind": "native",
+          "qualified": true,
+          "status": "missing"
+        },
+        {
+          "id": "dxf-container",
+          "kind": "container",
+          "qualified": true,
+          "status": "missing"
+        }
+      ]
+    }
+  }
+}

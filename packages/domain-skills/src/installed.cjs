@@ -1,6 +1,9 @@
 const fs = require('node:fs');
 const path = require('node:path');
-const { PackManager } = require('@industrial-agent-harness/pack-manager');
+const {
+  PackManager,
+  RuntimeEnvironmentManager,
+} = require('@industrial-agent-harness/pack-manager');
 const { distributionDomain } = require('./distribution.cjs');
 const staticCapabilities = require('@zhiman-bj/industrial-domain-packs').consumerMetadata()
   .capabilities;
@@ -30,8 +33,11 @@ function builtInPackDirectory(provider) {
   );
 }
 
-function loadRegistry() {
-  if (!process.env.INDUSTRIAL_HARNESS_PACK_STORE) {
+function loadRegistry(
+  environment = process.env,
+  { projectDir, remote = false, connectionStore } = {},
+) {
+  if (!environment.INDUSTRIAL_HARNESS_PACK_STORE) {
     const providerPacks = loadDomainPacks();
     const capabilities = [
       ...staticCapabilities,
@@ -57,14 +63,29 @@ function loadRegistry() {
         })),
     };
   }
-  const manager = new PackManager();
+  const manager = new PackManager({ directory: environment.INDUSTRIAL_HARNESS_PACK_STORE });
+  const environments = new RuntimeEnvironmentManager({ manager, environment, connectionStore });
   const bundles = manager
     .list()
     .filter(bundle => !distributionDomain || bundle.domain === distributionDomain);
   const domains = bundles
     .map(bundle => ({ id: bundle.domain, label: bundle.label, emoji: bundle.emoji }))
     .sort((a, b) => a.id.localeCompare(b.id));
-  const capabilities = bundles.flatMap(bundle => bundle.capabilities);
+  const capabilities = bundles.flatMap(bundle => {
+    const view = environments.resolve(bundle, { projectDir });
+    return view.legacy || remote
+      ? bundle.capabilities
+      : bundle.capabilities
+          .map(capability => ({
+            ...capability,
+            tools: capability.tools.filter(tool => view.executableToolIds.includes(tool.id)),
+          }))
+          .filter(
+            capability =>
+              capability.tools.length ||
+              !bundle.capabilities.find(c => c.id === capability.id)?.tools.length,
+          );
+  });
   const skills = [
     ...staticSkills
       .listSkills()
@@ -108,7 +129,11 @@ function loadRegistry() {
         runtime: pack.runtime,
         resolveDependency: createDependencyResolver(pack.runtime.dependencies),
         managed: true,
-        runtimeEnvironment: manager.runtimeAssets.environment(bundle.runtimeAssets),
+        runtimeEnvironment: environments.resolve(bundle).environment,
+        runtimeEnvironmentResolver: options =>
+          environments.resolve(bundle, { ...options, selectedOnly: true }),
+        validateRuntimeEnvironment: options => environments.validate(bundle, options),
+        acquireRuntimeUse: () => environments.acquireUse(bundle.domain),
         runtimeProtectedPaths: [manager.runtimeAssets.directory],
         directory: path.join(bundle.location, 'domain-packs', pack.provider.packDirectory),
       })),

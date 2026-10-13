@@ -1,3 +1,4 @@
+import { RuntimeEnvironments } from './RuntimeEnvironments';
 import { DomainIcon } from '@industrial-agent-harness/viewer-builtin/domain-icon';
 import { useDisplayText } from '@industrial-agent-harness/viewer-builtin/text';
 import { useEffect, useState } from 'react';
@@ -25,6 +26,7 @@ export function ProjectDetails({
 }) {
   const { t } = useDisplayText();
   const [domain, setDomain] = useState(project.domain || '');
+  const domainOffered = domains.some(item => item.id === project.domain);
   const [executionReady, setExecutionReady] = useState(project.executionLocation !== 'remote');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -84,6 +86,11 @@ export function ProjectDetails({
                   <option value="" disabled>
                     {t('Select a domain')}
                   </option>
+                  {project.domain && !domainOffered && (
+                    <option value={project.domain} disabled>
+                      {project.domain}
+                    </option>
+                  )}
                   {domains.map(item => (
                     <option key={item.id} value={item.id}>
                       {t(item.label)}
@@ -100,12 +107,20 @@ export function ProjectDetails({
             </div>
           </div>
         </div>
-        {project.domain && (
+        {project.domain && domainOffered && (
           <ProjectExecution
             project={project}
             busy={busy}
             onChanged={onResourcesChanged}
             onReady={setExecutionReady}
+          />
+        )}
+        {project.domain && domainOffered && project.executionLocation !== 'remote' && (
+          <RuntimeEnvironments
+            domain={project.domain}
+            projectId={project.id}
+            busy={busy}
+            onChanged={onResourcesChanged}
           />
         )}
         {project.executionLocation !== 'remote' && (

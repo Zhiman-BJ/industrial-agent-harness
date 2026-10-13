@@ -3,6 +3,12 @@ const metadata = require('@zhiman-bj/industrial-domain-packs').consumerMetadata(
 const labels = Object.fromEntries(metadata.domains.map(item => [item.id, item.label]));
 const emojis = Object.fromEntries(metadata.domains.map(item => [item.id, item.emoji]));
 
+// Withdrawal affects current product choices, never historical registry loading.
+// Domains supplied by independently installed packs remain eligible by default.
+function isDomainOffered(domain) {
+  return !(metadata.withdrawnDomains || []).includes(domain);
+}
+
 function listDomains(capabilities) {
   return [
     ...new Set(
@@ -27,4 +33,4 @@ function listDomains(capabilities) {
     }));
 }
 
-module.exports = { listDomains };
+module.exports = { listDomains, isDomainOffered };

@@ -1,3 +1,4 @@
+import { RuntimeEnvironments } from './RuntimeEnvironments';
 import { DomainIcon } from '@industrial-agent-harness/viewer-builtin/domain-icon';
 import { useDisplayText } from '@industrial-agent-harness/viewer-builtin/text';
 import { useEffect, useRef, useState } from 'react';
@@ -11,12 +12,12 @@ import type {
 import {
   cancelInstallation,
   CatalogEmpty,
+  DomainRequirements,
   CatalogNotice,
   formatBytes,
   InstallationOutcome,
   InstallationProgress,
   InstallationSize,
-  RuntimeReadiness,
   UnavailableDomains,
   selectedFootprint,
 } from './DomainInstallation';
@@ -128,25 +129,6 @@ export function DomainManager({
       setSelected([]);
       await refresh();
       if (firstRun) setComplete(true);
-    } catch (reason) {
-      const next = await refresh();
-      if (
-        next?.lastOperation?.outcome !== 'cancelled' ||
-        !String(reason).includes('Domain preparation cancelled.')
-      )
-        setError(String(reason));
-    } finally {
-      setSaving(false);
-      setProgress(null);
-    }
-  }
-  async function repair(domain: string) {
-    if (disabled) return;
-    setSaving(true);
-    setError('');
-    try {
-      onChanged((await window.viewerHost!.domainRepair(domain)).installed);
-      await refresh();
     } catch (reason) {
       const next = await refresh();
       if (
@@ -272,7 +254,11 @@ export function DomainManager({
         {complete && !installing && (
           <div className="ia-domain-setup" role="status">
             <h2>{t('Your selected domains are installed')}</h2>
-            <p>{t('Configure your model connection, then create a project to start a task.')}</p>
+            <p>
+              {t(
+                'Packs are installed. Configure software in the capability center, then create a project.',
+              )}
+            </p>
             <div className="ia-domain-setup-actions">
               {onSetupNext && (
                 <>
@@ -296,13 +282,15 @@ export function DomainManager({
               {selectable.map(item => {
                 const current = installedById.get(item.domain);
                 return (
-                  <label
+                  <div
                     key={item.domain}
                     className="ia-domain-install-row"
                     data-domain={item.domain}
                   >
                     <input
                       type="checkbox"
+                      id={`install-domain-${item.domain}`}
+                      aria-label={t(item.label || current?.label || item.domain)}
                       checked={selected.includes(item.domain)}
                       disabled={disabled || loading}
                       onChange={() =>
@@ -314,22 +302,21 @@ export function DomainManager({
                       }
                     />
                     <DomainIcon domain={item.domain} size={18} />
-                    <span>
-                      <span className="ia-domain-install-title">
+                    <div className="ia-domain-install-body">
+                      <label
+                        className="ia-domain-install-title"
+                        htmlFor={`install-domain-${item.domain}`}
+                      >
                         <b>{t(item.label || current?.label || item.domain)}</b>
                         <small>
                           {current ? `${current.version} → ${item.version}` : `v${item.version}`}
                         </small>
                         <InstallationSize pack={item} compact />
-                      </span>
+                      </label>
                       {item.summary && <small>{t(item.summary)}</small>}
-                      {item.prerequisites?.length ? (
-                        <small>
-                          {t('Needs:')} {item.prerequisites.map(text => t(text)).join('; ')}
-                        </small>
-                      ) : null}
-                    </span>
-                  </label>
+                      <DomainRequirements prerequisites={item.prerequisites} />
+                    </div>
+                  </div>
                 );
               })}
               <UnavailableDomains status={status} selection />
@@ -360,15 +347,9 @@ export function DomainManager({
                   <div key={item.domain} className="ia-domains-installed-row">
                     <span>
                       <DomainIcon domain={item.domain} /> {t(item.label)} · {item.version}
-                      <RuntimeReadiness item={item} />
+                      <RuntimeEnvironments domain={item.domain} busy={disabled} />
                     </span>
                     <div className="ia-pack-actions">
-                      {(item.runtimeState === 'ready' ||
-                        item.runtimeState === 'needs-preparation') && (
-                        <button disabled={disabled} onClick={() => void repair(item.domain)}>
-                          {t(item.runtimeState === 'ready' ? 'Check / repair' : 'Prepare / retry')}
-                        </button>
-                      )}
                       <button disabled={disabled} onClick={() => void remove(item.domain)}>
                         {t('Remove')}
                       </button>

@@ -1,4 +1,3 @@
-const { Transfer, TransferProgress } = require('./transfer.cjs');
 const { availableSpace, footprint, checkSpace } = require('./install-space.cjs');
 const { inspectRuntimeZip } = require('./runtime-zip.cjs');
 const fs = require('node:fs');
@@ -20,7 +19,7 @@ function matchesImage(asset, image) {
 const hash = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
 // Footprint metadata does not change executable identity or invalidate old receipts.
 function declarationHash(asset) {
-  const { installedSize, ...execution } = asset;
+  const { installedSize, discoveryPaths, installUrl, ...execution } = asset;
   return hash(Buffer.from(JSON.stringify(execution)));
 }
 function matchesDeclaration(receipt, asset) {
@@ -33,6 +32,48 @@ const safe = value =>
   typeof value === 'string' &&
   /^[A-Za-z0-9._ -]+(?:\/[A-Za-z0-9._ -]+)*$/.test(value) &&
   !value.split('/').some(part => part === '.' || part === '..');
+const native = asset => ['native-runtime-zip', 'native-executable'].includes(asset.type);
+const rootName = asset => (native(asset) ? asset.directory : asset.app);
+const probeArgs = asset =>
+  native(asset) ? [asset.probeId === 'version-short' ? '-V' : '--version'] : asset.versionArgs;
+// Bind immutable runtime libraries and data as well as the launch executable.
+// Probe homes and caches live outside this root, so every entry participates.
+function treeIdentity(directory) {
+  const digest = crypto.createHash('sha256');
+  let count = 0,
+    bytes = 0;
+  const visit = (file, relative) => {
+    if (++count > 200000) throw Error('Runtime contains too many files.');
+    const stat = fs.lstatSync(file);
+    if (
+      stat.isSymbolicLink() ||
+      (!stat.isDirectory() && !stat.isFile()) ||
+      (stat.isFile() && stat.nlink !== 1)
+    )
+      throw Error('Native runtime contains a link or special file.');
+    digest.update(
+      JSON.stringify([relative, stat.isDirectory() ? 'directory' : 'file', stat.mode & 0o777]),
+    );
+    if (stat.isDirectory()) {
+      for (const name of fs.readdirSync(file).sort())
+        visit(path.join(file, name), relative + '/' + name);
+    } else {
+      bytes += stat.size;
+      if (bytes > 32 * 1024 ** 3) throw Error('Runtime exceeds installation size limit.');
+      const fd = fs.openSync(file, 'r');
+      try {
+        const buffer = Buffer.alloc(1024 * 1024);
+        let read;
+        while ((read = fs.readSync(fd, buffer, 0, buffer.length, null)) > 0)
+          digest.update(buffer.subarray(0, read));
+      } finally {
+        fs.closeSync(fd);
+      }
+    }
+  };
+  visit(directory, '');
+  return { hash: digest.digest('hex'), bytes };
+}
 const runtimePlatforms = asset =>
   asset.type === 'docker-image' ? asset.platforms || [asset.platform] : [asset.platform];
 function validateRuntimeAssets(assets = []) {
@@ -40,6 +81,23 @@ function validateRuntimeAssets(assets = []) {
   const ids = new Set(),
     variables = new Set();
   for (const asset of assets) {
+    if (
+      asset.discoveryPaths != null &&
+      (!Array.isArray(asset.discoveryPaths) ||
+        asset.discoveryPaths.length > 32 ||
+        asset.discoveryPaths.some(
+          value =>
+            typeof value !== 'string' ||
+            !(path.isAbsolute(value) || value.startsWith('~/')) ||
+            value.includes('\0'),
+        ))
+    )
+      throw Error('Invalid runtime discovery paths.');
+    if (
+      asset.installUrl != null &&
+      (typeof asset.installUrl !== 'string' || !/^https:\/\//.test(asset.installUrl))
+    )
+      throw Error('Invalid runtime installation URL.');
     if (asset?.type === 'docker-image') {
       const platforms = runtimePlatforms(asset);
       if (
@@ -72,6 +130,67 @@ function validateRuntimeAssets(assets = []) {
       variables.add(asset.environment);
       continue;
     }
+    if (native(asset)) {
+      if (
+        !/^[a-z][a-z0-9-]{0,63}$/.test(asset.id || '') ||
+        ids.has(asset.id) ||
+        !/^[0-9]+\.[0-9]+\.[0-9]+(?:-[a-z0-9.-]+)?$/.test(asset.version || '') ||
+        typeof asset.label !== 'string' ||
+        !asset.label ||
+        asset.platform !== 'darwin-arm64' ||
+        !['version', 'version-short'].includes(asset.probeId) ||
+        typeof asset.versionText !== 'string' ||
+        !asset.versionText ||
+        asset.versionText.length > 100 ||
+        !/^INDUSTRIAL_HARNESS_[A-Z0-9_]+$/.test(asset.environment || '') ||
+        variables.has(asset.environment) ||
+        asset.profileEnvironment != null ||
+        asset.versionArgs != null
+      )
+        throw Error('Invalid native runtime declaration.');
+      if (asset.type === 'native-runtime-zip') {
+        if (
+          !safe(asset.directory) ||
+          asset.directory.includes('/') ||
+          !safe(asset.executable) ||
+          !/^https:\/\//.test(asset.url || '') ||
+          !/^[a-f0-9]{64}$/.test(asset.sha256 || '') ||
+          !Number.isSafeInteger(asset.size) ||
+          asset.size < 1 ||
+          asset.size > 2 * 1024 ** 3 ||
+          !Number.isSafeInteger(asset.installedSize) ||
+          asset.installedSize < 1 ||
+          asset.installedSize > 32 * 1024 ** 3
+        )
+          throw Error('Invalid native runtime archive declaration.');
+        const url = new URL(asset.url);
+        if (url.username || url.password) throw Error('Runtime URL cannot contain credentials.');
+      } else if (
+        asset.environmentExecutables != null ||
+        asset.url != null ||
+        asset.directory != null
+      )
+        throw Error('External executable cannot declare a managed archive.');
+      variables.add(asset.environment);
+      if (
+        asset.environmentExecutables != null &&
+        (typeof asset.environmentExecutables !== 'object' ||
+          Array.isArray(asset.environmentExecutables) ||
+          Object.keys(asset.environmentExecutables).length > 8)
+      )
+        throw Error('Invalid runtime executable environment.');
+      for (const [variable, executable] of Object.entries(asset.environmentExecutables || {})) {
+        if (
+          !/^INDUSTRIAL_HARNESS_[A-Z0-9_]+$/.test(variable) ||
+          variables.has(variable) ||
+          !safe(executable)
+        )
+          throw Error('Invalid runtime executable environment.');
+        variables.add(variable);
+      }
+      ids.add(asset.id);
+      continue;
+    }
     if (
       !/^[a-z][a-z0-9-]{0,63}$/.test(asset?.id || '') ||
       ids.has(asset.id) ||
@@ -91,7 +210,7 @@ function validateRuntimeAssets(assets = []) {
           asset.installedSize > 32 * 1024 ** 3)) ||
       (asset.archiveApp != null &&
         (!safe(asset.archiveApp) || !asset.archiveApp.endsWith('.app'))) ||
-      !safe(asset.app) ||
+      !safe(rootName(asset)) ||
       asset.app.includes('/') ||
       !asset.app.endsWith('.app') ||
       !safe(asset.executable) ||
@@ -168,7 +287,7 @@ async function fileHash(file) {
   for await (const bytes of fs.createReadStream(file)) digest.update(bytes);
   return digest.digest('hex');
 }
-function run(command, args, { cwd, env, signal, timeout = 60000 } = {}) {
+function run(command, args, { cwd, env, signal, timeout = 60000, captureOutput = false } = {}) {
   signal?.throwIfAborted();
   return new Promise((resolve, reject) => {
     const startedAt = performance.now();
@@ -179,6 +298,8 @@ function run(command, args, { cwd, env, signal, timeout = 60000 } = {}) {
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     let output = '',
+      stdout = '',
+      stderr = '',
       failure,
       settled = false,
       forceKill;
@@ -229,8 +350,14 @@ function run(command, args, { cwd, env, signal, timeout = 60000 } = {}) {
       if (output.length > 1024 * 1024)
         stop(Error('Runtime preparation output exceeded its limit.'));
     };
-    child.stdout.on('data', receive);
-    child.stderr.on('data', receive);
+    child.stdout.on('data', bytes => {
+      if (stdout.length <= 1024 * 1024) stdout += bytes;
+      receive(bytes);
+    });
+    child.stderr.on('data', bytes => {
+      if (stderr.length <= 1024 * 1024) stderr += bytes;
+      receive(bytes);
+    });
     child.on('error', error => {
       failure ||= error;
       if (!child.pid && !settled) {
@@ -245,7 +372,7 @@ function run(command, args, { cwd, env, signal, timeout = 60000 } = {}) {
       cleanup();
       if (failure)
         reject(signal?.aborted && failure === signal.reason ? failure : diagnostic(failure));
-      else if (code === 0) resolve(output);
+      else if (code === 0) resolve(captureOutput ? { stdout, stderr } : output);
       else reject(diagnostic(Error(`Runtime preparation failed (${code}).`)));
     });
   });
@@ -258,43 +385,10 @@ function sourceIsMounted(directory) {
     info && (info.isSymbolicLink() || info.dev !== fs.statSync(path.dirname(directory)).dev),
   );
 }
-async function download(asset, target, { signal, onProgress }) {
-  const temporary = target + '.' + crypto.randomUUID() + '.partial';
-  const transfer = new Transfer({ signal });
-  return transfer.run(async () => {
-    try {
-      const response = await transfer.response(asset.url);
-      const fd = fs.openSync(temporary, 'wx', 0o600),
-        digest = crypto.createHash('sha256'),
-        progress = new TransferProgress(asset.size);
-      let received = 0,
-        reported = 0;
-      try {
-        for await (const chunk of response.body) {
-          transfer.signal.throwIfAborted();
-          transfer.touch();
-          received += chunk.length;
-          if (received > asset.size) {
-            throw Error('Runtime download size mismatch.');
-          }
-          digest.update(chunk);
-          fs.writeFileSync(fd, chunk);
-          if (received - reported >= 1024 * 1024 || received === asset.size) {
-            onProgress(progress.update(received));
-            reported = received;
-          }
-        }
-      } finally {
-        fs.closeSync(fd);
-      }
-      if (received !== asset.size || digest.digest('hex') !== asset.sha256)
-        throw Error('Runtime download hash or size mismatch.');
-      fs.renameSync(temporary, target);
-    } finally {
-      fs.rmSync(temporary, { force: true });
-    }
-  });
-}
+const {
+  downloadRuntimeArchive: download,
+  resumableRuntimeBytes,
+} = require('./runtime-download.cjs');
 class RuntimeAssetManager {
   constructor({
     directory,
@@ -319,7 +413,7 @@ class RuntimeAssetManager {
         });
         if (result.status !== 0)
           throw Error(
-            'Docker runtime is unavailable. Install and start Docker Desktop, then retry preparation. ' +
+            'Docker runtime is unavailable. Prepare and start Docker externally, then detect and associate the existing container environment. ' +
               String(result.stderr || result.error || '').slice(0, 1000),
           );
         return JSON.parse(result.stdout)[0];
@@ -351,7 +445,7 @@ class RuntimeAssetManager {
       estimated = false,
       cacheReused = false;
     for (const asset of assets) {
-      if (this.status([asset])[0].ready) continue;
+      if (asset.type === 'native-executable' || this.status([asset])[0].ready) continue;
       if (verifiedCache.has(asset.sha256)) cacheReused = true;
       else downloadBytes += asset.size;
       installedBytes += asset.installedSize || Math.min(32 * 1024 ** 3, asset.size * 8);
@@ -363,11 +457,11 @@ class RuntimeAssetManager {
     };
   }
   executables(asset, location) {
-    const root = fs.realpathSync(path.join(location, asset.app));
+    const root = fs.realpathSync(path.join(location, rootName(asset)));
     const entries = { [asset.environment]: asset.executable, ...asset.environmentExecutables };
     return Object.fromEntries(
       Object.entries(entries).map(([variable, relative]) => {
-        const executable = path.join(location, asset.app, relative);
+        const executable = path.join(location, rootName(asset), relative);
         if (
           !fs.realpathSync(executable).startsWith(root + path.sep) ||
           !fs.statSync(executable).isFile()
@@ -377,12 +471,36 @@ class RuntimeAssetManager {
       }),
     );
   }
+  inspectExistingImage(asset) {
+    validateRuntimeAssets([asset]);
+    try {
+      if (asset.type !== 'docker-image' || !runtimePlatforms(asset).includes(this.platform))
+        throw Error('Container dependency does not support this platform.');
+      if (!matchesImage(asset, this.inspectImage(asset.image)))
+        throw Error(
+          'Existing container digest, config or platform does not match the declared dependency.',
+        );
+      return {
+        id: asset.id,
+        label: asset.label,
+        version: asset.version,
+        ready: true,
+        executable: asset.image,
+        executables: { [asset.environment]: asset.image },
+        source: 'external',
+      };
+    } catch (error) {
+      return { id: asset.id, ready: false, message: error.message };
+    }
+  }
   status(assets = []) {
     validateRuntimeAssets(assets);
     return assets.map(asset => {
       try {
         if (!runtimePlatforms(asset).includes(this.platform))
           throw Error('Runtime does not support this platform.');
+        if (asset.type === 'native-executable')
+          throw Error('Choose and associate an existing executable file.');
         const location = this.location(asset),
           receipt = JSON.parse(fs.readFileSync(path.join(location, 'receipt.json'), 'utf8'));
         if (asset.type === 'docker-image') {
@@ -403,7 +521,7 @@ class RuntimeAssetManager {
             checkedAt: receipt.checkedAt,
           };
         }
-        const executable = path.join(location, asset.app, asset.executable);
+        const executable = path.join(location, rootName(asset), asset.executable);
         const executables = this.executables(asset, location);
         if (
           fs.existsSync(path.join(location, '.needs-repair')) ||
@@ -411,6 +529,8 @@ class RuntimeAssetManager {
           !matchesDeclaration(receipt, asset) ||
           !fs.realpathSync(executable).startsWith(fs.realpathSync(location) + path.sep) ||
           receipt.executableSha256 !== hash(fs.readFileSync(executable)) ||
+          (native(asset) &&
+            receipt.treeHash !== treeIdentity(path.join(location, rootName(asset))).hash) ||
           Object.entries(executables).some(
             ([variable, file]) =>
               variable !== asset.environment &&
@@ -433,7 +553,10 @@ class RuntimeAssetManager {
           label: asset.label,
           version: asset.version,
           ready: false,
-          message: error.code === 'ENOENT' ? 'Runtime needs preparation.' : error.message,
+          message:
+            error.code === 'ENOENT'
+              ? 'Prepare this dependency externally, then detect and associate it.'
+              : error.message,
         };
       }
     });
@@ -453,8 +576,8 @@ class RuntimeAssetManager {
     for (const name of ['data', 'temp']) fs.mkdirSync(path.join(profile, name));
     try {
       const output = await this.command(
-        path.join(location, asset.app, asset.executable),
-        asset.versionArgs,
+        path.join(location, rootName(asset), asset.executable),
+        probeArgs(asset),
         {
           signal,
           cwd: profile,
@@ -476,7 +599,15 @@ class RuntimeAssetManager {
           },
         },
       );
-      if (!output.includes(asset.versionText)) throw Error('Runtime version check failed.');
+      const text = String(output),
+        index = text.indexOf(asset.versionText);
+      if (
+        index < 0 ||
+        (index > 0 && /[0-9]/.test(text[index - 1])) ||
+        (/[0-9]$/.test(asset.versionText) &&
+          /[0-9]/.test(text[index + asset.versionText.length] || ''))
+      )
+        throw Error('Runtime version check failed.');
     } finally {
       fs.rmSync(profile, { recursive: true, force: true });
     }
@@ -560,6 +691,10 @@ class RuntimeAssetManager {
         if (!runtimePlatforms(asset).includes(this.platform))
           throw Error('Runtime does not support this platform.');
         const report = state => onProgress({ id: asset.id, label: asset.label, ...state });
+        if (asset.type === 'native-executable')
+          throw Error(
+            'External executable requires installation by its provider, then detection and association of its executable file.',
+          );
         const target = this.location(asset);
         if (asset.type === 'docker-image') {
           await this.ensureImage(asset, target, { signal, report, recheck });
@@ -572,12 +707,13 @@ class RuntimeAssetManager {
           }
           report({ phase: 'checking' });
           try {
-            validateAppTree(path.join(target, asset.app));
-            await this.command(
-              '/usr/bin/codesign',
-              ['--verify', '--deep', '--strict', path.join(target, asset.app)],
-              { signal, timeout: 5 * 60 * 1000 },
-            );
+            validateAppTree(path.join(target, rootName(asset)));
+            if (!native(asset))
+              await this.command(
+                '/usr/bin/codesign',
+                ['--verify', '--deep', '--strict', path.join(target, rootName(asset))],
+                { signal, timeout: 5 * 60 * 1000 },
+              );
             await this.probe(asset, target, { signal });
             report({ phase: 'ready' });
             continue;
@@ -593,7 +729,7 @@ class RuntimeAssetManager {
         fs.mkdirSync(cache, { recursive: true });
         const archive = path.join(
           cache,
-          asset.sha256 + (asset.type === 'macos-app-zip' ? '.zip' : '.dmg'),
+          asset.sha256 + (asset.type !== 'macos-app-dmg' ? '.zip' : '.dmg'),
         );
         report({ phase: 'verifying' });
         if (
@@ -603,7 +739,8 @@ class RuntimeAssetManager {
           fs.rmSync(archive);
         const cacheReused = fs.existsSync(archive);
         const installedBytes = asset.installedSize || Math.min(32 * 1024 ** 3, asset.size * 8);
-        const estimate = footprint(cacheReused ? 0 : asset.size, installedBytes, {
+        const remainingBytes = Math.max(0, asset.size - resumableRuntimeBytes(asset, archive));
+        const estimate = footprint(cacheReused ? 0 : remainingBytes, installedBytes, {
           cacheReused,
           estimated: asset.installedSize == null,
         });
@@ -646,7 +783,7 @@ class RuntimeAssetManager {
               timeout: 5 * 60 * 1000,
             });
           }
-          const expected = path.join(mount, asset.archiveApp || asset.app);
+          const expected = path.join(mount, asset.archiveApp || rootName(asset));
           const source = fs.realpathSync(expected);
           if (source !== expected || !fs.statSync(source).isDirectory())
             throw Error('Unexpected runtime app bundle.');
@@ -662,23 +799,29 @@ class RuntimeAssetManager {
           signal?.throwIfAborted();
           if (asset.type === 'macos-app-dmg') {
             report({ phase: 'copying' });
-            await this.command('/usr/bin/ditto', [source, path.join(staging, asset.app)], {
+            await this.command('/usr/bin/ditto', [source, path.join(staging, rootName(asset))], {
               signal,
               timeout: 5 * 60 * 1000,
             });
-          } else fs.renameSync(source, path.join(staging, asset.app));
+          } else fs.renameSync(source, path.join(staging, rootName(asset)));
           report({ phase: 'checking' });
-          const copiedBytes = validateAppTree(path.join(staging, asset.app));
+          const tree = native(asset) ? treeIdentity(path.join(staging, rootName(asset))) : null;
+          const copiedBytes = tree
+            ? tree.bytes
+            : validateAppTree(path.join(staging, rootName(asset)));
           if (copiedBytes > Math.max(installedBytes * 1.1, installedBytes + 64 * 1024 ** 2))
             throw Error('Runtime app exceeds declared installation size.');
           signal?.throwIfAborted();
-          await this.command(
-            '/usr/bin/codesign',
-            ['--verify', '--deep', '--strict', path.join(staging, asset.app)],
-            { signal, timeout: 5 * 60 * 1000 },
-          );
+          if (!native(asset))
+            await this.command(
+              '/usr/bin/codesign',
+              ['--verify', '--deep', '--strict', path.join(staging, rootName(asset))],
+              { signal, timeout: 5 * 60 * 1000 },
+            );
           await this.probe(asset, staging, { signal });
-          const executable = path.join(staging, asset.app, asset.executable);
+          if (tree && treeIdentity(path.join(staging, rootName(asset))).hash !== tree.hash)
+            throw Error('Native runtime changed during probe.');
+          const executable = path.join(staging, rootName(asset), asset.executable);
           const executables = this.executables(asset, staging);
           if (!fs.realpathSync(executable).startsWith(fs.realpathSync(staging) + path.sep))
             throw Error('Runtime executable escaped its app.');
@@ -686,6 +829,7 @@ class RuntimeAssetManager {
             path.join(staging, 'receipt.json'),
             JSON.stringify({
               schemaVersion: 1,
+              ...(tree ? { treeHash: tree.hash } : {}),
               sha256: asset.sha256,
               declarationHash: declarationHash(asset),
               executableSha256: hash(fs.readFileSync(executable)),
@@ -741,4 +885,11 @@ class RuntimeAssetManager {
     }
   }
 }
-module.exports = { RuntimeAssetManager, validateRuntimeAssets, fileHash, run };
+module.exports = {
+  RuntimeAssetManager,
+  validateRuntimeAssets,
+  fileHash,
+  run,
+  treeIdentity,
+  probeArgs,
+};

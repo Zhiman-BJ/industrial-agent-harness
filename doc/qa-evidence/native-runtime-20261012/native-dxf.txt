@@ -1,0 +1,10 @@
+✔ installed native DXF associates external software without Docker, persists evidence and rejects runtime tampering (42573.497917ms)
+ℹ {"owner":{"packageVersion":"0.7.0","contentSha256":"157d9afd0d9af4b368c439c667140bb2c6969b9bf373eed2da594a47fdde46dc"},"profile":"dxf-native","runtimeSha256":"10ff2481aea0661f6315c803bd14407634f240f77fdcadf80bf1cc709cf07318","downloadBytes":0,"seconds":42.368,"executions":[{"kind":"local","command":"/private/var/folders/z0/8fqzv4jn6zb32j82pxz8mw2r0000gn/T/dxf-installed-native-Q4svve/external-dxf-runtime/bin/harness-dxf","status":"COMPLETED"},{"kind":"local","command":"/private/var/folders/z0/8fqzv4jn6zb32j82pxz8mw2r0000gn/T/dxf-installed-native-Q4svve/external-dxf-runtime/bin/harness-dxf","status":"COMPLETED"},{"kind":"local","command":"/private/var/folders/z0/8fqzv4jn6zb32j82pxz8mw2r0000gn/T/dxf-installed-native-Q4svve/external-dxf-runtime/bin/harness-dxf","status":"COMPLETED"},{"kind":"local","command":"/private/var/folders/z0/8fqzv4jn6zb32j82pxz8mw2r0000gn/T/dxf-installed-native-Q4svve/external-dxf-runtime/bin/harness-dxf","status":"FAILED"},{"kind":"local","command":"/private/var/folders/z0/8fqzv4jn6zb32j82pxz8mw2r0000gn/T/dxf-installed-native-Q4svve/external-dxf-runtime/bin/harness-dxf","status":"CANCELLED"},{"kind":"local","command":"/private/var/folders/z0/8fqzv4jn6zb32j82pxz8mw2r0000gn/T/dxf-installed-native-Q4svve/external-dxf-runtime/bin/harness-dxf","status":"COMPLETED"},{"kind":"local","command":"/private/var/folders/z0/8fqzv4jn6zb32j82pxz8mw2r0000gn/T/dxf-installed-native-Q4svve/external-dxf-runtime/bin/harness-dxf","status":"COMPLETED"}],"checkpointRestored":true,"fullTreeTamperRejected":true,"externalRepairReassociated":true}
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 42647.094584

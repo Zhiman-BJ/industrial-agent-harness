@@ -14,9 +14,22 @@ export function formatBytes(bytes: number, locale: string) {
   return `${new Intl.NumberFormat(locale, { maximumFractionDigits: scale ? 1 : 0 }).format(value / 1024 ** scale)} ${['B', 'KiB', 'MiB', 'GiB'][scale]}`;
 }
 
+function packOnlyFootprint(pack: AvailableDomainPack): InstallationFootprint {
+  const installedBytes =
+    (pack as AvailableDomainPack & { installedSize?: number }).installedSize ?? pack.size * 8;
+  return {
+    downloadBytes: pack.size,
+    installedBytes,
+    requiredBytes: pack.size + installedBytes * 2,
+    availableBytes: pack.installation?.availableBytes,
+    estimated: true,
+    cacheReused: false,
+  };
+}
+
 export function selectedFootprint(packs: AvailableDomainPack[]): InstallationFootprint | undefined {
-  if (!packs.length || packs.some(pack => !pack.installation)) return undefined;
-  const values = packs.map(pack => pack.installation!);
+  if (!packs.length) return undefined;
+  const values = packs.map(packOnlyFootprint);
   const available = values
     .map(value => value.availableBytes)
     .filter((value): value is number => value !== undefined);
@@ -40,9 +53,8 @@ export function InstallationSize({
   compact?: boolean;
 }) {
   const { t, locale } = useDisplayText();
-  const value = footprint || pack?.installation;
-  const download =
-    value?.downloadBytes ?? (pack ? pack.size + (pack.runtimeDownloadSize || 0) : undefined);
+  const value = footprint || (pack ? packOnlyFootprint(pack) : undefined);
+  const download = value?.downloadBytes ?? (pack ? pack.size : undefined);
   if (download === undefined) return null;
   return (
     <small className="ia-pack-meta ia-install-size">
@@ -111,6 +123,21 @@ export function CatalogEmpty({
   );
 }
 
+export function DomainRequirements({ prerequisites }: { prerequisites?: string[] }) {
+  const { t } = useDisplayText();
+  if (!prerequisites?.length) return null;
+  return (
+    <details className="ia-domain-requirements">
+      <summary>{t('Execution requirements')}</summary>
+      <ul>
+        {prerequisites.map(text => (
+          <li key={text}>{t(text)}</li>
+        ))}
+      </ul>
+    </details>
+  );
+}
+
 export function RuntimeReadiness({ item }: { item: InstalledDomainPack }) {
   const { t } = useDisplayText();
   const state = item.runtimeState || 'installed';
@@ -127,11 +154,7 @@ export function RuntimeReadiness({ item }: { item: InstalledDomainPack }) {
       >
         {t(label)}
       </small>
-      {item.prerequisites?.length ? (
-        <small className="ia-pack-meta">
-          {t('Needs:')} {item.prerequisites.map(text => t(text)).join('; ')}
-        </small>
-      ) : null}
+      <DomainRequirements prerequisites={item.prerequisites} />
     </>
   );
 }
@@ -158,18 +181,14 @@ export function UnavailableDomains({
     >
       {selection && <input type="checkbox" disabled aria-label={t(item.label)} />}
       <DomainIcon domain={item.domain} size={18} />
-      <span className={selection ? undefined : 'ia-pack-body'}>
+      <div className={selection ? 'ia-domain-install-body' : 'ia-pack-body'}>
         <span className={selection ? 'ia-domain-install-title' : 'ia-pack-title'}>
           <b>{t(item.label)}</b>
           <small>{t(reasons[item.reason])}</small>
         </span>
         {item.summary && <small className="ia-pack-meta">{t(item.summary)}</small>}
-        {item.prerequisites?.length ? (
-          <small className="ia-pack-meta">
-            {t('Needs:')} {item.prerequisites.map(text => t(text)).join('; ')}
-          </small>
-        ) : null}
-      </span>
+        <DomainRequirements prerequisites={item.prerequisites} />
+      </div>
     </div>
   ));
 }

@@ -1,8 +1,23 @@
 # Installation experience
 
-## Current managed source (2026-10-12)
+## Current distribution v2 source (2026-10-12)
 
-The current source consumes Domain Packs 0.6.0 at the exact commit recorded in the
+Current source consumes Domain Packs 0.7.0 at 1eae41d583bc526c36ae8a8f6c08343504949928.
+[PD-075](product-decisions.md#pd-075原生软件外部安装与显式容器准备) defines the current boundary: installing a Pack installs trusted capabilities, Skills and adapters only.
+
+Native applications and private native runtimes are installed externally. Harness opens the official installation page when declared, detects compatible software, and associates an application, executable file or runtime folder. It provides no native download, installation or repair entrypoint. Native prepare IPC/CLI and implicit Pack dependency preparation fail before transfer or installation.
+
+Users install and start Docker themselves. For a qualified container profile, Harness can explicitly prepare the pinned image after checking Docker availability. Existing matching images can also be associated without pulling. Installing a Pack never implicitly pulls an image. Missing dependencies name the required component; failed checks cannot display stale green readiness.
+
+Godot, FreeCAD, bounded KiCad and the bounded native DXF profile need no Docker. Chip, full PCB design and the optional DXF container profile still require Docker. Their broader native toolchains are not qualified by this change. The catalog offers Chip, PCB, Godot and CAD; withdrawn CUDA and preserved historical records retain the scope recorded in earlier QA.
+
+CLI and Desktop share profile bindings, fixed Go version probes, integrity checks, cancellation and project/global association. Clearing a binding never deletes software. Project Runtime closes the persistent sessions it opened, including idle sessions after cancellation, so reopening releases the workspace lock.
+
+Current acceptance: [shared runtime and final installation policy](qa-native-runtime-20261012.md). This is a local unsigned candidate, not a signed/notarized public release, broader OS qualification or new Mac runner. The old KiCad managed-download defect and transfer regression remain historical evidence; its native download entrypoint is removed from the product.
+
+## Historical managed source 0.6.0 (2026-10-12)
+
+The preceding source consumed Domain Packs 0.6.0 at the exact commit recorded in the
 root and adapter package manifests and lockfile. On the qualified macOS Apple
 Silicon client, all five domains enter normal Pack bundles. PCB, CAD and Godot
 native applications, plus the prebuilt PCB, Chip and DXF environments, come from
@@ -20,7 +35,7 @@ simulation, restart and signed same-version repairs without changing Core's modu
 cache or retaining stale engineering acceptance. Source/build and runtime results
 do not constitute a newly signed/notarized Desktop installer or a public release.
 
-The final owner pin is `e7347c14bddc956ed0336570dea0af652ccec296`. Its managed
+The final owner pin for that preceding qualification is `e7347c14bddc956ed0336570dea0af652ccec296`. Its managed
 Chip profile is also qualified on Linux x86-64 with Docker. The real canonical
 container test and signed installed-Pack test passed without skips, exercising
 RTL assertions/VCD, synthesis, an incorrect assertion, active cancellation and
@@ -202,3 +217,5 @@ Windows retains its existing build/first-run scope. These changes do not qualify
 The shared installer accepts immutable prebuilt OCI runtime declarations alongside native applications. Harbor-hosted archives use anonymous registry Bearer downloads and retain exact size/hash checks. Container assets use `docker pull --platform` against a manifest digest, then validate the config digest and platform before activation. Cache/readiness checks support both classic Docker and the containerd image store. No local image build or manual package synchronization is required by this path. Docker Desktop remains a detected host prerequisite on the exercised Apple Silicon platform; a missing or stopped daemon produces actionable preparation failure. Pack readiness and engineering verification remain separate.
 
 Persistent Pack tool containers are owned by the execution backend. The common scanner respects Pack-declared derived evidence roots, so generating read-only receipts does not silently turn an accepted source state stale. Actual design inputs and dependencies remain hashed. Returned images are forwarded to image-capable model sessions as observations, without changing verification or claiming visual inspection.
+
+Current four-domain installation UI and withdrawal follow-up: [2026-10-12 UI QA](qa-domain-install-ui-20261012.md).

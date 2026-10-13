@@ -1,6 +1,6 @@
 const fs = require('node:fs');
 const { InstallationJournal } = require('./installation-journal.cjs');
-const { PackManager, compareVersions } = require('./index.cjs');
+const { PackManager, compareVersions, RuntimeEnvironmentManager } = require('./index.cjs');
 
 // Both adapters use the same catalog and readiness descriptions. Catalog entries
 // passed to install remain the exact objects authenticated by PackManager.
@@ -96,13 +96,32 @@ class PackCatalog {
       updateAvailable:
         installed.has(entry.domain) &&
         compareVersions(entry.version, installed.get(entry.domain)) > 0,
-      ...(this.manager.estimate ? { installation: this.manager.estimate(entry) } : {}),
+      ...(this.manager.estimate
+        ? {
+            installation: this.manager.estimate({
+              ...entry,
+              runtimeAssets: [],
+              runtimeInstalledSize: 0,
+            }),
+          }
+        : {}),
     }));
   }
 }
 
 function describeInstalled(manager, bundle) {
-  const assets = manager.runtimeAssets.status(bundle.runtimeAssets);
+  const environments = Object.hasOwn(bundle, 'executionProfiles')
+    ? new RuntimeEnvironmentManager({ manager }).resolve(bundle)
+    : null;
+  const assets = environments
+    ? environments.profiles.flatMap(profile =>
+        profile.assets.map(asset => ({
+          ...asset,
+          ready: asset.status === 'ready',
+          profileId: profile.id,
+        })),
+      )
+    : manager.runtimeAssets.status(bundle.runtimeAssets);
   return {
     domain: bundle.domain,
     version: bundle.version,
@@ -110,13 +129,20 @@ function describeInstalled(manager, bundle) {
     emoji: bundle.emoji,
     summary: bundle.summary,
     prerequisites: bundle.prerequisites,
-    runtimeState: assets.length
-      ? assets.every(asset => asset.ready)
+    executionProfiles: environments?.profiles,
+    runtimeState: environments
+      ? environments.status === 'ready'
         ? 'ready'
-        : 'needs-preparation'
-      : bundle.prerequisites?.length
-        ? 'external-dependencies'
-        : 'installed',
+        : environments.status === 'unchecked'
+          ? 'needs-configuration'
+          : 'needs-preparation'
+      : assets.length
+        ? assets.every(asset => asset.ready)
+          ? 'ready'
+          : 'needs-preparation'
+        : bundle.prerequisites?.length
+          ? 'external-dependencies'
+          : 'installed',
     runtimeAssets: assets,
   };
 }

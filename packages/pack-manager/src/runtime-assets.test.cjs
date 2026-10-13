@@ -153,7 +153,7 @@ test('runtime metadata rejects shell paths, unsafe variables and unsupported ins
   ])
     assert.throws(() => validateRuntimeAssets([asset]), /Invalid/);
 });
-test('Core bundled catalog is bounded and a failed toolchain update keeps active Pack unchanged', async t => {
+test('Core bundled catalog is bounded and dependency preparation requests preserve the active Pack', async t => {
   const f = fixture(t),
     resources = path.join(f.directory, 'core');
   fs.mkdirSync(resources);
@@ -195,13 +195,13 @@ test('Core bundled catalog is bounded and a failed toolchain update keeps active
   const manager = new PackManager({ directory: path.join(f.directory, 'packs') });
   const catalog = manager.bundledCatalog(resources);
   manager.runtimeAssets = f.manager;
-  await manager.install(catalog.packs[0], { prepareRuntime: true });
+  await manager.install(catalog.packs[0]);
   manager.runtimeAssets.ensure = async () => {
     throw Error('vendor offline');
   };
   await assert.rejects(
     manager.install(catalog.packs[1], { prepareRuntime: true }),
-    /vendor offline/,
+    /DEPENDENCY_INSTALLATION_EXTERNAL/,
   );
   assert.equal(manager.list()[0].version, '1.0.0');
   fs.writeFileSync(path.join(resources, entries[1].url), 'tampered');
@@ -390,7 +390,7 @@ test('retry space checks subtract verified runtime archives before deciding disk
   assert.equal(f.downloads(), 1);
 });
 
-test('Pack retry does not reject a cached runtime based on the conservative display estimate', async t => {
+test('Pack-only installation does not repair or download a damaged historical runtime', async t => {
   const f = fixture(t);
   f.asset.installedSize = 4096;
   await f.manager.ensure([f.asset]);
@@ -427,9 +427,13 @@ test('Pack retry does not reject a cached runtime based on the conservative disp
     runtimeAssets: [f.asset],
   };
   assert.ok(manager.estimate(entry).requiredBytes > available);
-  await manager.install(entry, { bytes, allowUnsigned: true, prepareRuntime: true });
+  await assert.rejects(
+    manager.install(entry, { bytes, allowUnsigned: true, prepareRuntime: true }),
+    /DEPENDENCY_INSTALLATION_EXTERNAL/,
+  );
+  await manager.install(entry, { bytes, allowUnsigned: true });
   assert.equal(manager.list()[0].domain, 'modeling');
-  assert.equal(f.manager.status([f.asset])[0].ready, true);
+  assert.equal(f.manager.status([f.asset])[0].ready, false);
   assert.equal(f.downloads(), 1);
 });
 
@@ -573,4 +577,30 @@ test('disk-full lock writes close descriptors and release both preparation and P
     assert.equal(fs.existsSync(lock), false);
   }
   assert.equal(f.manager.status([f.asset])[0].ready, true);
+});
+test('adding discovery and official install hints preserves existing managed receipts', async t => {
+  const f = fixture(t);
+  await f.manager.ensure([f.asset]);
+  const enriched = {
+    ...f.asset,
+    discoveryPaths: ['/Applications/Modeler.app'],
+    installUrl: 'https://vendor.example/download',
+  };
+  assert.equal(f.manager.status([enriched])[0].ready, true);
+  await f.manager.ensure([enriched]);
+  assert.equal(f.downloads(), 1);
+});
+
+test('legacy prepareRuntime flag refuses before catalog access, network or creating the Pack store', async t => {
+  const f = fixture(t);
+  const directory = path.join(f.directory, 'untouched-store');
+  const manager = new PackManager({ directory });
+  manager.runtimeAssets.ensure = async () => {
+    throw Error('Unexpected runtime install');
+  };
+  await assert.rejects(
+    manager.install({ url: 'https://vendor.invalid/archive' }, { prepareRuntime: true }),
+    error => error.code === 'DEPENDENCY_INSTALLATION_EXTERNAL',
+  );
+  assert.equal(fs.existsSync(directory), false);
 });

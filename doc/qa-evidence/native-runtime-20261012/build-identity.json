@@ -1,0 +1,13 @@
+{
+  "testedHostBase": "c5de8e3fd2c332e0b06e2f2fe2e459cccda12c4f",
+  "testedHostState": "working tree carried by the commit adding this report",
+  "ownerCommit": "1eae41d583bc526c36ae8a8f6c08343504949928",
+  "ownerContentSha256": "157d9afd0d9af4b368c439c667140bb2c6969b9bf373eed2da594a47fdde46dc",
+  "platform": "darwin-arm64",
+  "node": "v26.10.0",
+  "candidate": "dist/desktop-release-native-final-20261012/mac-arm64/Industrial Agent Harness.app/Contents/Resources/app.asar",
+  "asarSize": 200084446,
+  "asarSha256": "4e371080ba542c460c1b923f2c3bc32ee4e54f4a31e2ca9e453b735fb3d0009c",
+  "signed": false,
+  "notarized": false
+}

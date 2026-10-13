@@ -4,16 +4,17 @@ const crypto = require('node:crypto');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { execFile } = require('node:child_process');
-const { promisify } = require('node:util');
-const { PackManager, signCatalog } = require('../../packages/pack-manager/src/index.cjs');
+const {
+  RuntimeEnvironmentManager,
+  PackManager,
+  signCatalog,
+} = require('../../packages/pack-manager/src/index.cjs');
 const { createProjectRuntime } = require('../../packages/harness-core/src/index.cjs');
 const { resolveFromState } = require('../../packages/capability-broker/src/index.cjs');
 const owner = require('@zhiman-bj/industrial-domain-packs');
 const source = owner.sourceDirectory('cuda-pack');
 const { CudaService, startHttp } = require(path.join(source, 'server/mcp.cjs'));
 const { imageLock, sha256 } = require(path.join(source, 'runtime/protocol.cjs'));
-const execute = promisify(execFile);
 
 test(
   'signed installed CUDA runtime loads pinned dependencies outside node_modules and uses real HTTP MCP',
@@ -22,41 +23,34 @@ test(
     const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'industrial-installed-cuda-'));
     t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
     const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
-    const keyFile = path.join(directory, 'key.pem');
-    fs.writeFileSync(keyFile, privateKey.export({ type: 'pkcs8', format: 'pem' }), { mode: 0o600 });
-    const output = path.join(directory, 'release');
-    // This is portable installation/HTTP evidence, not native client or GPU
-    // qualification. Build the exact owner package for its declared client.
-    const platform = owner.consumerMetadata().domains.find(domain => domain.id === 'cuda')
-      .qualifiedBundlePlatforms[0];
-    await execute(
-      process.execPath,
-      [path.resolve(__dirname, '../../scripts/build-pack-distribution.cjs'), output],
-      {
-        cwd: path.resolve(__dirname, '../..'),
-        timeout: 30000,
-        env: {
-          ...process.env,
-          HARNESS_PACK_DOMAINS: 'cuda',
-          HARNESS_PACK_PLATFORMS: platform,
-          HARNESS_PACK_SIGNING_KEY_FILE: keyFile,
-          HARNESS_PACK_SIGNING_KEY_ID: 'qualification',
-          HARNESS_PACK_CHANNEL: 'beta',
-        },
-      },
-    );
-    const original = JSON.parse(fs.readFileSync(path.join(output, 'catalog.json'))).payload;
-    // A test-only signed feed admits those unchanged bytes on this CI host to
-    // exercise protocol loading with a fixture backend. Production qualification
-    // metadata and its catalog remain untouched.
+    // Build an explicit standalone fixture, never the product release catalog.
+    const bundleDirectory = path.join(directory, 'bundle');
+    const legacyBundle = require('../fixtures/standalone-cuda.cjs').writeBundle(bundleDirectory, {
+      // Transport-only fixture; no platform GPU qualification is implied.
+      transportFixturePlatform: `${process.platform}-${process.arch}`,
+    });
+    const { createArchive, digest } = require('../../packages/pack-manager/src/index.cjs');
+    const archive = createArchive(bundleDirectory);
     const catalog = JSON.stringify(
       signCatalog(
         {
-          ...original,
-          packs: original.packs.map(pack => ({
-            ...pack,
-            platforms: [`${process.platform}-${process.arch}`],
-          })),
+          schemaVersion: 1,
+          channel: 'beta',
+          generatedAt: new Date().toISOString(),
+          packs: [
+            {
+              domain: legacyBundle.domain,
+              label: legacyBundle.label,
+              emoji: legacyBundle.emoji,
+              version: legacyBundle.version,
+              sha256: digest(archive),
+              size: archive.length,
+              executionProfiles: legacyBundle.executionProfiles,
+              runtimeAssets: [],
+              url: 'cuda.hpack',
+              platforms: [`${process.platform}-${process.arch}`],
+            },
+          ],
         },
         'qualification',
         privateKey,
@@ -76,11 +70,43 @@ test(
       global.fetch = oldFetch;
     }
     await manager.install(entry, {
-      bytes: fs.readFileSync(path.join(output, path.basename(entry.url))),
-      prepareRuntime: true,
+      bytes: archive,
+      prepareRuntime: false,
     });
     assert.deepEqual(manager.scan().errors, []);
     const installed = manager.list()[0];
+    const { loadRegistry, isDomainOffered } = require('../../packages/domain-skills/src/index.cjs');
+    const legacyRegistry = loadRegistry({ INDUSTRIAL_HARNESS_PACK_STORE: manager.directory });
+    assert.ok(legacyRegistry.domains.some(domain => domain.id === 'cuda'));
+    assert.ok(legacyRegistry.skills.some(skill => skill.id === 'cuda.kernel.optimize'));
+    assert.deepEqual(
+      legacyRegistry.domains.filter(domain => isDomainOffered(domain.id)),
+      [],
+    );
+    assert.equal(manager.list().length, 1, 'Withdrawal must not delete installed legacy bytes.');
+    const {
+      productResourceCatalog,
+    } = require('../../apps/desktop/electron/product-resource-catalog.cjs');
+    const { ResourceSettings } = require('../../packages/harness-core/src/resource-settings.cjs');
+    const settings = new ResourceSettings(path.join(directory, 'resource-settings'));
+    const legacyResources = { skills: legacyRegistry.skills, mcpServers: [] };
+    settings.set(legacyResources, { kind: 'skill', id: 'cuda.kernel.optimize', mode: 'disabled' });
+    const savedSettings = fs.readFileSync(settings.file, 'utf8');
+    const productResources = productResourceCatalog(legacyResources);
+    assert.ok(
+      !settings.snapshot(productResources).catalog.skills.some(skill => skill.domain === 'cuda'),
+    );
+    assert.ok(
+      settings
+        .snapshot(legacyResources)
+        .catalog.skills.some(skill => skill.id === 'cuda.kernel.optimize'),
+    );
+    assert.equal(
+      fs.readFileSync(settings.file, 'utf8'),
+      savedSettings,
+      'Product filtering preserves saved legacy policy.',
+    );
+
     assert.ok(!fs.existsSync(path.join(installed.location, 'node_modules')));
     const project = path.join(directory, 'project');
     fs.mkdirSync(path.join(project, 'kernels'), { recursive: true });
@@ -121,11 +147,39 @@ test(
       environment[prefix + 'TOKEN'] = role + '-token';
       environment[prefix + 'IDENTITY'] = sha256(JSON.stringify(service.identities[role]));
     }
+    const connectionRecords = new Map();
+    const connectionStore = {
+      available: () => true,
+      read: key => connectionRecords.get(key),
+      write: (key, value) => connectionRecords.set(key, value),
+    };
+    const connectionValues = Object.fromEntries(
+      Object.entries(environment).filter(([key]) =>
+        /^INDUSTRIAL_HARNESS_CUDA_(COMPILER|EVALUATOR)_MCP_/.test(key),
+      ),
+    );
+    for (const key of Object.keys(connectionValues)) delete environment[key];
+    const environments = new RuntimeEnvironmentManager({ manager, environment, connectionStore });
+    const selectedProfile = installed.executionProfiles.find(
+      profile => profile.connection?.kind === 'runtime-managed',
+    );
+    const configured = await environments.configureConnection('cuda', {
+      profileId: selectedProfile.id,
+      values: connectionValues,
+    });
+    assert.equal(JSON.stringify(configured).includes('compiler-token'), false);
+    const associated = await environments.associate('cuda', {
+      profileId: selectedProfile.id,
+      projectDir: project,
+    });
+    assert.equal(associated.executable, true);
+    assert.equal(associated.status, 'unchecked');
     const bundle = createProjectRuntime({
       projectDir: project,
       domain: 'cuda',
       directory: path.join(directory, 'state'),
       environment,
+      connectionStore,
     });
     t.after(() => bundle.runtime.close());
     const state = await bundle.runtime.inspect();

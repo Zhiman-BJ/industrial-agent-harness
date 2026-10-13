@@ -9,8 +9,9 @@ const { promisify } = require('node:util');
 const { createRequire } = require('node:module');
 const {
   PackManager,
-  createArchive,
   decodeArchive,
+  RuntimeEnvironmentManager,
+  createArchive,
   digest,
   signCatalog,
 } = require('../../packages/pack-manager/src/index.cjs');
@@ -18,8 +19,8 @@ const { TaskService } = require('../../packages/harness-application/src/index.cj
 const { createProjectRuntime } = require('../../packages/harness-core/src/index.cjs');
 const { configToml, sessionEnv } = require('../../packages/agent-kimi/src/model-config.cjs');
 const { bundledExecutable } = require('../../packages/agent-kimi/src/code-session.cjs');
+const { prepareNativeApplication } = require('./fixtures/native-application.cjs');
 const { startModel } = require('./fixtures/domain-mcp-model.cjs');
-const { stageRuntimeArchiveCache } = require('../../scripts/runtime-archive-cache.cjs');
 const execute = promisify(execFile),
   repo = path.resolve(__dirname, '../..');
 if (process.platform !== 'darwin' || process.arch !== 'arm64')
@@ -153,42 +154,34 @@ async function install(t, root) {
   } finally {
     global.fetch = originalFetch;
   }
-  const progress = [],
-    cachedArchives = [];
+  const externalApplications = [];
   for (const p of catalog.packs) {
     const bytes = fs.readFileSync(path.join(release, path.basename(p.url)));
-    const assets = decodeArchive(bytes).bundle.runtimeAssets || [];
-    assert.ok(assets.length, 'Installed native profiles must declare managed dependencies.');
-    cachedArchives.push(...stageRuntimeArchiveCache(manager.directory, assets));
-    await manager.install(p, {
-      bytes,
-      prepareRuntime: true,
-      onProgress: event => progress.push(event),
+    const { bundle: declaredBundle } = decodeArchive(bytes);
+    const profile = declaredBundle.executionProfiles.find(profile => profile.kind === 'native');
+    const asset = declaredBundle.runtimeAssets.find(asset => profile.assetIds.includes(asset.id));
+    const appPath = await prepareNativeApplication({
+      asset,
+      packStore: manager.directory,
+      directory: path.join(root, 'external-applications'),
     });
-    assert.ok(manager.runtimeAssets.status(assets).every(asset => asset.ready));
-    for (const asset of assets) {
-      const environment = manager.runtimeAssets.environment([asset]);
-      if (asset.type === 'docker-image') assert.equal(environment[asset.environment], asset.image);
-      else
-        for (const executable of Object.values(environment))
-          assert.ok(
-            fs.realpathSync(executable).startsWith(fs.realpathSync(manager.directory) + path.sep),
-          );
-    }
+    await manager.install(p, { bytes });
+    const selectedBundle = manager.list().find(bundle => bundle.domain === p.domain);
+    const associated = await new RuntimeEnvironmentManager({ manager }).associate(
+      selectedBundle.domain,
+      {
+        profileId: profile.id,
+        paths: Object.fromEntries(profile.assetIds.map(id => [id, appPath])),
+      },
+    );
+    assert.equal(associated.status, 'ready', JSON.stringify(associated));
+    externalApplications.push({ domain: p.domain, appPath, profileId: profile.id });
   }
   fs.writeFileSync(
-    path.join(root, 'managed-installation.json'),
-    JSON.stringify(
-      {
-        cachedArchives,
-        progress,
-        runtimes: manager.list().flatMap(pack => manager.runtimeAssets.status(pack.runtimeAssets)),
-      },
-      null,
-      2,
-    ),
+    path.join(root, 'external-applications.json'),
+    JSON.stringify(externalApplications, null, 2),
   );
-  // Prove that both adapters discover managed executables from the shared store.
+  // Both adapters resolve explicitly associated external applications.
   const variables = manager
     .list()
     .flatMap(bundle =>

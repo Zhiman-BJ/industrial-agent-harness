@@ -30,6 +30,12 @@ jobs:
           python-version: '3.13'
       - name: Install pinned workspace dependencies
         run: pnpm install --frozen-lockfile
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.2'
+          cache: false
+      - name: Build immutable owner platform components
+        run: node scripts/build-platform-probe.cjs
       - name: Resolve chip Domain Pack source
         id: packs
         run: echo "chip=$(node scripts/pack-source.cjs chip-pack)" >> "$GITHUB_OUTPUT"
@@ -156,6 +162,12 @@ jobs:
           cache: pnpm
       - name: Install pinned workspace dependencies
         run: pnpm install --frozen-lockfile
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.2'
+          cache: false
+      - name: Build immutable owner platform components
+        run: node scripts/build-platform-probe.cjs
       - name: Prepare agent runtime
         run: |
           brew install ripgrep

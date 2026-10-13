@@ -1,0 +1,26 @@
+✔ acceptance needs content-bound evidence and an explicit independent verifier (2.036583ms)
+✔ artifact identity rejects unsafe paths and unknown schema versions (0.89275ms)
+✔ verified states and mutating tools require declared verification (1.945958ms)
+✔ legacy journals remain readable without inventing missing provenance (1.744458ms)
+✔ external author Pack survives build, installation, Broker disclosure and scope replacement (344.076375ms)
+✔ compatible updates replace resources while corrupt and unsupported updates preserve the active release (57.507333ms)
+✔ resource tampering and symlinks are isolated before installed session disclosure (19.691458ms)
+✔ archives reject traversal, missing entrypoints, source links and oversized Skill resources (52.698291ms)
+✔ external Skill resources stay outside public archives and load only from a matching owned checkout (36.350667ms)
+✔ legacy coreApi 1 installations stay readable and receive integrity receipts on reinstall (12.251125ms)
+✔ public built-in Pack releases retain owned resources and keep the public PCB Runtime independent of private resources (1321.171584ms)
+✔ installed Runtime declarations follow the pinned owner inventory (2.998959ms)
+✔ external resources reject changed, missing, extra or symlinked files before a session can load them (3.681541ms)
+✔ signed catalog installs a Pack and keeps the previous version when an update is corrupt (29.487084ms)
+✔ archive rejects traversal and checks required Skill files (3.164042ms)
+✔ signed HTTPS feed can follow an HTTPS asset redirect but rejects HTTP downgrade (5.089667ms)
+✔ a running Domain blocks update and removal; a damaged Pack is diagnosed (11.283083ms)
+✔ publisher accepts only the exact committed owner sources and intact platform bytes (4.050125ms)
+ℹ tests 18
+ℹ suites 0
+ℹ pass 18
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1997.128541

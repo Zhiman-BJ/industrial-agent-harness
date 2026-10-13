@@ -9,6 +9,7 @@ const {
   resourceCatalog,
   defaultResourceDirectory,
   ExternalMcpRegistry,
+  RemoteSettings,
 } = require('@industrial-agent-harness/harness-core');
 const { loadRegistry } = require('@industrial-agent-harness/domain-skills');
 const { KimiSession } = require('@industrial-agent-harness/agent-kimi');
@@ -47,7 +48,9 @@ class TaskService {
       );
     this.packManager =
       options.packManager ||
-      (this.environment.INDUSTRIAL_HARNESS_PACK_STORE ? new PackManager() : null);
+      (this.environment.INDUSTRIAL_HARNESS_PACK_STORE
+        ? new PackManager({ directory: this.environment.INDUSTRIAL_HARNESS_PACK_STORE })
+        : null);
     this.Session = options.Session || KimiSession;
   }
   get chats() {
@@ -55,8 +58,23 @@ class TaskService {
       this.options.chatDirectory || defaultChatDirectory(this.environment),
     ));
   }
-  registry() {
-    return this.options.getRegistry?.() || loadRegistry();
+  registry(project) {
+    const custom = this.options.getRegistry?.(project);
+    if (custom) return custom;
+    const remote =
+      project &&
+      (
+        this.options.runtimeOptions?.remoteSettings ||
+        new RemoteSettings({
+          directory: defaultResourceDirectory(this.environment),
+          environment: this.environment,
+        })
+      ).project(project.path, project.domain).location === 'remote';
+    return loadRegistry(this.environment, {
+      projectDir: project?.path,
+      remote: Boolean(remote),
+      connectionStore: this.options.runtimeOptions?.connectionStore,
+    });
   }
   resume(project, chatId) {
     if (this.closing) throw Error('Task session is unavailable.');
@@ -84,7 +102,7 @@ class TaskService {
           throw Error(`Unknown project ${key === 'skills' ? 'skill' : 'MCP'}: ${id}`);
     return disabled;
   }
-  async resolve(entry, request, registry = this.registry(), preview = false) {
+  async resolve(entry, request, registry = this.registry(entry.project), preview = false) {
     if (!registry.domains.some(item => item.id === entry.project.domain))
       throw Error('Choose a valid project domain.');
     entry.runtimeBundle = preview ? undefined : this.projects.get(entry.project, registry);
@@ -104,7 +122,7 @@ class TaskService {
     );
   }
   async diagnose(project) {
-    const bundle = this.projects.get(project, this.registry());
+    const bundle = this.projects.get(project, this.registry(project));
     const state = await bundle.runtime.inspect(),
       toolId = 'project.environment.inspect';
     const result = await bundle.runtime.execute(
@@ -152,7 +170,7 @@ class TaskService {
     try {
       if (persist) release = this.chats.acquire(entry.id);
       entry.overrides = overrides;
-      const result = await this.resolve(entry, request, this.registry(), preview);
+      const result = await this.resolve(entry, request, this.registry(entry.project), preview);
       this.assertEntry(entry);
       entry.resolvedRequest = { ...request };
       result.request = entry.resolvedRequest;
@@ -190,7 +208,7 @@ class TaskService {
     const detail = discloseDetail(
       entry.scope,
       effectiveCapabilities(
-        runtimeCapabilities(this.registry(), entry.runtimeBundle),
+        runtimeCapabilities(this.registry(entry.project), entry.runtimeBundle),
         entry.disabled || this.policy(entry),
       ),
       id,
@@ -300,10 +318,10 @@ class TaskService {
             entry.project.domain,
             { ...entry.resolvedRequest, state: result.state },
             entry.scope,
-            runtimeCapabilities(this.registry(), entry.runtimeBundle),
+            runtimeCapabilities(this.registry(entry.project), entry.runtimeBundle),
             entry.disabled,
             entry.externalServers,
-            this.registry().domains,
+            this.registry(entry.project).domains,
           );
           Object.assign(entry.scope, refreshed.scope);
           entry.trace.push(...refreshed.trace);
@@ -467,7 +485,8 @@ class TaskService {
     if (!this.chats.turnBelongsTo(entry.id, turnId))
       throw Error('Result request belongs to another chat.');
     const runtime =
-      entry.runtimeBundle?.runtime || this.projects.get(entry.project, this.registry())?.runtime;
+      entry.runtimeBundle?.runtime ||
+      this.projects.get(entry.project, this.registry(entry.project))?.runtime;
     return new TaskResults(this.chats, entry, turnId, runtime, () => {}).view();
   }
   async openResult(entry, request) {
@@ -476,7 +495,8 @@ class TaskService {
     this.chats.get(entry.id, entry.project.path, entry.project.domain);
     const events = this.chats.turnEvents(entry.id, request.turnId);
     const runtime =
-      entry.runtimeBundle?.runtime || this.projects.get(entry.project, this.registry())?.runtime;
+      entry.runtimeBundle?.runtime ||
+      this.projects.get(entry.project, this.registry(entry.project))?.runtime;
     let group;
     if (request.groupId) {
       const view = this.results(entry, request.turnId);

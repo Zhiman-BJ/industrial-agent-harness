@@ -39,7 +39,7 @@ async function run(window, { manager, runtime }) {
     diagnostics.lastObservation = {
       at: new Date().toISOString(),
       state: await evaluate(
-        `({badges:Array.from(document.querySelectorAll('.ia-pack-badge')).map(node=>({domain:node.closest('[data-domain]')?.dataset.domain,text:node.textContent,visible:node.getClientRects().length>0})),progress:Array.from(document.querySelectorAll('.ia-domain-progress')).map(node=>({text:node.innerText,visible:node.getClientRects().length>0})),body:document.body.innerText.slice(-5000)})`,
+        `({badges:Array.from(document.querySelectorAll('.ia-runtime-environments [data-environment-status]')).map(node=>({domain:node.closest('[data-domain]')?.dataset.domain,text:node.textContent,visible:node.getClientRects().length>0})),progress:Array.from(document.querySelectorAll('.ia-runtime-environments [role="status"]')).map(node=>({text:node.innerText,visible:node.getClientRects().length>0})),body:document.body.innerText.slice(-5000)})`,
       ),
     };
     saveDiagnostics();
@@ -60,7 +60,7 @@ async function run(window, { manager, runtime }) {
         return;
       }
       const failure = await evaluate(
-        `document.querySelector('.ia-domains-modal [role="alert"], .ia-capability-section > .ia-project-error[role="alert"]')?.textContent || ''`,
+        `document.querySelector('.ia-domains-modal [role="alert"], .ia-capability-section > .ia-project-error[role="alert"], .ia-runtime-environments [role="alert"]')?.textContent || ''`,
       );
       if (failure) throw Error('CAD preparation failed: ' + failure);
       await new Promise(resolve => setTimeout(resolve, 200));
@@ -112,11 +112,21 @@ async function run(window, { manager, runtime }) {
         path.join(process.resourcesPath, 'bootstrap-packs'),
       );
       const targetVersion = bundledCatalog.packs.find(item => item.domain === 'cad')?.version;
-      assert.equal(targetVersion, '1.1.4-pack.7');
+      assert.ok(targetVersion, 'Signed bundled catalog declares the upgrade target.');
       const available = await evaluate('window.viewerHost.domainAvailable()');
       assert.equal(available.find(item => item.domain === 'cad')?.version, targetVersion);
       await evaluate(`window.viewerHost.domainInstall(['cad'])`);
       const updatedBundle = manager.list().find(item => item.domain === 'cad');
+      const upgradeEnvironment = await evaluate(
+        `window.viewerHost.environmentDescribe({domain:'cad'})`,
+      );
+      const upgradeNative = upgradeEnvironment.profiles.find(
+        item => item.kind === 'native' && item.qualified && item.status !== 'unsupported',
+      );
+      assert.ok(upgradeNative, 'Upgraded CAD Pack declares a supported native profile.');
+      await evaluate(
+        `window.viewerHost.environmentAssociate({domain:'cad',profileId:${JSON.stringify(upgradeNative.id)},paths:${JSON.stringify({ [oldAsset.id]: path.join(oldLocation, oldAsset.app) })}})`,
+      );
       assert.equal(updatedBundle.version, targetVersion);
       assert.ok(updatedBundle.runtimeAssets[0].installedSize > 0);
       const updatedRuntime = manager.runtimeAssets.status(updatedBundle.runtimeAssets)[0];
@@ -170,76 +180,26 @@ async function run(window, { manager, runtime }) {
     return;
   }
   assert.equal(before.installed.length, 0);
-  // Optional CI/local cache is the exact official DMG, checked again by the
-  // production manager. Neither app mounting nor native verification is mocked.
-  const cacheFile = process.env.HARNESS_CAD_INSTALL_ARCHIVE;
-  const preparedRuntime = process.env.HARNESS_CAD_INSTALL_RUNTIME_CACHE;
-  let runtimeCacheReuse = null;
-  if (cacheFile || preparedRuntime) {
-    const bundled = new (require('@industrial-agent-harness/pack-manager').PackManager)();
-    const catalog = bundled.bundledCatalog(path.join(process.resourcesPath, 'bootstrap-packs'));
-    const archive = fs.readFileSync(
-      path.join(
-        process.resourcesPath,
-        'bootstrap-packs',
-        catalog.packs.find(item => item.domain === 'cad').url,
-      ),
-    );
-    const { bundle } = require('@industrial-agent-harness/pack-manager').decodeArchive(archive);
-    const asset = bundle.runtimeAssets[0];
-    if (preparedRuntime) {
-      const source = fs.realpathSync(preparedRuntime);
-      const destination = manager.runtimeAssets.directory;
-      fs.mkdirSync(destination, { recursive: true });
-      assert.notEqual(source, fs.realpathSync(destination));
-      assert.equal(
-        fs.readdirSync(destination).length,
-        0,
-        'Warm qualification still requires an empty isolated runtime store.',
-      );
-      fs.rmdirSync(destination); // Empty isolated destination; cp creates it exclusively.
-      fs.cpSync(source, destination, {
-        recursive: true,
-        mode: fs.constants.COPYFILE_FICLONE,
-        verbatimSymlinks: true,
-        preserveTimestamps: true,
-        force: false,
-        errorOnExist: true,
-      });
-      const status = manager.runtimeAssets.status([asset])[0];
-      assert.equal(
-        status.ready,
-        true,
-        'Production readiness must validate the copied receipt and executable.',
-      );
-      const originalExecutable = path.join(source, path.relative(destination, status.executable));
-      const originalStat = fs.statSync(originalExecutable),
-        clonedStat = fs.statSync(status.executable);
-      assert.ok(
-        originalStat.dev !== clonedStat.dev || originalStat.ino !== clonedStat.ino,
-        'Repair must not modify the source runtime inode.',
-      );
-      runtimeCacheReuse = {
-        mode: 'independent-clone',
-        source,
-        ready: true,
-        checkedAt: status.checkedAt,
-      };
-      assert.equal(
-        manager.list().length,
-        0,
-        'No installed Pack may be seeded by warm qualification.',
-      );
-    }
-    if (cacheFile) {
-      const cache = path.join(manager.runtimeAssets.directory, 'cache');
-      fs.mkdirSync(cache, { recursive: true });
-      const destination = path.join(cache, asset.sha256 + '.dmg');
-      if (!fs.existsSync(destination)) fs.copyFileSync(cacheFile, destination);
-    }
-  }
+  // Qualification copies an externally installed app into test-owned space.
+  // Harness only associates this application and never downloads native software.
+  const sourceApp = fs.realpathSync(
+    process.env.HARNESS_CAD_INSTALL_APP_PATH ||
+      process.env.HARNESS_FREECAD_APP_PATH ||
+      '/Applications/FreeCAD.app',
+  );
+  const externalApp = path.join(reportDir, 'external-apps', 'FreeCAD.app');
+  fs.mkdirSync(path.dirname(externalApp), { recursive: true });
+  fs.cpSync(sourceApp, externalApp, {
+    recursive: true,
+    mode: fs.constants.COPYFILE_FICLONE,
+    verbatimSymlinks: true,
+    preserveTimestamps: true,
+    errorOnExist: true,
+    force: false,
+  });
+  const runtimeCacheReuse = { mode: 'external-app-fixture', source: sourceApp };
   await evaluate(
-    `(()=>{window.__cadInstallProgress=[]; window.viewerHost.onDomainProgress(progress=>window.__cadInstallProgress.push(progress));return true;})()`,
+    `(()=>{window.__cadInstallProgress=[];window.__cadEnvironmentProgress=[];window.viewerHost.onDomainProgress(progress=>window.__cadInstallProgress.push(progress));window.viewerHost.onEnvironmentProgress(progress=>window.__cadEnvironmentProgress.push(progress));return true;})()`,
   );
   await wait(
     `Boolean(document.querySelector('.ia-domain-install-row[data-domain="cad"]:not([data-unavailable]) input:not(:disabled)'))`,
@@ -254,15 +214,90 @@ async function run(window, { manager, runtime }) {
   await wait(`!document.querySelector('.ia-domains-primary').disabled`);
   await evaluate(`document.querySelector('.ia-domains-primary').click()`);
   await wait(
-    `window.viewerHost.domainStatus().then(status=>status.installed.some(item=>item.domain==='cad' && item.runtimeState==='ready') && Boolean(document.querySelector('.ia-domain-setup [data-action="done"]')))`,
+    `window.viewerHost.domainStatus().then(status=>status.installed.some(item=>item.domain==='cad') && Boolean(document.querySelector('.ia-domain-setup [data-action="done"]')))`,
     20 * 60 * 1000,
   );
+  const installedEnvironment = await evaluate(
+    `window.viewerHost.environmentDescribe({domain:'cad'})`,
+  );
+  const nativeProfile = installedEnvironment.profiles.find(
+    item => item.kind === 'native' && item.qualified && item.status !== 'unsupported',
+  );
+  assert.ok(
+    nativeProfile,
+    'The packaged CAD acceptance needs a qualified native execution profile.',
+  );
+  assert.equal(
+    installedEnvironment.binding,
+    null,
+    'Installing the source Pack does not select a software environment.',
+  );
+  assert.equal(
+    await evaluate(
+      `window.__cadInstallProgress.some(item=>item.phase==='mounting') || window.__cadEnvironmentProgress.length>0`,
+    ),
+    false,
+    'Pack installation does not run native software preparation.',
+  );
+  await captureSettled(window, {
+    output: path.join(reportDir, 'pack-installed-before-environment.png'),
+  });
+  await evaluate(
+    `(() => {const select=document.querySelector('.ia-runtime-environments[data-domain="cad"] select');select.value=${JSON.stringify(nativeProfile.id)};select.dispatchEvent(new Event('change',{bubbles:true}));})()`,
+  );
+  assert.equal(
+    await evaluate(
+      `Array.from(document.querySelectorAll('.ia-runtime-environments[data-domain="cad"] button')).some(button=>button.textContent==='Prepare container image')`,
+    ),
+    false,
+  );
+  await assert.rejects(
+    evaluate(
+      `window.viewerHost.environmentPrepare({domain:'cad',profileId:${JSON.stringify(nativeProfile.id)}})`,
+    ),
+    /official source/,
+  );
+  const { dialog } = require('electron');
+  const originalDialog = dialog.showOpenDialog;
+  dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [externalApp] });
+  try {
+    await evaluate(
+      `Array.from(document.querySelectorAll('.ia-runtime-environments[data-domain="cad"] button')).find(button=>button.textContent==='Choose installed application').click()`,
+    );
+  } finally {
+    dialog.showOpenDialog = originalDialog;
+  }
+  await wait(
+    `document.querySelector('.ia-runtime-environments[data-domain="cad"] code')?.innerText===${JSON.stringify(externalApp)}`,
+  );
+  await evaluate(
+    `Array.from(document.querySelectorAll('.ia-runtime-environments[data-domain="cad"] button')).find(button=>button.textContent==='Check and save environment'&&!button.disabled).click()`,
+  );
+  await wait(
+    `document.querySelector('.ia-runtime-environments[data-domain="cad"] [data-environment-status]')?.dataset.environmentStatus==='ready' && document.querySelector('.ia-runtime-environments[data-domain="cad"]')?.innerText.includes('Execution environment saved.') && !Array.from(document.querySelectorAll('.ia-runtime-environments[data-domain="cad"] button')).find(button=>button.textContent==='Check and save environment')?.disabled`,
+    20 * 60 * 1000,
+  );
+  const selectedEnvironment = await evaluate(
+    `window.viewerHost.environmentDescribe({domain:'cad'})`,
+  );
+  assert.equal(selectedEnvironment.binding.profileId, nativeProfile.id);
+  assert.equal(selectedEnvironment.status, 'ready');
   await evaluate(`document.querySelector('.ia-domain-setup [data-action="done"]').click()`);
   await wait(`!document.querySelector('.ia-domains-modal')`);
   const bundle = manager.list().find(item => item.domain === 'cad');
-  const dependency = manager.runtimeAssets.status(bundle.runtimeAssets)[0];
-  assert.equal(dependency.ready, true);
-  assert.ok(dependency.executable.startsWith(manager.directory));
+  const nativeAsset = bundle.runtimeAssets.find(asset => nativeProfile.assetIds.includes(asset.id));
+  const dependency = {
+    ready: true,
+    source: 'external',
+    executable: fs.realpathSync(path.join(externalApp, nativeAsset.executable)),
+  };
+  assert.equal(dependency.executable.startsWith(manager.directory), false);
+  assert.ok(
+    dependency.executable.startsWith(fs.realpathSync(externalApp) + path.sep),
+    'Damage recovery may only modify the test-owned external app.',
+  );
+  const executableBackup = fs.readFileSync(dependency.executable);
+  const executableMode = fs.statSync(dependency.executable).mode;
   const project = path.join(reportDir, 'project');
   fs.mkdirSync(project);
   await evaluate(
@@ -386,20 +421,41 @@ async function run(window, { manager, runtime }) {
     `Array.from(document.querySelectorAll('.ia-settings-row')).find(row=>row.textContent.includes('Domains')).querySelector('button').click()`,
   );
   await wait(
-    `document.querySelector('.ia-pack-card[data-domain="cad"] .ia-pack-badge')?.textContent.includes('Needs preparation')`,
+    `Boolean(document.querySelector('.ia-runtime-environments[data-domain="cad"] [data-environment-status]')) && document.querySelector('.ia-runtime-environments[data-domain="cad"] [data-environment-status]').dataset.environmentStatus !== 'ready'`,
   );
+  await assert.rejects(
+    evaluate(
+      `window.viewerHost.environmentPrepare({domain:'cad',profileId:${JSON.stringify(nativeProfile.id)}})`,
+    ),
+    /official source/,
+  );
+  fs.writeFileSync(dependency.executable, executableBackup, { mode: executableMode });
+  dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [externalApp] });
+  try {
+    await evaluate(
+      `Array.from(document.querySelectorAll('.ia-runtime-environments[data-domain="cad"] button')).find(node=>node.textContent==='Choose installed application'&&!node.disabled).click()`,
+    );
+    await wait(
+      `document.querySelector('.ia-runtime-environments[data-domain="cad"] code')?.innerText===${JSON.stringify(externalApp)}`,
+    );
+  } finally {
+    dialog.showOpenDialog = originalDialog;
+  }
   await evaluate(
-    `Array.from(document.querySelectorAll('.ia-pack-actions button')).find(node=>node.textContent.includes('Prepare / retry')).click()`,
+    `Array.from(document.querySelectorAll('.ia-runtime-environments[data-domain="cad"] button')).find(node=>node.textContent==='Check and save environment'&&!node.disabled).click()`,
   );
   await wait(
-    `document.querySelector('.ia-pack-card[data-domain="cad"] .ia-pack-badge')?.textContent.includes('Ready to use') && !document.querySelector('.ia-domain-progress')`,
+    `document.querySelector('.ia-runtime-environments[data-domain="cad"] [data-environment-status]')?.dataset.environmentStatus==='ready' && document.querySelector('.ia-runtime-environments[data-domain="cad"]')?.innerText.includes('Execution environment saved.') && !Array.from(document.querySelectorAll('.ia-runtime-environments[data-domain="cad"] button')).find(button=>button.textContent==='Check and save environment')?.disabled`,
     10 * 60 * 1000,
   );
   await captureSettled(window, {
     output: path.join(reportDir, 'domain-ready.png'),
-    readyScript: `document.querySelector('.ia-pack-card[data-domain="cad"] .ia-pack-badge')?.textContent.includes('Ready to use') && !document.querySelector('.ia-domain-progress')`,
+    readyScript: `document.querySelector('.ia-runtime-environments[data-domain="cad"] [data-environment-status]')?.dataset.environmentStatus==='ready' && document.querySelector('.ia-runtime-environments[data-domain="cad"]')?.innerText.includes('Execution environment saved.') && !Array.from(document.querySelectorAll('.ia-runtime-environments[data-domain="cad"] button')).find(button=>button.textContent==='Check and save environment')?.disabled`,
   });
-  assert.equal(manager.runtimeAssets.status(bundle.runtimeAssets)[0].ready, true);
+  assert.equal(
+    (await evaluate(`window.viewerHost.environmentDescribe({domain:'cad'})`)).status,
+    'ready',
+  );
   diagnostics.phase = 'complete';
   saveDiagnostics();
   fs.writeFileSync(
@@ -415,7 +471,10 @@ async function run(window, { manager, runtime }) {
         readback: geometry,
         viewer: 'OCCT BREP',
         repaired: true,
-        preparationMode: runtimeCacheReuse ? 'warm-runtime-reuse' : 'cold-native-preparation',
+        packInstalledBeforeEnvironment: true,
+        selectedExecutionProfile: nativeProfile.id,
+        environmentAssociatedExplicitly: true,
+        preparationMode: 'external-app-association',
         runtimeCacheReuse,
       },
       null,

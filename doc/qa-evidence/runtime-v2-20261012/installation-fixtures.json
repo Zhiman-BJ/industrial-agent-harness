@@ -1,0 +1,379 @@
+{
+  "passed": true,
+  "transport": "signed local fixture HTTPS responses",
+  "nativeFixture": true,
+  "phases": [
+    "checking-space",
+    "downloading",
+    "finished",
+    "verifying",
+    "extracting",
+    "activating",
+    "ready"
+  ],
+  "navigationChecks": [
+    {
+      "locale": "en",
+      "theme": "light",
+      "width": 1440,
+      "navigationX": 257,
+      "rows": [
+        {
+          "name": "Domain packs",
+          "title": "Domain packs",
+          "current": "page",
+          "x": 265,
+          "width": 151,
+          "height": 32,
+          "iconX": 275,
+          "iconWidth": 16,
+          "labelX": 299,
+          "labelHidden": false
+        },
+        {
+          "name": "MCP servers",
+          "title": "MCP servers",
+          "current": null,
+          "x": 265,
+          "width": 151,
+          "height": 32,
+          "iconX": 275,
+          "iconWidth": 16,
+          "labelX": 299,
+          "labelHidden": false
+        },
+        {
+          "name": "Skills",
+          "title": "Skills",
+          "current": null,
+          "x": 265,
+          "width": 151,
+          "height": 32,
+          "iconX": 275,
+          "iconWidth": 16,
+          "labelX": 299,
+          "labelHidden": false
+        },
+        {
+          "name": "Runtime diagnostics",
+          "title": "Runtime diagnostics",
+          "current": null,
+          "x": 265,
+          "width": 151,
+          "height": 32,
+          "iconX": 275,
+          "iconWidth": 16,
+          "labelX": 299,
+          "labelHidden": false
+        }
+      ],
+      "overflow": false,
+      "focus": {
+        "visible": true,
+        "width": "2px",
+        "offset": "-2px"
+      },
+      "layout": {
+        "centerWidth": 1176,
+        "headerWidth": 1176,
+        "bodyWidth": 1176,
+        "navigationX": 257
+      }
+    },
+    {
+      "locale": "zh-CN",
+      "theme": "light",
+      "width": 1440,
+      "navigationX": 257,
+      "rows": [
+        {
+          "name": "领域包",
+          "title": "领域包",
+          "current": "page",
+          "x": 265,
+          "width": 151,
+          "height": 32,
+          "iconX": 275,
+          "iconWidth": 16,
+          "labelX": 299,
+          "labelHidden": false
+        },
+        {
+          "name": "MCP 服务",
+          "title": "MCP 服务",
+          "current": null,
+          "x": 265,
+          "width": 151,
+          "height": 32,
+          "iconX": 275,
+          "iconWidth": 16,
+          "labelX": 299,
+          "labelHidden": false
+        },
+        {
+          "name": "技能",
+          "title": "技能",
+          "current": null,
+          "x": 265,
+          "width": 151,
+          "height": 32,
+          "iconX": 275,
+          "iconWidth": 16,
+          "labelX": 299,
+          "labelHidden": false
+        },
+        {
+          "name": "运行时诊断",
+          "title": "运行时诊断",
+          "current": null,
+          "x": 265,
+          "width": 151,
+          "height": 32,
+          "iconX": 275,
+          "iconWidth": 16,
+          "labelX": 299,
+          "labelHidden": false
+        }
+      ],
+      "overflow": false,
+      "focus": {
+        "visible": true,
+        "width": "2px",
+        "offset": "-2px"
+      },
+      "layout": {
+        "centerWidth": 1176,
+        "headerWidth": 1176,
+        "bodyWidth": 1176,
+        "navigationX": 257
+      }
+    },
+    {
+      "locale": "zh-CN",
+      "theme": "dark",
+      "width": 1440,
+      "navigationX": 257,
+      "rows": [
+        {
+          "name": "领域包",
+          "title": "领域包",
+          "current": "page",
+          "x": 265,
+          "width": 151,
+          "height": 32,
+          "iconX": 275,
+          "iconWidth": 16,
+          "labelX": 299,
+          "labelHidden": false
+        },
+        {
+          "name": "MCP 服务",
+          "title": "MCP 服务",
+          "current": null,
+          "x": 265,
+          "width": 151,
+          "height": 32,
+          "iconX": 275,
+          "iconWidth": 16,
+          "labelX": 299,
+          "labelHidden": false
+        },
+        {
+          "name": "技能",
+          "title": "技能",
+          "current": null,
+          "x": 265,
+          "width": 151,
+          "height": 32,
+          "iconX": 275,
+          "iconWidth": 16,
+          "labelX": 299,
+          "labelHidden": false
+        },
+        {
+          "name": "运行时诊断",
+          "title": "运行时诊断",
+          "current": null,
+          "x": 265,
+          "width": 151,
+          "height": 32,
+          "iconX": 275,
+          "iconWidth": 16,
+          "labelX": 299,
+          "labelHidden": false
+        }
+      ],
+      "overflow": false,
+      "focus": {
+        "visible": true,
+        "width": "2px",
+        "offset": "-2px"
+      },
+      "layout": {
+        "centerWidth": 1176,
+        "headerWidth": 1176,
+        "bodyWidth": 1176,
+        "navigationX": 257
+      }
+    },
+    {
+      "locale": "zh-CN",
+      "theme": "dark",
+      "width": 640,
+      "navigationX": 1,
+      "rows": [
+        {
+          "name": "领域包",
+          "title": "领域包",
+          "current": "page",
+          "x": 9,
+          "width": 32,
+          "height": 32,
+          "iconX": 17,
+          "iconWidth": 16,
+          "labelX": 0,
+          "labelHidden": true
+        },
+        {
+          "name": "MCP 服务",
+          "title": "MCP 服务",
+          "current": null,
+          "x": 9,
+          "width": 32,
+          "height": 32,
+          "iconX": 17,
+          "iconWidth": 16,
+          "labelX": 0,
+          "labelHidden": true
+        },
+        {
+          "name": "技能",
+          "title": "技能",
+          "current": null,
+          "x": 9,
+          "width": 32,
+          "height": 32,
+          "iconX": 17,
+          "iconWidth": 16,
+          "labelX": 0,
+          "labelHidden": true
+        },
+        {
+          "name": "运行时诊断",
+          "title": "运行时诊断",
+          "current": null,
+          "x": 9,
+          "width": 32,
+          "height": 32,
+          "iconX": 17,
+          "iconWidth": 16,
+          "labelX": 0,
+          "labelHidden": true
+        }
+      ],
+      "overflow": false,
+      "focus": {
+        "visible": true,
+        "width": "2px",
+        "offset": "-2px"
+      },
+      "layout": {
+        "centerWidth": 632,
+        "headerWidth": 632,
+        "bodyWidth": 632,
+        "navigationX": 1
+      }
+    },
+    {
+      "locale": "en",
+      "theme": "dark",
+      "width": 640,
+      "navigationX": 1,
+      "rows": [
+        {
+          "name": "Domain packs",
+          "title": "Domain packs",
+          "current": "page",
+          "x": 9,
+          "width": 32,
+          "height": 32,
+          "iconX": 17,
+          "iconWidth": 16,
+          "labelX": 0,
+          "labelHidden": true
+        },
+        {
+          "name": "MCP servers",
+          "title": "MCP servers",
+          "current": null,
+          "x": 9,
+          "width": 32,
+          "height": 32,
+          "iconX": 17,
+          "iconWidth": 16,
+          "labelX": 0,
+          "labelHidden": true
+        },
+        {
+          "name": "Skills",
+          "title": "Skills",
+          "current": null,
+          "x": 9,
+          "width": 32,
+          "height": 32,
+          "iconX": 17,
+          "iconWidth": 16,
+          "labelX": 0,
+          "labelHidden": true
+        },
+        {
+          "name": "Runtime diagnostics",
+          "title": "Runtime diagnostics",
+          "current": null,
+          "x": 9,
+          "width": 32,
+          "height": 32,
+          "iconX": 17,
+          "iconWidth": 16,
+          "labelX": 0,
+          "labelHidden": true
+        }
+      ],
+      "overflow": false,
+      "focus": {
+        "visible": true,
+        "width": "2px",
+        "offset": "-2px"
+      },
+      "layout": {
+        "centerWidth": 632,
+        "headerWidth": 632,
+        "bodyWidth": 632,
+        "navigationX": 1
+      }
+    }
+  ],
+  "checks": [
+    "language-switch-awaits-render-and-settings-close",
+    "external-process-progress-close-and-terminal-refresh",
+    "catalog-unconfigured-unavailable-connected",
+    "all-declared-domains-visible-with-unavailable-reasons",
+    "multi-select-space",
+    "download-speed-eta",
+    "cancel-retry",
+    "pack-only-install-before-explicit-environment-prepare",
+    "native-fixture-check-repair",
+    "failure-preserves-installed",
+    "failed-update-preserves-version-and-retries",
+    "background-reopen-cancel",
+    "cancel-ipc-awaits-terminal",
+    "concurrent-remove-rejected-and-installed-domain-preserved",
+    "remove-outcome",
+    "close-cancels-and-waits",
+    "model-next-step",
+    "project-next-step",
+    "chinese",
+    "light-dark-640x480-layout",
+    "capability-navigation-alignment-and-keyboard-focus"
+  ]
+}

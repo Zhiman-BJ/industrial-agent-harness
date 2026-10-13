@@ -73,7 +73,7 @@ class InstallationJournal {
   progress(progress) {
     const now = Date.now();
     const previous = this.read();
-    if (previous?.id !== this.id || !previous.active) return;
+    if (!this.id || previous?.id !== this.id || !previous?.active) return;
     if (now - this.lastWrite < 500 && previous.progress?.phase === progress.phase) return;
     this.lastWrite = now;
     this.write({ ...previous, progress, updatedAt: new Date(now).toISOString() });

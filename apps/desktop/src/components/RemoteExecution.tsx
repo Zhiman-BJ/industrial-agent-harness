@@ -115,7 +115,9 @@ export function ProjectExecution({
           setSelected(value.files);
           onReady(
             value.location === 'local' ||
-              (Boolean(value.syncedAt) && value.service.status === 'connected'),
+              (Boolean(value.syncedAt) &&
+                value.service.status === 'connected' &&
+                value.service.domains.includes(project.domain || '')),
           );
         }
       })
@@ -137,7 +139,9 @@ export function ProjectExecution({
       setState(next);
       onReady(
         next.location === 'local' ||
-          (Boolean(next.syncedAt) && next.service.status === 'connected'),
+          (Boolean(next.syncedAt) &&
+            next.service.status === 'connected' &&
+            next.service.domains.includes(project.domain || '')),
       );
       if (changed) onChanged();
     } catch (reason) {

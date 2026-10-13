@@ -113,3 +113,149 @@ test('one immutable image can be prepared only on its declared client platforms'
   ])
     assert.throws(() => validateRuntimeAssets([{ ...asset, platforms }]), /container/);
 });
+
+test('externally prepared container associates without an install receipt or pull and invalidates on identity change', async t => {
+  const { RuntimeEnvironmentManager } = require('./runtime-environments.cjs');
+  const { manager: runtimeAssets, calls } = fixture(t);
+  const bundle = {
+    domain: 'example',
+    version: '1.0.0',
+    runtimeAssets: [asset],
+    executionProfiles: [
+      {
+        id: 'container',
+        label: 'Container',
+        kind: 'container',
+        qualified: true,
+        platforms: ['darwin-arm64'],
+        toolIds: ['example.check'],
+        assetIds: [asset.id],
+      },
+    ],
+  };
+  const manager = {
+    directory: path.dirname(runtimeAssets.directory),
+    list: () => [bundle],
+    withLock: fn => fn(),
+    assertIdle: () => {},
+    runtimeAssets,
+  };
+  const environments = new RuntimeEnvironmentManager({ manager, platform: 'darwin-arm64' });
+  runtimeAssets.ensure = () => {
+    throw Error('No dependency installation allowed.');
+  };
+  assert.equal(runtimeAssets.status([asset])[0].ready, false);
+  const view = await environments.associate('example', { profileId: 'container' });
+  assert.equal(view.status, 'ready');
+  assert.equal(view.environment[asset.environment], asset.image);
+  assert.equal(view.profiles[0].assets[0].source, 'external');
+  assert.deepEqual(view.readyToolIds, ['example.check']);
+  assert.deepEqual(calls, []);
+  assert.equal(
+    fs.existsSync(runtimeAssets.directory),
+    false,
+    'No managed install receipt or cache is created.',
+  );
+  assert.equal((await environments.validate(bundle)).status, 'ready');
+  for (const mismatch of [
+    {
+      Id: 'sha256:' + 'c'.repeat(64),
+      Os: 'linux',
+      Architecture: 'amd64',
+      RepoDigests: [asset.image],
+    },
+    { Id: asset.imageId, Os: 'linux', Architecture: 'arm64', RepoDigests: [asset.image] },
+    { Id: asset.imageId, Os: 'linux', Architecture: 'amd64', RepoDigests: [] },
+  ]) {
+    runtimeAssets.inspectImage = () => mismatch;
+    const changed = environments.describe('example');
+    assert.equal(changed.status, 'missing');
+    assert.equal(changed.environment[asset.environment], '');
+    assert.deepEqual(changed.readyToolIds, []);
+  }
+});
+
+test('explicit container preparation requires an existing Docker CLI and daemon before pull or state mutation', async t => {
+  const { RuntimeEnvironmentManager } = require('./runtime-environments.cjs');
+  const { manager: runtimeAssets, calls } = fixture(t);
+  const bundle = {
+    domain: 'example',
+    version: '1.0.0',
+    runtimeAssets: [asset],
+    executionProfiles: [
+      {
+        id: 'container',
+        label: 'Container',
+        kind: 'container',
+        qualified: true,
+        platforms: ['darwin-arm64'],
+        toolIds: ['example.check'],
+        assetIds: [asset.id],
+      },
+    ],
+  };
+  const manager = {
+    directory: path.dirname(runtimeAssets.directory),
+    list: () => [bundle],
+    withLock: fn => fn(),
+    assertIdle: () => {},
+    runtimeAssets,
+  };
+  const environment = new RuntimeEnvironmentManager({
+    manager,
+    platform: 'darwin-arm64',
+    command: async () => {
+      throw Error('spawn docker ENOENT');
+    },
+  });
+  for (const issue of ['spawn docker ENOENT', 'Cannot connect to the Docker daemon']) {
+    environment.command = async () => {
+      throw Error(issue);
+    };
+    const refused = await environment.prepare('example', { profileId: 'container' });
+    assert.equal(refused.status, 'missing');
+    assert.equal(refused.reasons[0].code, 'DOCKER_UNAVAILABLE');
+    assert.deepEqual(calls, []);
+    assert.equal(fs.existsSync(runtimeAssets.directory), false);
+    assert.equal(fs.existsSync(environment.directory), false);
+  }
+  environment.command = async (command, args, options) => {
+    assert.equal(command, 'docker');
+    assert.equal(args[0], 'info');
+    assert.equal(options.captureOutput, true);
+    return { stdout: 'linux\n', stderr: 'WARNING: daemon diagnostic\n' };
+  };
+  const ready = await environment.prepare('example', { profileId: 'container' });
+  assert.equal(ready.status, 'ready');
+  assert.equal(ready.binding.profileId, 'container');
+  assert.equal(ready.profiles[0].assets[0].manageable, true);
+  assert.equal(calls.filter(call => call[1] === 'pull').length, 1);
+  assert.equal(runtimeAssets.status([asset])[0].ready, true);
+  const previous = ready.binding;
+  environment.command = async () => {
+    throw Error('daemon offline');
+  };
+  assert.equal(
+    (await environment.prepare('example', { profileId: 'container' })).reasons[0].code,
+    'DOCKER_UNAVAILABLE',
+  );
+  assert.deepEqual(environment.describe('example').binding, previous);
+});
+
+test('command output capture separates a real child warning while retaining legacy output and failure diagnostics', async () => {
+  const { run } = require('./runtime-assets.cjs');
+  const args = [
+    '-e',
+    'process.stdout.write("linux\\n"); process.stderr.write("WARNING: daemon diagnostic\\n")',
+  ];
+  const captured = await run(process.execPath, args, { captureOutput: true });
+  assert.equal(captured.stdout, 'linux\n');
+  assert.equal(captured.stderr, 'WARNING: daemon diagnostic\n');
+  assert.match(await run(process.execPath, args), /WARNING: daemon diagnostic/);
+  await assert.rejects(
+    run(process.execPath, ['-e', 'console.error("daemon failure detail"); process.exit(1)'], {
+      captureOutput: true,
+    }),
+    /daemon failure detail/,
+  );
+});

@@ -1,0 +1,7 @@
+{
+  "passed": true,
+  "check": "normal-quit-awaits-active-native-runtime-download-cleanup",
+  "packOutcome": "completed",
+  "environmentOutcome": "cancelled",
+  "phaseAtQuit": "downloading"
+}

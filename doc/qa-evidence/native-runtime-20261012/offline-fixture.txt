@@ -1,0 +1,12 @@
+✔ offline native prerequisite reuses maintained signature/version checks outside product store (9.006167ms)
+✔ missing or tampered archives fail offline before extraction, and explicit applications take priority (1.930333ms)
+✔ invalid extracted application fails signature validation without changing the product store (5.337583ms)
+✔ offline extracted application must also pass its declared version probe (4.233417ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 72.053208

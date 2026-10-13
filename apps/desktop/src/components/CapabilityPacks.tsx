@@ -1,3 +1,4 @@
+import { RuntimeEnvironments } from './RuntimeEnvironments';
 import { DomainIcon } from '@industrial-agent-harness/viewer-builtin/domain-icon';
 import { useDisplayText } from '@industrial-agent-harness/viewer-builtin/text';
 import { useEffect, useState } from 'react';
@@ -10,11 +11,11 @@ import type {
 import {
   cancelInstallation,
   CatalogEmpty,
+  DomainRequirements,
   CatalogNotice,
   InstallationOutcome,
   InstallationProgress,
   InstallationSize,
-  RuntimeReadiness,
   UnavailableDomains,
 } from './DomainInstallation';
 
@@ -79,7 +80,7 @@ export function PacksSection({
   }, [status?.managed, revision]);
   const installing = Boolean(progress) || Boolean(status?.operation?.active);
   const disabled = busy || pending || installing || cancelling;
-  async function change(action: 'install' | 'remove' | 'repair', domain: string) {
+  async function change(action: 'install' | 'remove', domain: string) {
     if (disabled) return;
     setPending(true);
     setError('');
@@ -87,9 +88,7 @@ export function PacksSection({
       const host = window.viewerHost!;
       const result = await (action === 'install'
         ? host.domainInstall([domain])
-        : action === 'remove'
-          ? host.domainRemove(domain)
-          : host.domainRepair(domain));
+        : host.domainRemove(domain));
       onChanged(result.installed);
     } catch (reason) {
       try {
@@ -132,7 +131,11 @@ export function PacksSection({
           {t('Check updates')}
         </button>
       </div>
-      <p>{t('Each pack bundles the skills, MCP servers and runtime for one domain.')}</p>
+      <p>
+        {t(
+          'Packs provide domain capabilities. Configure software and execution environments separately.',
+        )}
+      </p>
       {statusError && (
         <p role="alert" className="ia-project-error">
           {t(statusError)}
@@ -188,11 +191,7 @@ export function PacksSection({
                       </div>
                       {item.summary && <p className="ia-pack-summary">{t(item.summary)}</p>}
                       <InstallationSize pack={item} />
-                      {item.prerequisites?.length ? (
-                        <small className="ia-pack-meta">
-                          {t('Needs:')} {item.prerequisites.map(text => t(text)).join('; ')}
-                        </small>
-                      ) : null}
+                      <DomainRequirements prerequisites={item.prerequisites} />
                     </div>
                     <button
                       className="ia-pack-action"
@@ -248,7 +247,11 @@ export function PacksSection({
                             {problem.message}
                           </small>
                         ))}
-                        <RuntimeReadiness item={item} />
+                        <RuntimeEnvironments
+                          domain={item.domain}
+                          busy={disabled}
+                          revision={revision}
+                        />
                         {update?.updateAvailable && <InstallationSize pack={update} />}
                       </div>
                       <div className="ia-pack-actions">
@@ -259,18 +262,6 @@ export function PacksSection({
                             onClick={() => void change('install', item.domain)}
                           >
                             {t('Update')}
-                          </button>
-                        )}
-                        {(item.runtimeState === 'ready' ||
-                          item.runtimeState === 'needs-preparation') && (
-                          <button
-                            className="ia-pack-action"
-                            disabled={disabled}
-                            onClick={() => void change('repair', item.domain)}
-                          >
-                            {t(
-                              item.runtimeState === 'ready' ? 'Check / repair' : 'Prepare / retry',
-                            )}
                           </button>
                         )}
                         <button

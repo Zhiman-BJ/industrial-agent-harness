@@ -26,7 +26,11 @@
       "status": "fail",
       "cases": [
         { "id": "T0-1", "status": "pass", "evidence": ["dist/ci-reports/<runId>/t0-format.log"] },
-        { "id": "T0-2", "status": "fail", "evidence": ["dist/ci-reports/<runId>/t0-architecture.log"] },
+        {
+          "id": "T0-2",
+          "status": "fail",
+          "evidence": ["dist/ci-reports/<runId>/t0-architecture.log"]
+        },
         { "id": "T0-3", "status": "pass", "evidence": ["dist/ci-reports/<runId>/t0-release.log"] }
       ]
     },
@@ -45,15 +49,15 @@
 
 通用（所有层）：macOS/Linux 仓库、Node ≥24、pnpm 11.1.3、`pnpm install --frozen-lockfile` 已执行。
 
-| 层 | 平台 | 额外前置 | 外部网络 |
-| --- | --- | --- | --- |
-| T0 静态门 | 任意（含 Windows） | 无 | 否 |
-| T1 Portable | linux x64/arm64、darwin arm64、win32 x64 | Windows 需把 `C:\Program Files\Git\usr\bin` 加入 PATH（解压 fixture） | 否 |
-| T2 桌面 UI selftest | darwin（本地开发机）；CI 在 mac+win 打包产物上跑 | 先 `pnpm --filter @industrial-agent-harness/desktop build`（selftest 加载 **built dist/**，不 build 会测到旧代码） | 否 |
-| T3 Transport / Benchmark | 任意 | Transport 需解析 Domain Pack 源 + `uv`（pip 安装 `uv==0.11.6`）+ Python 3.13；Benchmark 需 `iverilog`、`vvp` | 是（首次解析 Pack 源） |
-| T4 Native 工业内核 | darwin arm64（native）或 linux x64（native-linux） | `KIMI_EXECUTABLE`（`node apps/desktop/scripts/setup-kimi.cjs` 生成）；native 另需 `INDUSTRIAL_HARNESS_FREECAD_CMD`；chip pack `eda-harness/.venv`（`uv sync --frozen --no-dev --python 3.13`）；`verilator`、`rg` | 是（setup 脚本下载受保护运行时） |
-| T5 打包与安装冒烟 | mac（DMG + CAD 安装）/ win（dir 产物） | T2 的 build 已完成；`electron-builder` 随 devDependencies 提供；CAD 安装冒烟仅 **darwin arm64** | 是（从 Harbor 下载固定 FreeCAD 原始 DMG；`HARNESS_CAD_INSTALL_ARCHIVE` 预置缓存仅计缓存安装） |
-| T6 Linux chip 安装器 | linux x64（CI 托管） | Docker；`scripts/package-linux-chip-installer.cjs` 构建产物 | 是 |
+| 层                       | 平台                                               | 额外前置                                                                                                                                                                                                          | 外部网络                                                                                      |
+| ------------------------ | -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| T0 静态门                | 任意（含 Windows）                                 | 无                                                                                                                                                                                                                | 否                                                                                            |
+| T1 Portable              | linux x64/arm64、darwin arm64、win32 x64           | Windows 需把 `C:\Program Files\Git\usr\bin` 加入 PATH（解压 fixture）                                                                                                                                             | 否                                                                                            |
+| T2 桌面 UI selftest      | darwin（本地开发机）；CI 在 mac+win 打包产物上跑   | 先 `pnpm --filter @industrial-agent-harness/desktop build`（selftest 加载 **built dist/**，不 build 会测到旧代码）                                                                                                | 否                                                                                            |
+| T3 Transport / Benchmark | 任意                                               | Transport 需解析 Domain Pack 源 + `uv`（pip 安装 `uv==0.11.6`）+ Python 3.13；Benchmark 需 `iverilog`、`vvp`                                                                                                      | 是（首次解析 Pack 源）                                                                        |
+| T4 Native 工业内核       | darwin arm64（native）或 linux x64（native-linux） | `KIMI_EXECUTABLE`（`node apps/desktop/scripts/setup-kimi.cjs` 生成）；native 另需 `INDUSTRIAL_HARNESS_FREECAD_CMD`；chip pack `eda-harness/.venv`（`uv sync --frozen --no-dev --python 3.13`）；`verilator`、`rg` | 是（setup 脚本下载受保护运行时）                                                              |
+| T5 打包与安装冒烟        | mac（DMG + CAD 安装）/ win（dir 产物）             | T2 的 build 已完成；`electron-builder` 随 devDependencies 提供；CAD 安装冒烟仅 **darwin arm64**                                                                                                                   | 是（从 Harbor 下载固定 FreeCAD 原始 DMG；`HARNESS_CAD_INSTALL_ARCHIVE` 预置缓存仅计缓存安装） |
+| T6 Linux chip 安装器     | linux x64（CI 托管）                               | Docker；`scripts/package-linux-chip-installer.cjs` 构建产物                                                                                                                                                       | 是                                                                                            |
 
 说明：
 
@@ -67,18 +71,18 @@
 
 ### T0 仓库结构与静态门（CI：structure.yml）
 
-| ID | 命令 | 覆盖 | 通过判据 |
-| --- | --- | --- | --- |
-| T0-1 | `pnpm run format:check` | 全仓 prettier | 退出码 0 |
+| ID   | 命令                     | 覆盖                                                                                                                                                    | 通过判据 |
+| ---- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| T0-1 | `pnpm run format:check`  | 全仓 prettier                                                                                                                                           | 退出码 0 |
 | T0-2 | `pnpm test:architecture` | `check-architecture-contract.cjs` + `tests/architecture/*.test.cjs`：静态依赖边界（DoD Test A/B/C/D）、Prototype 冻结、桌面主进程禁止直调工业可执行文件 | 退出码 0 |
-| T0-3 | `pnpm run test:release` | `check-pack-release.cjs`：Pack 发行内容与兼容性 | 退出码 0 |
+| T0-3 | `pnpm run test:release`  | `check-pack-release.cjs`：Pack 发行内容与兼容性                                                                                                         | 退出码 0 |
 
 ### T1 Portable 单元/集成（CI：portable 矩阵，四平台）
 
-| ID | 命令 | 覆盖 | 通过判据 | 证据 |
-| --- | --- | --- | --- | --- |
+| ID   | 命令                           | 覆盖                                                                                                                                                                                                                                                                                                                       | 通过判据                                                                                                                                                                                                                              | 证据                            |
+| ---- | ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
 | T1-1 | `pnpm run test:ci -- portable` | 自动发现全部 `packages/*`、`apps/cli`、`apps/desktop` 的 `node --test` 目录（含桌面 13 个主进程单测：updater、window-bounds、session-manager、project-bindings、model-config、chat-history、agent-events、language、gui-permissions、message-content、project-files、project-runtimes、workspace-files），排除 T4 专属文件 | `dist/ci-reports/portable.json` 中 `ok: true`：success 且 failed=cancelled=todo=0，且实际 skip 集合是指允许清单的**子集**——清单内条目当次未跳过属正常（如装有 KLayout 的机器该测试真实执行并通过），清单外出现任何 skip 即 fail（§6） | `portable.json`、`portable.log` |
-| T1-2 | `pnpm run smoke:ci-packages` | 独立打包 CLI 消费者验证 | 退出码 0 | `packages.log` |
+| T1-2 | `pnpm run smoke:ci-packages`   | 独立打包 CLI 消费者验证                                                                                                                                                                                                                                                                                                    | 退出码 0                                                                                                                                                                                                                              | `packages.log`                  |
 
 便携层有 180 秒硬超时：超时即 fail，不会退化成平台跳过。可设 `HARNESS_CI_PLATFORM` / `HARNESS_CI_ARCH` 校验运行平台与预期一致（不匹配直接报错）。
 
@@ -86,40 +90,42 @@
 
 先决：`pnpm --filter @industrial-agent-harness/desktop build`。需要截图证据时设 `INDUSTRIAL_UI_SCREENSHOTS=<dir>`（ui/messages/message-rail 等会写 PNG）。
 
-| ID | 命令（`pnpm --filter @industrial-agent-harness/desktop <script>`） | 覆盖（对应 `electron/*-selftest.cjs`） |
-| --- | --- | --- |
-| T2-01 | `test:ui` | 工作台主界面：composer 状态机、草稿保留、标签焦点、文本对比度、必要控件不被裁剪 |
-| T2-02 | `test:parallel` | 多 Session 并行编排聚合入口 |
-| T2-03 | `test:language` | 中英文与跟随系统切换、偏好保存 |
-| T2-04 | `test:gui-settings` | 设置弹层交互 |
-| T2-05 | `test:messages` | 消息渲染与悬停操作 |
-| T2-06 | `test:chats` | 聊天历史（`scripts/test-chats.cjs`） |
-| T2-07 | `test:logs` | Agent 日志与资源面板（内含 resource selftest：能力中心资源行） |
-| T2-08 | `test:mcp` | 域 MCP 会话接入 UI |
-| T2-09 | `test:external-mcp` | 外部 MCP 注册与审批 UI |
-| T2-10 | `test:subagents` | Subagent 卡片与 Agent 工具行 |
-| T2-11 | `test:images` | 图片输入管线 |
-| T2-12 | `test:kicad` | KiCad 板图/原理图 Viewer |
-| T2-13 | `test:godot` | Godot Web Export Viewer |
-| T2-14 | `test:engineering` | 工程文件只读预览 |
-| T2-15 | `test:documents` | 通用文件 Viewer（CSV/JSON/Markdown 等） |
-| T2-16 | `test:cad` / `test:cad-resize` | CAD 领域交互 / 视口 resize。真实调用 `cad.freecad.build`/`cad.freecad.export` 工具，**必须先完成 T4-1 native 准备中的 FreeCAD 步骤并导出 `INDUSTRIAL_HARNESS_FREECAD_CMD`**，否则在干净环境必然失败 |
-| T2-17 | `test:results` | 任务成果卡：自动成果生成、版本关联、预览与历史重载（PR #72 引入）。**驱动真实 CAD 任务并断言结果卡与渲染三角数，同 T2-16 需 FreeCAD 前置**；CI 中该路径由 T4 native 套件的 `task-results-freecad/kimi.test.cjs` 覆盖，selftest 本身不进任何 workflow 循环 |
-| T2-18 | `test:model-sync` | 模型/项目配置广播同步：非 UI 的 `model:save`、`project:create` 后渲染端状态免刷新（PR #75 引入） |
-| T2-19 | `node apps/desktop/scripts/test-install-experience.cjs` | 引导式安装体验（域选择/准备中断退出恢复），需先 build，quit 模式仅 darwin（PR #77 引入）；由 desktop-package.yml 的 mac job 执行 |
+| ID    | 命令（`pnpm --filter @industrial-agent-harness/desktop <script>`） | 覆盖（对应 `electron/*-selftest.cjs`）                                                                                                                                                                                                                    |
+| ----- | ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| T2-01 | `test:ui`                                                          | 工作台主界面：composer 状态机、草稿保留、标签焦点、文本对比度、必要控件不被裁剪                                                                                                                                                                           |
+| T2-02 | `test:parallel`                                                    | 多 Session 并行编排聚合入口                                                                                                                                                                                                                               |
+| T2-03 | `test:language`                                                    | 中英文与跟随系统切换、偏好保存                                                                                                                                                                                                                            |
+| T2-04 | `test:gui-settings`                                                | 设置弹层交互                                                                                                                                                                                                                                              |
+| T2-05 | `test:messages`                                                    | 消息渲染与悬停操作                                                                                                                                                                                                                                        |
+| T2-06 | `test:chats`                                                       | 聊天历史（`scripts/test-chats.cjs`）                                                                                                                                                                                                                      |
+| T2-07 | `test:logs`                                                        | Agent 日志与资源面板（内含 resource selftest：能力中心资源行）                                                                                                                                                                                            |
+| T2-08 | `test:mcp`                                                         | 域 MCP 会话接入 UI                                                                                                                                                                                                                                        |
+| T2-09 | `test:external-mcp`                                                | 外部 MCP 注册与审批 UI                                                                                                                                                                                                                                    |
+| T2-10 | `test:subagents`                                                   | Subagent 卡片与 Agent 工具行                                                                                                                                                                                                                              |
+| T2-11 | `test:images`                                                      | 图片输入管线                                                                                                                                                                                                                                              |
+| T2-12 | `test:kicad`                                                       | KiCad 板图/原理图 Viewer                                                                                                                                                                                                                                  |
+| T2-13 | `test:godot`                                                       | Godot Web Export Viewer                                                                                                                                                                                                                                   |
+| T2-14 | `test:engineering`                                                 | 工程文件只读预览                                                                                                                                                                                                                                          |
+| T2-15 | `test:documents`                                                   | 通用文件 Viewer（CSV/JSON/Markdown 等）                                                                                                                                                                                                                   |
+| T2-16 | `test:cad` / `test:cad-resize`                                     | CAD 领域交互 / 视口 resize。真实调用 `cad.freecad.build`/`cad.freecad.export` 工具，**必须先完成 T4-1 native 准备中的 FreeCAD 步骤并导出 `INDUSTRIAL_HARNESS_FREECAD_CMD`**，否则在干净环境必然失败                                                       |
+| T2-17 | `test:results`                                                     | 任务成果卡：自动成果生成、版本关联、预览与历史重载（PR #72 引入）。**驱动真实 CAD 任务并断言结果卡与渲染三角数，同 T2-16 需 FreeCAD 前置**；CI 中该路径由 T4 native 套件的 `task-results-freecad/kimi.test.cjs` 覆盖，selftest 本身不进任何 workflow 循环 |
+| T2-18 | `test:model-sync`                                                  | 模型/项目配置广播同步：非 UI 的 `model:save`、`project:create` 后渲染端状态免刷新（PR #75 引入）                                                                                                                                                          |
+| T2-19 | `node apps/desktop/scripts/test-install-experience.cjs`            | 引导式安装体验（域选择/准备中断退出恢复），需先 build，quit 模式仅 darwin（PR #77 引入）；由 desktop-package.yml 的 mac job 执行                                                                                                                          |
 
 CI 参考集：`desktop-package.yml` 跑 `ui language parallel gui-settings` 及 T2-19 install-experience 自测（仅 mac）；`industrial-core.yml` 跑 `chats logs mcp subagents kicad engineering ui language documents images parallel model-sync`。本地全量即把上表全部执行（共 20 个入口，其中 T2-16/T2-17 受 FreeCAD 前置约束）。
 
 ### T3 Transport 与 Benchmark（CI：structure.yml 后段）
 
-| ID | 命令 | 覆盖 | 通过判据 |
-| --- | --- | --- | --- |
+| ID   | 命令                            | 覆盖                                                                                                                                                                                                                            | 通过判据                                     |
+| ---- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
 | T3-1 | `pnpm run test:ci -- transport` | 7 个真实传输/策略文件：外部 MCP、domain-mcp-scope（DoD Test G 的 Scope 执行层验证）、pcb-mcp-transport/policy、godot-mcp-policy、chip-runtime-reliability，以及 signed installed CUDA 的 HTTP 协议（受控后端，不代表 GPU 验收） | `transport.json` `ok: true`（允许清单见 §6） |
-| T3-2 | `pnpm run test:ci -- benchmark` | `tests/benchmark/paired.test.cjs` 配对工程冒烟（需 iverilog/vvp） | `benchmark.json` `ok: true` |
+| T3-2 | `pnpm run test:ci -- benchmark` | `tests/benchmark/paired.test.cjs` 配对工程冒烟（需 iverilog/vvp）                                                                                                                                                               | `benchmark.json` `ok: true`                  |
 
 ### T4 Native 工业内核（CI：industrial-core.yml；native=darwin arm64，native-linux=linux x64）
 
 前置检查由 `ci-tests.cjs` 自带：平台/KIMI_EXECUTABLE/FreeCAD/chip venv/verilator/rg 缺一即报错退出。
+
+以下 setup 脚本仅供 CI／维护环境预置测试软件，不是产品安装入口；当前产品原生应用只检测关联，容器可在用户已有 Docker 时显式准备。最新专项复验见 [Agent 安装验收](agent-install-acceptance.md) 和 [本轮证据](qa-native-runtime-20261012.md)。
 
 **native（darwin arm64）完整准备**（与 industrial-core.yml 等价，可直接复制；在仓库根执行）：
 
@@ -141,34 +147,34 @@ export HARNESS_PROFESSIONAL_EVIDENCE="$PWD/dist/ci-reports/professional-evidence
 
 **native-linux（linux x64）准备**只需两步：`node apps/desktop/scripts/setup-kimi.cjs` + 上述 `KIMI_EXECUTABLE` 导出，以及 chip pack 的 `uv sync`（见 industrial-linux.yml）。
 
-| ID | 命令 | 覆盖 |
-| --- | --- | --- |
-| T4-1 | 执行上方准备命令块 | 受保护 Agent、Harbor 托管 FreeCAD、pcb/godot 原生运行时与独立 CLI/Desktop 打包（professional/freecad 测试入口的绑定来源） |
-| T4-2 | `pnpm run test:ci -- native`（或 `native-linux`） | `industrial-core-vertical-slice.test.cjs`（里程碑 Gate：StateProvider→Broker→Scoped Tool→Runtime→Verilator→Artifact→Verifier→Checkpoint 真实闭环）、installed-pack、pcb-godot runtime、freecad-runtime、后台任务、沙箱、会话混沌/资源、MCP 实测；文件清单由 `scripts/ci-tests.cjs` 维护 |
-| T4-2a | `pnpm run test:ci -- native-installed`（darwin arm64） | 独立必跑安装组，串行执行 `freecad-installed.test.cjs` 和 `pcb-godot-installed.test.cjs` 的三项全新托管安装与真实工程验收；原断言、执行截止与零跳过要求保留。准备使用 Harbor 中的固定原始归档与独立 CLI/Desktop payload；使用预置归档缓存或暖 Docker 层时必须明确标注，不能计为冷下载，见 `industrial-core.yml` 的安装 job |
-| T4-3 | `node --test tests/integration/headless-package-kimi.test.cjs` | 打包 headless Agent 的生产进程边界 |
-| T4-4 | 打包 CLI + 工作区验证：对 chip/pcb/godot 依次 `node scripts/package-headless.cjs dist/workspace-<domain> --domain <domain>` 后 `node scripts/smoke-workspace-cli.cjs <cli> <domain> <evidence.json>` | 三个领域的独立 CLI 真实任务与 MCP |
+| ID    | 命令                                                                                                                                                                                                 | 覆盖                                                                                                                                                                                                                                                                                                                                                                                           |
+| ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| T4-1  | 执行上方准备命令块                                                                                                                                                                                   | 受保护 Agent、Harbor 托管 FreeCAD、pcb/godot 原生运行时与独立 CLI/Desktop 打包（professional/freecad 测试入口的绑定来源）                                                                                                                                                                                                                                                                      |
+| T4-2  | `pnpm run test:ci -- native`（或 `native-linux`）                                                                                                                                                    | `industrial-core-vertical-slice.test.cjs`（里程碑 Gate：StateProvider→Broker→Scoped Tool→Runtime→Verilator→Artifact→Verifier→Checkpoint 真实闭环）、installed-pack、pcb-godot runtime、freecad-runtime、后台任务、沙箱、会话混沌/资源、MCP 实测；文件清单由 `scripts/ci-tests.cjs` 维护                                                                                                        |
+| T4-2a | `pnpm run test:ci -- native-installed`（darwin arm64）                                                                                                                                               | 独立必跑安装组，串行执行 `freecad-installed.test.cjs` 和 `pcb-godot-installed.test.cjs` 的三项全新 Pack 安装、外部应用关联与真实工程验收；原断言、执行截止与零跳过要求保留。应用作为测试前置条件在产品流程外准备，以 HARNESS_FREECAD_APP_PATH / HARNESS_KICAD_APP_PATH / HARNESS_GODOT_APP_PATH 指定；独立 CLI/Desktop payload 与缓存／暖镜像必须如实登记，见 `industrial-core.yml` 的安装 job |
+| T4-3  | `node --test tests/integration/headless-package-kimi.test.cjs`                                                                                                                                       | 打包 headless Agent 的生产进程边界                                                                                                                                                                                                                                                                                                                                                             |
+| T4-4  | 打包 CLI + 工作区验证：对 chip/pcb/godot 依次 `node scripts/package-headless.cjs dist/workspace-<domain> --domain <domain>` 后 `node scripts/smoke-workspace-cli.cjs <cli> <domain> <evidence.json>` | 三个领域的独立 CLI 真实任务与 MCP                                                                                                                                                                                                                                                                                                                                                              |
 
 ### T5 桌面打包与安装冒烟（CI：desktop-package.yml，mac+win）
 
-| ID | 命令 | 覆盖 | 平台 |
-| --- | --- | --- | --- |
-| T5-1 | `pnpm --filter @industrial-agent-harness/desktop build` && `node scripts/stage-desktop.cjs dist/desktop-stage-ci` | 构建并暂存可安装应用 | mac/win |
-| T5-2 | mac：`./apps/desktop/node_modules/.bin/electron-builder --projectDir dist/desktop-stage-ci --config electron-builder.config.cjs --mac dmg --arm64 --publish never`；win：同参数 `--win dir` | 产出安装产物 | mac/win |
-| T5-3 | `node scripts/smoke-packaged-desktop.cjs` | 打包应用首次启动（域选择首屏）；设 `HARNESS_PACKAGED_SMOKE_SCREENSHOT=<png>` 留证 | mac/win |
-| T5-4 | `node scripts/smoke-packaged-desktop.cjs --domains` | 平台限定域安装 | mac/win |
-| T5-5 | `node scripts/smoke-packaged-cad.cjs <全新证据目录> --dmg` | **真实安装流**：首装 UI 勾选 CAD → 从 Harbor 下载 FreeCAD 原始 DMG（sha256 校验、挂载与原生验证不 mock）→ runtime ready → 重启应用验证依赖/项目绑定/verified actions 持久化。证据目录必须不存在（脚本强制全新）。可用 `HARNESS_CAD_INSTALL_ARCHIVE` 预置原始 DMG 缓存，但此时不计冷下载、`HARNESS_CAD_INSTALL_APP` 指定被测可执行文件 | 仅 darwin arm64 |
+| ID   | 命令                                                                                                                                                                                        | 覆盖                                                                                                                                                                                                                                                                                                                                  | 平台            |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- |
+| T5-1 | `pnpm --filter @industrial-agent-harness/desktop build` && `node scripts/stage-desktop.cjs dist/desktop-stage-ci`                                                                           | 构建并暂存可安装应用                                                                                                                                                                                                                                                                                                                  | mac/win         |
+| T5-2 | mac：`./apps/desktop/node_modules/.bin/electron-builder --projectDir dist/desktop-stage-ci --config electron-builder.config.cjs --mac dmg --arm64 --publish never`；win：同参数 `--win dir` | 产出安装产物                                                                                                                                                                                                                                                                                                                          | mac/win         |
+| T5-3 | `node scripts/smoke-packaged-desktop.cjs`                                                                                                                                                   | 打包应用首次启动（域选择首屏）；设 `HARNESS_PACKAGED_SMOKE_SCREENSHOT=<png>` 留证                                                                                                                                                                                                                                                     | mac/win         |
+| T5-4 | `node scripts/smoke-packaged-desktop.cjs --domains`                                                                                                                                         | 平台限定域安装                                                                                                                                                                                                                                                                                                                        | mac/win         |
+| T5-5 | `node scripts/smoke-packaged-cad.cjs <全新证据目录> --dmg`                                                                                                                                  | **真实安装流**：首装 UI 勾选 CAD → 从 Harbor 下载 FreeCAD 原始 DMG（sha256 校验、挂载与原生验证不 mock）→ runtime ready → 重启应用验证依赖/项目绑定/verified actions 持久化。证据目录必须不存在（脚本强制全新）。可用 `HARNESS_CAD_INSTALL_ARCHIVE` 预置原始 DMG 缓存，但此时不计冷下载、`HARNESS_CAD_INSTALL_APP` 指定被测可执行文件 | 仅 darwin arm64 |
 
 ### 新用户安装专项（T5 补充）
 
 用于验证当前打包产物的首次使用，不用历史安装器结果替代。只要求此专项时，报告 `scope: first-user-installation`，先运行 T0，并逐项记录下表；不能把专项结果写成全量 T0–T6 已通过。上方 T2-19 使用签名的假域资源验证 UI 状态机，不代表真实领域依赖安装。T4-2a 的全新 store 加预置原始归档证明缓存安装，也不能替代冷下载。
 
-| 用例 | 必须使用的真实路径 | 判定与证据 |
+| 用例                    | 必须使用的真实路径                                                                                                     | 判定与证据                                                                                                                                         |
 | ----------------------- | ---------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| NEW-1 原始归档冷下载 | 全新 store，使用生产 RuntimeAssetManager 默认下载、超时与哈希校验，直接访问 Harbor；不得设置归档缓存变量或注入完成收据 | 记录 URL/状态、字节数、耗时、失败原因、取消/清理；官方源回退不允许。完整校验成功才 pass，超时/截断是 fail |
-| NEW-2 打包应用首启 | 从当前源码构建独立 DMG，在隔离目录安装 app，使用空 userData/config/Pack store，保留真实 app.asar 和依赖布局 | 首屏显示所有领域及真实前提；实际选择、下载/安装、就绪、完成首个原生任务、退出重开并核对历史。按阶段留截图和状态；仅 staged Electron 不等于打包产物 |
-| NEW-3 Docker 缺失与恢复 | 仅对子进程隔离 PATH/daemon 地址触发缺失/不可达；恢复正常环境后重试真实安装 | 错误可理解，不误报 ready，不激活半成品，临时文件和锁释放；恢复后能安装。不得关闭用户 Docker、清除既有镜像或全局配置 |
-| NEW-4 取消和外部前提 | 真实生产下载取消/重试，CUDA 未配置服务状态 | 取消后可重开/修复；CUDA Pack 安装与服务可用性分别记录，未配服务不得当作工程验收成功 |
+| NEW-1 原始归档冷下载    | 全新 store，使用生产 RuntimeAssetManager 默认下载、超时与哈希校验，直接访问 Harbor；不得设置归档缓存变量或注入完成收据 | 记录 URL/状态、字节数、耗时、失败原因、取消/清理；官方源回退不允许。完整校验成功才 pass，超时/截断是 fail                                          |
+| NEW-2 打包应用首启      | 从当前源码构建独立 DMG，在隔离目录安装 app，使用空 userData/config/Pack store，保留真实 app.asar 和依赖布局            | 首屏显示所有领域及真实前提；实际选择、下载/安装、就绪、完成首个原生任务、退出重开并核对历史。按阶段留截图和状态；仅 staged Electron 不等于打包产物 |
+| NEW-3 Docker 缺失与恢复 | 仅对子进程隔离 PATH/daemon 地址触发缺失/不可达；恢复正常环境后重试真实安装                                             | 错误可理解，不误报 ready，不激活半成品，临时文件和锁释放；恢复后能安装。不得关闭用户 Docker、清除既有镜像或全局配置                                |
+| NEW-4 取消和外部前提    | 真实生产下载取消/重试，CUDA 未配置服务状态                                                                             | 取消后可重开/修复；CUDA Pack 安装与服务可用性分别记录，未配服务不得当作工程验收成功                                                                |
 
 每次使用独立证据目录，记录 Harness 完整 commit、dirty 状态、owner commit、OS/架构、打包产物 SHA-256、签名/公证状态和运行参数。归档缓存、Docker 暖层、受控模型/HTTP fixture 必须逐项标注。受控故障只证明错误处理，不算真实冷网络或 GPU 成功。没有干净物理机时明确说明是在开发机上隔离目录测试，不能宣称已经覆盖系统级首次授权、Gatekeeper 或全新系统环境。
 
@@ -187,11 +193,11 @@ node scripts/qa-fresh-install-prerequisites.cjs dist/qa-first-user/prerequisites
 
 ### T6 Linux chip 安装器验收（CI：industrial-linux.yml，linux x64 托管）
 
-| ID | 命令 | 覆盖 |
-| --- | --- | --- |
-| T6-1 | `node scripts/package-linux-chip-installer.cjs dist/chip-cli.tar.gz dist/linux-chip-release/<installer>.run <tag>` | 构建不可变 `.run` 安装器并输出 build-identity |
-| T6-2 | 安装到真实前缀后 `node scripts/smoke-linux-chip-install.cjs <prefix> <launcher> <verification.json>` | install-receipt 校验（sourceDirty=false、受保护 Kimi 启动 PASS）+ 安装出的消费者跑真实 Verilator/Docker 任务 |
-| T6-3 | 旧版 preview 安装器 → 新版升级路径 | 同 T6-2 双轮验证 |
+| ID   | 命令                                                                                                               | 覆盖                                                                                                         |
+| ---- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
+| T6-1 | `node scripts/package-linux-chip-installer.cjs dist/chip-cli.tar.gz dist/linux-chip-release/<installer>.run <tag>` | 构建不可变 `.run` 安装器并输出 build-identity                                                                |
+| T6-2 | 安装到真实前缀后 `node scripts/smoke-linux-chip-install.cjs <prefix> <launcher> <verification.json>`               | install-receipt 校验（sourceDirty=false、受保护 Kimi 启动 PASS）+ 安装出的消费者跑真实 Verilator/Docker 任务 |
+| T6-3 | 旧版 preview 安装器 → 新版升级路径                                                                                 | 同 T6-2 双轮验证                                                                                             |
 
 本机不是 linux x64 时整层标记 `blocked`，以 CI workflow `industrial-linux.yml` 的结果为准。
 
@@ -199,14 +205,14 @@ node scripts/qa-fresh-install-prerequisites.cjs dist/qa-first-user/prerequisites
 
 [04 文档](04-definition-of-done-and-architecture-tests.md)定义的门禁在本手册中的落点：
 
-| DoD 项 | 用例 |
-| --- | --- |
-| Test A/B/C（Core/Adapter/Broker 静态边界） | T0-2 |
-| Test D（桌面主进程禁直调工业工具） | T0-2 |
-| Test E（Viewer 经 Registry，直分发冻结） | T0-2 + `doc/prototype-register.json` |
-| Test F（mutating Tool 必须带 Verification 声明） | T0-2/T0-3 声明检查 |
-| Test G（Scope 在执行层验证） | T3-1（`domain-mcp-scope.test.cjs`、`chip-runtime-reliability.test.cjs`） |
-| Milestone Gate（Industrial Core Vertical Slice） | T4-2（`industrial-core-vertical-slice.test.cjs`，仅在 native 层运行） |
+| DoD 项                                           | 用例                                                                     |
+| ------------------------------------------------ | ------------------------------------------------------------------------ |
+| Test A/B/C（Core/Adapter/Broker 静态边界）       | T0-2                                                                     |
+| Test D（桌面主进程禁直调工业工具）               | T0-2                                                                     |
+| Test E（Viewer 经 Registry，直分发冻结）         | T0-2 + `doc/prototype-register.json`                                     |
+| Test F（mutating Tool 必须带 Verification 声明） | T0-2/T0-3 声明检查                                                       |
+| Test G（Scope 在执行层验证）                     | T3-1（`domain-mcp-scope.test.cjs`、`chip-runtime-reliability.test.cjs`） |
+| Milestone Gate（Industrial Core Vertical Slice） | T4-2（`industrial-core-vertical-slice.test.cjs`，仅在 native 层运行）    |
 
 ## 5. 一键执行顺序
 
@@ -260,14 +266,14 @@ node scripts/qa-cleanup.cjs --apply 2>&1 | tee "$EVID/qa-cleanup.log"           
 
 ## 7. 与 CI workflow 的对应
 
-| 层 | Workflow | 触发与门控 |
-| --- | --- | --- |
-| T0/T3 | `structure.yml`（repository 层） | 每次必跑 |
-| T1 | `ci.yml` portable 矩阵 | PR 触及共享代码时跑；docs-only PR 跳过 |
-| T2/T5 | `desktop-package.yml` | 非 docs-only PR 跑（mac+win；T2-19 install-experience 自测仅 mac） |
-| T4 | `industrial-core.yml` | 非 docs-only PR 跑（darwin arm64） |
-| T6 | `industrial-linux.yml` | PR 触及共享代码时跑（linux x64） |
-| 汇总 | `ci.yml` 的 `all-checks-passed` | 所有实际运行的层必须 success；main 分支受分支保护约束，不可跨红合并 |
+| 层    | Workflow                         | 触发与门控                                                          |
+| ----- | -------------------------------- | ------------------------------------------------------------------- |
+| T0/T3 | `structure.yml`（repository 层） | 每次必跑                                                            |
+| T1    | `ci.yml` portable 矩阵           | PR 触及共享代码时跑；docs-only PR 跳过                              |
+| T2/T5 | `desktop-package.yml`            | 非 docs-only PR 跑（mac+win；T2-19 install-experience 自测仅 mac）  |
+| T4    | `industrial-core.yml`            | 非 docs-only PR 跑（darwin arm64）                                  |
+| T6    | `industrial-linux.yml`           | PR 触及共享代码时跑（linux x64）                                    |
+| 汇总  | `ci.yml` 的 `all-checks-passed`  | 所有实际运行的层必须 success；main 分支受分支保护约束，不可跨红合并 |
 
 PR 的 area gating 规则：仅 `doc/`、`*.md`、`LICENSE` 变更 → 只跑 repository 层；仅 `apps/desktop/` 变更 → 跳过 portable 与 linux 安装器层。Agent 提交 PR 时可用此预估 CI 范围，但不得据此绕过本地更高档位的自测。
 
@@ -278,3 +284,48 @@ PR 的 area gating 规则：仅 `doc/`、`*.md`、`LICENSE` 变更 → 只跑 re
 3. 新增 CI 套件或调整平台矩阵：更新 `scripts/ci-tests.cjs` 与对应 workflow 后，同步修订本文 §2/§3/§7。
 4. 本手册描述的命令、允许跳过清单与 flake 必须与 `main` 的 CI 一致；发现不一致时以 CI 实际行为为准并立即修订本手册。
 5. 清理目标与保留期由 §1.6 与 `scripts/qa-cleanup.cjs` 共同定义：新增目标类别或调整保留期时两者必须同步修改，且 `tests/ci/qa-cleanup.test.cjs` 须覆盖新的判定分支。
+
+## Runtime 分发 v2 专项（2026-10-12）
+
+本节补充 T1/T2/T5，按 [PD-072](product-decisions.md#pd-072pack-与软件分离及能力-profile-选择)
+更新安装判据：**Pack-only 安装不应准备完整应用或拉镜像**；依赖准备必须由明确
+Profile 操作触发。旧安装报告只证明旧身份／流程，不替代本轮证据。先执行本文的
+对象锚定、能力探测、suite 锁和证据归档协议。当前结果见 [v2 验收记录](qa-runtime-distribution-v2-20261012.md)。
+
+共享后端、Desktop IPC、项目 Runtime 和 CLI 的定向回归：
+
+```sh
+node --test packages/pack-manager/src/runtime-environments.test.cjs \
+  apps/desktop/electron/runtime-environments.test.cjs \
+  apps/cli/tests/domains.test.cjs
+node --test tests/integration/godot-native.test.cjs
+```
+
+第二条已纳入现有 Godot native CI 套件，缺少实际软件会失败。真实 Godot 关联→共享
+canonical Runtime→12 帧验证，在 macOS ARM64、有兼容 Godot 和 owner probe 时执行：
+
+```sh
+HARNESS_TEST_PLATFORM_PROBE=/absolute/industrial-environment-probe \
+node --test tests/integration/godot-native.test.cjs
+```
+
+GUI selftest 必须先构建桌面 bundle，并使用隔离的 Pack store、截图目录与实际
+Electron renderer/preload/IPC。使用现有 `--runtime-environments-selftest` 入口；
+`INDUSTRIAL_HARNESS_PACK_STORE`、`INDUSTRIAL_UI_SCREENSHOTS` 均指向本轮独立目录。
+测试注入的应用／依赖 fixture 只验交互和 IPC，不计真实软件安装或工程通过。
+四域真实签名目录另验，并记录其中每个 `executionProfiles`、runtime asset 和
+`platformProbe` 的来源、hash、大小及实际安装消费。
+
+| 项目               | 必须观察的行为                                                                                            |
+| ------------------ | --------------------------------------------------------------------------------------------------------- |
+| 空 store Pack-only | 无 Docker／vendor 软件时仍完成 Pack 安装；无隐式软件网络请求；项目与历史可读                              |
+| native 检测与关联  | 缺失、不兼容、多候选、手选路径、官方入口、版本／签名／身份检查；检测不自动关联；解除不删除应用            |
+| Profile 权限       | 真实 projectDir 绑定覆盖全局；规范 Tool IDs 按选定能力收敛；未验证平台不可执行                            |
+| 显式容器准备       | 仅所选容器 Profile 可以拉取固定镜像，先检查用户已有 Docker；原生 Prepare 拒绝；进度、取消、失败和重试可见 |
+| Go 平台组件        | 签名 bundle 的实际二进制经过平台／路径／size／hash 检查并被调用；损坏或缺失不静默 fallback                |
+| 远程协议兼容测试   | 当前产品不展示 CUDA 配置；保留的通用连接 fixture 与旧 CUDA HTTP 协议测试只算传输兼容证据，不算 GPU 验收   |
+| 运行／更换／取消   | active lease 防并发换环境；身份变化使旧 Scope／证据失效；取消仍保留实际产物和确认清理诊断                 |
+| 历史与重启         | 无可执行环境仍读历史；绑定和已记录状态恢复；旧 Verifier 不被新版本重新解释                                |
+
+本专项不新增 runner，不把 T2 fixture、交叉构建或旧 native 资格冒充新 Mac Docker
+CI、真实四域冷安装、签名／公证安装器或完整工程验收。

@@ -3810,6 +3810,9 @@ body,
   overflow-wrap: anywhere;
 }
 .ia-pack-badge {
+  color: var(--ia-muted);
+}
+.ia-pack-badge.ok {
   color: var(--ia-success);
 }
 .ia-pack-badge.warn {
@@ -4196,7 +4199,8 @@ body {
   margin-top: 1px;
   flex: none;
 }
-.ia-domain-install-row > span:last-child {
+.ia-domain-install-row > span:last-child,
+.ia-domain-install-body {
   display: grid;
   gap: 4px;
   flex: 1;
@@ -4599,4 +4603,147 @@ body {
   display: flex;
   justify-content: space-between;
   gap: 8px;
+}
+
+/* Environment setup reuses the capability center's flat, ruled surfaces. */
+.ia-runtime-environments {
+  border-top: 1px solid var(--ia-border);
+  margin-top: 12px;
+  padding-top: 12px;
+  min-width: 0;
+}
+.ia-runtime-environments h3 {
+  font-size: 13px;
+  font-weight: 500;
+  margin: 0 0 8px;
+}
+.ia-runtime-environments p {
+  font-size: 12px;
+  margin: 6px 0;
+}
+.ia-runtime-environments label {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+}
+.ia-runtime-environments select {
+  max-width: 100%;
+  min-width: 0;
+  color: var(--ia-text);
+  background: var(--ia-raised);
+  border: 1px solid var(--ia-control-border);
+  border-radius: 6px;
+  padding: 7px;
+}
+.ia-runtime-asset {
+  display: grid;
+  gap: 5px;
+  border-top: 1px solid var(--ia-border);
+  padding: 10px 0;
+}
+.ia-runtime-asset b {
+  font-size: 12px;
+  font-weight: 500;
+}
+.ia-runtime-asset span,
+.ia-runtime-asset small,
+.ia-runtime-profile > small {
+  font-size: 11px;
+  color: var(--ia-muted);
+}
+.ia-runtime-asset code {
+  overflow-wrap: anywhere;
+  font-size: 11px;
+}
+.ia-runtime-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 8px 0;
+}
+.ia-runtime-environments button {
+  font: inherit;
+  font-size: 12px;
+  color: var(--ia-text);
+  background: transparent;
+  border: 1px solid var(--ia-border);
+  border-radius: 6px;
+  padding: 6px 9px;
+  cursor: pointer;
+}
+.ia-runtime-environments button:hover:not(:disabled) {
+  background: var(--ia-hover);
+}
+.ia-runtime-environments button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.ia-runtime-tools {
+  padding-left: 20px;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.ia-runtime-asset small {
+  overflow-wrap: anywhere;
+}
+
+/* Keep domain boundaries readable while retaining flat capability surfaces. */
+.ia-packs-section .ia-pack-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+}
+.ia-packs-section .ia-pack-card {
+  padding: 16px;
+  border: 1px solid var(--ia-border);
+  border-radius: 8px;
+  background: var(--ia-panel);
+}
+.ia-domain-install-row {
+  border-bottom: 1px solid var(--ia-control-border);
+}
+.ia-domain-requirements {
+  font-size: 11px;
+  color: var(--ia-muted);
+  min-width: 0;
+}
+.ia-domain-requirements summary {
+  cursor: pointer;
+  width: fit-content;
+  padding: 5px 0;
+}
+.ia-domain-requirements ul {
+  margin: 4px 0 8px;
+  padding-left: 18px;
+  overflow-wrap: anywhere;
+}
+.ia-runtime-status.neutral {
+  color: var(--ia-muted);
+}
+.ia-runtime-status.ok {
+  color: var(--ia-success);
+}
+.ia-runtime-status.warn {
+  color: var(--ia-warning);
+}
+.ia-runtime-status.error {
+  color: var(--ia-danger);
+}
+.ia-runtime-environments select,
+.ia-runtime-environments input {
+  width: 100%;
+  box-sizing: border-box;
+}
+.ia-runtime-environments p {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 760px) {
+  .ia-packs-section .ia-pack-card {
+    padding: 12px;
+    flex-wrap: wrap;
+  }
+  .ia-pack-title {
+    flex-wrap: wrap;
+  }
 }

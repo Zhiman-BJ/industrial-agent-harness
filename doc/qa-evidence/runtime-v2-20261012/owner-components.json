@@ -1,0 +1,271 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-10-12T08:42:23.734Z",
+  "kind": "owner-component-release-acceptance",
+  "ownerCommit": "4cc46c3f2e5d000e000e60e1ca0697d71484edd0",
+  "ownerVersion": "0.7.0",
+  "contentSha256": "98edfba5c7442b1abd2125f3a65c8cf5b06bb73bb3618beda7384b605692c17a",
+  "platform": "darwin-arm64",
+  "node": "v26.10.0",
+  "source": "Committed Git objects; working-tree bytes excluded",
+  "commands": [
+    "python3 scripts/package-components.py <pack> --output dist/components-v2-final",
+    "owner.inspectComponentRelease(indexPath, trustedIndexSha256)"
+  ],
+  "packs": [
+    {
+      "packId": "chip-pack",
+      "version": "0.7.0",
+      "sourceCommit": "4cc46c3f2e5d000e000e60e1ca0697d71484edd0",
+      "contentSha256": "98edfba5c7442b1abd2125f3a65c8cf5b06bb73bb3618beda7384b605692c17a",
+      "manifestSha256": "6382a2b188ade03cc3c30c148c0a9b3ceb0d26f061c6249956f53267330ff659",
+      "index": {
+        "file": "chip-release-4cc46c3f2e5d.json",
+        "sha256": "ba411058c1a9f1c61c74a460d5d2007b38806e884c93bb858d4a46ea80eb9c1a"
+      },
+      "components": [
+        {
+          "id": "source",
+          "file": "chip-source-4cc46c3f2e5d.tar.gz",
+          "sha256": "0fe49375a7b7e2285bcc2651d3bf5e9e74e4b0704493295bbe055dcc6a96cbfa",
+          "sizeBytes": 285389,
+          "requires": [],
+          "fileCount": 114
+        },
+        {
+          "id": "skills",
+          "file": "chip-skills-4cc46c3f2e5d.tar.gz",
+          "sha256": "d59bf984be4f62edbaf72329a1f532e8390126abf59b8adf56c4e21c8643f44a",
+          "sizeBytes": 27504,
+          "requires": [
+            "source"
+          ],
+          "fileCount": 5
+        },
+        {
+          "id": "bridge",
+          "file": "chip-bridge-4cc46c3f2e5d.tar.gz",
+          "sha256": "2e7ebf300442d239de225de502374e8098c7dd44df6f706f6435ef83a724897d",
+          "sizeBytes": 23898,
+          "requires": [
+            "source"
+          ],
+          "fileCount": 2
+        }
+      ],
+      "inspection": "passed"
+    },
+    {
+      "packId": "pcb-pack",
+      "version": "0.3.0",
+      "sourceCommit": "4cc46c3f2e5d000e000e60e1ca0697d71484edd0",
+      "contentSha256": "98edfba5c7442b1abd2125f3a65c8cf5b06bb73bb3618beda7384b605692c17a",
+      "manifestSha256": "248f7edf5d58a2951182665ee39c4d319d87910d49e7b395c3da2e3d13d07a40",
+      "index": {
+        "file": "pcb-release-4cc46c3f2e5d.json",
+        "sha256": "e75ac396b134e0a0707e5b890f22b5e80f0798802239e4e4cc54f20c6f202ea2"
+      },
+      "components": [
+        {
+          "id": "source",
+          "file": "pcb-source-4cc46c3f2e5d.tar.gz",
+          "sha256": "f13fba9ab85c150df00cfb9270a972d3259b095890e260f7386ee3ef2e90709b",
+          "sizeBytes": 656072,
+          "requires": [],
+          "fileCount": 134
+        },
+        {
+          "id": "skills",
+          "file": "pcb-skills-4cc46c3f2e5d.tar.gz",
+          "sha256": "ad851824c554fba10d9e2370f8e8907cec867755fae76fc5a23565d845fb6419",
+          "sizeBytes": 64265,
+          "requires": [
+            "source"
+          ],
+          "fileCount": 14
+        },
+        {
+          "id": "bridge",
+          "file": "pcb-bridge-4cc46c3f2e5d.tar.gz",
+          "sha256": "87efc5af532ff31f73d8cd165351c019a1eefe86a41afa476019afe9b590c46a",
+          "sizeBytes": 30545,
+          "requires": [
+            "source"
+          ],
+          "fileCount": 4
+        }
+      ],
+      "inspection": "passed"
+    },
+    {
+      "packId": "freecad-pack",
+      "version": "1.1.4-pack.10",
+      "sourceCommit": "4cc46c3f2e5d000e000e60e1ca0697d71484edd0",
+      "contentSha256": "98edfba5c7442b1abd2125f3a65c8cf5b06bb73bb3618beda7384b605692c17a",
+      "manifestSha256": "d1539e0de46112339c757b663fca788ebdfc464e1b4e03c675f59f342e03bf48",
+      "index": {
+        "file": "freecad-release-4cc46c3f2e5d.json",
+        "sha256": "ec52e52ca32c3211cf416619869e12c0a43ec56b091b35dfd7050e1802b29dd5"
+      },
+      "components": [
+        {
+          "id": "source",
+          "file": "freecad-source-4cc46c3f2e5d.tar.gz",
+          "sha256": "129f59f0ade81d4761f51aea69bb5702591c038ad859130d19ec9a098beb8e71",
+          "sizeBytes": 93362,
+          "requires": [],
+          "fileCount": 27
+        },
+        {
+          "id": "skills",
+          "file": "freecad-skills-4cc46c3f2e5d.tar.gz",
+          "sha256": "04859d81804550bcb38455e0ebed49c84d9864caa6f4eb51af3b1da0f9466b06",
+          "sizeBytes": 25425,
+          "requires": [
+            "source"
+          ],
+          "fileCount": 1
+        }
+      ],
+      "inspection": "passed"
+    },
+    {
+      "packId": "cad-pack",
+      "version": "0.2.0",
+      "sourceCommit": "4cc46c3f2e5d000e000e60e1ca0697d71484edd0",
+      "contentSha256": "98edfba5c7442b1abd2125f3a65c8cf5b06bb73bb3618beda7384b605692c17a",
+      "manifestSha256": "9637aaaf60b12f9884fef809db255f4cedd04f6b90725a3b8092bebf65638d3b",
+      "index": {
+        "file": "cad-release-4cc46c3f2e5d.json",
+        "sha256": "32b492781735202df43534a777f4ae317233699e6383cdc3a3c3db4142a85e50"
+      },
+      "components": [
+        {
+          "id": "source",
+          "file": "cad-source-4cc46c3f2e5d.tar.gz",
+          "sha256": "aad5ead41b008339cad46b823a20634e3fc3c72c310b55528e54566a5fcf87d8",
+          "sizeBytes": 64420,
+          "requires": [],
+          "fileCount": 19
+        },
+        {
+          "id": "skills",
+          "file": "cad-skills-4cc46c3f2e5d.tar.gz",
+          "sha256": "1e63f3486643edcbd0a77215c26b2a21c4a9f1d70d005f1093f5f6d30dfa4473",
+          "sizeBytes": 36988,
+          "requires": [
+            "source"
+          ],
+          "fileCount": 4
+        }
+      ],
+      "inspection": "passed"
+    },
+    {
+      "packId": "godot-pack",
+      "version": "0.2.3",
+      "sourceCommit": "4cc46c3f2e5d000e000e60e1ca0697d71484edd0",
+      "contentSha256": "98edfba5c7442b1abd2125f3a65c8cf5b06bb73bb3618beda7384b605692c17a",
+      "manifestSha256": "703a8f25b6898988be0b34c549d599c4ea064c400fe35e89bd3dc97589452cf6",
+      "index": {
+        "file": "godot-release-4cc46c3f2e5d.json",
+        "sha256": "20494f559f5d1c0fe4f4ec25bb1b04bf56b9091437b9cc7f084ae8de3a58cae4"
+      },
+      "components": [
+        {
+          "id": "source",
+          "file": "godot-source-4cc46c3f2e5d.tar.gz",
+          "sha256": "917894dc56f200496446332377242dfa6f04f3e3903232317c0c6c8e67e0cbe4",
+          "sizeBytes": 80952,
+          "requires": [],
+          "fileCount": 33
+        },
+        {
+          "id": "skills",
+          "file": "godot-skills-4cc46c3f2e5d.tar.gz",
+          "sha256": "6c8b0fb816e26fbf2ba92347bd86d0d1464011d7a2af0b8cd588b802fd49beeb",
+          "sizeBytes": 23940,
+          "requires": [
+            "source"
+          ],
+          "fileCount": 2
+        },
+        {
+          "id": "bridge",
+          "file": "godot-bridge-4cc46c3f2e5d.tar.gz",
+          "sha256": "239439bc9c42cc25d31daa960710f95f325714e997c2488cbbb0d6ce6184cbd4",
+          "sizeBytes": 26921,
+          "requires": [
+            "source"
+          ],
+          "fileCount": 3
+        }
+      ],
+      "inspection": "passed"
+    },
+    {
+      "packId": "cuda-pack",
+      "version": "0.2.0",
+      "sourceCommit": "4cc46c3f2e5d000e000e60e1ca0697d71484edd0",
+      "contentSha256": "98edfba5c7442b1abd2125f3a65c8cf5b06bb73bb3618beda7384b605692c17a",
+      "manifestSha256": "37fb16bb5407c8de04002422d0d3d449ca8412b0aad4962af386f4517c8bdd6a",
+      "index": {
+        "file": "cuda-release-4cc46c3f2e5d.json",
+        "sha256": "7d46fe2c4cbd376a95ccae2d98c80486b23ada995804ffa3386348ece46b0edc"
+      },
+      "components": [
+        {
+          "id": "source",
+          "file": "cuda-source-4cc46c3f2e5d.tar.gz",
+          "sha256": "446c1d05f240c83cf4a7a5de738aa677a2422d19d523da3d2df65d03daea54c4",
+          "sizeBytes": 100939,
+          "requires": [],
+          "fileCount": 45
+        },
+        {
+          "id": "skills",
+          "file": "cuda-skills-4cc46c3f2e5d.tar.gz",
+          "sha256": "dbc90d3611b8e95fa4896069e822aec6c871b3028c9ab66a28d6740a3d2bb5db",
+          "sizeBytes": 24242,
+          "requires": [
+            "source"
+          ],
+          "fileCount": 1
+        },
+        {
+          "id": "bridge",
+          "file": "cuda-bridge-4cc46c3f2e5d.tar.gz",
+          "sha256": "ec5ac0e5001c7825e4b368eb8014ad33bbf3a039d0af92085ed275fbb38b7525",
+          "sizeBytes": 31993,
+          "requires": [
+            "source"
+          ],
+          "fileCount": 4
+        }
+      ],
+      "inspection": "passed"
+    }
+  ],
+  "testSummary": {
+    "ownerSuite": {
+      "tests": 86,
+      "pass": 84,
+      "fail": 0,
+      "skipped": 2,
+      "scope": "Final owner source suite; skipped opt-in native tests are not engineering acceptance"
+    },
+    "componentGeneration": {
+      "packs": 6,
+      "passed": 6
+    },
+    "componentInspection": {
+      "packs": 6,
+      "passed": 6
+    },
+    "goRace": "Passed in prior owner run; not re-executed by this component packaging check"
+  },
+  "limits": [
+    "Archive identity/partition/manifest validation only; does not qualify native software or engineering tasks.",
+    "Not a signed public distribution or a full MCP Go migration."
+  ]
+}

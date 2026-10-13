@@ -84,5 +84,6 @@ test(
     assert.equal(run.result.observation.nodes[1].properties.grow_vertical, '1');
     const played = await call('godot.game.run_scene', { scenePath: 'main.tscn', frames: 2 });
     assert.equal(played.result.executionStatus, 'completed', played.result.stderr);
+    await require('../../packages/harness-core/tests/runtime-environment-native.cjs')(t);
   },
 );
