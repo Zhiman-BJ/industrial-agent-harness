@@ -155,6 +155,7 @@ if (
     '--parallel-selftest',
     '--image-input-selftest',
     '--model-sync-selftest',
+    '--replay-selftest',
     '--packaged-smoke',
     '--install-experience-selftest',
   ].some(flag => process.argv.includes(flag))
@@ -279,6 +280,9 @@ async function refineChatTitle(chatId) {
   }
 }
 const tasks = new TaskService({
+  ...(process.argv.includes('--replay-selftest')
+    ? { Session: require('./replay-session.cjs').ReplaySession }
+    : {}),
   chatDirectory: process.argv.some(flag => flag.endsWith('-selftest'))
     ? path.join(app.getPath('userData'), 'chats')
     : defaultChatDirectory(),
@@ -1070,6 +1074,7 @@ function registerHandlers() {
         '--chat-selftest',
         '--parallel-selftest',
         '--image-input-selftest',
+        '--replay-selftest',
       ].some(flag => process.argv.includes(flag))
     )
       return { available: true, version: 'SDK seam selftest', projectDir, configured: true };
@@ -1523,6 +1528,26 @@ async function createWindow() {
     require('./gui-settings-selftest.cjs').prepare();
   if (process.argv.includes('--ui-selftest'))
     require('./ui-selftest.cjs').prepare(projectConfigDir(), chats);
+  if (process.argv.includes('--replay-selftest')) {
+    const config = projectConfigDir();
+    const project = path.join(config, 'sobel-project');
+    fs.mkdirSync(project, { recursive: true });
+    fs.writeFileSync(
+      path.join(project, 'sobel_filter.v'),
+      '// Sobel filter demo project for trajectory replay\nmodule sobel_filter;\nendmodule\n',
+    );
+    saveBindings(config, {
+      activeId: 'sobel-demo',
+      projects: [
+        {
+          id: 'sobel-demo',
+          name: 'Sobel 布局检查',
+          path: fs.realpathSync(project),
+          domain: 'chip',
+        },
+      ],
+    });
+  }
   if (process.argv.includes('--messages-selftest'))
     require('./messages-selftest.cjs').prepare(projectConfigDir(), chats);
   if (process.argv.includes('--task-results-selftest'))
@@ -1780,7 +1805,8 @@ async function createWindow() {
   }
   if (
     process.argv.some(flag => flag.endsWith('-selftest')) &&
-    !process.argv.includes('--language-selftest')
+    !process.argv.includes('--language-selftest') &&
+    !process.argv.includes('--replay-selftest')
   )
     await require('./selftest-language.cjs').setLanguage(window, 'en');
   if (process.argv.includes('--subagent-selftest')) {
@@ -1817,6 +1843,11 @@ async function createWindow() {
   if (process.argv.includes('--gui-settings-selftest')) {
     await require('./gui-settings-selftest.cjs').run(window, systemPreferences, shell);
     app.quit();
+    return;
+  }
+  if (process.argv.includes('--replay-selftest')) {
+    // 演示模式：驱动两轮重放后不退出，窗口留给用户继续体验。
+    await require('./replay-demo.cjs').run(window);
     return;
   }
   if (process.argv.includes('--model-sync-selftest')) {
