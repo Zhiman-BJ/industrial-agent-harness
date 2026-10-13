@@ -3,7 +3,11 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { RuntimeAssetManager, validateRuntimeAssets } = require('./runtime-assets.cjs');
+const {
+  RuntimeAssetManager,
+  validateRuntimeAssets,
+  engineImagePull,
+} = require('./runtime-assets.cjs');
 const asset = {
   id: 'example-runtime',
   version: '1.0.0',
@@ -34,6 +38,12 @@ function fixture(t, override = {}) {
       Architecture: 'amd64',
       RepoDigests: [asset.image],
     }),
+    // Default to a missing socket so existing tests exercise the CLI fallback.
+    streamPull: async () => {
+      const error = Error('no socket');
+      error.code = 'ENOENT';
+      throw error;
+    },
     space: () => 10 ** 10,
     ...override,
   });
@@ -258,4 +268,104 @@ test('command output capture separates a real child warning while retaining lega
     }),
     /daemon failure detail/,
   );
+});
+
+test('streamed engine pull reports byte progress and skips the CLI fallback', async t => {
+  const events = [];
+  const { manager, calls } = fixture(t, {
+    streamPull: async (pulled, { onProgress }) => {
+      assert.equal(pulled.image, asset.image);
+      onProgress({ phase: 'downloading', received: 10, total: 100 });
+      onProgress({ phase: 'downloading', received: 60, total: 100 });
+      onProgress({ phase: 'downloading', received: 100, total: 100 });
+    },
+  });
+  await manager.ensure([asset], { onProgress: state => events.push(state) });
+  const downloading = events.filter(state => state.phase === 'downloading');
+  assert.deepEqual(
+    downloading.map(state => state.received),
+    [0, 10, 60, 100],
+  );
+  assert.equal(manager.status([asset])[0].ready, true);
+  assert.ok(!calls.some(call => call[1] === 'pull'));
+});
+
+test('engine pull connection failure falls back to the CLI pull', async t => {
+  const { manager, calls } = fixture(t);
+  await manager.ensure([asset]);
+  assert.deepEqual(
+    calls.find(call => call[1] === 'pull'),
+    ['docker', 'pull', '--platform', 'linux/amd64', asset.image],
+  );
+});
+
+test('mid-stream registry errors propagate without restarting a partial pull', async t => {
+  const { manager, calls } = fixture(t, {
+    streamPull: async () => {
+      throw Error('pull access denied, repository does not exist');
+    },
+  });
+  await assert.rejects(manager.ensure([asset]), /pull access denied/);
+  assert.ok(!calls.some(call => call[1] === 'pull'));
+});
+
+test('engine API pull aggregates per-layer progress from a real socket stream', async t => {
+  const socketPath = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-docker-')), 'd.sock');
+  const lines = [
+    { status: 'Pulling fs layer', id: 'a' },
+    { status: 'Pulling fs layer', id: 'b' },
+    { status: 'Downloading', id: 'a', progressDetail: { current: 25, total: 100 } },
+    { status: 'Downloading', id: 'b', progressDetail: { current: 50, total: 200 } },
+    { status: 'Download complete', id: 'a' },
+    { status: 'Pull complete', id: 'a' },
+    { status: 'Downloading', id: 'b', progressDetail: { current: 200, total: 200 } },
+    { status: 'Pull complete', id: 'b' },
+  ];
+  const server = require('node:http').createServer((request, response) => {
+    assert.equal(request.method, 'POST');
+    assert.ok(request.url.startsWith('/v1.43/images/create?'));
+    assert.ok(decodeURIComponent(request.url).includes(`fromImage=${asset.image}`));
+    assert.ok(decodeURIComponent(request.url).includes(`platform=${asset.imagePlatform}`));
+    response.writeHead(200, { 'content-type': 'application/json' });
+    for (const line of lines) response.write(JSON.stringify(line) + '\n');
+    response.end();
+  });
+  await new Promise(resolve => server.listen(socketPath, resolve));
+  t.after(() => {
+    server.closeAllConnections?.();
+    server.close();
+  });
+  const host = process.env.DOCKER_HOST;
+  process.env.DOCKER_HOST = `unix://${socketPath}`;
+  t.after(() => {
+    if (host === undefined) delete process.env.DOCKER_HOST;
+    else process.env.DOCKER_HOST = host;
+  });
+  const progress = [];
+  await engineImagePull(asset, { onProgress: state => progress.push(state) });
+  assert.equal(progress.at(-1).received, 300);
+  assert.equal(progress.at(-1).total, 300);
+  assert.ok(
+    progress.every((state, index) => !index || state.received >= progress[index - 1].received),
+  );
+});
+
+test('engine API pull surfaces registry stream errors and missing sockets', async t => {
+  const socketPath = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-docker-')), 'd.sock');
+  const server = require('node:http').createServer((request, response) => {
+    response.writeHead(200, { 'content-type': 'application/json' });
+    response.end(JSON.stringify({ errorDetail: { message: 'denied' }, error: 'denied' }) + '\n');
+  });
+  await new Promise(resolve => server.listen(socketPath, resolve));
+  t.after(() => {
+    server.closeAllConnections?.();
+    server.close();
+  });
+  const host = process.env.DOCKER_HOST;
+  process.env.DOCKER_HOST = `unix://${socketPath}`;
+  await assert.rejects(engineImagePull(asset), /denied/);
+  process.env.DOCKER_HOST = 'unix:///definitely/missing/docker.sock';
+  await assert.rejects(engineImagePull(asset), error => error.code === 'ENOENT');
+  if (host === undefined) delete process.env.DOCKER_HOST;
+  else process.env.DOCKER_HOST = host;
 });

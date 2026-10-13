@@ -1,6 +1,7 @@
 const { availableSpace, footprint, checkSpace } = require('./install-space.cjs');
 const { inspectRuntimeZip } = require('./runtime-zip.cjs');
 const fs = require('node:fs');
+const http = require('node:http');
 const path = require('node:path');
 const os = require('node:os');
 const crypto = require('node:crypto');
@@ -15,6 +16,114 @@ function matchesImage(asset, image) {
     image.Os + '/' + image.Architecture === asset.imagePlatform &&
     (image.RepoDigests || []).includes(asset.image)
   );
+}
+
+// The docker CLI renders byte progress only on a TTY; spawned without one it
+// prints status lines alone, leaving managed preparation at 0% for the whole
+// transfer. The Engine API streams per-layer progressDetail bytes instead.
+function dockerSocketCandidates() {
+  const host = process.env.DOCKER_HOST || '';
+  if (host.startsWith('unix://')) return [host.slice('unix://'.length)];
+  if (host || process.platform === 'win32') return [];
+  return [path.join(os.homedir(), '.docker/run/docker.sock'), '/var/run/docker.sock'];
+}
+function engineImagePull(asset, { signal, timeout = 30 * 60 * 1000, onProgress } = {}) {
+  return new Promise((resolve, reject) => {
+    signal?.throwIfAborted();
+    const candidates = dockerSocketCandidates();
+    const socketPath = candidates.find(candidate => fs.existsSync(candidate)) || candidates[0];
+    if (!socketPath) {
+      const error = Error('No Docker Engine socket is available.');
+      error.code = 'ENOENT';
+      reject(error);
+      return;
+    }
+    const query = new URLSearchParams({ fromImage: asset.image });
+    if (asset.imagePlatform) query.set('platform', asset.imagePlatform);
+    const layers = new Map();
+    let buffer = '',
+      status = 200,
+      settled = false;
+    const finish = (error, value) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      signal?.removeEventListener('abort', aborted);
+      request.destroy();
+      error ? reject(error) : resolve(value);
+    };
+    const aborted = () => finish(signal.reason || Error('Runtime preparation cancelled.'));
+    const timer = setTimeout(
+      () => finish(Error(`Runtime preparation timed out after ${timeout / 1000} seconds.`)),
+      timeout,
+    );
+    timer.unref?.();
+    const report = () => {
+      let received = 0,
+        total = 0;
+      for (const layer of layers.values()) {
+        received += Math.min(layer.current, layer.total || layer.current);
+        total += layer.total || 0;
+      }
+      onProgress?.({
+        phase: 'downloading',
+        received,
+        total: Math.max(asset.size || 0, total),
+      });
+    };
+    const handle = line => {
+      let event;
+      try {
+        event = JSON.parse(line);
+      } catch {
+        return;
+      }
+      if (event.errorDetail || event.error) {
+        finish(Error(String(event.error || event.errorDetail.message || 'Image pull failed.')));
+        return;
+      }
+      if (event.id && event.progressDetail?.total)
+        layers.set(event.id, {
+          current: event.progressDetail.current || 0,
+          total: event.progressDetail.total,
+        });
+      else if (
+        event.id &&
+        layers.has(event.id) &&
+        ['Download complete', 'Pull complete'].includes(event.status)
+      )
+        layers.get(event.id).current = layers.get(event.id).total;
+      else return;
+      report();
+    };
+    const request = http.request(
+      { socketPath, path: `/v1.43/images/create?${query}`, method: 'POST', agent: false },
+      response => {
+        status = response.statusCode || 500;
+        response.setEncoding('utf8');
+        response.on('data', chunk => {
+          buffer += chunk;
+          if (buffer.length > 4 * 1024 * 1024) {
+            finish(Error('Runtime preparation output exceeded its limit.'));
+            return;
+          }
+          const lines = buffer.split(/\r?\n/);
+          buffer = lines.pop();
+          for (const line of lines) if (line.trim()) handle(line);
+        });
+        response.on('end', () => {
+          if (buffer.trim()) handle(buffer);
+          if (settled) return;
+          if (status >= 400) finish(Error(`Image pull failed with status ${status}.`));
+          else finish(null);
+        });
+      },
+    );
+    request.on('error', error => finish(error));
+    signal?.addEventListener('abort', aborted, { once: true });
+    if (signal?.aborted) aborted();
+    request.end();
+  });
 }
 const hash = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
 // Footprint metadata does not change executable identity or invalidate old receipts.
@@ -397,6 +506,7 @@ class RuntimeAssetManager {
     fetchArchive = download,
     space = availableSpace,
     inspectImage,
+    streamPull = engineImagePull,
   } = {}) {
     if (!directory) throw Error('Runtime asset store is required.');
     this.directory = path.join(path.resolve(directory), '.runtime-assets');
@@ -404,6 +514,7 @@ class RuntimeAssetManager {
     this.command = command;
     this.fetchArchive = fetchArchive;
     this.space = space;
+    this.streamPull = streamPull;
     this.inspectImage =
       inspectImage ||
       (image => {
@@ -630,10 +741,17 @@ class RuntimeAssetManager {
     const estimate = footprint(asset.size, asset.installedSize);
     report({ phase: 'checking-space', ...checkSpace(this.directory, estimate, this.space) });
     report({ phase: 'downloading', received: 0, total: asset.size });
-    await this.command('docker', ['pull', '--platform', asset.imagePlatform, asset.image], {
-      signal,
-      timeout: 30 * 60 * 1000,
-    });
+    await this.streamPull(asset, { signal, timeout: 30 * 60 * 1000, onProgress: report }).catch(
+      error => {
+        // Only connection-setup failures fall back to the CLI pull; mid-stream
+        // registry or transfer errors must not restart a partial download.
+        if (!['ENOENT', 'ECONNREFUSED', 'EACCES', 'EPROTOTYPE'].includes(error?.code)) throw error;
+        return this.command('docker', ['pull', '--platform', asset.imagePlatform, asset.image], {
+          signal,
+          timeout: 30 * 60 * 1000,
+        });
+      },
+    );
     signal?.throwIfAborted();
     report({ phase: 'verifying' });
     const image = this.inspectImage(asset.image);
@@ -888,6 +1006,7 @@ class RuntimeAssetManager {
 module.exports = {
   RuntimeAssetManager,
   validateRuntimeAssets,
+  engineImagePull,
   fileHash,
   run,
   treeIdentity,
