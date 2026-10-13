@@ -231,6 +231,15 @@ function applyFiles(projectDir, changes, protectedPaths = []) {
     if ((before === null ? null : hash(before)) !== change.expectedSha256)
       throw Error('File precondition is stale: ' + change.path);
     if (change.content === null && before === null) throw Error('Cannot delete a missing file.');
+    // Invalid JSON is never a legitimate state for a .json project file;
+    // reject it here so a model slip cannot corrupt the workspace on disk.
+    if (change.content !== null && change.path.toLowerCase().endsWith('.json')) {
+      try {
+        JSON.parse(change.content);
+      } catch (error) {
+        throw Error('Invalid JSON content for ' + change.path + ': ' + error.message);
+      }
+    }
     return {
       ...change,
       file,
