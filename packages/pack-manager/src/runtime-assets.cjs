@@ -7,11 +7,20 @@ const crypto = require('node:crypto');
 const { spawn, spawnSync } = require('node:child_process');
 
 function matchesImage(asset, image) {
-  // Classic Docker reports the config digest as Id; the containerd image store
-  // reports the manifest digest and supplies config.digest on its descriptor.
-  const config = image.Descriptor?.annotations?.['config.digest'] || image.Id;
+  // Classic Docker reports the config digest as Id. The containerd image store
+  // reports the manifest digest as Id; newer versions supply config.digest on
+  // the descriptor, while Docker Desktop 29 omits that annotation. Without the
+  // annotation, accept the pinned manifest digest as Id: RepoDigests carrying
+  // the same repo@digest reference binds the exact manifest, which transitively
+  // pins the declared config and layers.
+  const config = image.Descriptor?.annotations?.['config.digest'];
+  const pinnedManifest = (asset.image.split('@')[1] || '').toLowerCase();
+  const identity = config
+    ? config === asset.imageId
+    : image.Id === asset.imageId ||
+      (pinnedManifest.startsWith('sha256:') && image.Id === pinnedManifest);
   return (
-    config === asset.imageId &&
+    identity &&
     image.Os + '/' + image.Architecture === asset.imagePlatform &&
     (image.RepoDigests || []).includes(asset.image)
   );
