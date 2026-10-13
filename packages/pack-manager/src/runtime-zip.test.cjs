@@ -4,8 +4,6 @@ const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
 const zlib = require('node:zlib');
-const { promisify } = require('node:util');
-const { execFile } = require('node:child_process');
 const { inspectRuntimeZip } = require('./runtime-zip.cjs');
 const { RuntimeAssetManager } = require('./runtime-assets.cjs');
 const { digest } = require('./index.cjs');
@@ -51,6 +49,33 @@ function fixture(t) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-runtime-zip-test-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   return root;
+}
+// The zip() helper above writes stored entries, so the central directory is
+// enough to rebuild the tree on any host. Tests use this instead of shelling
+// out to macOS ditto, mirroring the production extraction contract.
+function extractFixtureZip(archive, destination) {
+  const bytes = fs.readFileSync(archive);
+  const eocd = bytes.length - 22;
+  if (bytes.readUInt32LE(eocd) !== 0x06054b50) throw Error('fixture zip: missing EOCD');
+  let offset = bytes.readUInt32LE(eocd + 16);
+  while (offset + 46 <= bytes.length && bytes.readUInt32LE(offset) === 0x02014b50) {
+    const size = bytes.readUInt32LE(offset + 24);
+    const nameLength = bytes.readUInt16LE(offset + 28);
+    const extraLength = bytes.readUInt16LE(offset + 30);
+    const commentLength = bytes.readUInt16LE(offset + 32);
+    const mode = (bytes.readUInt32LE(offset + 38) >>> 16) & 0o777;
+    const localOffset = bytes.readUInt32LE(offset + 42);
+    const localNameLength = bytes.readUInt16LE(localOffset + 26);
+    const localExtraLength = bytes.readUInt16LE(localOffset + 28);
+    const dataStart = localOffset + 30 + localNameLength + localExtraLength;
+    const name = bytes.toString('utf8', offset + 46, offset + 46 + nameLength);
+    const target = path.join(destination, name);
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.writeFileSync(target, bytes.subarray(dataStart, dataStart + size), {
+      mode: mode || 0o755,
+    });
+    offset += 46 + nameLength + extraLength + commentLength;
+  }
 }
 
 test('ZIP preflight rejects traversal, symlinks, duplicate paths, bombs and local-header substitution', t => {
@@ -107,12 +132,8 @@ test('ZIP installation extracts app, verifies signature/version and reuses cache
     command: async (file, args) => {
       commands.push([file, args]);
       if (file === '/usr/bin/ditto') {
-        if (process.platform === 'darwin') await promisify(execFile)(file, args);
-        else {
-          const executable = path.join(args.at(-1), asset.app, asset.executable);
-          fs.mkdirSync(path.dirname(executable), { recursive: true });
-          fs.writeFileSync(executable, 'vendor');
-        }
+        if (args[0] === '-x') extractFixtureZip(args[2], args.at(-1));
+        else fs.cpSync(args[0], args[1], { recursive: true });
       }
       return path.basename(file) === 'Renderer' ? '1.2.3' : '';
     },
@@ -158,7 +179,8 @@ test('managed native ZIP preserves complete tree integrity, repairs tampered lib
     command: async (file, args) => {
       calls.push(file);
       if (file === '/usr/bin/ditto') {
-        await promisify(execFile)(file, args);
+        if (args[0] === '-x') extractFixtureZip(args[2], args.at(-1));
+        else fs.cpSync(args[0], args[1], { recursive: true });
         return '';
       }
       assert.deepEqual(args, ['--version']);
@@ -231,7 +253,8 @@ test('mixed profile associates externally prepared runtime directory and CLI whi
   };
   const command = async (file, args) => {
     if (file === '/usr/bin/ditto') {
-      await promisify(execFile)(file, args);
+      if (args[0] === '-x') extractFixtureZip(args[2], args.at(-1));
+      else fs.cpSync(args[0], args[1], { recursive: true });
       return '';
     }
     assert.equal(file.includes('docker'), false);
@@ -264,7 +287,7 @@ test('mixed profile associates externally prepared runtime directory and CLI whi
   const externalDirectory = path.join(root, 'externally-prepared');
   fs.writeFileSync(externalArchive, archive);
   fs.mkdirSync(externalDirectory);
-  await promisify(execFile)('/usr/bin/ditto', ['-x', '-k', externalArchive, externalDirectory]);
+  extractFixtureZip(externalArchive, externalDirectory);
   runtimeAssets.ensure = async () => {
     throw Error('Product must never install dependencies.');
   };

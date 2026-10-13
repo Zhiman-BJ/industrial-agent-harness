@@ -78,11 +78,19 @@ if (process.argv.includes('--domains')) {
     expected.map(item => item.id).sort(),
     'Signed feed must exactly match owner-qualified platform declarations.',
   );
-  environment.HARNESS_PACKAGED_SMOKE_DOMAINS = JSON.stringify(
-    expected
-      .filter(item => ['chip', 'pcb', 'godot'].includes(item.id))
-      .map(({ id, label }) => ({ id, label })),
-  );
+  const plan = expected
+    .filter(item => ['chip', 'pcb', 'godot'].includes(item.id))
+    .map(({ id, label }) => ({ id, label }));
+  if (!plan.length) {
+    // No owner-qualified bundles for this platform (win32-x64 today): the
+    // first-run smoke already verifies every domain is visible and explained
+    // as unavailable, and there is no install flow to exercise.
+    process.stdout.write(
+      `No platform-qualified Domain bundles for ${platform}; skipped the domain-install smoke.\n`,
+    );
+    process.exit(0);
+  }
+  environment.HARNESS_PACKAGED_SMOKE_DOMAINS = JSON.stringify(plan);
   environment.HARNESS_PACKAGED_SMOKE_STORE = path.join(fixture, 'store');
   require('./runtime-archive-cache.cjs').stageRuntimeArchiveCache(
     environment.HARNESS_PACKAGED_SMOKE_STORE,

@@ -22,6 +22,7 @@ Industrial Agent Harness 通过桌面工作台和无界面 CLI，将本地工程
 - **使用项目指导。** 自动发现 `.skill/`、`.skills/` 与标准项目技能目录，通过 Kimi 原生机制加载项目 `AGENTS.md`。剩余限制见[兼容性审计](doc/kimi-native-compatibility-audit.md)。
 - **保留工程证据。** 领域运行时记录输入、动作、产物、验证和检查点；输入变化使当前证据失效，中断记录在重启后仍可追踪。
 - **在工作台内查看产物。** 查看波形、网表、版图、KiCad 设计、Godot 素材和通用工程文件。
+- **在工作区内上网。** 打开内嵌浏览器标签页查资料、搜索；网页在隔离 guest 进程中渲染，使用内存会话（退出即清空），页面弹窗收回同一页内跳转。
 - **接入自动化与扩展。** 使用 CLI 的 JSON Lines 事件、Node SDK 或 stdio JSON-RPC；独立构建 Domain Pack，保留完整 Skill 资源并检查安装完整性。
 
 Kimi Code 负责 Agent 循环、对话历史和上下文压缩；Harness 负责工程上下文、工具范围和证据。Agent 回合结束或进程退出成功，均不能直接判定工程验收通过。
@@ -136,7 +137,7 @@ Harness 自有 Viewer 控件跟随 **设置 → 语言**（简体中文 / Englis
 | [动画](doc/godot-assets-viewers.md)         | 受支持的 `.tres`/`.tscn` 与图集动画                                            | 有限 SpriteFrames/Sprite2D 格式的播放与逐帧，不运行 Godot 引擎。                                                                                                                                                                                                                                                                                                                        |
 | [工程文件](doc/engineering-file-viewers.md) | Godot 场景/资源/脚本、KiCad 库/规则、Gerber/钻孔、STEP/VRML 和部分 3D/音频格式 | 结构、制造层与媒体预览，几何和语义范围有限，不提供编辑或制造验收。                                                                                                                                                                                                                                                                                                                      |
 | [CAD · OCCT](doc/freecad-domain-pack.md)    | STL；Pack 生成的 FCStd/STEP 与经哈希检查的配套 BREP/STL、可选原生草图数据      | 官方 OCCT 7.9.2 AIS/V3d WebGL2：曲面、轮廓、X/Y/Z 封口剖切、明确的“测量”按钮，分开单对象尺寸与两对象最短距离，点击面/边直接在模型上标注 BREP 边长/直径/面积/最短距离，不弹出测量侧栏；草图几何、尺寸和约束高亮。共享导航与全屏，窗口缩放保持模型比例；工作区分隔线可拖动或键盘调整、双击复位；本地 WASM，需 WebGL2。只读，测量名义几何，不含公差或工程验收。macOS arm64 Electron 实测。 |
-| [通用文档](doc/document-viewers.md)         | CSV/TSV、JSON、JSONL/NDJSON、Markdown、TXT/LOG                                 | 表格、结构、记录与文本搜索；只读受限 UTF-8 输入，不执行公式或嵌入 HTML。                                                                                                                                                                                                                                                                                                                |
+| [通用文档](doc/document-viewers.md)         | CSV/TSV、JSON、JSONL/NDJSON、Markdown、TXT/LOG、HTML/HTM                       | 表格、结构、记录与文本搜索；只读受限 UTF-8 输入，不执行公式或嵌入 HTML。HTML 预览在沙箱隔离源 iframe 中渲染：内联脚本与宿主隔离运行，远程/网络加载被阻断，可切换原文。                                                                                                                                                                    |
 
 完整格式清单、文件上限与渲染依赖见各 Viewer 文档。新增接入需同时更新中英文 README，并遵守 [Viewer 接入契约](AGENTS.md#viewer-integration-contract)。
 
@@ -170,7 +171,7 @@ pnpm run format:check
 
 - **平台：** 桌面构建与首次启动 CI 目标为 macOS Apple Silicon（arm64）和 Windows x64。Intel Mac 暂不支持，不再发布 Intel 安装包或对应 Pack 目录目标；具备 Intel 测试机并完成安装及运行时验收后再恢复。签名安装器与真实升级仍需单独验收。
 - **受保护执行：** macOS 使用 Seatbelt；Linux x86-64 使用 bubblewrap/seccomp，需允许非特权用户命名空间。Windows 受保护 Agent 执行仍不可用。
-- **工具兼容性：** 旧领域 MCP 写入仍受隔离限制；所有领域都有受控文件编辑、声明任务执行和经 Runtime 审计的外部 MCP。独立 Computer Use 插件仍不可用。
+- **工具兼容性：** 旧领域 MCP 写入仍受隔离限制；所有领域都有受控文件编辑、声明任务执行和经 Runtime 审计的外部 MCP。Computer Use 插件（桌面 GUI 操作）可在设置中开启：工具在宿主侧执行，开启即授权，每次调用记入诊断日志。
 - **工程验收：** 各领域 profile 验证声明的原生检查，保留失败或缺失证据；不据此推定 RTL 覆盖充分性、物理签核或完整工业工作流。
 - **打包与评测：** 已记录本地未签名桌面检查和受控模型验证；签名发行、跨平台完整资格验证和正式付费模型比较仍需分别完成。
 

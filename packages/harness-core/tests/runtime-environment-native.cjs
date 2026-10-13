@@ -35,7 +35,15 @@ module.exports = async function qualifyManagedGodot(t) {
     );
     return { id, domain: pack.domain, title: id, file: `skills/${id}/SKILL.md` };
   });
-  pack.runtimeAssets[0].discoveryPaths = ['/Applications/Godot.app'];
+  // CI extracts the owner-pinned Godot app outside /Applications; the
+  // executable env var points inside that bundle, so derive the app root.
+  const godotApp = path.dirname(
+    path.dirname(path.dirname(process.env.INDUSTRIAL_HARNESS_GODOT_CMD || '')),
+  );
+  pack.runtimeAssets[0].discoveryPaths = [
+    ...(fs.existsSync(godotApp) && godotApp.endsWith('.app') ? [godotApp] : []),
+    '/Applications/Godot.app',
+  ];
   const profile = {
     id: 'godot-native',
     label: 'Godot native',

@@ -48,6 +48,28 @@ test('waveform protocol serves registered files and rejects traversal', async t 
   assert.equal((await protocol.handle({ url })).status, 404);
 });
 
+test('HTML protocol serves registered pages with a locked-down CSP and rejects strangers', async t => {
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'industrial-html-'));
+  t.after(() => fs.rmSync(temp, { recursive: true, force: true }));
+  const page = path.join(temp, 'page.html');
+  fs.writeFileSync(page, '<h1>preview</h1>');
+  const protocol = createViewerProtocol(temp);
+  const url = protocol.registerHtml(page);
+  assert.match(url, /^app:\/\/html\/doc\//);
+  const response = await protocol.handle({ url });
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get('content-type'), /text\/html/);
+  const csp = response.headers.get('content-security-policy');
+  assert.match(csp, /default-src 'none'/);
+  assert.match(csp, /script-src 'unsafe-inline'/);
+  assert.equal(response.headers.get('access-control-allow-origin'), null);
+  assert.equal(await response.text(), '<h1>preview</h1>');
+  assert.equal((await protocol.handle({ url: 'app://html/doc/unknown' })).status, 404);
+  assert.equal((await protocol.handle({ url: 'app://html/other' })).status, 404);
+  protocol.close();
+  assert.equal((await protocol.handle({ url })).status, 404);
+});
+
 test(
   'KLayout LayoutView renders a bounded GDS viewport when available',
   { skip: !process.env.KLAYOUT_PYTHON },

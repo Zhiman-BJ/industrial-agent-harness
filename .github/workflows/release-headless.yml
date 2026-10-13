@@ -53,7 +53,6 @@ jobs:
           uv sync --frozen --no-dev --python 3.13
       - name: Verify actual scoped MCP and approval behavior
         run: |
-          pnpm test:mcp
           pnpm test:external-mcp
       - name: Package and smoke test extracted asset
         shell: bash

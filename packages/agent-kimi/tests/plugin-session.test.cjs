@@ -153,6 +153,81 @@ test('an industrial turn runs while excluding configured host MCP and applicatio
   assert.equal(external.length, 1);
 });
 
+test('a protected industrial session admits a protectedSafe plugin and auto-approves its tools', async t => {
+  const plugin = { ...makePlugin(), protectedSafe: true };
+  const industrialRuntime = {
+    cancel() {},
+    async waitForIdle() {},
+    inspect: async () => ({
+      id: 'example',
+      projectId: 'example',
+      domain: 'example',
+      stage: null,
+      status: 'unverified',
+      verificationIds: [],
+      inputHashes: {},
+    }),
+  };
+  const { session, created, events, approvals } = startSession(t, plugin, [], {
+    industrialRuntime,
+  });
+  await session.run('click e1');
+  const options = created[0].options;
+  const toolNames = options.externalTools.map(item => item.name);
+  assert.ok(toolNames.includes('fake_click'), 'protectedSafe plugin tool registered');
+  assert.ok(toolNames.includes('industrial_action_call'), 'host Runtime tools still registered');
+  assert.ok(
+    fs.existsSync(path.join(options.shareDir, 'skills', 'fake-gui', 'SKILL.md')),
+    'plugin skill materialized inside the protected session',
+  );
+  // The plugin tool approval is auto-approved for the session (enable is the
+  // authorization); the unrelated Shell approval still surfaces to the user.
+  assert.deepEqual(approvals, [{ id: 'a1', response: 'approve_for_session' }]);
+  assert.deepEqual(
+    events.filter(event => event.type === 'approval').map(event => event.id),
+    ['a2'],
+  );
+  assert.ok(
+    !events.some(event => event.type === 'resources-filtered'),
+    'an admitted plugin is not reported as filtered',
+  );
+  assert.ok(events.some(e => e.type === 'done'));
+});
+
+test('a protected industrial session still excludes plugins without protectedSafe', async t => {
+  const plugin = {
+    name: 'unvetted-gui',
+    enabled: () => true,
+    toolNames: ['unvetted_click'],
+    materializeSkill: () => assert.fail('Excluded plugin materialized'),
+    toolsFactory: () => assert.fail('Excluded plugin exposed'),
+  };
+  const industrialRuntime = {
+    cancel() {},
+    async waitForIdle() {},
+    inspect: async () => ({
+      id: 'example',
+      projectId: 'example',
+      domain: 'example',
+      stage: null,
+      status: 'unverified',
+      verificationIds: [],
+      inputHashes: {},
+    }),
+  };
+  const { session, created, events } = startSession(t, plugin, [], { industrialRuntime });
+  await session.run('Use registered industrial tools');
+  assert.ok(
+    !created[0].options.externalTools.some(tool => tool.name === 'unvetted_click'),
+    'a plugin without protectedSafe stays out of protected sessions',
+  );
+  assert.ok(
+    events.some(e => e.type === 'resources-filtered' && e.plugins.includes('unvetted-gui')),
+    'the excluded plugin surfaces as a structured event',
+  );
+  assert.ok(events.some(e => e.type === 'done'));
+});
+
 test('an enabled plugin contributes skill dir and tools; its approvals are auto-approved', async t => {
   const { session, created, events, approvals } = startSession(t, makePlugin());
   await session.run('do it');

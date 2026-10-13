@@ -167,7 +167,7 @@ export interface EngineeringData {
   animation?: AssetData;
   mode: 'structure' | 'source' | 'metadata' | 'media' | 'geometry';
 }
-export type DocumentKind = 'table' | 'json' | 'jsonl' | 'markdown' | 'text';
+export type DocumentKind = 'table' | 'json' | 'jsonl' | 'markdown' | 'text' | 'html';
 export interface DocumentData {
   text: string;
   rows?: string[][];
@@ -176,6 +176,8 @@ export interface DocumentData {
   records?: number;
   error?: string;
   warning?: string;
+  /** Registered app://html preview URL; present only for the HTML kind. */
+  url?: string;
 }
 
 export type OpenedViewer =
@@ -294,6 +296,9 @@ export interface ViewerHostApi {
   guiState(): Promise<GuiPluginState>;
   openGuiPermissionSettings(permission: 'screen' | 'accessibility'): Promise<void>;
   setGuiPlugin(enabled: boolean): Promise<GuiPluginState>;
+  browserAutomationState(): Promise<{ enabled: boolean }>;
+  setBrowserAutomation(enabled: boolean): Promise<{ enabled: boolean }>;
+  onBrowserOpen(callback: () => void): () => void;
   onGuiProgress(
     callback: (event: { phase: string; tag?: string; cached?: boolean; error?: string }) => void,
   ): () => void;
@@ -330,6 +335,10 @@ export interface ViewerHostApi {
   selectChat(id: string): Promise<ChatHistory>;
   deleteChat(
     id: string,
+  ): Promise<{ chats: ChatSummary[]; activeId: string | null; sessions: SessionStatus[] }>;
+  renameChat(
+    id: string,
+    title: string,
   ): Promise<{ chats: ChatSummary[]; activeId: string | null; sessions: SessionStatus[] }>;
   onChatUpdated(callback: () => void): () => void;
   onModelChanged(callback: () => void): () => void;

@@ -9,7 +9,16 @@ const { loadRegistry } = require('../../domain-skills/src/index.cjs');
 
 test('production PCB hpack dispatches every installed design tool through Project Runtime to the session backend', async t => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'pcb-hpack-dispatch-'));
-  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  // Windows keeps child-process handles open past the session close; retry
+  // the teardown and, on the ephemeral CI runner, tolerate a still-locked
+  // directory instead of failing an otherwise passing test.
+  t.after(() => {
+    try {
+      fs.rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+    } catch (error) {
+      if (process.platform !== 'win32') throw error;
+    }
+  });
   const release = path.join(root, 'release');
   // The production publisher writes owner metadata and createArchive bytes.
   // JS probing is explicit here: this portable test qualifies packaging and

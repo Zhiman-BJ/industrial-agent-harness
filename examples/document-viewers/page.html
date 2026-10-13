@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>HTML 预览示例</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 32px; color: #202325; }
+  h1 { color: #487995; }
+  .card { border: 1px solid #e5e6e3; border-radius: 8px; padding: 16px; max-width: 420px; }
+  button { padding: 6px 12px; }
+</style>
+</head>
+<body>
+<h1>HTML 预览示例</h1>
+<div class="card">
+  <p>这个页面在沙箱 iframe 中渲染。内联脚本可以运行：</p>
+  <p><button id="demo">点我计数</button> <span id="count">0</span></p>
+  <p>远程图片与网络请求会被阻断，相对路径的本地资源不会加载。</p>
+</div>
+<script>
+  let count = 0;
+  document.getElementById('demo').addEventListener('click', () => {
+    document.getElementById('count').textContent = String(++count);
+  });
+</script>
+</body>
+</html>

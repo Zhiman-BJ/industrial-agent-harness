@@ -19,7 +19,10 @@ function setup(t) {
   t.after(() => fs.rmSync(parent, { recursive: true, force: true }));
   const root = path.join(parent, 'project');
   fs.mkdirSync(root);
-  const plugins = createDocumentPlugins({ projectRoot: () => root });
+  const plugins = createDocumentPlugins({
+    projectRoot: () => root,
+    serveHtml: file => `app://html/doc/stub-${path.basename(file)}`,
+  });
   function write(name, text) {
     const file = path.join(root, name);
     fs.writeFileSync(file, text);
@@ -101,12 +104,28 @@ test('generic plugins read project-bound snapshots without a domain, preserving 
     ['guide.markdown', '## Hi', 'markdown'],
     ['run.log', '\uFEFFhello\r\n中文', 'text'],
     ['notes.txt', 'hello', 'text'],
+    ['page.html', '<h1>Hi</h1>', 'html'],
+    ['index.htm', '<p>Hi</p>', 'html'],
   ]) {
     write(name, text);
     const result = open(name);
     assert.equal(result.kind, kind);
     assert.equal(result.data.text, text);
   }
+  // HTML previews carry a host-registered URL; without a host they fail closed.
+  assert.match(open('page.html').data.url, /^app:\/\/html\/doc\//);
+});
+
+test('HTML preview requires a host protocol and never falls back to silent source rendering', t => {
+  const parent = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'document-html-')));
+  t.after(() => fs.rmSync(parent, { recursive: true, force: true }));
+  const root = path.join(parent, 'project');
+  fs.mkdirSync(root);
+  const plugins = createDocumentPlugins({ projectRoot: () => root });
+  const file = path.join(root, 'page.html');
+  fs.writeFileSync(file, '<h1>Hi</h1>');
+  const plugin = plugins.find(p => p.matches(file));
+  assert.throws(() => plugin.open({ file, artifact: { sha256: hash(file) } }), /HTML preview/);
 });
 
 test('source hash, sibling-project paths and escaping/replaced symlinks cannot bypass document boundary', t => {
@@ -164,5 +183,6 @@ test('specialized JSON wins over generic fallback; config.modules is not inferre
     'sprite',
   );
   assert.equal(registry.match(write('broken.json', '{invalid}')), 'json');
-  assert.equal(registry.match(write('script.html', '<script>bad()</script>')), null);
+  // HTML opens in the sandboxed preview; script content never runs in the host renderer.
+  assert.equal(registry.match(write('script.html', '<script>bad()</script>')), 'html');
 });

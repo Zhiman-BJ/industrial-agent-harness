@@ -39,43 +39,59 @@ console.log(JSON.stringify({jsonrpc:'2.0',id:request.id,result: request.method==
     },
   };
 }
-test('protected session preserves images, shares process, and confirms container cleanup', async t => {
-  const f = fixture(t);
-  const session = await openToolSession(f.spec);
-  const first = await session.callTool('first', {});
-  assert.equal(first.content[1].type, 'image');
-  await session.callTool('second', {});
-  await session.close();
-  const calls = fs.readFileSync(f.log, 'utf8').trim().split('\n').map(JSON.parse);
-  const launches = calls.filter(Array.isArray);
-  assert.equal(launches.filter(args => args[0] === 'run').length, 1);
-  assert.equal(launches.filter(args => args[0] === 'rm').length, 1);
-  assert.ok(launches[0].includes('--read-only'));
-  assert.ok(launches[0].includes('none'));
-});
-test('active cancellation cleans container; cancelled queued call is never dispatched', async t => {
-  const f = fixture(t);
-  const session = await openToolSession(f.spec);
-  const active = new AbortController();
-  const queued = new AbortController();
-  const first = session.callTool('hang', {}, { signal: active.signal });
-  const second = session.callTool('never', {}, { signal: queued.signal });
-  const rejectedFirst = assert.rejects(first, /cancelled/);
-  const rejectedSecond = assert.rejects(second, /queued/);
-  queued.abort(Error('queued cancellation'));
-  await new Promise(resolve => setTimeout(resolve, 50));
-  active.abort(Error('active cancelled'));
-  await Promise.all([rejectedFirst, rejectedSecond]);
-  const calls = fs.readFileSync(f.log, 'utf8');
-  assert.ok(
-    !calls
-      .split('\n')
-      .filter(Boolean)
-      .map(JSON.parse)
-      .some(call => call.params?.name === 'never'),
-  );
-  assert.ok(calls.includes('"rm"'));
-});
+test(
+  'protected session preserves images, shares process, and confirms container cleanup',
+  {
+    skip:
+      process.platform === 'win32' &&
+      'The fake container daemon is a shebang script over a unix transport; the real Windows daemon is docker.exe over a named pipe.',
+  },
+  async t => {
+    const f = fixture(t);
+    const session = await openToolSession(f.spec);
+    const first = await session.callTool('first', {});
+    assert.equal(first.content[1].type, 'image');
+    await session.callTool('second', {});
+    await session.close();
+    const calls = fs.readFileSync(f.log, 'utf8').trim().split('\n').map(JSON.parse);
+    const launches = calls.filter(Array.isArray);
+    assert.equal(launches.filter(args => args[0] === 'run').length, 1);
+    assert.equal(launches.filter(args => args[0] === 'rm').length, 1);
+    assert.ok(launches[0].includes('--read-only'));
+    assert.ok(launches[0].includes('none'));
+  },
+);
+test(
+  'active cancellation cleans container; cancelled queued call is never dispatched',
+  {
+    skip:
+      process.platform === 'win32' &&
+      'The fake container daemon is a shebang script over a unix transport; the real Windows daemon is docker.exe over a named pipe.',
+  },
+  async t => {
+    const f = fixture(t);
+    const session = await openToolSession(f.spec);
+    const active = new AbortController();
+    const queued = new AbortController();
+    const first = session.callTool('hang', {}, { signal: active.signal });
+    const second = session.callTool('never', {}, { signal: queued.signal });
+    const rejectedFirst = assert.rejects(first, /cancelled/);
+    const rejectedSecond = assert.rejects(second, /queued/);
+    queued.abort(Error('queued cancellation'));
+    await new Promise(resolve => setTimeout(resolve, 50));
+    active.abort(Error('active cancelled'));
+    await Promise.all([rejectedFirst, rejectedSecond]);
+    const calls = fs.readFileSync(f.log, 'utf8');
+    assert.ok(
+      !calls
+        .split('\n')
+        .filter(Boolean)
+        .map(JSON.parse)
+        .some(call => call.params?.name === 'never'),
+    );
+    assert.ok(calls.includes('"rm"'));
+  },
+);
 test('mutable images and unsafe mounts are rejected before launch', t => {
   const f = fixture(t);
   assert.throws(
@@ -98,35 +114,51 @@ test('trusted profiles must opt into the bounded bridge network explicitly', t =
   );
 });
 
-test('unexpected process exit preserves stderr and exit status before cleanup and for later calls', async t => {
-  const f = fixture(t);
-  const session = await openToolSession(f.spec);
-  await assert.rejects(
-    session.callTool('crash', {}),
-    /Tool process exited \(23\): fixture recovery startup failed/,
-  );
-  await assert.rejects(session.callTool('after-crash', {}), /fixture recovery startup failed/);
-  await session.close();
-  assert.ok(fs.readFileSync(f.log, 'utf8').includes('"rm"'));
-});
+test(
+  'unexpected process exit preserves stderr and exit status before cleanup and for later calls',
+  {
+    skip:
+      process.platform === 'win32' &&
+      'The fake container daemon is a shebang script over a unix transport; the real Windows daemon is docker.exe over a named pipe.',
+  },
+  async t => {
+    const f = fixture(t);
+    const session = await openToolSession(f.spec);
+    await assert.rejects(
+      session.callTool('crash', {}),
+      /Tool process exited \(23\): fixture recovery startup failed/,
+    );
+    await assert.rejects(session.callTool('after-crash', {}), /fixture recovery startup failed/);
+    await session.close();
+    assert.ok(fs.readFileSync(f.log, 'utf8').includes('"rm"'));
+  },
+);
 
-test('project session scopes close idle real transports independently and reject opens after disposal', async t => {
-  const { createToolSessionScope } = require('../src/tool-session.cjs');
-  const f = fixture(t);
-  const first = createToolSessionScope(),
-    second = createToolSessionScope();
-  const a = await first.openToolSession(f.spec),
-    b = await second.openToolSession(f.spec);
-  assert.equal(first.close(), first.close());
-  await first.close();
-  assert.equal(a.closing, true);
-  assert.equal(b.closing, false);
-  await assert.rejects(first.openToolSession(f.spec), /scope closed/);
-  await b.callTool('still-live', {});
-  await second.close();
-  const calls = fs.readFileSync(f.log, 'utf8').trim().split('\n').map(JSON.parse);
-  assert.equal(calls.filter(Array.isArray).filter(args => args[0] === 'rm').length, 2);
-});
+test(
+  'project session scopes close idle real transports independently and reject opens after disposal',
+  {
+    skip:
+      process.platform === 'win32' &&
+      'The fake container daemon is a shebang script over a unix transport; the real Windows daemon is docker.exe over a named pipe.',
+  },
+  async t => {
+    const { createToolSessionScope } = require('../src/tool-session.cjs');
+    const f = fixture(t);
+    const first = createToolSessionScope(),
+      second = createToolSessionScope();
+    const a = await first.openToolSession(f.spec),
+      b = await second.openToolSession(f.spec);
+    assert.equal(first.close(), first.close());
+    await first.close();
+    assert.equal(a.closing, true);
+    assert.equal(b.closing, false);
+    await assert.rejects(first.openToolSession(f.spec), /scope closed/);
+    await b.callTool('still-live', {});
+    await second.close();
+    const calls = fs.readFileSync(f.log, 'utf8').trim().split('\n').map(JSON.parse);
+    assert.equal(calls.filter(Array.isArray).filter(args => args[0] === 'rm').length, 2);
+  },
+);
 
 test('scope disposal waits for late startup cleanup, bounds concurrent starts and reports cleanup failures', async () => {
   const { createToolSessionScope } = require('../src/tool-session.cjs');
