@@ -95,6 +95,38 @@ test('containerd Docker image store verifies descriptor config plus repository d
   assert.equal(manager.status([asset])[0].ready, true);
 });
 
+test('containerd store without descriptor annotation accepts the pinned manifest digest as Id', async t => {
+  // Docker Desktop 29 reports Id = manifest digest and omits config.digest.
+  const { manager } = fixture(t, {
+    inspectImage: () => ({
+      Id: asset.image.split('@')[1],
+      Descriptor: {
+        mediaType: 'application/vnd.docker.distribution.manifest.v2+json',
+        digest: asset.image.split('@')[1],
+      },
+      Os: 'linux',
+      Architecture: 'amd64',
+      RepoDigests: [asset.image],
+    }),
+  });
+  await manager.ensure([asset]);
+  assert.equal(manager.status([asset])[0].ready, true);
+});
+
+test('containerd store rejects a different manifest digest even with matching repo', async t => {
+  const { manager } = fixture(t, {
+    inspectImage: () => ({
+      Id: 'sha256:' + 'd'.repeat(64),
+      Descriptor: { mediaType: 'application/vnd.docker.distribution.manifest.v2+json' },
+      Os: 'linux',
+      Architecture: 'amd64',
+      RepoDigests: [asset.image],
+    }),
+  });
+  await assert.rejects(manager.ensure([asset]), /identity verification/);
+  assert.equal(manager.status([asset])[0].ready, false);
+});
+
 test('one immutable image can be prepared only on its declared client platforms', async t => {
   const multi = { ...asset, platforms: ['darwin-arm64', 'linux-x64'] };
   const { manager } = fixture(t, { platform: 'linux-x64' });
