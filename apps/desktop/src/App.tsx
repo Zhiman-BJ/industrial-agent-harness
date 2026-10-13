@@ -684,6 +684,9 @@ export function App() {
       refreshModelProfile();
     });
     const removeProjectsChanged = window.viewerHost.onProjectsChanged(applyProjectBindings);
+    // The workbench-browser plugin asks the main process to open the browser
+    // tab when an agent tool call needs one; the request lands here.
+    const removeBrowserOpen = window.viewerHost.onBrowserOpen(() => openBrowser());
     const refreshOnWindowFocus = () => {
       refreshAgentStatus();
       applyProjectBindings();
@@ -696,6 +699,7 @@ export function App() {
       removeUpdated();
       removeModelChanged();
       removeProjectsChanged();
+      removeBrowserOpen();
       window.removeEventListener('focus', refreshOnWindowFocus);
     };
   }, []);

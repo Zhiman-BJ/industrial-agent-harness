@@ -216,6 +216,25 @@ test('the computer-use plugin tool surface is frozen', () => {
   }
 });
 
+test('the workbench-browser plugin tool surface is frozen', () => {
+  const { WORKBENCH_BROWSER_TOOLS } = require(
+    path.join(root, 'packages/computer-use-bridge/src/workbench-browser.cjs'),
+  );
+  const declared = WORKBENCH_BROWSER_TOOLS.map(item => item.canonicalId).sort();
+  assert.deepEqual(
+    declared,
+    [...prototype('workbench-browser-plugin').allowedCanonicalToolIds].sort(),
+  );
+  for (const item of WORKBENCH_BROWSER_TOOLS) {
+    assert.match(item.canonicalId, /^workbench-browser\./, item.name);
+    assert.ok(['read', 'mutating'].includes(item.risk), item.name);
+    assert.ok(
+      !item.name.startsWith('browser_'),
+      'browser_* is reserved for the upstream computer-use server tools',
+    );
+  }
+});
+
 test('the computer-use binary is only referenced by the bridge package source', () => {
   const areas = [
     'apps/desktop/electron',

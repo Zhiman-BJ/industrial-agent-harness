@@ -136,4 +136,11 @@ function createGuiPlugin({
   };
 }
 
-module.exports = { createGuiPlugin, GUI_TOOLS, GUI_TOOL_NAMES, ...installer };
+module.exports = {
+  createGuiPlugin,
+  GUI_TOOLS,
+  GUI_TOOL_NAMES,
+  ...installer,
+  ...require('./workbench-browser.cjs'),
+  ...require('./skill.cjs'),
+};

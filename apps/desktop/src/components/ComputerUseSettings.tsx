@@ -6,6 +6,7 @@ import type { GuiPluginState } from '@industrial-agent-harness/viewer-builtin/ap
 export function ComputerUseSettings() {
   const { t } = useDisplayText();
   const [state, setState] = useState<GuiPluginState>();
+  const [browserAutomation, setBrowserAutomation] = useState<boolean>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const revision = useRef(0);
@@ -13,6 +14,10 @@ export function ComputerUseSettings() {
   useEffect(() => {
     const host = window.viewerHost;
     if (!host) return;
+    void host
+      .browserAutomationState()
+      .then(value => setBrowserAutomation(value.enabled))
+      .catch(() => setBrowserAutomation(undefined));
     let disposed = false;
     const refresh = async () => {
       if (toggling.current) return;
@@ -56,6 +61,14 @@ export function ComputerUseSettings() {
   async function openPermission(permission: 'screen' | 'accessibility') {
     try {
       await window.viewerHost!.openGuiPermissionSettings(permission);
+    } catch (reason) {
+      setError(String(reason));
+    }
+  }
+  async function toggleBrowserAutomation(enabled: boolean) {
+    try {
+      const next = await window.viewerHost!.setBrowserAutomation(enabled);
+      setBrowserAutomation(next.enabled);
     } catch (reason) {
       setError(String(reason));
     }
@@ -122,6 +135,24 @@ export function ComputerUseSettings() {
           <p>{error || state?.error}</p>
         </details>
       )}
+      <div className="ia-settings-row">
+        <span>{t('Browser Automation')}</span>
+        <button
+          type="button"
+          aria-pressed={Boolean(browserAutomation)}
+          disabled={browserAutomation === undefined}
+          onClick={() => void toggleBrowserAutomation(!browserAutomation)}
+        >
+          {browserAutomation ? t('Enabled') : t('Disabled')}
+        </button>
+      </div>
+      <div className="ia-gui-status" role="status">
+        <span>
+          {t(
+            'Let the agent drive the workspace browser tab. No download or system permission needed.',
+          )}
+        </span>
+      </div>
     </section>
   );
 }

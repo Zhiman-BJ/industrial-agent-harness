@@ -296,6 +296,9 @@ export interface ViewerHostApi {
   guiState(): Promise<GuiPluginState>;
   openGuiPermissionSettings(permission: 'screen' | 'accessibility'): Promise<void>;
   setGuiPlugin(enabled: boolean): Promise<GuiPluginState>;
+  browserAutomationState(): Promise<{ enabled: boolean }>;
+  setBrowserAutomation(enabled: boolean): Promise<{ enabled: boolean }>;
+  onBrowserOpen(callback: () => void): () => void;
   onGuiProgress(
     callback: (event: { phase: string; tag?: string; cached?: boolean; error?: string }) => void,
   ): () => void;
