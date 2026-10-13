@@ -79,6 +79,11 @@ jobs:
           done
       - name: Prepare pinned official FreeCAD runtime
         run: node scripts/setup-freecad.cjs
+      # Fill the shared archive cache first: the owner setup scripts skip
+      # downloading when the verified archive is already present, and the
+      # registry-hosted blobs require the bearer-capable transfer here.
+      - name: Prepare verified official runtime archives
+        run: node scripts/prepare-ci-runtime-archives.cjs --download
       - name: Prepare owner-pinned public professional runtimes
         run: |
           for pack in pcb godot; do
