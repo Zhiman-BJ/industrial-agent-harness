@@ -6,6 +6,52 @@ const { execFile } = require('node:child_process');
 const { promisify } = require('node:util');
 const os = require('node:os');
 const { startModel } = require('../tests/integration/fixtures/domain-mcp-model.cjs');
+const execute = promisify(execFile);
+
+// After the external-native-dependencies redesign the packaged CAD selftest
+// associates an externally installed FreeCAD application (HARNESS_CAD_INSTALL_APP_PATH)
+// instead of downloading one itself. Detect that contract so this smoke keeps
+// driving both selftest generations.
+function packagedSelftestExpectsExternalApp(
+  source = path.join(__dirname, '../apps/desktop/electron/cad-install-selftest.cjs'),
+) {
+  return fs.readFileSync(source, 'utf8').includes('HARNESS_CAD_INSTALL_APP_PATH');
+}
+
+// Provision a verified external FreeCAD fixture the selftest can associate.
+// Bytes come from the pinned owner's declared archive through the shared CI
+// archive verifier; the app is copied out of the DMG without installing it.
+async function provisionExternalFreeCADApp(directory, { archive } = {}) {
+  let source = archive;
+  if (!source) {
+    const { archiveDeclarations, prepareArchives } = require('./prepare-ci-runtime-archives.cjs');
+    const asset = archiveDeclarations(path.join(__dirname, '..', 'dist')).find(
+      item => item.id === 'freecad',
+    );
+    if (!asset) throw Error('The pinned owner must declare the FreeCAD runtime archive.');
+    ({ freecad: source } = await prepareArchives([asset], { download: true }));
+  }
+  const mount = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-cad-fixture-')));
+  const app = path.join(directory, 'FreeCAD.app');
+  let attached = false;
+  try {
+    await execute('/usr/bin/hdiutil', [
+      'attach',
+      '-readonly',
+      '-nobrowse',
+      '-mountpoint',
+      mount,
+      source,
+    ]);
+    attached = true;
+    await execute('/usr/bin/ditto', [path.join(mount, 'FreeCAD.app'), app]);
+    return app;
+  } finally {
+    if (attached) await execute('/usr/bin/hdiutil', ['detach', mount]);
+    fs.rmSync(mount, { recursive: true, force: true });
+  }
+}
+
 async function main() {
   if (process.platform !== 'darwin' || process.arch !== 'arm64')
     throw Error('Native CAD installer gate requires Apple Silicon.');
@@ -29,7 +75,6 @@ async function main() {
     const mount = fs.realpathSync(
       fs.mkdtempSync(path.join(os.tmpdir(), 'harness-installer-gate-')),
     );
-    const execute = promisify(execFile);
     let attached = false;
     try {
       await execute('/usr/bin/hdiutil', [
@@ -61,6 +106,18 @@ async function main() {
     ],
     result: 'Drilled',
   };
+  const externalAppDirectory = packagedSelftestExpectsExternalApp()
+    ? fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-cad-external-')))
+    : null;
+  let externalApp = null;
+  if (externalAppDirectory) {
+    try {
+      externalApp = await provisionExternalFreeCADApp(externalAppDirectory);
+    } catch (error) {
+      fs.rmSync(externalAppDirectory, { recursive: true, force: true });
+      throw error;
+    }
+  }
   const model = await startModel({
     success: 'CAD_INSTALL_TASK_OK',
     calls: body => {
@@ -112,6 +169,7 @@ async function main() {
       INDUSTRIAL_HARNESS_PACK_CATALOG_URL: '',
       HARNESS_CAD_INSTALL_MODEL_ENDPOINT: model.endpoint,
       HARNESS_CAD_INSTALL_REPORT_DIR: evidence,
+      ...(externalApp ? { HARNESS_CAD_INSTALL_APP_PATH: externalApp } : {}),
     };
     const first = await promisify(execFile)(executable, ['--cad-install-selftest'], {
       cwd: evidence,
@@ -144,9 +202,12 @@ async function main() {
     throw error;
   } finally {
     model.close();
+    if (externalAppDirectory) fs.rmSync(externalAppDirectory, { recursive: true, force: true });
   }
 }
-main().catch(error => {
-  console.error(error);
-  process.exitCode = 1;
-});
+module.exports = { packagedSelftestExpectsExternalApp, provisionExternalFreeCADApp };
+if (require.main === module)
+  main().catch(error => {
+    console.error(error);
+    process.exitCode = 1;
+  });
