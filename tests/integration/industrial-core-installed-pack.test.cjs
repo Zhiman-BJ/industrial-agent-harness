@@ -61,9 +61,20 @@ test(
       prepareRuntime: false,
     });
     const selectedBundle = manager.list()[0];
-    await new RuntimeEnvironmentManager({ manager }).prepare(selectedBundle.domain, {
-      profileId: selectedBundle.executionProfiles.find(profile => profile.kind === 'container').id,
-    });
+    const prepared = await new RuntimeEnvironmentManager({ manager }).prepare(
+      selectedBundle.domain,
+      {
+        profileId: selectedBundle.executionProfiles.find(profile => profile.kind === 'container')
+          .id,
+      },
+    );
+    if (prepared.reasons?.some(reason => reason.code === 'DOCKER_UNAVAILABLE')) {
+      // PD-075: without an installed Docker CLI and daemon, preparation must
+      // refuse explicitly instead of half-preparing. The full Verilator path
+      // runs on the Docker-equipped native lane.
+      assert.equal(prepared.status, 'unsupported');
+      return;
+    }
     const installed = manager.scan();
     assert.deepEqual(installed.errors, []);
     assert.equal(installed.installed.length, 1);
