@@ -281,6 +281,8 @@ module.exports = {
   ...require('./industrial.cjs'),
   ...require('./workspace.cjs'),
   ...require('./remote-client.cjs'),
+  ...require('./remote-gateway-client.cjs'),
+  ...require('./remote-gateway-sessions.cjs'),
   ...require('./remote-runtime.cjs'),
   // Trusted Pack plugins share the protected backend and bounded file boundary.
   ...require('./task-process.cjs'),

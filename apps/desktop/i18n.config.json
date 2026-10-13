@@ -3871,6 +3871,74 @@
     "Continue installation": {
       "en": "Continue installation",
       "zh-CN": "继续安装"
+    },
+    "Install and start Docker before preparing the container image.": {
+      "en": "Install and start Docker before preparing the container image.",
+      "zh-CN": "准备容器镜像前，请先安装并启动 Docker。"
+    },
+    "Only reviewed files are uploaded. Review and upload changed files before the next remote task.": {
+      "en": "Only reviewed files are uploaded. Review and upload changed files before the next remote task.",
+      "zh-CN": "只上传确认过的文件。文件修改后，请在下次远程任务前重新确认并上传。"
+    },
+    "Remote files": {
+      "en": "Remote files",
+      "zh-CN": "远程文件"
+    },
+    "Browse remote results": {
+      "en": "Browse remote results",
+      "zh-CN": "浏览远程产物"
+    },
+    "Download to project": {
+      "en": "Download to project",
+      "zh-CN": "下载到项目"
+    },
+    "Downloaded to {0}": {
+      "en": "Downloaded to {0}",
+      "zh-CN": "已下载到 {0}"
+    },
+    "Remote session ended. Start a new chat.": {
+      "en": "Remote session ended. Start a new chat.",
+      "zh-CN": "远程会话已结束，请新建聊天。"
+    },
+    "Remote software and sandbox": {
+      "en": "Remote software and sandbox",
+      "zh-CN": "远程软件与沙箱"
+    },
+    "End remote session": {
+      "en": "End remote session",
+      "zh-CN": "结束远程会话"
+    },
+    "Files and execution settings": {
+      "en": "Files and execution settings",
+      "zh-CN": "文件与执行设置"
+    },
+    "Remote outcome unknown": {
+      "en": "Remote outcome unknown",
+      "zh-CN": "远程执行结果尚未确认"
+    },
+    "Remote outcome unknown; checking without replaying…": {
+      "en": "Remote outcome unknown; checking without replaying…",
+      "zh-CN": "远程执行结果尚未确认，正在查询，不会重复执行…"
+    },
+    "This remote domain is available for testing only.": {
+      "en": "This remote domain is available for testing only.",
+      "zh-CN": "此远程领域仅供测试，尚未完成工程执行验收。"
+    },
+    "No remote artifacts yet.": {
+      "en": "No remote artifacts yet.",
+      "zh-CN": "暂无远程产物。"
+    },
+    "Connect to a new remote project": {
+      "en": "Connect to a new remote project",
+      "zh-CN": "连接新的远程项目"
+    },
+    "Creates a new project on the configured service. Previous remote files and results stay in the old project. Review and upload files before running again.": {
+      "en": "Creates a new project on the configured service. Previous remote files and results stay in the old project. Review and upload files before running again.",
+      "zh-CN": "将在已配置的服务中创建新项目。原有远程文件和结果保留在旧项目中。再次执行前，请重新确认并上传文件。"
+    },
+    "Create new remote project": {
+      "en": "Create new remote project",
+      "zh-CN": "创建新的远程项目"
     }
   }
 }
