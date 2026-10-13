@@ -109,6 +109,22 @@ jobs:
           cache: pnpm
       - name: Install pinned dependencies
         run: pnpm install --frozen-lockfile
+      # Owner packs that declare a platform probe need a trusted committed
+      # build for distribution assembly. The probe script is absent while the
+      # pinned owner ships none; build it into the default index location the
+      # distribution builder auto-detects when the owner starts declaring one.
+      - uses: actions/setup-go@v5
+        if: runner.os == 'macOS'
+        with:
+          go-version: '1.26.2'
+          cache: false
+      - name: Build the platform probe when the owner ships one
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          if [ -f scripts/build-platform-probe.cjs ]; then
+            node scripts/build-platform-probe.cjs
+          fi
       - name: Expose Git for Windows unzip for archive fixtures
         if: runner.os == 'Windows'
         shell: pwsh

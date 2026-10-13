@@ -118,6 +118,7 @@ function ViewerContent({
     case 'jsonl':
     case 'markdown':
     case 'text':
+    case 'html':
       return <DocumentViewport kind={opened.kind} data={opened.data} onReady={onReady} />;
   }
 }

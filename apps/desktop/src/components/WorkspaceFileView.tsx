@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ViewerCanvas, type ViewNavigation } from '@industrial-agent-harness/viewer-builtin/canvas';
 import type { OpenedViewer, ViewerArtifact } from '@industrial-agent-harness/viewer-builtin/api';
 import { useDisplayText } from '@industrial-agent-harness/viewer-builtin/text';
+import { BrowserPanel } from './BrowserPanel';
 
 export type WorkspaceFile = {
   id: string;
@@ -10,6 +11,7 @@ export type WorkspaceFile = {
   preview?: boolean;
   artifact?: ViewerArtifact;
   source?: { content: string | null; truncated: boolean };
+  browser?: boolean;
 };
 export type WorkspaceViewState = {
   id: string;
@@ -65,7 +67,9 @@ export function WorkspaceFileView({
   }, [active, file.id, opened, navigation, ready, error, onState]);
   return (
     <div className="ia-file-view" hidden={!active} data-file-path={file.path}>
-      {file.source ? (
+      {file.browser ? (
+        <BrowserPanel />
+      ) : file.source ? (
         <div className="ia-source-panel">
           {file.source.content == null ? (
             <p>{t('Binary file · no text preview available.')}</p>

@@ -71,6 +71,14 @@ const api = {
   openGuiPermissionSettings: permission =>
     ipcRenderer.invoke('settings:gui-permission-settings', permission),
   setGuiPlugin: enabled => ipcRenderer.invoke('settings:set-gui', { enabled }),
+  browserAutomationState: () => ipcRenderer.invoke('settings:browser-automation-state'),
+  setBrowserAutomation: enabled =>
+    ipcRenderer.invoke('settings:set-browser-automation', { enabled }),
+  onBrowserOpen: callback => {
+    const listener = () => callback();
+    ipcRenderer.on('browser:open', listener);
+    return () => ipcRenderer.removeListener('browser:open', listener);
+  },
   setChatApprovalMode: request => ipcRenderer.invoke('chat:set-approval-mode', request),
   onGuiProgress: callback => {
     const listener = (_event, value) => callback(value);
@@ -90,6 +98,7 @@ const api = {
   chatHistory: request => ipcRenderer.invoke('chat:history', request),
   selectChat: id => ipcRenderer.invoke('chat:select', id),
   deleteChat: id => ipcRenderer.invoke('chat:delete', id),
+  renameChat: (id, title) => ipcRenderer.invoke('chat:rename', { id, title }),
   onChatUpdated: callback => {
     const listener = () => callback();
     ipcRenderer.on('chat:updated', listener);

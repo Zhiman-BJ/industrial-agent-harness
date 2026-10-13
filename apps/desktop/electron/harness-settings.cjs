@@ -11,9 +11,10 @@ function readSettings(directory) {
     const value = JSON.parse(fs.readFileSync(settingsFile(directory), 'utf8'));
     return {
       guiPluginEnabled: Boolean(value.guiPluginEnabled),
+      browserAutomationEnabled: Boolean(value.browserAutomationEnabled),
     };
   } catch {
-    return { guiPluginEnabled: false };
+    return { guiPluginEnabled: false, browserAutomationEnabled: false };
   }
 }
 

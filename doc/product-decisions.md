@@ -681,6 +681,8 @@ CSV/TSV 显示表格并提供表头开关、全文筛选与分页；普通 JSON 
 - 机器清单：`architecture/editions.json`（IH-EDITIONS-001）是公开/内部归属的唯一事实源，`scripts/check-editions-manifest.cjs` 强制全仓分类（新增未分类路径失败）、公开代码不引用内部路径（未完成隔离的诊断模块记录只减不增的引用台账）、发布门禁在外部仓库名或许可证待定时显式阻断真实发布。导出器（#106）与发行（#108）只消费该清单，不得各自维护排除规则。
 - 边界：公开/内部拆分不改变 IH-ARCH-001 所有权与 Core Vertical Slice 里程碑；已安装版、应用身份与下载/更新地址的迁移策略见 [editions.md 第 6 节](editions.md)，由 #108/#109 执行。
 
+2026-10-12 修订：根 `AGENTS.md` 与 `AGENT.md`（agent 指令入口）改为随公开面发布——与 #119 分层 AGENTS.md 已位于公共包路径的现状保持一致，也为开源仓库的 agent 辅助贡献者提供同等指令。`CLAUDE.md`、`PRODUCT.md` 与其余治理机械（policy.json、架构契约脚本与测试、CODEOWNERS、architecture workflow）仍属内部。根 AGENTS.md 以反引号提及若干内部 doc 路径，属已知文字性引用：#106 导出器在生成公开树时按既定的版本化转换处理，不视为引用违规。
+
 ## PD-070：内部 Demo 重放许可（取代绝对禁止条款）
 
 - 日期：2026-10-10。
@@ -740,3 +742,27 @@ CSV/TSV 显示表格并提供表头开关、全文筛选与分页；普通 JSON 
 - 安装边界：Pack 安装不隐式准备任何依赖；旧 prepareRuntime:true 参数在目录访问／传输前拒绝。原生 prepare 返回 DEPENDENCY_INSTALLATION_EXTERNAL，保留旧有效关联。外部目录完整树和 CLI 真实文件身份验证继续保留，损坏后由用户外部修复再关联。
 - 会话：项目拥有其后端会话和启动中的会话，关闭等待清理且可重复调用；清理失败如实报告，避免取消后重开仍被旧控制器占用。
 - 证据：共享包 70 项通过。真实安装态 DXF 外部关联、几何、错误验证、失败、取消／重开、完整树篡改与外部修复通过（49秒）；真实安装态 PCB ERC、零错误 DRC、如实 UNKNOWN、取消／重开通过（28秒）。88 工具 fixture 分发单独计证；桌面最终断言总数见本轮 QA 报告。历史 KiCad 冷下载／续传是已撤下产品路径，不再阻塞当前外部安装验收。独立 DXF 归档已发布不等于产品提供托管下载。不扩大 Chip／完整 PCB 本机资格或其他平台、签名公众安装包范围。
+
+## PD-076：HTML 文件在 Viewer 中沙箱预览
+
+- 日期：2026-10-12。
+- 状态：已确定。
+- 来源：2026-10-12 Browser Use 验收反馈——工作台应能直接打开项目里的 `.html` 文件（此前 Viewer 不识别 HTML，报 "No registered Viewer supports this file"）。
+- 决定：通用文档 Viewer 新增 `.html`/`.htm` 预览，取代 `doc/document-viewers.md` 中"不预览任意 HTML"的范围限制。预览在 `sandbox="allow-scripts"` 的隔离源 iframe 中渲染：内联脚本可运行（多数页面离开 JS 无法呈现），但无法访问宿主页面、存储或顶层导航；iframe CSP 阻断一切远程/网络加载，相对路径的本地资源不解析。保留原文切换入口。
+- 边界：预览是只读展示，不构成工程验收；Markdown Viewer 不执行嵌入 HTML 的既有边界不变；外部浏览器打开文件仍走独立的授权路径。
+
+## PD-077：工作区内嵌浏览器
+
+- 日期：2026-10-12。
+- 状态：已确定。
+- 来源：2026-10-12 Browser Use 验收反馈——右侧工作区应能直接打开浏览器上网。
+- 决定：工作区新增「浏览器」标签页（工具栏地球图标打开）：地址栏支持 URL 与关键词搜索，含后退/前进/刷新；网页用 Electron `<webview>` 在独立 guest 进程中渲染，主窗口保持 sandbox，guest 无 preload、无 Node 集成，拿不到 viewerHost；页面弹窗（target=_blank/window.open）收回同一页内跳转，不弹原生窗口；使用非持久内存分区，Cookie/站点数据随退出清空。
+- 边界：浏览器是纯展示与浏览工具——不读取项目文件、不产生 Artifact/Verification、不构成工程验收；网页内容始终不可信。与 PD-076 的本地 HTML 沙箱预览互补：本地文件走沙箱（断网），上网走浏览器标签页。
+
+## PD-078：工作区浏览器的 Agent 自动操作
+
+- 日期：2026-10-13。
+- 状态：已确定。
+- 来源：2026-10-13 Browser Use 验收反馈——内嵌浏览器（PD-077）不仅要能手动上网，还要让 Agent 直接在里面操作，用户全程可见、可随时接管（对标 Kimi Code 的右侧内置浏览器）。
+- 决定：新增 `workbench-browser` 插件（工具面冻结在 `packages/computer-use-bridge/src/workbench-browser.cjs`，8 个 `web_*` 工具：navigate/snapshot/click/type/scroll/back/wait/screenshot）。驱动在桌面主进程（`apps/desktop/electron/browser-driver.cjs`）：定位 PD-077 的 `<webview>` guest，经 executeJavaScript/sendInputEvent 读页面与操作；无标签页时通过 `browser:open` 让工作台自动开一个。设置新增独立开关「浏览器自动操作」（默认关，开启即授权），与 Computer Use 解耦——不需要下载二进制、不需要系统权限。工具命名避开 `browser_*`（预留给上游 server 的 Chrome 工具）。
+- 边界：继承 PD-077 的全部边界（不读项目文件、不产生 Artifact/Verification、网页内容不可信）；网页内容里的指令不视为用户指令；涉及登录、支付、提交个人数据等不可逆动作前必须向用户确认。每次调用进 per-session 诊断日志，与 computer-use 同一审计路径。

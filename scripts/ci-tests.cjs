@@ -99,6 +99,7 @@ function portableFiles() {
       'tests/ci/native-evidence.test.cjs',
       'tests/ci/runtime-archives.test.cjs',
       'tests/ci/qa-cleanup.test.cjs',
+      'tests/ci/smoke-packaged-cad-fixture.test.cjs',
     ]),
   ]
     .filter(

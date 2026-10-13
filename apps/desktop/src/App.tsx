@@ -12,16 +12,19 @@ import {
   FilePlus2,
   Folder,
   FolderOpen,
+  Globe,
   Maximize,
   PanelsTopLeft,
   Pin,
   Columns2,
   Minimize,
   Moon,
+  MoreHorizontal,
   PanelLeftClose,
   PanelLeftOpen,
   PanelRightClose,
   PanelRightOpen,
+  Pencil,
   Play,
   Plus,
   Settings2,
@@ -195,6 +198,21 @@ export function App() {
   const [approvalModeBusy, setApprovalModeBusy] = useState(false);
   const [agentOwned, setAgentOwned] = useState(false);
   const [chatList, setChatList] = useState<ChatSummary[]>([]);
+  const [chatMenuId, setChatMenuId] = useState<string | null>(null);
+  const [chatRename, setChatRename] = useState<{ id: string; value: string } | null>(null);
+  // Synchronous mirror: Enter and blur can both fire for one edit, and only the
+  // first may commit.
+  const chatRenameRef = useRef<{ id: string; value: string } | null>(null);
+  chatRenameRef.current = chatRename;
+  useEffect(() => {
+    if (!chatMenuId) return;
+    const close = (event: PointerEvent) => {
+      if (!(event.target instanceof Element) || !event.target.closest('.ia-chat-menu-wrap'))
+        setChatMenuId(null);
+    };
+    document.addEventListener('pointerdown', close);
+    return () => document.removeEventListener('pointerdown', close);
+  }, [chatMenuId]);
   const [runningSessions, setRunningSessions] = useState<SessionStatus[]>([]);
   const [navigating, setNavigating] = useState(false);
   const navigationPending = useRef(false);
@@ -399,6 +417,22 @@ export function App() {
       setError(String(reason));
     } finally {
       endNavigation();
+    }
+  }
+  async function commitChatRename() {
+    const pending = chatRenameRef.current;
+    chatRenameRef.current = null;
+    setChatRename(null);
+    if (!pending) return;
+    const title = pending.value.trim();
+    const chat = chatList.find(item => item.id === pending.id);
+    if (!chat || !title || title === chat.title) return;
+    try {
+      const list = await window.viewerHost!.renameChat(pending.id, title);
+      setChatList(list.chats);
+      setRunningSessions(list.sessions);
+    } catch (reason) {
+      setError(String(reason));
     }
   }
   async function loadEarlier() {
@@ -650,6 +684,9 @@ export function App() {
       refreshModelProfile();
     });
     const removeProjectsChanged = window.viewerHost.onProjectsChanged(applyProjectBindings);
+    // The workbench-browser plugin asks the main process to open the browser
+    // tab when an agent tool call needs one; the request lands here.
+    const removeBrowserOpen = window.viewerHost.onBrowserOpen(() => openBrowser());
     const refreshOnWindowFocus = () => {
       refreshAgentStatus();
       applyProjectBindings();
@@ -662,6 +699,7 @@ export function App() {
       removeUpdated();
       removeModelChanged();
       removeProjectsChanged();
+      removeBrowserOpen();
       window.removeEventListener('focus', refreshOnWindowFocus);
     };
   }, []);
@@ -724,6 +762,21 @@ export function App() {
   function browseFiles() {
     setRightOpen(true);
     setFileTreeOpen(true);
+    setWorkbenchFocus('workspace');
+  }
+  // The embedded browser is a workspace tab like any file, just without an
+  // artifact: pinned so file previews never replace it, and reused on repeat
+  // clicks so there is exactly one browser at a time.
+  function openBrowser() {
+    const existing = openFilesRef.current.find(file => file.browser);
+    const id = existing?.id || `browser-${Date.now()}`;
+    if (!existing)
+      setOpenFiles(current => [
+        ...current,
+        { id, path: 'about:browser', name: t('Browser'), browser: true, preview: false },
+      ]);
+    setActiveFileId(id);
+    setRightOpen(true);
     setWorkbenchFocus('workspace');
   }
   function closeFile(id: string) {
@@ -1155,47 +1208,104 @@ export function App() {
                         </button>
                         {chatList.map(chat => (
                           <div className="ia-chat-row" key={chat.id}>
-                            <button
-                              className="ia-sidebar-chat"
-                              title={chat.title}
-                              disabled={navigating || submitting.current}
-                              aria-current={
-                                page === 'chat' && activeChatId === chat.id ? 'page' : undefined
-                              }
-                              onClick={() => void openChat(chat.id)}
+                            {chatRename?.id === chat.id ? (
+                              <input
+                                className="ia-chat-rename"
+                                value={chatRename.value}
+                                maxLength={100}
+                                autoFocus
+                                onFocus={event => event.currentTarget.select()}
+                                onChange={event =>
+                                  setChatRename({ id: chat.id, value: event.target.value })
+                                }
+                                onKeyDown={event => {
+                                  // IME composition (e.g. Chinese pinyin) uses
+                                  // Enter/Escape for the candidate window first.
+                                  if (event.nativeEvent.isComposing) return;
+                                  if (event.key === 'Enter') void commitChatRename();
+                                  if (event.key === 'Escape') setChatRename(null);
+                                }}
+                                onBlur={() => void commitChatRename()}
+                                aria-label={t('Rename chat')}
+                              />
+                            ) : (
+                              <button
+                                className="ia-sidebar-chat"
+                                title={chat.title}
+                                disabled={navigating || submitting.current}
+                                aria-current={
+                                  page === 'chat' && activeChatId === chat.id ? 'page' : undefined
+                                }
+                                onClick={() => void openChat(chat.id)}
+                              >
+                                <Activity size={14} />
+                                <span>{chat.title}</span>
+                                {chat.running && (
+                                  <small
+                                    className={`ia-session-running ${chat.awaitingApproval || chat.awaitingQuestion ? 'awaiting-approval' : ''}`}
+                                    role="status"
+                                    aria-label={
+                                      chat.awaitingQuestion
+                                        ? t('Awaiting answer')
+                                        : chat.awaitingApproval
+                                          ? t('Awaiting approval')
+                                          : t('Running')
+                                    }
+                                    title={
+                                      chat.awaitingQuestion
+                                        ? t('Awaiting answer')
+                                        : chat.awaitingApproval
+                                          ? t('Awaiting approval')
+                                          : t('Running')
+                                    }
+                                  />
+                                )}
+                              </button>
+                            )}
+                            <div
+                              className={`ia-chat-menu-wrap ${chatMenuId === chat.id ? 'open' : ''}`}
                             >
-                              <Activity size={14} />
-                              <span>{chat.title}</span>
-                              {chat.running && (
-                                <small
-                                  className={`ia-session-running ${chat.awaitingApproval || chat.awaitingQuestion ? 'awaiting-approval' : ''}`}
-                                  role="status"
-                                  aria-label={
-                                    chat.awaitingQuestion
-                                      ? t('Awaiting answer')
-                                      : chat.awaitingApproval
-                                        ? t('Awaiting approval')
-                                        : t('Running')
-                                  }
-                                  title={
-                                    chat.awaitingQuestion
-                                      ? t('Awaiting answer')
-                                      : chat.awaitingApproval
-                                        ? t('Awaiting approval')
-                                        : t('Running')
-                                  }
-                                />
+                              <button
+                                className="ia-chat-menu-button"
+                                aria-label={t('Chat actions for {0}', { '0': chat.title })}
+                                aria-haspopup="menu"
+                                aria-expanded={chatMenuId === chat.id}
+                                title={t('Chat actions')}
+                                disabled={navigating || submitting.current}
+                                onClick={() =>
+                                  setChatMenuId(current => (current === chat.id ? null : chat.id))
+                                }
+                              >
+                                <MoreHorizontal size={14} />
+                              </button>
+                              {chatMenuId === chat.id && (
+                                <div className="ia-chat-menu" role="menu">
+                                  <button
+                                    role="menuitem"
+                                    onClick={() => {
+                                      setChatMenuId(null);
+                                      setChatRename({ id: chat.id, value: chat.title });
+                                    }}
+                                  >
+                                    <Pencil size={12} />
+                                    {t('Rename chat')}
+                                  </button>
+                                  <button
+                                    role="menuitem"
+                                    className="ia-chat-menu-danger"
+                                    aria-label={t('Delete chat {0}', { '0': chat.title })}
+                                    disabled={chat.running || navigating || submitting.current}
+                                    onClick={() => {
+                                      setChatMenuId(null);
+                                      void deleteChat(chat.id);
+                                    }}
+                                  >
+                                    <Trash2 size={12} />
+                                    {t('Delete chat')}
+                                  </button>
+                                </div>
                               )}
-                            </button>
-                            <button
-                              className="ia-chat-delete"
-                              aria-label={t('Delete chat {0}', { '0': chat.title })}
-                              title={t('Delete chat')}
-                              disabled={chat.running || navigating || submitting.current}
-                              onClick={() => void deleteChat(chat.id)}
-                            >
-                              <Trash2 size={12} />
-                            </button>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -1934,6 +2044,14 @@ export function App() {
                       {viewerFullscreen ? <Minimize size={15} /> : <Maximize size={15} />}
                     </button>
                     <button
+                      className="ia-browser-toggle"
+                      onClick={openBrowser}
+                      title={t('Open browser')}
+                      aria-label={t('Open browser')}
+                    >
+                      <Globe size={15} />
+                    </button>
+                    <button
                       className="ia-file-tree-toggle"
                       onClick={() => setFileTreeOpen(value => !value)}
                       title={fileTreeOpen ? t('Hide file tree') : t('Show file tree')}
@@ -1973,7 +2091,7 @@ export function App() {
                 <div className="ia-workspace-body">
                   <div className="ia-workspace-content">
                     <div className="ia-workspace-breadcrumb">
-                      {selectedProjectFile || projectName}
+                      {activeFile?.browser ? t('Browser') : selectedProjectFile || projectName}
                     </div>
                     {openFiles.map(file => (
                       <WorkspaceFileView

@@ -92,6 +92,7 @@ const {
   ResourceSettings,
   RemoteSettings,
   defaultChatDirectory,
+  deriveChatTitle,
   ExternalMcpRegistry,
 } = require('@industrial-agent-harness/harness-core');
 const { loadRegistry, isDomainOffered } = require('@industrial-agent-harness/domain-skills');
@@ -114,6 +115,7 @@ const {
   status: guiBridgeStatus,
 } = require('@industrial-agent-harness/computer-use-bridge');
 const { readSettings, saveSettings } = require('./harness-settings.cjs');
+const { registerGuest, createWorkbenchBrowserPlugin } = require('./browser-driver.cjs');
 const {
   readProfile,
   saveProfile,
@@ -138,6 +140,7 @@ if (
     '--kicad-selftest',
     '--godot-selftest',
     '--documents-selftest',
+    '--browser-selftest',
     '--language-selftest',
     '--ui-selftest',
     '--messages-selftest',
@@ -228,6 +231,64 @@ let raster;
 let viewerProtocol;
 const godotRuntime = new GodotRuntimeManager();
 const kicadRuntime = new KiCadRuntimeManager();
+// Best-effort concise session titles (issue #79): when the first turn starts,
+// ask the configured model for a short title (Kimi Code generates its session
+// title from the first prompt the same way); the completion hook retries once
+// if that early attempt failed. The store only accepts a generated title while
+// the chat still carries the derived title, so a user rename always wins.
+const titleRefinements = new Set();
+async function generateChatTitle(task) {
+  const profile = readProfile(configDir());
+  const apiKey = readApiKey();
+  if (!apiKey || !/^https?:/.test(profile.endpoint)) return null;
+  let response;
+  try {
+    response = await fetch(`${profile.endpoint}/chat/completions`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: profile.model,
+        messages: [
+          {
+            role: 'system',
+            content:
+              'Summarize the user task as a chat title. Rules: use the same language as the task; at most 20 characters; no quotes, no trailing punctuation; never append filler words like "会话", "session", "chat" or "task"; output the title only.',
+          },
+          { role: 'user', content: [...task].slice(0, 2000).join('') },
+        ],
+      }),
+      signal: AbortSignal.timeout(30000),
+    });
+  } catch {
+    return null;
+  }
+  if (!response.ok) return null;
+  const data = await response.json().catch(() => null);
+  const text = data?.choices?.[0]?.message?.content;
+  if (typeof text !== 'string') return null;
+  const cleaned = deriveChatTitle(text.replace(/<think>[\s\S]*?(<\/think>|$)/g, ''))
+    .replace(/^["'`「『【]+|["'`」』】]+$/g, '')
+    .replace(/(?:会话|session|chat)$/i, '')
+    .trim();
+  return cleaned || null;
+}
+async function refineChatTitle(chatId) {
+  if (!chatId || titleRefinements.has(chatId)) return;
+  // Selftest mock endpoints assert per-request invariants; a parallel title
+  // request would violate them, so chats keep their derived title there.
+  if (process.argv.some(flag => flag.endsWith('-selftest'))) return;
+  const target = chats.autoTitleTarget(chatId);
+  if (!target) return; // Ineligible chats never cost a model request.
+  titleRefinements.add(chatId);
+  try {
+    const title = await generateChatTitle(target.task);
+    if (title && chats.autoTitle(chatId, title)) notifySessions();
+  } catch {
+    // Title refinement never blocks or reports; the derived title remains.
+  } finally {
+    titleRefinements.delete(chatId);
+  }
+}
 const tasks = new TaskService({
   chatDirectory: process.argv.some(flag => flag.endsWith('-selftest'))
     ? path.join(app.getPath('userData'), 'chats')
@@ -251,7 +312,7 @@ const tasks = new TaskService({
   resourcePolicy: project => projectResourcePolicy(project),
   getConfig: entry => runtimeConfig(entry.project, entry.externalServers, entry.id),
   logDirectory: diagnosticDirectory(),
-  plugins: () => [guiPlugin()],
+  plugins: () => [guiPlugin(), browserPlugin()],
   createSession: process.argv.includes('--parallel-selftest')
     ? require('./parallel-selftest.cjs').createSession
     : process.argv.includes('--image-input-selftest')
@@ -265,6 +326,7 @@ const tasks = new TaskService({
   onEvent: (event, metadata) => {
     if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isDestroyed())
       mainWindow.webContents.send('agent:event', { ...event, ...metadata });
+    if (event.type === 'done' && metadata?.chatId) void refineChatTitle(metadata.chatId);
   },
 });
 const sessions = tasks.sessions;
@@ -285,8 +347,21 @@ const coreUpdater = new CoreUpdater({
 });
 let sessionApiKey = '';
 let modelRevision = 0;
-let appSettings = { guiPluginEnabled: false };
+let appSettings = { guiPluginEnabled: false, browserAutomationEnabled: false };
 let guiBridge;
+let browserAutomation;
+// The workspace browser driver needs no download and no OS permission: the
+// enable toggle alone authorizes it, and the guest is located lazily (the
+// browser tab may not exist yet when the first tool call arrives).
+function browserPlugin() {
+  if (!browserAutomation) {
+    browserAutomation = createWorkbenchBrowserPlugin({
+      enabled: () => appSettings.browserAutomationEnabled,
+      getWindow: () => mainWindow,
+    });
+  }
+  return browserAutomation;
+}
 const chats = tasks.chats;
 let activeChatId;
 function chatList() {
@@ -682,7 +757,12 @@ const viewerRegistry = createViewerRegistry([
     }),
   },
   // Generic formats are fallbacks; preserve specialized JSON/HTML detection.
-  ...createDocumentPlugins({ projectRoot: () => projectDir }),
+  // HTML previews are served through the viewer protocol so the sandboxed
+  // frame gets its own origin and CSP instead of inheriting the workbench's.
+  ...createDocumentPlugins({
+    projectRoot: () => projectDir,
+    serveHtml: file => viewerProtocol.registerHtml(file),
+  }),
 ]);
 
 function registerHandlers() {
@@ -892,6 +972,22 @@ function registerHandlers() {
   ipcMain.handle('broker:trace', () => selectedSession().trace);
   ipcMain.handle('model:get', () => modelStatus());
   ipcMain.handle('settings:gui-state', () => guiBridgeState());
+  ipcMain.handle('settings:browser-automation-state', () => ({
+    enabled: Boolean(appSettings.browserAutomationEnabled),
+  }));
+  ipcMain.handle('settings:set-browser-automation', (event, { enabled }) => {
+    if (
+      event.sender !== mainWindow?.webContents ||
+      event.senderFrame !== mainWindow.webContents.mainFrame
+    )
+      throw Error('Settings require the main app window.');
+    if (typeof enabled !== 'boolean') throw Error('Invalid browser automation setting.');
+    appSettings = { ...appSettings, browserAutomationEnabled: enabled };
+    saveSettings(configDir(), appSettings);
+    // Enabling is the authorization. KimiSession detects the changed plugin
+    // set (plugins_changed) and rebuilds on the next run of each chat.
+    return { enabled: appSettings.browserAutomationEnabled };
+  });
   ipcMain.handle('settings:gui-permission-settings', async (event, permission) => {
     if (
       event.sender !== mainWindow?.webContents ||
@@ -1244,6 +1340,13 @@ function registerHandlers() {
     notifySessions();
     return chatList();
   });
+  ipcMain.handle('chat:rename', (event, request) => {
+    chatRequest(event);
+    const project = activeProject();
+    chats.rename(request?.id, project.path, project.domain, request?.title);
+    notifySessions();
+    return chatList();
+  });
   ipcMain.handle('project:list', () =>
     listProjectFiles(projectDir, { includeBuildDirectories: activeProject()?.domain === 'godot' }),
   );
@@ -1352,6 +1455,9 @@ function registerHandlers() {
     if (sessions.busy(entry)) throw Error('This chat is already running.');
     const { completion, ...started } = await tasks.start(entry, task, { images });
     void completion.catch(error => console.error('Chat finalization failed:', error.message));
+    // Kimi-style timing: ask the model for a title as the first turn starts,
+    // so the derived placeholder only shows for a few seconds.
+    void refineChatTitle(started.chatId);
     return started;
   });
   ipcMain.handle('agent:approve', (event, { id, response, chatId }) => {
@@ -1452,6 +1558,8 @@ async function createWindow() {
     void startGuiInstall();
   if (process.argv.includes('--documents-selftest'))
     require('./documents-selftest.cjs').prepare(projectConfigDir());
+  if (process.argv.includes('--browser-selftest'))
+    require('./browser-selftest.cjs').prepare(projectConfigDir());
   if (process.argv.includes('--language-selftest'))
     require('./language-selftest.cjs').prepare(projectConfigDir());
   if (process.argv.includes('--engineering-selftest'))
@@ -1485,6 +1593,20 @@ async function createWindow() {
     return viewerProtocol.handle(request);
   });
   registerHandlers();
+  // Webview guests (the workspace browser tab) never spawn native windows;
+  // a popup request just navigates the same guest frame instead. The load is
+  // deferred: called synchronously inside the open handler it gets aborted
+  // together with the denied popup.
+  app.on('web-contents-created', (_event, contents) => {
+    if (contents.getType() !== 'webview') return;
+    // Every webview guest in this app is a workspace browser tab; register it
+    // so the workbench-browser plugin's driver can find and drive it.
+    registerGuest(contents);
+    contents.setWindowOpenHandler(({ url }) => {
+      if (/^https?:\/\//.test(url)) setImmediate(() => void contents.loadURL(url));
+      return { action: 'deny' };
+    });
+  });
   const productIcon = path.join(desktopRoot, 'dist', 'app-icon.png');
   if (fs.existsSync(productIcon)) app.dock?.setIcon(productIcon);
   const window = new BrowserWindow({
@@ -1503,6 +1625,9 @@ async function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      // The workspace browser tab embeds web content in a guest process with
+      // no preload and no Node integration; the host window stays sandboxed.
+      webviewTag: true,
       // Pixel assertions must keep receiving frames when another test app or
       // a hosted desktop temporarily covers this window.
       backgroundThrottling: !process.argv.some(
@@ -1703,6 +1828,11 @@ async function createWindow() {
   }
   if (process.argv.includes('--documents-selftest')) {
     await require('./documents-selftest.cjs').run(window);
+    app.quit();
+    return;
+  }
+  if (process.argv.includes('--browser-selftest')) {
+    await require('./browser-selftest.cjs').run(window);
     app.quit();
     return;
   }
