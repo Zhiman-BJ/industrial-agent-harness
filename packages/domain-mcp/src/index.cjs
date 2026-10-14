@@ -5,6 +5,7 @@ const { gatewayConfig, providerRuntime } = require('./gateway.cjs');
 const { ExternalMcpRegistry, publicServer } = require('./external-registry.cjs');
 const { writeExternalGateway } = require('./external-gateway.cjs');
 const { hash, externalSecrets } = require('./external-client.cjs');
+const { listToolProviders } = require('./tool-providers.cjs');
 
 function servers() {
   return loadRegistry()
@@ -34,6 +35,7 @@ function selectMcpServers(scope, disabledIds = [], registry = servers(), externa
     .filter(
       item =>
         item.domain === scope.domain &&
+        item.transport !== 'runtime' &&
         !disabled.has(item.id) &&
         item.toolIds.length > 0 &&
         (item.transport === 'gateway'
@@ -64,7 +66,7 @@ function selectMcpServers(scope, disabledIds = [], registry = servers(), externa
 function writeMcpConfig(shareDir, selected, options = {}) {
   const mcpServers = Object.fromEntries(
     selected
-      .filter(item => item.transport !== 'external')
+      .filter(item => item.transport !== 'external' && item.transport !== 'runtime')
       .map(item => [
         item.id,
         item.transport === 'gateway'
@@ -111,6 +113,7 @@ function selectedRuntimeKey(scope, disabledIds, environment, external = []) {
 module.exports = {
   ...require('./external-runtime.cjs'),
   listMcpServers,
+  listToolProviders,
   selectMcpServers,
   writeMcpConfig,
   selectedRuntimeKey,

@@ -13,7 +13,11 @@ const {
   resourceCatalog,
   ResourceSettings,
 } = require('../../packages/harness-core/src/index.cjs');
-const { selectMcpServers, writeMcpConfig } = require('../../packages/domain-mcp/src/index.cjs');
+const {
+  selectMcpServers,
+  writeMcpConfig,
+  listMcpServers,
+} = require('../../packages/domain-mcp/src/index.cjs');
 const { materializeSkills } = require('../../packages/domain-skills/src/index.cjs');
 const { ActionJournal } = require('../../packages/domain-runtime/src/index.cjs');
 const { prepareSessionFiles } = require('../../packages/agent-kimi/src/index.cjs');
@@ -75,7 +79,11 @@ test('Godot product disclosure uses versioned structural Runtime Actions and no 
   const scope = resolveProjectTask('godot', { task: 'Godot scene edit' }).scope;
   assert.deepEqual(scope.tools, ['godot.scene.edit', 'godot.scene.verify']);
   assert.deepEqual(selectMcpServers(scope), []);
-  assert.deepEqual(resourceCatalog('godot').mcpServers, []);
+  const catalog = resourceCatalog('godot');
+  const provider = catalog.mcpServers.find(item => item.id === 'godot.local');
+  assert.equal(provider.transport, 'runtime');
+  assert.deepEqual(provider.toolIds, scope.tools);
+  assert.deepEqual(listMcpServers('godot'), []);
   const root = temporary(t);
   const directory = materializeSkills(scope, root);
   assert.ok(
@@ -84,6 +92,18 @@ test('Godot product disclosure uses versioned structural Runtime Actions and no 
       .includes('independent'),
   );
   assert.ok(!scope.tools.some(id => id.startsWith('godot.game.')));
+  const settings = new ResourceSettings(path.join(root, 'settings'));
+  settings.set(catalog, { kind: 'mcp', id: provider.id, mode: 'disabled' });
+  assert.deepEqual(
+    resolveProjectTask(
+      'godot',
+      { task: 'Godot scene edit' },
+      undefined,
+      undefined,
+      settings.snapshot(catalog, root).effective,
+    ).scope.tools,
+    [],
+  );
 });
 
 test(
