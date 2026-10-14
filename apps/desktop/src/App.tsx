@@ -204,6 +204,9 @@ export function App() {
   const [agentOwned, setAgentOwned] = useState(false);
   const [chatList, setChatList] = useState<ChatSummary[]>([]);
   const [chatMenuId, setChatMenuId] = useState<string | null>(null);
+  // Pop the menu upward when the wrap sits too close to the list's visible
+  // bottom edge; the scroll container clips anything overflowing downward.
+  const [chatMenuUp, setChatMenuUp] = useState(false);
   const [chatRename, setChatRename] = useState<{ id: string; value: string } | null>(null);
   // Synchronous mirror: Enter and blur can both fire for one edit, and only the
   // first may commit.
@@ -1279,14 +1282,29 @@ export function App() {
                                 aria-expanded={chatMenuId === chat.id}
                                 title={t('Chat actions')}
                                 disabled={navigating || submitting.current}
-                                onClick={() =>
-                                  setChatMenuId(current => (current === chat.id ? null : chat.id))
-                                }
+                                onClick={event => {
+                                  const opening = chatMenuId !== chat.id;
+                                  setChatMenuId(opening ? chat.id : null);
+                                  if (opening) {
+                                    const wrap = event.currentTarget.closest('.ia-chat-menu-wrap');
+                                    const list = event.currentTarget.closest('.ia-project-list');
+                                    if (wrap && list)
+                                      // Menu is ~88px tall; flip upward without enough room.
+                                      setChatMenuUp(
+                                        list.getBoundingClientRect().bottom -
+                                          wrap.getBoundingClientRect().bottom <
+                                          96,
+                                      );
+                                  }
+                                }}
                               >
                                 <MoreHorizontal size={14} />
                               </button>
                               {chatMenuId === chat.id && (
-                                <div className="ia-chat-menu" role="menu">
+                                <div
+                                  className={`ia-chat-menu ${chatMenuUp ? 'up' : ''}`}
+                                  role="menu"
+                                >
                                   <button
                                     role="menuitem"
                                     onClick={() => {
