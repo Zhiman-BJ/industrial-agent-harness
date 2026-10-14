@@ -103,7 +103,7 @@ test('explicit tool names select the smallest capability that can perform the re
       priority: 20,
       keywords: [],
       skills: [],
-      tools: [{ id: 'pcb.bench.place_component' }],
+      tools: [{ id: 'pcb.design.place_component' }],
     },
     {
       id: 'pcb.complete',
@@ -113,7 +113,7 @@ test('explicit tool names select the smallest capability that can perform the re
       priority: 25,
       keywords: [],
       skills: [],
-      tools: [{ id: 'pcb.bench.place_component' }, { id: 'pcb.bench.verify_design' }],
+      tools: [{ id: 'pcb.design.place_component' }, { id: 'pcb.design.verify_design' }],
     },
   ];
   const one = resolve({ domain: 'pcb', task: 'Use place_component on the board' }, candidates);
@@ -125,15 +125,15 @@ test('explicit tool names select the smallest capability that can perform the re
   assert.deepEqual(both.scope.capabilityIds, ['pcb.complete']);
   assert.match(
     both.trace.find(row => row.event === 'capability.resolve').detail.selected[0].reason,
-    /pcb\.bench\.verify_design/,
+    /pcb\.design\.verify_design/,
   );
   assert.deepEqual(
-    resolve({ domain: 'pcb', task: 'Use pcb.bench.place_component' }, candidates).scope
+    resolve({ domain: 'pcb', task: 'Use pcb.design.place_component' }, candidates).scope
       .capabilityIds,
     ['pcb.place'],
   );
   assert.deepEqual(
-    resolve({ domain: 'pcb', task: 'Inspect pcbybenchyplace_component' }, candidates).scope
+    resolve({ domain: 'pcb', task: 'Inspect pcbydesignyplace_component' }, candidates).scope
       .capabilityIds,
     ['pcb.viewer'],
   );

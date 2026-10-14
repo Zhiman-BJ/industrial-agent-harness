@@ -28,7 +28,7 @@ test('PCB launch policy binds a canonical candidate and external requirements wi
   const provider = {
     id: 'fixture',
     title: 'Fixture',
-    backend: 'pcb-bench',
+    backend: 'pcb-design',
     packDirectory: 'pcb',
     directoryEnv: 'FIXTURE_SOURCE',
     pythonEnv: 'FIXTURE_PYTHON',
@@ -101,7 +101,7 @@ test('PCB launch policy binds a canonical candidate and external requirements wi
     () =>
       gatewayConfig(root, provider, project, {
         ...environment,
-        INDUSTRIAL_HARNESS_PCB_DEV_IMAGE_ID: 'pcb-bench:latest',
+        INDUSTRIAL_HARNESS_PCB_DEV_IMAGE_ID: 'industrial-pcb-runtime:latest',
       }),
     /immutable Docker image ID/,
   );

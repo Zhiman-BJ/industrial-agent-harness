@@ -38,14 +38,17 @@ async function setup(t) {
   const { definitions, hash } = JSON.parse(stdout);
   const provider = require(
     path.join(
-      require('@zhiman-bj/industrial-domain-packs').sourceDirectory('pcb-pack'),
-      'legacy-harness-pack.json',
+      require('../../packages/domain-skills/src/index.cjs').packSourceDirectory('pcb-pack'),
+      'harness-pack.json',
     ),
   ).provider;
   const tools = provider.tools.filter(t => definitions.some(d => d.function.name === t.name));
   const policy = {
     schemaVersion: 1,
     ...provider,
+    // gateway-era handshake field: the bridge echoes it from the initialize
+    // response (the runtime provider carries it in the snapshot, not here)
+    mcpVersion: '1.29.1',
     projectDir: project,
     python,
     docker: fakeDocker,
@@ -65,7 +68,7 @@ async function setup(t) {
     config,
     JSON.stringify({
       mcpServers: {
-        'pcb-bench.tools': {
+        'pcb-design.tools': {
           command: python,
           args: [
             path.join(
@@ -129,7 +132,10 @@ test(
 
 test(
   'fixed real PCB-bench source supplies all 89 schemas and complete Skill resources, while host execution remains refused',
-  { skip: !fs.existsSync(python) || !process.env.INDUSTRIAL_HARNESS_PCB_BENCH_DIR, timeout: 60000 },
+  {
+    skip: !fs.existsSync(python) || !process.env.INDUSTRIAL_HARNESS_PCB_UPSTREAM_DIR,
+    timeout: 60000,
+  },
   async t => {
     const fixture = await setup(t);
     const environment = {
@@ -142,12 +148,12 @@ test(
     );
     const legacy = require(path.join(packDirectory, 'legacy-harness-pack.json'));
     // The frozen legacy manifest predates the vendored snapshot; rebuild the
-    // gateway provider view from the current pinned bench-upstream snapshot
-    // so the checkout inventory (INDUSTRIAL_HARNESS_PCB_BENCH_DIR at the
+    // gateway provider view from the current pinned upstream snapshot
+    // so the checkout inventory (INDUSTRIAL_HARNESS_PCB_UPSTREAM_DIR at the
     // pinned commit) validates against what the pack ships today.
-    const { bridgeProvider } = require(path.join(packDirectory, 'runtime/bench-gateway.cjs'));
+    const { bridgeProvider } = require(path.join(packDirectory, 'runtime/gateway.cjs'));
     const snapshot = JSON.parse(
-      fs.readFileSync(path.join(packDirectory, 'runtime/bench-upstream.json'), 'utf8'),
+      fs.readFileSync(path.join(packDirectory, 'runtime/upstream-snapshot.json'), 'utf8'),
     );
     const provider = bridgeProvider(legacy.provider, snapshot);
     const { scope } = resolveProjectTask(
@@ -171,11 +177,11 @@ test(
       { projectDir: fixture.project, environment },
     );
     t.after(() => fs.rmSync(session, { recursive: true, force: true }));
-    const generated = path.join(session, 'mcp-pcb-bench.tools.policy.json');
+    const generated = path.join(session, 'mcp-pcb-design.tools.policy.json');
     const policy = JSON.parse(fs.readFileSync(generated));
     assert.equal(policy.tools.length, 89);
-    policy.allowedToolIds = policy.allowedToolIds.filter(id => id !== 'pcb.bench.run_python');
-    policy.fixtureSourceDir = process.env.INDUSTRIAL_HARNESS_PCB_BENCH_DIR;
+    policy.allowedToolIds = policy.allowedToolIds.filter(id => id !== 'pcb.design.run_python');
+    policy.fixtureSourceDir = process.env.INDUSTRIAL_HARNESS_PCB_UPSTREAM_DIR;
     fs.writeFileSync(generated, JSON.stringify(policy));
     fs.mkdirSync(path.join(fixture.project, 'session'));
     const { stdout } = await execute(python, [client, path.join(session, 'mcp.json'), 'source'], {
