@@ -134,14 +134,14 @@ function assess(summary, skipped, allowed = [], expectedTests) {
   const counts = summary?.counts;
   const ok = Boolean(
     summary?.success &&
-    counts?.tests > 0 &&
-    counts?.passed > 0 &&
-    (expectedTests === undefined || counts.tests === expectedTests) &&
-    counts.failed === 0 &&
-    counts.cancelled === 0 &&
-    counts.todo === 0 &&
-    counts.skipped === skipped.length &&
-    unexpectedSkips.length === 0,
+      counts?.tests > 0 &&
+      counts?.passed > 0 &&
+      (expectedTests === undefined || counts.tests === expectedTests) &&
+      counts.failed === 0 &&
+      counts.cancelled === 0 &&
+      counts.todo === 0 &&
+      counts.skipped === skipped.length &&
+      unexpectedSkips.length === 0,
   );
   return { ok, unexpectedSkips };
 }
