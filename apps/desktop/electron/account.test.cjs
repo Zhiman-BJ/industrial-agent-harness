@@ -27,6 +27,78 @@ test('account IPC denies guest frames and never exposes a token method', async (
     view,
   );
   assert.ok([...handlers.keys()].every(name => !/token|credential/.test(name)));
+  for (const name of ['account:open-manual', 'account:submit-code'])
+    assert.throws(
+      () => handlers.get(name)({ sender: webContents, senderFrame: {} }, 'code#state'),
+      /main application/,
+    );
+});
+
+test('desktop main-window IPC completes manual login with encrypted storage and safe views', async t => {
+  const { createIssuer } = require('@industrial-agent-harness/harness-auth/tests/issuer.cjs');
+  const {
+    fetch,
+    createServer,
+  } = require('@industrial-agent-harness/harness-auth/tests/memory-http.cjs');
+  const issuer = await createIssuer();
+  t.after(issuer.close);
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'desktop-manual-account-'));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const opened = [],
+    views = [];
+  const account = new DesktopAccount({
+    directory,
+    environment: {},
+    shell: {
+      openExternal: async url => {
+        opened.push(url);
+      },
+    },
+    onChange: view => views.push(view),
+    safeStorage: {
+      isEncryptionAvailable: () => true,
+      getSelectedStorageBackend: () => 'test',
+      encryptString: value => Buffer.from(value).map(byte => byte ^ 0xa5),
+      decryptString: value =>
+        Buffer.from(value)
+          .map(byte => byte ^ 0xa5)
+          .toString(),
+    },
+  });
+  t.after(() => account.close());
+  await account.configure(issuer.config);
+  account.auth.fetch = fetch;
+  account.auth.createServer = createServer;
+  const handlers = new Map(),
+    mainFrame = {},
+    webContents = { mainFrame };
+  registerAccountHandlers({
+    ipcMain: { handle: (name, fn) => handlers.set(name, fn) },
+    getWindow: () => ({ webContents }),
+    account,
+  });
+  const call = (name, value) =>
+    handlers.get('account:' + name)({ sender: webContents, senderFrame: mainFrame }, value);
+  const ready = require('node:events').once(account.auth, 'manual-authorization');
+  const login = call('login');
+  await ready;
+  await call('open-manual');
+  const callback = new URL(await issuer.authorize(opened.at(-1)));
+  assert.equal(callback.pathname, '/oauth/code');
+  await assert.rejects(call('submit-code', 'invalid'), /complete code#state/);
+  const code = callback.searchParams.get('code') + '#' + callback.searchParams.get('state');
+  const view = await call('submit-code', code);
+  await login;
+  assert.equal(view.status, 'signed_in');
+  assert.equal(view.persistent, true);
+  const saved = account.store.read();
+  for (const secret of [code, saved.accessToken, saved.refreshToken]) {
+    assert.ok(!JSON.stringify(views).includes(secret));
+    assert.ok(!fs.readFileSync(account.store.file).includes(Buffer.from(secret)));
+  }
+  await call('logout');
+  assert.equal(call('get').user, null);
+  assert.equal(account.store.read(), null);
 });
 test('corrupt account storage cannot prevent local application startup', async t => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'desktop-account-'));

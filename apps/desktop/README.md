@@ -20,9 +20,9 @@ Kimi Code 会话需要本机 `kimi` CLI。界面会检测其可用性；选择�
 
 ## 平台账号
 
-**设置 → 平台账号** 使用系统浏览器完成 OIDC Code + PKCE 登录，本机临时端口接收回调。连接配置需要真实登记的 native client ID、应用 audience 和业务端点；凭证只在主进程处理，安全存储不可用时仅保留本次会话。账号可以用于平台模型和远程环境，本地工作及自有 API Key 无需登录。退出后可显式切回自有 API Key；已提交的远程任务继续运行。配置、CLI 对应行为和验收范围见 [Platform account](../../packages/harness-auth/README.md)。
+**设置 → 平台账号** 使用系统浏览器完成 OIDC Code + PKCE 登录，本机临时端口接收回调，也可打开账号中心授权码页面并粘贴完整 `code#state`；链接可在任意设备打开。连接配置需要真实登记的 native client ID、应用 audience 和业务端点；凭证只在主进程处理，安全存储不可用时仅保留本次会话。登录与业务服务接入分别验收：当前 Obol 模型网关仍按项目 API Key 接入，远程服务尚待对接 OIDC。本地工作及自有 API Key 无需登录。退出后可显式切回自有 API Key；已提交的远程任务继续运行。配置、CLI 对应行为和验收范围见 [Platform account](../../packages/harness-auth/README.md)。
 
-`pnpm --filter @industrial-agent-harness/desktop test:account` 提供真实窗口、preload、主进程和受控 OIDC 服务的完整测试入口；本次受环境端口限制尚未运行，不能替代真实 Obol 与打包后钥匙串验收。
+`pnpm --filter @industrial-agent-harness/desktop test:account` 提供真实窗口、preload、主进程和受控 OIDC 服务的完整测试入口；本轮已尝试启动，但 Electron 以 SIGABRT 退出；当前环境也禁止监听本机端口。主窗口 IPC 的内存传输集成回归已通过，不能替代真实窗口、Obol 与打包后钥匙串验收。
 
 ## Agent 行为日志
 

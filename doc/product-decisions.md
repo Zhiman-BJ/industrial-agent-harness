@@ -728,3 +728,11 @@ CSV/TSV 显示表格并提供表头开关、全文筛选与分页；普通 JSON 
 - 来源：用户要求基于 Obol 开发登录模块，全部使用标准流程；账号用于云端 API 和远程环境，本地工作无需强制登录。
 - 决定：共享 `harness-auth` 使用成熟 OIDC 库、Discovery、native/public client、系统浏览器、Code + PKCE S256、state/nonce、签名验证和轮换 Refresh Token。Desktop 使用系统安全存储，CLI 明文文件保存必须显式选择；渲染器和 Kimi 不持有真实平台 Token。模型通过受限本机代理按请求取凭证，远程服务通过共享 credential provider 取凭证。
 - 边界：公开版保留可选账号模块与基本状态；实际服务仍须校验 audience、权限和项目归属。当前一份配置绑定一个应用 audience，不自造跨应用 Token Exchange、组织或额度接口。不实现 Obol 私有手工回调扩展。退出不停止远程任务，切换账号不自动迁移项目绑定。本条不放宽 IH-ARCH-001 或发行门禁。实现与验证限制见[平台账号接入](platform-account.md)。
+
+## PD-075：按 Obol 接入指南补齐授权码粘贴
+
+- 日期：2026-10-14。
+- 状态：客户端已实现；真实 Obol 和打包桌面端验收仍待完成。
+- 来源：用户要求先根据 Obol 文档在 Harness 中开发登录模块。
+- 决定：采用文档中的 `/oauth/code` 与 `code#state` 交付方式，补齐 Desktop/CLI、SSH 和无浏览器场景；授权码交换、PKCE、state/nonce 与 ID Token 验签仍由成熟 OIDC 库完成。用户可在两条路径中先完成任一条，另一路不能重复交换。
+- 边界：本条替代 PD-074“不实现 Obol 私有手工回调扩展”的限制，其余职责、安全存储和业务服务边界不变。这是 Obol 文档约定的授权码交付方式，不宣称实现 OAuth Device Authorization Grant。登录不代表模型 API 或远程环境已接受账号 Token。

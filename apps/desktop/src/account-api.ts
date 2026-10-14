@@ -17,6 +17,7 @@ export type AccountView = {
   issuer: string;
   persistent: boolean;
   error: string | null;
+  login: { loopbackAvailable: boolean; browserFailed: boolean; manualUrl: string } | null;
   config: AccountConfig;
   usePlatformModel: boolean;
   revoked?: boolean;
@@ -27,6 +28,8 @@ declare global {
       get(): Promise<AccountView>;
       configure(config: AccountConfig): Promise<AccountView>;
       login(): Promise<AccountView>;
+      openManual(): Promise<AccountView>;
+      submitCode(value: string): Promise<AccountView>;
       cancel(): Promise<AccountView>;
       logout(): Promise<AccountView>;
       useModel(enabled: boolean): Promise<AccountView>;

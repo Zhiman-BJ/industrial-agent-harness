@@ -10,6 +10,8 @@ export function AccountSettings({ onClose }: { onClose: () => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [code, setCode] = useState('');
+  const [submittingCode, setSubmittingCode] = useState(false);
   const dialog = useRef<HTMLElement>(null);
   useEffect(() => {
     let active = true;
@@ -60,6 +62,9 @@ export function AccountSettings({ onClose }: { onClose: () => void }) {
     }
   }
   const pending = view?.status === 'signing_in';
+  useEffect(() => {
+    if (!pending) setCode('');
+  }, [pending]);
   const labels: Record<string, string> = {
     not_configured: 'Account setup required',
     signed_out: 'Signed out',
@@ -104,7 +109,7 @@ export function AccountSettings({ onClose }: { onClose: () => void }) {
         <header>
           <div>
             <h2>{t('Platform account')}</h2>
-            <p>{t('Sign in to use cloud APIs and remote environments.')}</p>
+            <p>{t('Sign in with your platform account. Cloud services require separate setup.')}</p>
           </div>
           <button onClick={onClose} aria-label={t('Close settings')}>
             <X size={17} />
@@ -118,6 +123,56 @@ export function AccountSettings({ onClose }: { onClose: () => void }) {
             </p>
           )}
           <p>{view?.issuer}</p>
+          {pending && view?.login && (
+            <form
+              onSubmit={event => {
+                event.preventDefault();
+                if (submittingCode || !code.trim()) return;
+                const value = code;
+                setCode('');
+                setSubmittingCode(true);
+                void act(() => window.harnessAccount.submitCode(value)).finally(() =>
+                  setSubmittingCode(false),
+                );
+              }}
+            >
+              <p>
+                {t(
+                  'If the browser does not return, open code sign-in and paste the complete authorization code below.',
+                )}
+              </p>
+              <label>
+                {t('Sign-in link (opens on any device)')}
+                <input
+                  readOnly
+                  value={view.login.manualUrl}
+                  onFocus={event => event.target.select()}
+                />
+              </label>
+              <button
+                type="button"
+                disabled={submittingCode}
+                onClick={() => void act(() => window.harnessAccount.openManual())}
+              >
+                {t('Open code sign-in')}
+              </button>
+              <label>
+                {t('Authorization code (code#state)')}
+                <input
+                  type="password"
+                  autoComplete="off"
+                  spellCheck={false}
+                  maxLength={8192}
+                  value={code}
+                  disabled={submittingCode}
+                  onChange={event => setCode(event.target.value)}
+                />
+              </label>
+              <button type="submit" disabled={submittingCode || !code.trim()}>
+                {t('Complete sign-in')}
+              </button>
+            </form>
+          )}
           {view && !view.persistent && (
             <p>
               {t('Secure storage is unavailable. This sign-in lasts only until the app closes.')}
@@ -128,7 +183,7 @@ export function AccountSettings({ onClose }: { onClose: () => void }) {
               <input
                 type="checkbox"
                 checked={view.usePlatformModel}
-                disabled={busy || (!view.user && !view.usePlatformModel)}
+                disabled={busy || pending || (!view.user && !view.usePlatformModel)}
                 onChange={event =>
                   void act(() => window.harnessAccount.useModel(event.target.checked))
                 }
@@ -153,14 +208,14 @@ export function AccountSettings({ onClose }: { onClose: () => void }) {
                   {t(label)}
                   <input
                     value={config[key]}
-                    disabled={busy || Boolean(view?.user)}
+                    disabled={busy || pending || Boolean(view?.user)}
                     autoComplete="off"
                     onChange={event => setConfig({ ...config, [key]: event.target.value })}
                   />
                 </label>
               ))}
               <button
-                disabled={busy || Boolean(view?.user)}
+                disabled={busy || pending || Boolean(view?.user)}
                 onClick={() => void act(() => window.harnessAccount.configure(config))}
               >
                 {t('Save connection')}

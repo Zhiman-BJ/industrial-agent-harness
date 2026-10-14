@@ -7,6 +7,7 @@ const { AuthManager, SessionStore, validateConfig } = require('../src/index.cjs'
 const { createModelProxy } = require('../src/model-proxy.cjs');
 const { createIssuer } = require('./issuer.cjs');
 const { createServer, fetch } = require('./memory-http.cjs');
+const { once } = require('node:events');
 
 async function setup(t, options = {}) {
   const issuer = await createIssuer();
@@ -228,4 +229,129 @@ test('unsafe issuer and target substitution are rejected', async t => {
   assert.throws(() => validateConfig({ issuer: 'https://user:pass@example.com' }), /HTTPS/);
   const { auth } = await setup(t);
   await assert.rejects(auth.serviceToken('remote', 'https://attacker.test'), /not bound/);
+});
+
+async function pastedCode(issuer, url) {
+  const callback = new URL(await issuer.authorize(url));
+  assert.equal(callback.pathname, '/oauth/code');
+  return callback.searchParams.get('code') + '#' + callback.searchParams.get('state');
+}
+test('manual sign-in uses issuer code redirect, PKCE and nonce without a listener', async t => {
+  const { issuer, auth, store } = await setup(t, {
+    createServer: () => {
+      throw Error('Manual login must not listen.');
+    },
+  });
+  const ready = once(auth, 'manual-authorization');
+  const login = auth.login({ manualOnly: true });
+  const [url] = await ready;
+  assert.equal(auth.view().login.loopbackAvailable, false);
+  await auth.submitCode(await pastedCode(issuer, url));
+  assert.equal((await login).user.sub, 'user-123');
+  assert.equal(issuer.calls.token, 1);
+  assert.ok(store.read().refreshToken);
+  assert.equal(auth.view().login, null);
+});
+test('malformed and mismatched paste states do not consume a pending login', async t => {
+  const { issuer, auth } = await setup(t);
+  await assert.rejects(auth.submitCode('code#state'), /Start sign-in/);
+  const ready = once(auth, 'manual-authorization');
+  const login = auth.login({ manualOnly: true });
+  const [url] = await ready;
+  const code = await pastedCode(issuer, url);
+  for (const invalid of [null, {}, 'code', 'code#wrong', code + '#extra', 'x'.repeat(8193)])
+    await assert.rejects(auth.submitCode(invalid), /complete code#state/);
+  assert.equal(issuer.calls.token, 0);
+  await auth.submitCode('  ' + code + '\n');
+  await login;
+  await assert.rejects(auth.submitCode(code), /Start sign-in/);
+});
+test('a pasted code from a cancelled attempt cannot sign into the next attempt', async t => {
+  const { issuer, auth } = await setup(t);
+  const firstReady = once(auth, 'manual-authorization');
+  const first = assert.rejects(auth.login({ manualOnly: true }), /cancelled/);
+  const oldCode = await pastedCode(issuer, (await firstReady)[0]);
+  auth.cancel();
+  await first;
+  const nextReady = once(auth, 'manual-authorization');
+  const next = auth.login({ manualOnly: true });
+  const code = await pastedCode(issuer, (await nextReady)[0]);
+  await assert.rejects(auth.submitCode(oldCode), /complete code#state/);
+  await auth.submitCode(code);
+  await next;
+  assert.equal(issuer.calls.token, 1);
+});
+test('unavailable loopback falls back to code paste', async t => {
+  const { issuer, auth } = await setup(t, {
+    createServer: () => {
+      const server = new (require('node:events').EventEmitter)();
+      server.listen = () =>
+        queueMicrotask(() =>
+          server.emit('error', Object.assign(Error('Denied'), { code: 'EPERM' })),
+        );
+      server.close = () => {};
+      return server;
+    },
+  });
+  const ready = once(auth, 'manual-authorization');
+  const login = auth.login();
+  const [url] = await ready;
+  assert.equal(auth.view().login.loopbackAvailable, false);
+  await auth.submitCode(await pastedCode(issuer, url));
+  assert.equal((await login).status, 'signed_in');
+});
+test('failed browser launch still permits manual sign-in', async t => {
+  const { issuer, auth } = await setup(t);
+  const ready = once(auth, 'manual-authorization');
+  const failed = new Promise(resolve =>
+    auth.on('change', view => {
+      if (view.login?.browserFailed) resolve();
+    }),
+  );
+  const login = auth.login({
+    openBrowser: () => {
+      throw Error('Cannot launch browser');
+    },
+  });
+  const [url] = await ready;
+  await failed;
+  let opened;
+  await auth.openManualLogin(async value => {
+    opened = value;
+  });
+  assert.equal(opened, url);
+  await auth.submitCode(await pastedCode(issuer, url));
+  await login;
+});
+test('hung browser launch does not block timeout', async t => {
+  const { auth, store } = await setup(t, { loginTimeoutMs: 40 });
+  await assert.rejects(auth.login({ openBrowser: () => new Promise(() => {}) }), /timed out/);
+  assert.equal(store.read(), null);
+  assert.equal(auth.view().login, null);
+});
+test('loopback and pasted code racing exchange only one authorization code', async t => {
+  const { issuer, auth } = await setup(t);
+  issuer.behavior.tokenDelay = 80;
+  const automaticReady = once(auth, 'authorization');
+  const manualReady = once(auth, 'manual-authorization');
+  const login = auth.login();
+  const automatic = await issuer.authorize((await automaticReady)[0]);
+  const code = await pastedCode(issuer, (await manualReady)[0]);
+  const manual = auth.submitCode(code);
+  assert.equal((await fetch(automatic)).status, 409);
+  await Promise.all([manual, login]);
+  assert.equal(issuer.calls.token, 1);
+});
+test('logout during pasted code exchange revokes the late session', async t => {
+  const { issuer, auth, store } = await setup(t);
+  issuer.behavior.tokenDelay = 80;
+  const ready = once(auth, 'manual-authorization');
+  const login = assert.rejects(auth.login({ manualOnly: true }), /cancelled/);
+  const code = await pastedCode(issuer, (await ready)[0]);
+  const submit = assert.rejects(auth.submitCode(code), /cancelled/);
+  await auth.logout();
+  await Promise.all([login, submit]);
+  assert.equal(store.read(), null);
+  assert.equal(auth.view().user, null);
+  assert.equal(issuer.calls.revoke, 1);
 });

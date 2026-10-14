@@ -2,7 +2,7 @@
 
 Optional native OAuth 2.0 / OpenID Connect sign-in for Desktop and CLI. Local tasks and user-supplied model API keys do not require an account.
 
-The shared module uses pinned `openid-client` 6.8.8 for discovery, Authorization Code + PKCE S256, state/nonce checks, ID-token signature verification, UserInfo, refresh and revocation. It listens only on `127.0.0.1:0` at `/callback`. HTTPS issuers are required; literal loopback HTTP is accepted for development. It never uses an embedded login page, client secret, password grant, implicit grant or unsigned token parsing.
+The shared module uses pinned `openid-client` 6.8.8 for discovery, Authorization Code + PKCE S256, state/nonce checks, ID-token signature verification, UserInfo, refresh and revocation. The browser callback listens only on `127.0.0.1:0` at `/callback`. Obol’s documented `/oauth/code` page provides a `code#state` paste fallback; it uses the same OIDC library, PKCE and nonce checks, with the redirect URI bound to the chosen path. HTTPS issuers are required; literal loopback HTTP is accepted for development. It never uses an embedded login page, client secret, password grant, implicit grant or unsigned token parsing.
 
 ## Configure
 
@@ -25,9 +25,11 @@ The configured model and remote endpoints must accept the **same registered appl
 - `SessionStore.transaction` serializes local and inter-process operations using `proper-lockfile`; refresh re-reads the latest saved token inside the lock and atomically saves its replacement. Access tokens refresh on demand 60 seconds before expiry. No background polling is required.
 - A durable refresh-in-progress marker prevents replay after a crash or ambiguous network response. `invalid_grant`, uncertain refresh or a crash marker requires sign-in again. Transient discovery failure before refresh leaves the saved refresh token intact.
 - Logout cancels pending login, attempts refresh-token revocation and removes local credentials even when revocation fails. The UI reports unsuccessful server revocation. It does not sign out the entire system browser's SSO session or cancel submitted remote jobs.
-- IPC exposes only curated account state and non-secret configuration. Tokens do not enter renderer storage, project files, Domain Packs, model context or diagnostic events.
+- IPC exposes only curated account state, non-secret configuration and the current authorization URL (never the PKCE verifier). Pasted codes are submitted once, cleared from the input and never persisted or logged. Tokens do not enter renderer storage, project files, Domain Packs, model context or diagnostic events.
 
 ## Cloud consumers
+
+These are opt-in client integration points, not verified Obol business-service support. The current [Obol API guide](https://github.com/zhimanai/obol/blob/main/docs/api-quickstart.md) specifies project API keys for inference, and the remote service checkout uses preconfigured Bearer credentials. Use the existing API-key path until the services explicitly support account access tokens.
 
 The remote client obtains a token per request through an injected credential provider. Only GET + `401 WWW-Authenticate: Bearer error="invalid_token"` retries once after refresh. It never retries mutation requests or a `403`; existing request journals remain authoritative. Account subject participates in remote binding identity, and existing clients reject account changes.
 
@@ -45,7 +47,7 @@ node apps/cli/src/main.cjs remote status --platform-account
 node apps/cli/src/main.cjs account logout --allow-file-store
 ```
 
-`--no-browser` prints the standard authorization URL; it must be opened on the same machine for the loopback callback. SSH/remote-device login, Obol's custom `code#state` copy/paste extension and device authorization are not part of this standard loopback implementation. No token-print command is exposed.
+`--no-browser`, SSH and headless Linux use code paste without opening a browser or listener. Open the printed URL on any device and paste the complete `code#state` on stdin; terminal input is not echoed or retained in command history. Normal CLI login accepts either loopback or paste; the first valid response wins. An unavailable local listener falls back to paste. Desktop offers the same fallback with a selectable link and a masked code input. Invalid paste/state can be retried; cancellation, timeout and logout invalidate the pending attempt. Browser launch failure does not stop paste or cancellation. Device authorization is not implemented. No token-print command is exposed.
 
 ## Verification
 

@@ -3735,6 +3735,42 @@
     "Sign in and configure the platform model service first.": {
       "en": "Sign in and configure the platform model service first.",
       "zh-CN": "请先登录并配置平台模型服务。"
+    },
+    "Sign in with your platform account. Cloud services require separate setup.": {
+      "en": "Sign in with your platform account. Cloud services require separate setup.",
+      "zh-CN": "使用平台账号登录。云端服务需另行配置。"
+    },
+    "If the browser does not return, open code sign-in and paste the complete authorization code below.": {
+      "en": "If the browser does not return, open code sign-in and paste the complete authorization code below.",
+      "zh-CN": "如果浏览器未自动返回，请打开授权码登录页面，并在下方粘贴完整授权码。"
+    },
+    "Open code sign-in": {
+      "en": "Open code sign-in",
+      "zh-CN": "打开授权码登录"
+    },
+    "Authorization code (code#state)": {
+      "en": "Authorization code (code#state)",
+      "zh-CN": "授权码（code#state）"
+    },
+    "Complete sign-in": {
+      "en": "Complete sign-in",
+      "zh-CN": "完成登录"
+    },
+    "Sign-in link (opens on any device)": {
+      "en": "Sign-in link (opens on any device)",
+      "zh-CN": "登录链接（可在任意设备打开）"
+    },
+    "Paste the complete code#state from the account center.": {
+      "en": "Paste the complete code#state from the account center.",
+      "zh-CN": "请粘贴账号中心提供的完整 code#state。"
+    },
+    "Start sign-in before submitting an authorization code.": {
+      "en": "Start sign-in before submitting an authorization code.",
+      "zh-CN": "请先开始登录，再提交授权码。"
+    },
+    "Sign-in is already being completed.": {
+      "en": "Sign-in is already being completed.",
+      "zh-CN": "正在完成登录，请稍候。"
     }
   }
 }

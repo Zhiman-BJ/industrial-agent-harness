@@ -12,6 +12,9 @@ const messages = {
   protocol_error: 'Platform sign-in could not be verified. Check the account configuration.',
   unavailable: 'The account service is unavailable. Try again.',
   refresh_uncertain: 'Session renewal could not be confirmed. Sign in again.',
+  invalid_code: 'Paste the complete code#state from the account center.',
+  no_pending_login: 'Start sign-in before submitting an authorization code.',
+  login_consumed: 'Sign-in is already being completed.',
 };
 function authError(code) {
   return Object.assign(Error(messages[code] || messages.protocol_error), { code });
@@ -58,6 +61,14 @@ class AuthManager extends EventEmitter {
       issuer: this.config.issuer,
       persistent: this.store.persistent(),
       error: this.error || null,
+      login:
+        this.state === 'signing_in' && this.pending
+          ? {
+              loopbackAvailable: this.pending.loopbackAvailable,
+              browserFailed: Boolean(this.pending.browserFailed),
+              manualUrl: this.pending.manualUrl,
+            }
+          : null,
     };
   }
   changed(state, error = null) {
@@ -125,12 +136,14 @@ class AuthManager extends EventEmitter {
       return this.view();
     });
   }
-  async login({ openBrowser } = {}) {
+  async login({ openBrowser, manualOnly = false } = {}) {
     if (this.pending || this.starting) throw Error('Sign-in is already in progress.');
     const epoch = ++this.epoch;
     this.starting = true;
     this.changed('signing_in');
-    let server, timer;
+    let server,
+      timer,
+      succeeded = false;
     try {
       const { oidc, config } = await this.protocol();
       if (epoch !== this.epoch) throw authError('cancelled');
@@ -147,8 +160,58 @@ class AuthManager extends EventEmitter {
       });
       // Attach immediately so cancellation during browser launch is always handled.
       result.catch(() => {});
+      const manualRedirect = this.config.issuer + '/oauth/code';
+      const accept = async url => {
+        if (epoch !== this.epoch) throw authError('cancelled');
+        if (consumed) throw authError('login_consumed');
+        consumed = true;
+        let tokens;
+        try {
+          tokens = await oidc.authorizationCodeGrant(config, url, {
+            pkceCodeVerifier: verifier,
+            expectedState: state,
+            expectedNonce: nonce,
+            idTokenExpected: true,
+          });
+          const claims = tokens.claims();
+          if (!claims?.sub || !tokens.refresh_token) throw authError('protocol_error');
+          let user = {
+            sub: claims.sub,
+            name: typeof claims.name === 'string' ? claims.name.slice(0, 160) : claims.sub,
+          };
+          if (config.serverMetadata().userinfo_endpoint) {
+            const info = await oidc.fetchUserInfo(config, tokens.access_token, claims.sub);
+            user = {
+              sub: claims.sub,
+              name: typeof info.name === 'string' ? info.name.slice(0, 160) : user.name,
+            };
+          }
+          await this.store.transaction(async tx => {
+            if (epoch !== this.epoch) throw authError('cancelled');
+            tx.write(this.session(tokens, user));
+          });
+          if (epoch !== this.epoch) throw authError('cancelled');
+          this.user = user;
+          this.changed('signed_in');
+          return this.view();
+        } catch (error) {
+          if (tokens?.refresh_token) {
+            await this.store
+              .transaction(tx => {
+                if (tx.read()?.refreshToken === tokens.refresh_token) tx.clear();
+              })
+              .catch(() => {});
+            await oidc
+              .tokenRevocation(config, tokens.refresh_token, {
+                token_type_hint: 'refresh_token',
+              })
+              .catch(() => {});
+          }
+          throw safeError(error);
+        }
+      };
       let redirect;
-      server = this.createServer(async (request, response) => {
+      const callback = async (request, response) => {
         const reply = (status, text) => {
           response.writeHead(status, {
             'Content-Type': 'text/plain; charset=utf-8',
@@ -179,74 +242,83 @@ class AuthManager extends EventEmitter {
         )
           return reply(400, 'Invalid sign-in state.');
         if (consumed) return reply(409, 'Callback already received.');
-        consumed = true;
-        let tokens;
         try {
-          tokens = await oidc.authorizationCodeGrant(config, url, {
-            pkceCodeVerifier: verifier,
-            expectedState: state,
-            expectedNonce: nonce,
-            idTokenExpected: true,
-          });
-          const claims = tokens.claims();
-          if (!claims?.sub || !tokens.refresh_token) throw authError('protocol_error');
-          let user = {
-            sub: claims.sub,
-            name: typeof claims.name === 'string' ? claims.name.slice(0, 160) : claims.sub,
-          };
-          if (config.serverMetadata().userinfo_endpoint) {
-            const info = await oidc.fetchUserInfo(config, tokens.access_token, claims.sub);
-            user = {
-              sub: claims.sub,
-              name: typeof info.name === 'string' ? info.name.slice(0, 160) : user.name,
-            };
-          }
-          await this.store.transaction(async tx => {
-            if (epoch !== this.epoch) throw authError('cancelled');
-            tx.write(this.session(tokens, user));
-          });
-          if (epoch !== this.epoch) throw authError('cancelled');
-          this.user = user;
-          this.changed('signed_in');
+          await accept(url);
           reply(200, 'Signed in. You can close this tab and return to Industrial Harness.');
           complete(this.view());
         } catch (error) {
-          if (tokens?.refresh_token)
-            await this.store
-              .transaction(tx => {
-                if (tx.read()?.refreshToken === tokens.refresh_token) tx.clear();
-              })
-              .catch(() => {});
-          if (tokens?.refresh_token)
-            await oidc
-              .tokenRevocation(config, tokens.refresh_token, { token_type_hint: 'refresh_token' })
-              .catch(() => {});
           reply(400, 'Sign-in failed. Return to Industrial Harness.');
           fail(safeError(error));
         }
-      });
-      server.requestTimeout = 15000;
-      server.headersTimeout = 10000;
-      await new Promise((resolve, reject) => {
-        server.once('error', reject);
-        server.listen(0, '127.0.0.1', resolve);
-      });
-      redirect = `http://127.0.0.1:${server.address().port}/callback`;
-      const url = oidc.buildAuthorizationUrl(config, {
-        redirect_uri: redirect,
-        response_type: 'code',
-        scope: 'openid profile offline_access',
-        state,
-        nonce,
-        code_challenge: challenge,
-        code_challenge_method: 'S256',
-      });
-      this.pending = { cancel: () => fail(authError('cancelled')) };
+      };
+      if (!manualOnly) {
+        try {
+          server = this.createServer(callback);
+          server.requestTimeout = 15000;
+          server.headersTimeout = 10000;
+          await new Promise((resolve, reject) => {
+            server.once('error', reject);
+            server.listen(0, '127.0.0.1', resolve);
+          });
+          redirect = `http://127.0.0.1:${server.address().port}/callback`;
+        } catch {
+          server?.close();
+          server = null;
+        }
+      }
+      const authorizationUrl = target =>
+        oidc.buildAuthorizationUrl(config, {
+          redirect_uri: target,
+          response_type: 'code',
+          scope: 'openid profile offline_access',
+          state,
+          nonce,
+          code_challenge: challenge,
+          code_challenge_method: 'S256',
+        }).href;
+      const manualUrl = authorizationUrl(manualRedirect);
+      const url = redirect ? authorizationUrl(redirect) : manualUrl;
+      this.pending = {
+        cancel: () => fail(authError('cancelled')),
+        manualUrl,
+        loopbackAvailable: Boolean(redirect),
+        submit: async value => {
+          if (typeof value !== 'string' || value.length > 8192) throw authError('invalid_code');
+          const parts = value.trim().split('#');
+          if (parts.length !== 2 || !parts[0] || /\s/.test(parts[0]) || !sameState(parts[1], state))
+            throw authError('invalid_code');
+          const callbackUrl = new URL(manualRedirect);
+          callbackUrl.searchParams.set('code', parts[0]);
+          callbackUrl.searchParams.set('state', parts[1]);
+          if (consumed) throw authError('login_consumed');
+          try {
+            const view = await accept(callbackUrl);
+            complete(view);
+            return view;
+          } catch (error) {
+            fail(safeError(error));
+            throw safeError(error);
+          }
+        },
+      };
       timer = setTimeout(() => fail(authError('timeout')), this.loginTimeoutMs);
       if (epoch !== this.epoch) throw authError('cancelled');
-      await openBrowser?.(url.href);
-      this.emit('authorization', url.href);
-      return await result;
+      this.changed('signing_in');
+      this.emit('authorization', url);
+      this.emit('manual-authorization', manualUrl);
+      // Browser launch can fail or hang. Neither blocks paste, timeout or cancellation.
+      if (epoch === this.epoch && openBrowser)
+        Promise.resolve()
+          .then(() => openBrowser(url))
+          .catch(() => {
+            if (epoch === this.epoch && this.state === 'signing_in' && this.pending) {
+              this.pending.browserFailed = true;
+              this.changed('signing_in');
+            }
+          });
+      const view = await result;
+      succeeded = true;
+      return view;
     } catch (error) {
       const safe = safeError(error);
       if (epoch === this.epoch) {
@@ -257,10 +329,25 @@ class AuthManager extends EventEmitter {
     } finally {
       clearTimeout(timer);
       server?.close();
-      server?.closeAllConnections();
+      // On success allow the browser's response to finish flushing. Cancellation
+      // and timeout must close active connections as well as the listener.
+      if (!succeeded) server?.closeAllConnections();
       this.pending = null;
       this.starting = false;
     }
+  }
+  async submitCode(value) {
+    if (!this.pending || this.state !== 'signing_in') throw authError('no_pending_login');
+    return this.pending.submit(value);
+  }
+  async openManualLogin(openBrowser) {
+    if (!this.pending || this.state !== 'signing_in') throw authError('no_pending_login');
+    try {
+      await openBrowser(this.pending.manualUrl);
+    } catch {
+      throw authError('unavailable');
+    }
+    return this.view();
   }
   session(tokens, user, previous) {
     const expires = Number(tokens.expires_in);

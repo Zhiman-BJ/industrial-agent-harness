@@ -10,7 +10,7 @@
 
 ## 已实现路径
 
-1. 设置 → 平台账号 → 配置平台连接 → 在系统浏览器登录。回调只监听 `127.0.0.1` 临时端口，校验 state 后兑换授权码，完成/取消/超时关闭监听。
+1. 设置 → 平台账号 → 配置平台连接 → 在系统浏览器登录。回调只监听 `127.0.0.1` 临时端口。同步支持文档规定的 `/oauth/code` → `code#state` 粘贴路径；二者共用 PKCE/state/nonce、按各自 redirect URI 兑换，先完成的生效。错误粘贴不消费待登录状态；取消/超时/退出阻止迟到结果重新登录。桌面提供可选中复制的登录链接与密码式授权码输入；CLI 的 `--no-browser`、SSH 和无显示环境使用纯粘贴流程，TTY 输入不回显。浏览器启动失败或卡住不阻塞粘贴、取消或超时；监听不可用时降级到粘贴。
 2. Desktop 凭证经系统安全存储加密落盘；Linux `basic_text` 或安全存储不可用时仅在内存保存。界面明确显示当前保存方式。安全存储异常不阻塞本地工作台。
 3. 请求前按需刷新；多调用者/多进程共享文件锁，锁内重新读取凭证，原子保存轮换结果。刷新意图先落盘，进程崩溃或网络结果不明时要求重新登录，避免旧 Refresh Token 被再次消费。
 4. 退出尝试撤销 Refresh Token 并清理本机凭证；撤销失败显示提示。退出不关闭远程任务，不清除任务 requestId/jobId，也不清除系统浏览器全局 SSO。
@@ -32,6 +32,8 @@
 
 当前版本一份账号配置绑定一个应用 audience。模型 API 和远程服务必须同属此授权应用；如果两者属于不同应用，需要分别注册/授权，不能将一个 Token 当作跨 audience 的万能凭证。未实现 Token Exchange，不推断 Obol 已支持此协议。
 
+2026-10-14 追加核对：Obol 的 [API 快速开始](https://github.com/zhimanai/obol/blob/main/docs/api-quickstart.md)要求项目 API Key；本地远程服务仍按预配置凭据哈希认证。当前模型代理转发账号 Token 的能力仅是客户端扩展点，不能直接宣称适用于当前 Obol 网关。登录模块与这些业务服务的接入分开验收，现有 API Key 配置仍是已文档化的模型接入路径。
+
 尚未取得 Harness 的正式 client ID、应用 slug 或受信业务 endpoint，也未修改 Obol 应用注册、角色清单或远程服务端鉴权。本次不提供组织切换/额度 UI，因为已读文档没有给出对应客户端契约。
 
 ## 验证与边界
@@ -40,7 +42,7 @@
 - 独立测试覆盖安全存储适配器、0600 权限、符号链接、IPC 主框架绑定、远程 GET 的受限重试和切换账号后拒绝旧客户端。
 - `account-selftest` 已添加真实 Electron 主窗口 → preload → 账号模块 → 本机测试 OIDC 服务 → 界面状态 → 刷新 → 退出的入口。
 - 本次环境拒绝 `listen 127.0.0.1`（EPERM），真实端口测试无法运行。协议测试使用显式 `AUTH_TEST_TRANSPORT=memory`；这不代表系统浏览器、OS 回调或打包钥匙串已验收。
-- TypeScript 检查与 Vite 生产构建通过；架构契约检查与 edition 清单检查通过。完整架构套件 47/48 通过；`candidate-fetch` 大对象测试发生 `git ENOBUFS`，在已有未修改分支可复现，不修改此检查或扩大任何架构例外。相关文件 ESLint 无错误，保留四项异常 cause 提示（账号错误不传播原始凭据解密/解析异常）。
+- TypeScript 检查与 Vite 生产构建通过；架构契约检查与 edition 清单检查通过。完整架构套件 47/48 通过；`candidate-fetch` 超限对象测试发生 `git ENOBUFS`，在已有未修改分支可复现，不修改此检查或扩大任何架构例外。相关文件 ESLint 无错误，保留四项异常 cause 提示（账号错误不传播原始凭据解密/解析异常）。
 - 网络无法解析 GitHub/npm，完整 pnpm 在线供应链校验未完成。开发验证使用本机既有依赖缓存，新增库 tarball 已按锁文件的官方 SHA-512 校验；标准安装仍需在具备网络的 CI 环境补跑。
 
 交付前在正常开发机/CI 执行：
@@ -65,3 +67,21 @@ AUTH_TEST_TRANSPORT=memory node --test packages/harness-auth/tests/*.test.cjs \
 ```
 
 随后使用已登记的真实 Obol native client 登录，验证模型与远程服务实际 audience/permissions、过期恢复、注销和原账号任务恢复。通过前不要宣称生产联调或三平台打包支持完成。
+
+## 2026-10-14 授权码粘贴补齐验收
+
+在已有提交 `aee9185` 上补齐 Desktop/CLI 的 Obol 文档授权码路径；不改远程服务、Obol 注册或模型网关。桌面入口为“设置 → 平台账号”，普通登录提供本机回调和授权码粘贴；CLI 的 SSH/无浏览器模式直接使用粘贴路径。使用前仍须配置实际注册的 native client ID；应用 audience 和业务 endpoint 仅在接入对应业务服务时需要。
+
+| 检查 | 本轮结果 |
+| --- | --- |
+| 账号、存储、Desktop 主窗口 IPC、CLI、远程绑定、模型配置、语言回归（上方命令，显式 memory transport） | 51/51 通过；真实 OIDC/JWT 库，受控签名服务，包含 12 项新增回归 |
+| TypeScript + Vite 生产构建 | 通过；保留已有大 chunk 提示 |
+| 本轮改动的 ESLint / git diff --check | 通过 |
+| 架构契约扫描 | 通过，未改 checker/policy/例外 |
+| test:architecture-contract | 19/20；已有 candidate-fetch 超限对象测试报 git ENOBUFS |
+| test:architecture | 47/48；相同失败，其他项通过 |
+| 正常 socket 协议测试 | 当前执行环境 listen 127.0.0.1 被 EPERM 拒绝；未计入已通过验收 |
+| 构建后 Electron test:account | 已尝试，Electron 以 SIGABRT 退出；新增 UI 自测代码覆盖自动登录、取消、错误粘贴、正确粘贴和退出，但真实窗口未通过验收 |
+| 正式 Obol / OS 安全存储 / 三平台安装包 | 未验收；需要真实 client 注册及允许启动 Electron/监听回环端口的环境 |
+
+IPC 集成测试中的加密适配器是受控替身，验证主窗口身份限制、调用路径和凭证不进入界面；不等同于真实钥匙串测试。新增登录 URL 仅包含授权请求参数，不包含授权码、Token 或 PKCE verifier。完整授权码由用户输入，经狭窄 IPC/CLI stdin 一次提交后清空；错误信息不回显输入。

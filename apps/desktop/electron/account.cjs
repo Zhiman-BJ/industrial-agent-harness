@@ -155,6 +155,14 @@ function registerAccountHandlers({ ipcMain, getWindow, account }) {
     get: () => account.view(),
     configure: value => account.configure(value),
     login: () => account.login(),
+    'open-manual': async () => {
+      await account.auth.openManualLogin(url => account.shell.openExternal(url));
+      return account.view();
+    },
+    'submit-code': async value => {
+      await account.auth.submitCode(value);
+      return account.view();
+    },
     cancel: () => {
       account.auth.cancel();
       return account.view();

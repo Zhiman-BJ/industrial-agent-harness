@@ -127,3 +127,5 @@ Managed runtime dependencies declared by a Pack are prepared by `domains install
 ## 任务成果
 
 `results_changed` 和 `results_ready` JSONL 行提供共享 TaskService 的请求归属、稳定成果组 ID、展示 revision、selection 与实际文件引用；终态记录含 `results`。分组不依赖 Agent 调用选择工具。普通文件无工程 Verifier 时保留 `not_run`，部分失败不移除已产生文件；历史检查不会随展示选择变成新版本验收。CLI 不加载 Electron／Viewer UI。[契约、可选工具和验收](../../doc/task-results.md)。
+
+`account login --no-browser --allow-file-store` 可在 SSH/无浏览器场景使用：在任意设备打开输出的 `paste-code` 链接，把账号中心提供的完整 `code#state` 粘贴到当前终端。输入不回显、不写入历史；关闭 stdin 或 Ctrl+C 会取消纯粘贴登录。普通登录同时接受本机回调和粘贴授权码。

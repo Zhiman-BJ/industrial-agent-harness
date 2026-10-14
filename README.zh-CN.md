@@ -75,7 +75,7 @@ pnpm dev
 
 在 **Settings → Model API** 配置模型，再添加本地工程并选择领域。打开右侧工作区即可浏览文件；查看文件不需要模型 API Key。
 
-**设置 → 平台账号** 提供可选的系统浏览器登录，使用标准 OIDC Authorization Code + PKCE。接入需要已注册的 native client 和明确的业务服务地址；Desktop 在主进程保存凭证，CLI 提供 `account login|status|logout`，可显式启用平台模型和远程服务。未登录仍可本地工作和使用自有 API Key。配置方法与尚待完成的真实平台验收见[平台账号](packages/harness-auth/README.md)。
+**设置 → 平台账号** 提供可选的系统浏览器登录，使用标准 OIDC Authorization Code + PKCE，并支持 Obol 文档规定的授权码粘贴兜底（含 SSH/无浏览器场景）。接入需要已注册的 native client 和明确的业务服务地址；Desktop 在主进程保存凭证，CLI 提供 `account login|status|logout`，可显式启用平台模型和远程服务。未登录仍可本地工作和使用自有 API Key。配置方法与尚待完成的真实平台验收见[平台账号](packages/harness-auth/README.md)。
 
 **API 格式**按模型服务选择，与 Kimi Agent 内核分开。官方 MiniMax Chat Completions 使用兼容 OpenAI 配置；思考开关和档位因模型、协议而异，当前实测与缺口见[模型 API 兼容说明](doc/model-api-compatibility.md)。
 
