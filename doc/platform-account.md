@@ -34,15 +34,15 @@
 | 模型 API base URL | 明确绑定的可信模型服务地址，含服务要求的路径前缀 |
 | 远程服务 origin | 明确绑定的可信服务；服务端仍须验证 JWT、权限和项目归属 |
 
-当前已登记的 `harness-desktop` / `harness-desktop-1` 配置自动选择双授权：模型使用该应用，远程 MCP 使用 `industrial-mcp-remote` / `industrial-agent-harness`。客户端标识公开但仍沿用部署配置，不改变自定义单应用部署。内部两个 AuthManager 独立持久化、锁定和刷新；界面仅一个账号，必须两份授权的 subject 相同才能使用。登录第二份授权失败会撤销第一份，统一退出等待迟到的兑换/刷新并撤销两份凭据。CLI 的同一个输入通道支持顺序两次粘贴。
+当前已登记的 `harness-desktop` / `harness-desktop-1` 配置自动选择双授权：模型使用该客户端并按 RFC 8707 请求 `resource=https://api.zhiman.cn`，得到 `aud=obol-api`；远程 MCP 使用 `industrial-mcp-remote` / `industrial-agent-harness`。客户端标识公开但仍沿用部署配置，不改变自定义单应用部署。内部两个 AuthManager 独立持久化、锁定和刷新；界面仅一个账号，必须两份授权的 subject 相同才能使用。登录第二份授权失败会撤销第一份，统一退出等待迟到的兑换/刷新并撤销两份凭据。CLI 的同一个输入通道支持顺序两次粘贴。
 
 模型配置使用 `https://api.zhiman.cn/v1` 和 OpenAI 协议；远程地址尚未确定时留空，不发送任何 MCP 请求。若选择 Anthropic 协议，上游前缀使用 Obol 的 `/anthropic/v1`。模型名称在原有模型设置中选择，不随账号授权变更。
 
-配套 Obol 网关改动增加 `MODEL_OAUTH_AUDIENCE=harness-desktop`、`model:list` / `model:invoke` 权限检查以及 OAuth 用户/客户端计费归属，仍须部署并配置应用角色后才能用于生产。用户必须先在 Console 开通计费账户；默认使用该账户的默认项目，不能仅凭登录在任意组织消费。现有项目 API Key 路径继续保留。
+Obol 主分支 `5a05c75` 已实现资源 Token 与模型网关支持，客户端直接适配已合入接口，不另加模型权限清单或网关开关。模型 Token 的 audience 固定为内置 `obol-api`；第一次调用模型时平台开通个人计费账户，按注册账户默认项目扣费。平台内部建立没有可用 prefix/hash 的登录计费会话，它不是用户 API Key。旧版本机模型登录会话会在锁内刷新成资源 Token，退出仍撤销原家族。明确的 `invalid_target` 保留凭据，仅拒绝对应服务请求。详见 Obol [接入说明](https://github.com/zhimanai/obol/blob/main/docs/account-api-access.md)。
 
 远程服务补丁基于 v1.1 会话运行时分支，增加 Obol JWT 验签与权限检查；其前置 [PR #14](https://github.com/zhimanai/industrial-harness-remote/pull/14) 和客户端 v1 适配仍需单独合并/部署。按用户要求，本轮不连接真实远程 MCP。
 
-本轮本地跨仓验收已通过：实际 Harness 双授权协调器 → 实际 Obol OIDC → 模型代理 → 模型网关 → PostgreSQL 账本，Redis 参与限流，推理使用可控测试后端。覆盖两个协议的网关调用、独立刷新轮换、统一退出后模型访问立即失效、错 audience/ID Token/权限/项目/停用账户拒绝。它不是生产推理或线上部署验收。
+本轮针对 Obol 主分支 `5a05c75` 的本地跨仓验收已通过：实际 Harness 双授权协调器 → 实际 Obol OIDC → 模型代理 → 模型网关 → PostgreSQL 账本，Redis 参与限流，推理使用可控测试后端。覆盖模型调用、独立刷新轮换、统一退出后模型访问立即失效，并确认没有创建用户 API Key。本轮只适配 Harness 和远程服务，不修改或部署 Obol；该证据不是生产推理或线上部署验收。
 
 ## 验证记录（2026-10-14）
 
@@ -55,7 +55,7 @@
 | 新版原生界面回归 | [PR #151 首轮账号 CI](https://github.com/Zhiman-BJ/industrial-agent-harness/actions/runs/38524395997) 的 macOS 15 检查已通过真实 Electron 登录、取消、错误/正确粘贴、刷新、退出和深浅色/640×480 布局，并上传截图。本机自动化环境仍在 Electron 初始化阶段 SIGABRT。 |
 | Windows 首轮 CI | 登录协议通过，软链接拒绝测试失败；Windows 不提供 O_NOFOLLOW。已补齐读取前 lstat 检查和打开后的文件身份比对，保留软链接测试并增加文件替换竞态回归；后续平台结果见 PR 检查。 |
 | 打包后的安全存储、Windows ACL | 待验收；受控加密适配器通过不能替代真实钥匙串或安装包验证。 |
-| 模型 API / 远程服务账号鉴权 | 本地跨仓模型链路及远程 HTTP/MCP 验签通过；生产模型待网关部署和权限配置，真实远程联通按用户要求延期。 |
+| 模型 API / 远程服务账号鉴权 | 本地跨仓模型链路及远程 HTTP/MCP 验签通过；生产模型待确认新版网关部署并实测，真实远程联通按用户要求延期。 |
 
 共享协议测试包含错误 state/nonce/ID Token audience/签名、Access Token audience、刷新轮换与并发、崩溃标记、取消后迟到回调、刷新途中退出撤销最新凭据、模型流式转发和错误脱敏。Desktop IPC 只接受主窗口主 frame，渲染器不能读取 Token。
 

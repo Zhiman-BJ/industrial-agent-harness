@@ -755,8 +755,8 @@ CSV/TSV 显示表格并提供表头开关、全文筛选与分页；普通 JSON 
 ## PD-078：直接 API 使用 Key，官方应用登录后使用用户 Token
 
 - 日期：2026-10-14。
-- 状态：用户已确定；本地跨仓实现与验证完成，生产网关部署和权限配置待完成。
+- 状态：用户已确定；本地跨仓实现与验证完成，生产网关部署确认和真实模型验收待完成。
 - 来源：用户明确要求直接调用 API 的用户自行创建 Key；CLI / Desktop 等应用登录 Obol 后直接使用登录得到的 Token 调用模型 API。
 - 决定：直接集成 API 的用户在 Obol Console 创建、管理和轮换项目 API Key。我们的 CLI / Desktop 使用标准 Obol 登录得到的用户 Access Token 请求模型 API，由共享账号层刷新，用户不需要另外创建 Key，应用不自动代建 Key。API Key 和 OAuth 都进入同一项目权限、余额、限流与计费链路，但保留各自真实鉴权归属。
 - 可观察行为：Harness 只有一个账号界面；内部复用 `harness-desktop` 与 `industrial-mcp-remote` 两个现有应用分别授权，同一 subject、独立刷新、一次退出清理并尝试撤销两份凭据。不在 UI 展示两份授权，不展示或要求复制 Token。
-- 边界：本条替代 PD-074“一份配置绑定一个应用 audience”的限制，不引入跨 audience 万能 Token 或 Token Exchange。登录账号与计费账户仍分开；尚未开通计费账户的用户先在 Console 开通。退出不取消远程任务、不退出浏览器全局 SSO。真实远程 MCP 按用户要求延期联通；实现和证据见 [平台账号](platform-account.md)。
+- 边界：本条替代 PD-074“一份配置绑定一个应用 audience”的限制，不引入跨 audience 万能 Token 或 Token Exchange。登录账号与计费账户仍分开；按 Obol 已合入的 ADR-0007，首次模型调用可开通个人计费账户；内部登录计费会话没有可用 API Key 秘密。退出不取消远程任务、不退出浏览器全局 SSO。真实远程 MCP 按用户要求延期联通；实现和证据见 [平台账号](platform-account.md)。

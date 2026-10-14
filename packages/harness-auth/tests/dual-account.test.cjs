@@ -20,7 +20,11 @@ async function setup(t, options = {}) {
     clientId: 'model-native',
     audience: 'models',
     services: {
-      model: { clientId: 'model-native', audience: 'models' },
+      model: {
+        clientId: 'model-native',
+        audience: 'models',
+        ...(options.modelResource ? { resource: options.modelResource } : {}),
+      },
       remote: { clientId: 'remote-native', audience: 'mcp' },
     },
   };
@@ -129,6 +133,8 @@ test('revocation failure in either resource does not prevent local clearing or t
 test('existing production registration selects the two registered applications without a UI setting', () => {
   const config = validateConfig({ clientId: 'harness-desktop-1', audience: 'harness-desktop' });
   assert.equal(config.services.model.clientId, 'harness-desktop-1');
+  assert.equal(config.services.model.audience, 'obol-api');
+  assert.equal(config.services.model.resource, 'https://api.zhiman.cn');
   assert.deepEqual(config.services.remote, {
     clientId: 'industrial-agent-harness',
     audience: 'industrial-mcp-remote',
@@ -169,4 +175,53 @@ test('corrupt second grant cannot leave the unified account signed in', async t 
   assert.equal(auth.view().user, null);
   assert.equal((await auth.logout()).revoked, false);
   assert.equal(auth.view().status, 'signed_out');
+});
+
+test('resource is bound to model code exchange and refresh; invalid_target preserves login', async t => {
+  const resource = 'https://models.example.test';
+  const { auth, issuer, browser, expire } = await setup(t, {
+    modelResource: resource,
+    resources: { [resource]: 'models' },
+  });
+  await auth.login({ openBrowser: browser });
+  assert.deepEqual(issuer.calls.resources, [resource, null]);
+  const model = auth.accounts.get('model');
+  const before = model.store.read().refreshToken;
+  await expire('model');
+  issuer.behavior.invalidTarget = true;
+  await assert.rejects(auth.serviceToken('model', issuer.config.modelBaseUrl), {
+    code: 'resource_denied',
+  });
+  assert.equal(auth.view().status, 'signed_in');
+  assert.equal(model.store.read().refreshToken, before);
+  assert.equal(model.store.read().refreshPending, false);
+  await auth.serviceToken('remote', issuer.origin);
+  issuer.behavior.invalidTarget = false;
+  await auth.serviceToken('model', issuer.config.modelBaseUrl);
+  assert.equal(issuer.calls.resources.at(-1), resource);
+  assert.notEqual(model.store.read().refreshToken, before);
+});
+
+test('upgrade refreshes the existing model grant for its resource instead of orphaning it', async t => {
+  const { AuthManager } = require('../src/index.cjs');
+  const resource = 'https://models.example.test';
+  const { auth, issuer, browser } = await setup(t, {
+    modelResource: resource,
+    resources: { [resource]: 'models' },
+  });
+  const legacy = new AuthManager({
+    config: { ...issuer.config, clientId: 'model-native', audience: 'models' },
+    store: auth.store,
+    fetch,
+    createServer,
+  });
+  t.after(() => legacy.close());
+  await legacy.login({ openBrowser: browser });
+  const previous = legacy.store.read().refreshToken;
+  await auth.login({ openBrowser: browser });
+  assert.deepEqual(issuer.calls.refreshClients, ['model-native']);
+  assert.notEqual(auth.store.read().refreshToken, previous);
+  assert.equal(auth.view().status, 'signed_in');
+  assert.equal((await auth.logout()).revoked, true);
+  assert.deepEqual(issuer.calls.revokedClients.sort(), ['model-native', 'remote-native']);
 });

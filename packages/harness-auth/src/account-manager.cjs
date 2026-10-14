@@ -13,6 +13,9 @@ class AccountManager extends EventEmitter {
     this.identity = crypto.createHash('sha256').update(JSON.stringify(config)).digest('hex');
     this.epoch = 0;
     this.accounts = new Map();
+    const legacy = { ...config };
+    delete legacy.services;
+    const legacyIdentity = crypto.createHash('sha256').update(JSON.stringify(legacy)).digest('hex');
     for (const service of ['model', 'remote']) {
       const sessionStore =
         service === 'model'
@@ -26,6 +29,10 @@ class AccountManager extends EventEmitter {
         ...options,
         config: { ...config, ...config.services[service] },
         store: sessionStore,
+        legacyBindings:
+          service === 'model' && config.services.model.clientId === config.clientId
+            ? [legacyIdentity]
+            : [],
       });
       auth.on('change', () => this.emit('change', this.view()));
       for (const event of ['authorization', 'manual-authorization'])

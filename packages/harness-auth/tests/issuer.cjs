@@ -1,6 +1,10 @@
 const { createServer, fetch } = require('./memory-http.cjs');
 const crypto = require('node:crypto');
-async function createIssuer({ clients = { 'harness-native': 'harness' }, subjects = {} } = {}) {
+async function createIssuer({
+  clients = { 'harness-native': 'harness' },
+  subjects = {},
+  resources = {},
+} = {}) {
   const { generateKeyPair, exportJWK, SignJWT, decodeJwt } = await import('jose');
   const { publicKey, privateKey } = await generateKeyPair('RS256');
   const otherKey = (await generateKeyPair('RS256')).privateKey;
@@ -16,6 +20,7 @@ async function createIssuer({ clients = { 'harness-native': 'harness' }, subject
     revokedTokens: [],
     refreshClients: [],
     revokedClients: [],
+    resources: [],
   };
   const behavior = {
     invalidGrant: false,
@@ -90,6 +95,10 @@ async function createIssuer({ clients = { 'harness-native': 'harness' }, subject
         return json({});
       }
       calls.token++;
+      const resource = form.get('resource');
+      calls.resources.push(resource);
+      if (behavior.invalidTarget || (resource && !resources[resource]))
+        return json({ error: 'invalid_target' }, 400);
       let nonce;
       if (form.get('grant_type') === 'authorization_code') {
         const code = codes.get(form.get('code'));
@@ -126,7 +135,7 @@ async function createIssuer({ clients = { 'harness-native': 'harness' }, subject
             roles: ['user'],
             permissions: ['task:read'],
           },
-          clients[clientId],
+          resource ? resources[resource] : clients[clientId],
           'at+jwt',
           subjects[clientId] || 'user-123',
         ),

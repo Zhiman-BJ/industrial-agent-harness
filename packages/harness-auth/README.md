@@ -18,7 +18,7 @@ Register a **native/public** client in the platform with loopback callbacks enab
 | `INDUSTRIAL_AUTH_REMOTE_ORIGIN` | Explicit remote service origin |
 | `INDUSTRIAL_AUTH_MODEL_BASE_URL` | Explicit model endpoint, including `/v1` when required |
 
-With the existing production registration (`harness-desktop-1`, audience `harness-desktop`), `createAccountManager` maintains two grants under one account view. Models use that registration; remote MCP uses client `industrial-agent-harness`, audience `industrial-mcp-remote`. Both subjects must match. Custom deployments can provide `services.model` and `services.remote` with `clientId` and `audience` in account/config.json; other single-app configurations retain their existing behavior. There is no token exchange or multi-audience credential.
+With the existing production registration (`harness-desktop-1`, audience `harness-desktop`), `createAccountManager` maintains two grants under one account view. Models use that native client with RFC 8707 resource `https://api.zhiman.cn` and audience `obol-api`; remote MCP uses client `industrial-agent-harness`, audience `industrial-mcp-remote`. Both subjects must match. Custom deployments can provide `services.model` and `services.remote` with `clientId`, `audience` and optional `resource` in account/config.json; other single-app configurations retain their existing behavior. There is no token exchange or multi-audience credential.
 
 Configure the production OpenAI model base as `https://api.zhiman.cn/v1`; for Anthropic use `https://api.zhiman.cn/anthropic/v1` instead. Leave remote origin empty until a service exists. Both grants can be obtained/refreshed without connecting to a remote MCP endpoint.
 
@@ -33,7 +33,9 @@ Configure the production OpenAI model base as `https://api.zhiman.cn/v1`; for An
 
 ## Cloud consumers
 
-The companion Obol change adds model OAuth authorization and explicit user/client billing attribution, gated by `MODEL_OAUTH_AUDIENCE=harness-desktop` and application permissions `model:list` / `model:invoke`. A Console billing account is required. Production must deploy that change and configure grants before enabling platform-account inference. The real Harness coordinator/proxy has passed against a local Obol issuer, gateway and ledger with a synthetic inference backend; this does not certify production inference.
+Obol main commit `5a05c75` implements resource-scoped model access. This client targets that existing implementation: the native client remains `harness-desktop-1`, but the model access token must have audience `obol-api`. No extra model permission manifest or gateway feature flag is required. The first model call may open the user's personal billing account. Obol records a login-session billing row without a usable API-key prefix/hash; it does not create a user API key.
+
+The real Harness coordinator/proxy has passed against that local upstream Obol issuer, gateway and ledger with a synthetic inference backend, including no user API-key creation. Production inference still requires confirmation of deployed server version and a real-user acceptance run. An existing legacy grant migrates through a resource refresh under its original refresh family. `invalid_target` restores the unconsumed refresh state and does not sign the account out.
 
 The v1.1 remote-server companion validates Obol JWTs for `industrial-mcp-remote`, with `mcp:access`, `project:write`, `task:create` and `task:cancel`. It has local HTTP/MCP coverage; real remote connectivity is deferred.
 

@@ -43,6 +43,7 @@ function validateConfig(value) {
   if ((remoteOrigin || modelBaseUrl) && !audience)
     throw Error('Configure the platform application audience before connecting a service.');
   const result = { issuer, clientId, audience, remoteOrigin, modelBaseUrl };
+  if (value.resource) result.resource = trustedUrl(value.resource);
   // Registered public identifiers are not credentials. Keep the two grants
   // below the existing account UI, and preserve custom single-app deployments.
   const profiles =
@@ -51,7 +52,7 @@ function validateConfig(value) {
     clientId === 'harness-desktop-1' &&
     audience === 'harness-desktop'
       ? {
-          model: { clientId, audience },
+          model: { clientId, audience: 'obol-api', resource: 'https://api.zhiman.cn' },
           remote: { clientId: 'industrial-agent-harness', audience: 'industrial-mcp-remote' },
         }
       : null);
@@ -71,6 +72,7 @@ function validateConfig(value) {
       if (profile.clientId === profile.audience)
         throw Error('Client ID must differ from the application audience.');
       result.services[service] = { clientId: profile.clientId, audience: profile.audience };
+      if (profile.resource) result.services[service].resource = trustedUrl(profile.resource);
     }
   }
   return result;
