@@ -72,6 +72,7 @@
 | T0-1 | `pnpm run format:check` | 全仓 prettier | 退出码 0 |
 | T0-2 | `pnpm test:architecture` | `check-architecture-contract.cjs` + `tests/architecture/*.test.cjs`：静态依赖边界（DoD Test A/B/C/D）、Prototype 冻结、桌面主进程禁止直调工业可执行文件 | 退出码 0 |
 | T0-3 | `pnpm run test:release` | `check-pack-release.cjs`：Pack 发行内容与兼容性 | 退出码 0 |
+| T0-4 | `pnpm run lint` | ESLint 全仓静态分析（structure.yml 的 "Static analysis" 门） | 退出码 0 |
 
 ### T1 Portable 单元/集成（CI：portable 矩阵，四平台）
 
@@ -106,9 +107,10 @@
 | T2-16 | `test:cad` / `test:cad-resize` | CAD 领域交互 / 视口 resize。真实调用 `cad.freecad.build`/`cad.freecad.export` 工具，**必须先完成 T4-1 native 准备中的 FreeCAD 步骤并导出 `INDUSTRIAL_HARNESS_FREECAD_CMD`**，否则在干净环境必然失败 |
 | T2-17 | `test:results` | 任务成果卡：自动成果生成、版本关联、预览与历史重载（PR #72 引入）。**驱动真实 CAD 任务并断言结果卡与渲染三角数，同 T2-16 需 FreeCAD 前置**；CI 中该路径由 T4 native 套件的 `task-results-freecad/kimi.test.cjs` 覆盖，selftest 本身不进任何 workflow 循环 |
 | T2-18 | `test:model-sync` | 模型/项目配置广播同步：非 UI 的 `model:save`、`project:create` 后渲染端状态免刷新（PR #75 引入） |
+| T2-20 | `test:browser` | 工作区内嵌浏览器标签（PR #132）：导航、安全边界与工作区集成 |
 | T2-19 | `node apps/desktop/scripts/test-install-experience.cjs` | 引导式安装体验（域选择/准备中断退出恢复），需先 build，quit 模式仅 darwin（PR #77 引入）；由 desktop-package.yml 的 mac job 执行 |
 
-CI 参考集：`desktop-package.yml` 跑 `ui language parallel gui-settings` 及 T2-19 install-experience 自测（仅 mac）；`industrial-core.yml` 跑 `chats logs mcp subagents kicad engineering ui language documents images parallel model-sync`。本地全量即把上表全部执行（共 20 个入口，其中 T2-16/T2-17 受 FreeCAD 前置约束）。
+CI 参考集：`desktop-package.yml` 跑 `ui language parallel gui-settings` 及 T2-19 install-experience 自测（仅 mac）；`industrial-core.yml` 跑 `chats logs mcp subagents kicad engineering ui language documents images parallel model-sync`。另有 `--replay-selftest`（PR #141：轨迹回放走产品事件咽喉）为裸 flag 驱动，暂无 `test:` 入口、不在任何 CI 循环，手动执行 `pnpm --filter @industrial-agent-harness/desktop exec electron . --replay-selftest`。本地全量即把上表全部执行（共 21 个入口，其中 T2-16/T2-17 受 FreeCAD 前置约束）。
 
 ### T3 Transport 与 Benchmark（CI：structure.yml 后段）
 
@@ -205,7 +207,7 @@ pnpm run test:ci -- portable 2>&1 | tee "$EVID/portable.log"; mv dist/ci-reports
 pnpm run smoke:ci-packages 2>&1 | tee "$EVID/packages.log"                                  # T1-2
 pnpm --filter @industrial-agent-harness/desktop build                                        # T2 前置
 export INDUSTRIAL_UI_SCREENSHOTS="$PWD/$EVID/ui"; mkdir -p "$INDUSTRIAL_UI_SCREENSHOTS"
-for suite in ui parallel language gui-settings messages chats logs mcp external-mcp subagents images kicad godot engineering documents model-sync; do
+for suite in ui parallel language gui-settings messages chats logs mcp external-mcp subagents images kicad godot engineering documents model-sync browser; do
   pnpm --filter @industrial-agent-harness/desktop "test:$suite" 2>&1 | tee "$EVID/desktop-$suite.log"
 done
 # T2 CAD 入口（test:cad / test:cad-resize / test:results）不在标准档：需先完成 T4-1 的 FreeCAD 准备
@@ -222,10 +224,14 @@ node scripts/qa-cleanup.cjs --apply 2>&1 | tee "$EVID/qa-cleanup.log"           
 
 **已知 flake**（命中可重试一次，须在报告 `notes` 中注明）：
 
+- `test:messages` 偶发失败（2026-10-10 在 main 实测 4 跑 1 挂、复跑 3/3 过；覆盖悬停/剪贴板/Markdown/时间戳/主题断言）。复跑通常通过；CI 若再现同款失败值得加稳定化。
+
 - win32 portable 偶发 `spawnSync ETIMEDOUT`（Windows runner IO 抖动），整层重跑一次。
 - macOS runner 上 CAD 安装冒烟在 DMG 挂载阶段偶发 300 秒超时；本地重跑通常通过。
 
 **本地环境误报**（按下列处置，不计为代码回归，也不得据此跳过整层）：
+
+- T0-2 报 `Protected architecture machinery changed: <file>. Use a separately approved architecture revision.` 是**治理机制按设计报警**，不是测试错误：`architecture/policy.json` 的 `governanceHashes` 钉死了 9 个机制文件（architecture-contract.yml、check-architecture-contract.cjs、fetch-architecture-candidate.cjs 等）。普通功能 PR 不应改动这些文件；确需修改时走单独的架构修订（合并后必须同 PR 重算 governanceHashes，否则 main 上后续所有 PR 都会红）。
 
 - 开发机若运行过 `pnpm --filter @industrial-agent-harness/desktop setup:layout`（GDS 查看引导），`apps/desktop/.venv-klayout` 内的 venv 符号链接会被 T0-2 的 `check-architecture-contract.cjs` 以 `Source symlink is not allowed: apps/desktop/.venv-klayout/...` 拒绝。该 venv 是 gitignored 的机器本地工件，CI 检出中不存在此目录。确认失败路径确以 `.venv-klayout` 开头后，把整个 venv 目录**临时移出仓库**（如 `mv apps/desktop/.venv-klayout /tmp/`），重跑 T0-2，结束后移回原位。不要直接删除：本仓库常有多会话并行，venv 可能正被另一个会话的 GDS 查看使用。
 - 并行会话的未提交/未跟踪源文件可能触发 T0-2 的生命周期归属检查（`New adapterCalls outside its owner: <外来文件>#…`，2026-10-09 实测于开发中的 `apps/cli/src/chat.cjs`）。这不是误报也不是 flake：按 §1.0 的外来文件基线规则处置（worktree 基线通过 → `blocked: foreign-wip`；基线也失败 → `fail`）。
@@ -236,7 +242,7 @@ node scripts/qa-cleanup.cjs --apply 2>&1 | tee "$EVID/qa-cleanup.log"           
 
 | 层 | Workflow | 触发与门控 |
 | --- | --- | --- |
-| T0/T3 | `structure.yml`（repository 层） | 每次必跑 |
+| T0/T3 | `structure.yml`（repository 层：format/architecture/release/**lint**/治理文档存在性检查 + macOS 条件性 platform probe 构建 + benchmark/transport） | 每次必跑 |
 | T1 | `ci.yml` portable 矩阵 | PR 触及共享代码时跑；docs-only PR 跳过 |
 | T2/T5 | `desktop-package.yml` | 非 docs-only PR 跑（mac+win；T2-19 install-experience 自测仅 mac） |
 | T4 | `industrial-core.yml` | 非 docs-only PR 跑（darwin arm64） |
