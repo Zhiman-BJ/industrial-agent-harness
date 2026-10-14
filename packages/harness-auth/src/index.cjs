@@ -49,10 +49,14 @@ class AuthManager extends EventEmitter {
     this.createServer = createServer;
     this.now = now;
     this.loginTimeoutMs = loginTimeoutMs;
-    this.identity = crypto.createHash('sha256').update(JSON.stringify(this.config)).digest('hex');
+    const binding = { ...this.config };
+    delete binding.services;
+    this.identity = crypto.createHash('sha256').update(JSON.stringify(binding)).digest('hex');
     this.epoch = 0;
     this.state = 'signed_out';
     this.user = null;
+    this.exchanges = new Set();
+    this.revocationFailed = false;
   }
   view() {
     return {
@@ -161,7 +165,7 @@ class AuthManager extends EventEmitter {
       // Attach immediately so cancellation during browser launch is always handled.
       result.catch(() => {});
       const manualRedirect = this.config.issuer + '/oauth/code';
-      const accept = async url => {
+      const exchange = async url => {
         if (epoch !== this.epoch) throw authError('cancelled');
         if (consumed) throw authError('login_consumed');
         consumed = true;
@@ -205,10 +209,21 @@ class AuthManager extends EventEmitter {
               .tokenRevocation(config, tokens.refresh_token, {
                 token_type_hint: 'refresh_token',
               })
-              .catch(() => {});
+              .catch(() => {
+                this.revocationFailed = true;
+              });
           }
           throw safeError(error);
         }
+      };
+      const accept = url => {
+        const pending = exchange(url);
+        this.exchanges.add(pending);
+        pending.then(
+          () => this.exchanges.delete(pending),
+          () => this.exchanges.delete(pending),
+        );
+        return pending;
       };
       let redirect;
       const callback = async (request, response) => {
@@ -460,7 +475,8 @@ class AuthManager extends EventEmitter {
   }
   async logout() {
     this.cancel();
-    let revoked = true;
+    await Promise.allSettled([...this.exchanges]);
+    let revoked = !this.revocationFailed;
     await this.store.transaction(async tx => {
       try {
         const session = tx.read();
@@ -472,6 +488,7 @@ class AuthManager extends EventEmitter {
         }
       } catch {
         revoked = false;
+        this.revocationFailed = true;
       } finally {
         tx.clear();
         this.user = null;
@@ -491,4 +508,10 @@ module.exports = {
   authError,
   ...require('./config.cjs'),
   ...require('./store.cjs'),
+  createAccountManager: options => {
+    const config = validateConfig(options.config);
+    return config.services
+      ? new (require('./account-manager.cjs').AccountManager)({ ...options, config })
+      : new AuthManager({ ...options, config });
+  },
 };

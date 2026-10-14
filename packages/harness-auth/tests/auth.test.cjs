@@ -349,9 +349,61 @@ test('logout during pasted code exchange revokes the late session', async t => {
   const login = assert.rejects(auth.login({ manualOnly: true }), /cancelled/);
   const code = await pastedCode(issuer, (await ready)[0]);
   const submit = assert.rejects(auth.submitCode(code), /cancelled/);
-  await auth.logout();
+  assert.equal((await auth.logout()).revoked, true);
+  assert.equal(issuer.calls.revoke, 1);
   await Promise.all([login, submit]);
   assert.equal(store.read(), null);
   assert.equal(auth.view().user, null);
   assert.equal(issuer.calls.revoke, 1);
+});
+
+for (const method of ['GET', 'POST'])
+  test(`model proxy refreshes explicit rejection and only retries reads: ${method}`, async t => {
+    const { auth, issuer, login } = await setup(t);
+    await login();
+    const seen = [];
+    const proxy = await createModelProxy({
+      auth,
+      createServer,
+      fetch: async (_url, options) => {
+        seen.push(options.headers.authorization);
+        return seen.length === 1
+          ? new Response('{}', {
+              status: 401,
+              headers: { 'www-authenticate': 'Bearer error="invalid_token"' },
+            })
+          : new Response('{}');
+      },
+    });
+    t.after(proxy.close);
+    const request = () =>
+      fetch(proxy.endpoint + (method === 'GET' ? '/models' : '/chat/completions'), {
+        method,
+        headers: { authorization: 'Bearer ' + proxy.apiKey },
+        ...(method === 'POST' ? { body: '{}' } : {}),
+      });
+    assert.equal((await request()).status, method === 'GET' ? 200 : 401);
+    assert.equal(issuer.calls.refresh, 1);
+    assert.equal(seen.length, method === 'GET' ? 2 : 1);
+    if (method === 'POST') assert.equal((await request()).status, 200);
+    assert.notEqual(seen[0], seen[1]);
+  });
+test('model proxy never refreshes a permission denial', async t => {
+  const { auth, issuer, login } = await setup(t);
+  await login();
+  const proxy = await createModelProxy({
+    auth,
+    createServer,
+    fetch: async () => new Response('{}', { status: 403 }),
+  });
+  t.after(proxy.close);
+  assert.equal(
+    (
+      await fetch(proxy.endpoint + '/models', {
+        headers: { authorization: 'Bearer ' + proxy.apiKey },
+      })
+    ).status,
+    403,
+  );
+  assert.equal(issuer.calls.refresh, 0);
 });

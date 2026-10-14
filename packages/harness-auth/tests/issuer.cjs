@@ -1,13 +1,22 @@
 const { createServer, fetch } = require('./memory-http.cjs');
 const crypto = require('node:crypto');
-async function createIssuer() {
-  const { generateKeyPair, exportJWK, SignJWT } = await import('jose');
+async function createIssuer({ clients = { 'harness-native': 'harness' }, subjects = {} } = {}) {
+  const { generateKeyPair, exportJWK, SignJWT, decodeJwt } = await import('jose');
   const { publicKey, privateKey } = await generateKeyPair('RS256');
   const otherKey = (await generateKeyPair('RS256')).privateKey;
   const jwk = { ...(await exportJWK(publicKey)), kid: 'test-key', alg: 'RS256', use: 'sig' };
   const codes = new Map(),
-    refreshTokens = new Set();
-  const calls = { refresh: 0, token: 0, revoke: 0, model: 0, headers: [], revokedTokens: [] };
+    refreshTokens = new Map();
+  const calls = {
+    refresh: 0,
+    token: 0,
+    revoke: 0,
+    model: 0,
+    headers: [],
+    revokedTokens: [],
+    refreshClients: [],
+    revokedClients: [],
+  };
   const behavior = {
     invalidGrant: false,
     badNonce: false,
@@ -17,13 +26,14 @@ async function createIssuer() {
     tokenDelay: 0,
   };
   let origin;
-  const sign = (payload, audience, typ = 'JWT') =>
+  const sign = (payload, audience, typ = 'JWT', subject = 'user-123') =>
     new SignJWT(payload)
       .setProtectedHeader({ alg: 'RS256', kid: 'test-key', typ })
-      .setSubject('user-123')
+      .setSubject(subject)
       .setIssuer(origin)
       .setAudience(audience)
       .setIssuedAt()
+      .setJti(crypto.randomUUID())
       .setExpirationTime('15m')
       .sign(behavior.badSignature ? otherKey : privateKey);
   const server = createServer(async (req, res) => {
@@ -62,19 +72,19 @@ async function createIssuer() {
       res.writeHead(302, { location: callback.href });
       return res.end();
     }
-    if (url.pathname === '/userinfo') return json({ sub: 'user-123', name: '138****1234' });
+    if (url.pathname === '/userinfo')
+      return json({ sub: decodeJwt(req.headers.authorization.slice(7)).sub, name: '138****1234' });
     if (url.pathname === '/token' || url.pathname === '/revoke') {
       let body = '';
       for await (const chunk of req) body += chunk;
       const form = new URLSearchParams(body);
-      if (
-        form.has('client_secret') ||
-        req.headers.authorization ||
-        form.get('client_id') !== 'harness-native'
-      )
+      if (form.has('client_secret') || req.headers.authorization || !clients[form.get('client_id')])
         return json({ error: 'invalid_client' }, 400);
+      const clientId = form.get('client_id');
       if (url.pathname === '/revoke') {
         calls.revoke++;
+        calls.revokedClients.push(clientId);
+        if (behavior.revokeFailure === clientId) return json({ error: 'server_error' }, 503);
         calls.revokedTokens.push(form.get('token'));
         refreshTokens.delete(form.get('token'));
         return json({});
@@ -86,6 +96,7 @@ async function createIssuer() {
         codes.delete(form.get('code'));
         if (
           !code ||
+          code.client_id !== clientId ||
           form.get('redirect_uri') !== code.redirect_uri ||
           crypto
             .createHash('sha256')
@@ -98,23 +109,26 @@ async function createIssuer() {
           await new Promise(resolve => setTimeout(resolve, behavior.tokenDelay));
       } else {
         calls.refresh++;
-        if (behavior.invalidGrant || !refreshTokens.delete(form.get('refresh_token')))
+        calls.refreshClients.push(clientId);
+        if (behavior.invalidGrant || refreshTokens.get(form.get('refresh_token')) !== clientId)
           return json({ error: 'invalid_grant' }, 400);
+        refreshTokens.delete(form.get('refresh_token'));
         if (behavior.lostRefresh) return req.socket.destroy();
-        await behavior.beforeRefreshResponse?.();
+        await behavior.beforeRefreshResponse?.(clientId);
       }
       const refresh = 'refresh-' + crypto.randomUUID();
-      refreshTokens.add(refresh);
+      refreshTokens.set(refresh, clientId);
       return json({
         access_token: await sign(
           {
             scope: 'openid profile offline_access',
-            client_id: 'harness-native',
+            client_id: clientId,
             roles: ['user'],
             permissions: ['task:read'],
           },
-          'harness',
+          clients[clientId],
           'at+jwt',
+          subjects[clientId] || 'user-123',
         ),
         refresh_token: refresh,
         expires_in: 900,
@@ -123,7 +137,9 @@ async function createIssuer() {
           ? {
               id_token: await sign(
                 { nonce },
-                behavior.badAudience ? 'another-client' : 'harness-native',
+                behavior.badAudience ? 'another-client' : clientId,
+                'JWT',
+                subjects[clientId] || 'user-123',
               ),
             }
           : {}),

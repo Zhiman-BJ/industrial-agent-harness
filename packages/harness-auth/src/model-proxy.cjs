@@ -54,19 +54,32 @@ async function createModelProxy({ auth, fetch = global.fetch, createServer = htt
       }
       const token = await auth.serviceToken('model', base);
       if (auth.view().user?.sub !== subject) return reply(401);
-      const upstream = await fetch(base + '/' + route, {
-        method: request.method,
-        redirect: 'error',
-        signal: controller.signal,
-        headers: {
-          authorization: `Bearer ${token}`,
-          'content-type': 'application/json',
-          ...(request.headers['anthropic-version']
-            ? { 'anthropic-version': request.headers['anthropic-version'] }
-            : {}),
-        },
-        body: request.method === 'POST' ? Buffer.concat(chunks) : undefined,
-      });
+      const send = credential =>
+        fetch(base + '/' + route, {
+          method: request.method,
+          redirect: 'error',
+          signal: controller.signal,
+          headers: {
+            authorization: `Bearer ${credential}`,
+            'content-type': 'application/json',
+            ...(request.headers['anthropic-version']
+              ? { 'anthropic-version': request.headers['anthropic-version'] }
+              : {}),
+          },
+          body: request.method === 'POST' ? Buffer.concat(chunks) : undefined,
+        });
+      let upstream = await send(token);
+      if (
+        upstream.status === 401 &&
+        /Bearer\s+.*error="invalid_token"/i.test(upstream.headers.get('www-authenticate') || '')
+      ) {
+        await upstream.body?.cancel();
+        const renewed = await auth.serviceToken('model', base, { rejectedToken: token });
+        // Reads can be replayed. Generation remains one attempt; the next
+        // explicitly initiated request uses the renewed credential.
+        if (request.method === 'GET') upstream = await send(renewed);
+        else return reply(401);
+      }
       if (!upstream.ok) {
         await upstream.body?.cancel();
         return reply(upstream.status);

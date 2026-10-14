@@ -149,3 +149,62 @@ test('signed-out platform model selection can explicitly return to a personal AP
     false,
   );
 });
+
+test('desktop keeps two encrypted grants behind one account view and one logout', async t => {
+  const { createIssuer } = require('@industrial-agent-harness/harness-auth/tests/issuer.cjs');
+  const {
+    fetch,
+    createServer,
+  } = require('@industrial-agent-harness/harness-auth/tests/memory-http.cjs');
+  const issuer = await createIssuer({ clients: { first: 'models', second: 'mcp' } });
+  t.after(issuer.close);
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'desktop-dual-account-'));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const views = [];
+  const account = new DesktopAccount({
+    directory,
+    environment: {},
+    onChange: view => views.push(view),
+    shell: {
+      openExternal: async url => {
+        await fetch(await issuer.authorize(url));
+      },
+    },
+    safeStorage: {
+      isEncryptionAvailable: () => true,
+      getSelectedStorageBackend: () => 'test',
+      encryptString: value => Buffer.from(value).map(byte => byte ^ 0xa5),
+      decryptString: value =>
+        Buffer.from(value)
+          .map(byte => byte ^ 0xa5)
+          .toString(),
+    },
+  });
+  t.after(() => account.close());
+  await account.configure({
+    ...issuer.config,
+    clientId: 'first',
+    audience: 'models',
+    services: {
+      model: { clientId: 'first', audience: 'models' },
+      remote: { clientId: 'second', audience: 'mcp' },
+    },
+  });
+  for (const auth of account.auth.accounts.values()) {
+    auth.fetch = fetch;
+    auth.createServer = createServer;
+  }
+  assert.equal((await account.login()).status, 'signed_in');
+  assert.equal(issuer.calls.token, 2);
+  assert.equal(account.view().config.services, undefined);
+  for (const auth of account.auth.accounts.values()) {
+    const saved = auth.store.read();
+    for (const secret of [saved.accessToken, saved.refreshToken]) {
+      assert.ok(!JSON.stringify(views).includes(secret));
+      assert.ok(!fs.readFileSync(auth.store.file).includes(Buffer.from(secret)));
+    }
+  }
+  assert.equal((await account.logout()).revoked, true);
+  for (const auth of account.auth.accounts.values()) assert.equal(auth.store.read(), null);
+  assert.equal(account.view().status, 'signed_out');
+});
