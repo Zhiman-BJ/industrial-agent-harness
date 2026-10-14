@@ -85,6 +85,44 @@ test('unreleased images and a non-Linux Docker engine fail before downloading', 
   assert.deepEqual(fs.readdirSync(f.temporaryDirectory), []);
 });
 
+test('missing Docker and unreachable engines give distinct guidance without downloading; cancellation remains cancellation', async t => {
+  const f = await fixture(t);
+  let downloads = 0;
+  global.fetch = async () => {
+    downloads++;
+    throw Error('No image download should start.');
+  };
+  // Real process spawn against a nonexistent absolute executable exercises ENOENT.
+  await assert.rejects(
+    acquireImage({ ...f.options, docker: path.join(f.root, 'missing-docker') }),
+    /Docker was not found\. Install Docker Desktop/,
+  );
+  await assert.rejects(
+    acquireImage({
+      ...f.options,
+      command: async () => {
+        throw Error('Cannot connect to the Docker daemon');
+      },
+    }),
+    /Docker could not be reached\. Start Docker Desktop/,
+  );
+  const controller = new AbortController();
+  const cancelled = Error('User cancelled engine check');
+  await assert.rejects(
+    acquireImage({
+      ...f.options,
+      signal: controller.signal,
+      command: async () => {
+        controller.abort(cancelled);
+        throw cancelled;
+      },
+    }),
+    error => error === cancelled,
+  );
+  assert.equal(downloads, 0);
+  assert.deepEqual(fs.readdirSync(f.temporaryDirectory), []);
+});
+
 for (const classic of [false, true])
   test(`untagged OCI acquisition verifies ${classic ? 'classic config' : 'containerd manifest'} identity and creates a usable tag`, async t => {
     const f = await fixture(t),

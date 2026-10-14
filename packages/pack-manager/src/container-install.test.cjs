@@ -164,6 +164,31 @@ test('image declarations without their signed lock or from another domain cannot
   assert.throws(() => createArchive(f.source), /another Domain/);
 });
 
+test('missing Docker prevents first activation and preserves the installed version during update', async t => {
+  const f = await fixture(t);
+  const available = f.manager.containerImages.command;
+  f.manager.containerImages.command = require('./runtime-assets.cjs').run;
+  f.manager.containerImages.docker = path.join(f.root, 'missing-docker');
+  await assert.rejects(
+    f.manager.install(await f.selected(), { prepareRuntime: true }),
+    /Docker was not found/,
+  );
+  assert.deepEqual(f.manager.list(), []);
+  assert.equal(fs.existsSync(f.manager.containerImages.directory), false);
+  f.manager.containerImages.command = available;
+  await f.manager.install(await f.selected(), { prepareRuntime: true });
+  f.update('1.1.0');
+  f.manager.containerImages.command = require('./runtime-assets.cjs').run;
+  await assert.rejects(
+    f.manager.install(await f.selected(), { prepareRuntime: true }),
+    /Docker was not found/,
+  );
+  assert.equal(f.manager.list()[0].version, '1.0.0');
+  assert.ok(
+    fs.readdirSync(f.manager.containerImages.directory).every(name => name.endsWith('.json')),
+  );
+});
+
 test('CLI install and repair both execute shared image preparation, and errors reach the installation journal', async t => {
   const f = await fixture(t);
   // Inject only the external Docker command boundary. Feed verification, archive

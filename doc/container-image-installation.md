@@ -48,6 +48,12 @@ node scripts/acquire-container-image.cjs <owner-directory> <locked-image-id-or-r
 尚未发布的镜像保持外部依赖状态，现有原生运行环境声明继续生效。
 镜像就绪不代表项目已绑定该镜像；项目的执行配置、主机依赖和领域工程验收仍由 Pack 负责。
 
+Docker 是外部前提，安装器不会自动安装或启动它。没有 `docker` 命令时，Desktop／CLI
+提示安装 Docker Desktop（macOS／Windows）或 Docker Engine（Linux）并确保命令可用；
+命令存在但引擎无法连接时，提示启动 Docker 或检查当前连接；非 Linux 引擎提示切换 Linux
+容器。三种情况都在镜像下载前失败，不激活新 Pack，更新时保留旧版本；已有镜像回执也
+必须重新检查实际 Docker 身份。不依赖容器的 Pack 仍走其原有安装流程。
+
 ## 验证
 
 回归测试覆盖未打 tag 的归档、classic/containerd 身份差异、256 MiB 有界内存下载、
@@ -82,3 +88,7 @@ classic 存储仅有 fixture 覆盖；本记录不推导 Linux／Windows 的真�
 验证已打包应用时，可将 `HARNESS_CONTAINER_INSTALL_EXECUTABLE` 指向其实际可执行文件。
 `HARNESS_CONTAINER_INSTALL_IMAGE_CACHE` 可指向前次验证的 `.container-images` 目录，
 只复制普通回执文件；正式准备仍检查 Docker 中的当前身份，报告明确标为镜像复用。
+
+在 macOS／Linux 使用 `node scripts/verify-docker-prerequisites.cjs <新输出目录>
+<已有真实-release-验证目录> <打包应用可执行文件>` 可分别验证命令缺失与引擎不可达。
+前者仅清空子进程 PATH，后者仅指定不存在的本地 socket；不会卸载、停止或修改本机 Docker。

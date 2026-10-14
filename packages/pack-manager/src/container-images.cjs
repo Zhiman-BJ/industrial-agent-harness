@@ -217,8 +217,26 @@ async function acquireImage({
     command(docker, args, { env: environment, signal, timeout: 10 * 60 * 1000 });
   signal?.throwIfAborted();
   report({ phase: 'checking' });
-  if ((await execute(['info', '--format', '{{.OSType}}'])).trim() !== 'linux')
-    throw Error('Release images require a running Linux Docker engine.');
+  let engine;
+  try {
+    engine = (await execute(['info', '--format', '{{.OSType}}'])).trim();
+  } catch (error) {
+    signal?.throwIfAborted();
+    if (error.code === 'ENOENT')
+      throw Error(
+        'Docker was not found. Install Docker Desktop (macOS/Windows) or Docker Engine (Linux), make sure the docker command is available, then retry.',
+        { cause: error },
+      );
+    throw Error(
+      'Docker could not be reached. Start Docker Desktop or your Linux Docker engine, then retry. If it is already running, check the active Docker connection.\n' +
+        error.message,
+      { cause: error },
+    );
+  }
+  if (engine !== 'linux')
+    throw Error(
+      'Release images require a Linux Docker engine. Switch Docker to Linux containers, then retry.',
+    );
   fs.mkdirSync(temporaryDirectory, { recursive: true });
   report({
     phase: 'checking-space',
