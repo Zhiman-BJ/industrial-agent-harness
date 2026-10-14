@@ -340,7 +340,7 @@ test('public built-in Pack releases retain owned resources and keep the public P
       assert.equal(skill.external, undefined);
       assert.ok(files.some(file => file.path === 'domain-packs/pcb/runtime/index.cjs'));
       assert.ok(files.some(file => file.path === 'domain-packs/pcb/runtime/verifier.cjs'));
-      // The vendored PCB-bench surface ships with the pack: skill references
+      // The vendored design surface ships with the pack: skill references
       // and assets, the actor sources, the pinned snapshot and the gateway.
       assert.ok(
         files.some(file => file.path === 'skills/pcb.design.e2e/references/tools.md') ||
@@ -355,8 +355,10 @@ test('public built-in Pack releases retain owned resources and keep the public P
       );
       assert.ok(files.some(file => file.path.startsWith('domain-packs/pcb/pcb-agent/tools/')));
       assert.ok(files.some(file => file.path === 'domain-packs/pcb/pcb-agent/tools/workspace.py'));
-      assert.ok(files.some(file => file.path === 'domain-packs/pcb/runtime/bench-upstream.json'));
-      assert.ok(files.some(file => file.path === 'domain-packs/pcb/runtime/bench-gateway.cjs'));
+      assert.ok(
+        files.some(file => file.path === 'domain-packs/pcb/runtime/upstream-snapshot.json'),
+      );
+      assert.ok(files.some(file => file.path === 'domain-packs/pcb/runtime/gateway.cjs'));
       assert.ok(
         files.some(file => file.path === 'skills/pcb.kicad.native/SKILL.md') ||
           files.some(file => file.path === 'skills/pcb-kicad-native/SKILL.md'),
