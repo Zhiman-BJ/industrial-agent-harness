@@ -1,5 +1,6 @@
 const assert = require('node:assert/strict');
 const path = require('node:path');
+const fs = require('node:fs');
 const { writePrivate } = require('@industrial-agent-harness/harness-auth');
 const { createIssuer } = require('@industrial-agent-harness/harness-auth/tests/issuer.cjs');
 async function prepare(directory) {
@@ -26,6 +27,13 @@ async function prepare(directory) {
 }
 async function run(window, account, fixture) {
   const evaluate = script => window.webContents.executeJavaScript(script, true);
+  const capture = async name => {
+    const directory = process.env.INDUSTRIAL_UI_SCREENSHOTS;
+    if (!directory) return;
+    fs.mkdirSync(directory, { recursive: true });
+    const image = await window.webContents.capturePage();
+    fs.writeFileSync(path.join(directory, name + '.png'), image.toPNG());
+  };
   const wait = async script => {
     const deadline = Date.now() + 15000;
     while (Date.now() < deadline) {
@@ -48,6 +56,7 @@ async function run(window, account, fixture) {
   await wait("document.querySelector('.ia-account-modal').textContent.includes('138****1234')");
   const view = await evaluate('window.harnessAccount.get()');
   assert.equal(view.status, 'signed_in');
+  await capture('account-signed-in');
   const serialized = JSON.stringify(view);
   for (const forbidden of ['access_token', 'refresh_token', 'accessToken', 'refreshToken'])
     assert.ok(!serialized.includes(forbidden));
@@ -66,6 +75,7 @@ async function run(window, account, fixture) {
   await wait("!document.querySelector('.ia-account-actions button').disabled");
   await clickAction();
   await wait("Boolean(document.querySelector('.ia-account-modal form'))");
+  await capture('account-paste-code');
   await evaluate("document.querySelector('.ia-account-modal form button[type=button]').click()");
   let codeTimeout;
   try {
@@ -103,9 +113,11 @@ async function run(window, account, fixture) {
   await clickAction();
   await wait("window.harnessAccount.get().then(view => view.status === 'signed_out')");
   assert.equal(fixture.issuer.calls.revoke, 2);
+  await capture('account-signed-out');
   console.log(
     JSON.stringify({
       ok: true,
+      persistentCredentials: view.persistent,
       account: 'PKCE loopback/paste, cancellation, invalid code, refresh, secret-free IPC, logout',
     }),
   );
