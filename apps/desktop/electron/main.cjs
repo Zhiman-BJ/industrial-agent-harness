@@ -10,6 +10,10 @@ const {
   screen,
   systemPreferences,
 } = require('electron');
+const { DesktopAccount, registerAccountHandlers } = require('./account.cjs');
+const { authDirectory } = require('@industrial-agent-harness/harness-auth');
+let account;
+let accountModelIdentity = null;
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
@@ -134,6 +138,7 @@ protocol.registerSchemesAsPrivileged([
 ]);
 if (
   [
+    '--account-selftest',
     '--task-results-selftest',
     '--viewer-selftest',
     '--kicad-selftest',
@@ -228,7 +233,7 @@ const kicadRuntime = new KiCadRuntimeManager();
 // the chat still carries the derived title, so a user rename always wins.
 const titleRefinements = new Set();
 async function generateChatTitle(task) {
-  const profile = readProfile(configDir());
+  const profile = effectiveModelProfile();
   const apiKey = readApiKey();
   if (!apiKey || !/^https?:/.test(profile.endpoint)) return null;
   let response;
@@ -485,7 +490,12 @@ function canPersistKey() {
     (process.platform !== 'linux' || safeStorage.getSelectedStorageBackend() !== 'basic_text')
   );
 }
+function effectiveModelProfile() {
+  const profile = readProfile(configDir());
+  return account?.proxy ? { ...profile, endpoint: account.proxy.endpoint } : profile;
+}
 function readApiKey() {
+  if (account?.modelEnabled) return account.proxy?.apiKey || '';
   // Local development and selftests can inject a key without the keychain.
   if (process.env.INDUSTRIAL_MODEL_API_KEY) return process.env.INDUSTRIAL_MODEL_API_KEY;
   if (
@@ -600,7 +610,7 @@ function startGuiInstall() {
   return guiInstallPromise;
 }
 function runtimeConfig(project, externalServers, chatId) {
-  const profile = readProfile(configDir());
+  const profile = effectiveModelProfile();
   const apiKey = readApiKey();
   return {
     profile,
@@ -752,6 +762,7 @@ const viewerRegistry = createViewerRegistry([
 ]);
 
 function registerHandlers() {
+  registerAccountHandlers({ ipcMain, getWindow: () => mainWindow, account });
   ipcMain.on('window:minimize', event => {
     if (event.sender === mainWindow?.webContents) mainWindow?.minimize();
   });
@@ -1451,7 +1462,7 @@ function registerHandlers() {
       typeof request === 'string' || request?.images === undefined
         ? []
         : imageRequest(event, request);
-    if (images.length && !readProfile(configDir()).imageInput)
+    if (images.length && !effectiveModelProfile().imageInput)
       throw Error('Enable Image input in Model API settings for a model that supports images.');
     if (typeof task !== 'string' || !task.trim() || Buffer.byteLength(task, 'utf8') > 128 * 1024)
       throw Error('Describe the task first.');
@@ -1524,6 +1535,32 @@ function registerHandlers() {
 }
 
 async function createWindow() {
+  const accountFixture = process.argv.includes('--account-selftest')
+    ? await require('./account-selftest.cjs').prepare(path.join(app.getPath('userData'), 'account'))
+    : null;
+  account = new DesktopAccount({
+    directory: process.argv.some(flag => flag.endsWith('-selftest'))
+      ? path.join(app.getPath('userData'), 'account')
+      : authDirectory(),
+    safeStorage,
+    shell: accountFixture ? { openExternal: accountFixture.openBrowser } : shell,
+    assertIdle: () => sessions.assertIdle(),
+    onChange: view => {
+      remoteSettings.account = account.auth;
+      if (mainWindow && !mainWindow.isDestroyed())
+        mainWindow.webContents.send('account:changed', view);
+      const identity =
+        account.proxy?.endpoint || (account.modelEnabled ? 'platform-signed-out' : 'api-key');
+      if (accountModelIdentity !== identity) {
+        accountModelIdentity = identity;
+        modelRevision++;
+        notifyModelChanged();
+      }
+    },
+  });
+  remoteSettings.account = account.auth;
+  tasks.projects.options.remoteSettings = remoteSettings;
+  await account.restore();
   if (process.argv.includes('--gui-settings-selftest'))
     require('./gui-settings-selftest.cjs').prepare();
   if (process.argv.includes('--ui-selftest'))
@@ -1832,6 +1869,15 @@ async function createWindow() {
   }
   if (process.argv.includes('--browser-selftest')) {
     await require('./browser-selftest.cjs').run(window);
+    app.quit();
+    return;
+  }
+  if (accountFixture) {
+    try {
+      await require('./account-selftest.cjs').run(window, account, accountFixture);
+    } finally {
+      accountFixture.close();
+    }
     app.quit();
     return;
   }
@@ -2262,6 +2308,7 @@ app.on('before-quit', event => {
   event.preventDefault();
   domainController?.abort(Error('Application is shutting down.'));
   if (shutdownPromise) return;
+  account?.close();
   raster?.close();
   viewerProtocol?.close();
   godotRuntime.close();

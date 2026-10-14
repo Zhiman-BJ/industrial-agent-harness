@@ -124,3 +124,19 @@ const api = {
   platform: process.platform,
 };
 contextBridge.exposeInMainWorld('viewerHost', api);
+
+contextBridge.exposeInMainWorld('harnessAccount', {
+  get: () => ipcRenderer.invoke('account:get'),
+  configure: config => ipcRenderer.invoke('account:configure', config),
+  login: () => ipcRenderer.invoke('account:login'),
+  openManual: () => ipcRenderer.invoke('account:open-manual'),
+  submitCode: value => ipcRenderer.invoke('account:submit-code', value),
+  cancel: () => ipcRenderer.invoke('account:cancel'),
+  logout: () => ipcRenderer.invoke('account:logout'),
+  useModel: enabled => ipcRenderer.invoke('account:use-model', enabled),
+  onChanged: callback => {
+    const listener = (_event, view) => callback(view);
+    ipcRenderer.on('account:changed', listener);
+    return () => ipcRenderer.removeListener('account:changed', listener);
+  },
+});

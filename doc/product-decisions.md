@@ -720,3 +720,27 @@ CSV/TSV 显示表格并提供表头开关、全文筛选与分页；普通 JSON 
 - 来源：2026-10-13 Browser Use 验收反馈——内嵌浏览器（PD-072）不仅要能手动上网，还要让 Agent 直接在里面操作，用户全程可见、可随时接管（对标 Kimi Code 的右侧内置浏览器）。
 - 决定：新增 `workbench-browser` 插件（工具面冻结在 `packages/computer-use-bridge/src/workbench-browser.cjs`，8 个 `web_*` 工具：navigate/snapshot/click/type/scroll/back/wait/screenshot）。驱动在桌面主进程（`apps/desktop/electron/browser-driver.cjs`）：定位 PD-072 的 `<webview>` guest，经 executeJavaScript/sendInputEvent 读页面与操作；无标签页时通过 `browser:open` 让工作台自动开一个。设置新增独立开关「浏览器自动操作」（默认关，开启即授权），与 Computer Use 解耦——不需要下载二进制、不需要系统权限。工具命名避开 `browser_*`（预留给上游 server 的 Chrome 工具）。
 - 边界：继承 PD-072 的全部边界（不读项目文件、不产生 Artifact/Verification、网页内容不可信）；网页内容里的指令不视为用户指令；涉及登录、支付、提交个人数据等不可逆动作前必须向用户确认。每次调用进 per-session 诊断日志，与 computer-use 同一审计路径。
+
+## PD-074：可选的标准平台账号登录
+
+- 日期：2026-10-14。
+- 状态：客户端已实现；真实 Obol 手动验证通过，用户确认桌面 UI 登录成功；独立 OS 浏览器/回环路径及打包安全存储待验收。
+- 来源：用户要求基于 Obol 开发登录模块，全部使用标准流程；账号用于云端 API 和远程环境，本地工作无需强制登录。
+- 决定：共享 `harness-auth` 使用成熟 OIDC 库、Discovery、native/public client、系统浏览器、Code + PKCE S256、state/nonce、签名验证和轮换 Refresh Token。Desktop 使用系统安全存储，CLI 明文文件保存必须显式选择；渲染器和 Kimi 不持有真实平台 Token。模型通过受限本机代理按请求取凭证，远程服务通过共享 credential provider 取凭证。
+- 边界：公开版保留可选账号模块与基本状态；实际服务仍须校验 audience、权限和项目归属。当前一份配置绑定一个应用 audience，不自造跨应用 Token Exchange、组织或额度接口。不实现 Obol 私有手工回调扩展。退出不停止远程任务，切换账号不自动迁移项目绑定。本条不放宽 IH-ARCH-001 或发行门禁。实现与验证限制见[平台账号接入](platform-account.md)。
+
+## PD-075：按 Obol 接入指南补齐授权码粘贴
+
+- 日期：2026-10-14。
+- 状态：客户端已实现；真实 Obol 授权码粘贴全链路通过，用户确认桌面 UI 登录成功；打包桌面端验收待完成。
+- 来源：用户要求先根据 Obol 文档在 Harness 中开发登录模块。
+- 决定：采用文档中的 `/oauth/code` 与 `code#state` 交付方式，补齐 Desktop/CLI、SSH 和无浏览器场景；授权码交换、PKCE、state/nonce 与 ID Token 验签仍由成熟 OIDC 库完成。用户可在两条路径中先完成任一条，另一路不能重复交换。
+- 边界：本条替代 PD-074“不实现 Obol 私有手工回调扩展”的限制，其余职责、安全存储和业务服务边界不变。这是 Obol 文档约定的授权码交付方式，不宣称实现 OAuth Device Authorization Grant。登录不代表模型 API 或远程环境已接受账号 Token。
+
+## PD-076：平台账号界面与工作台风格统一
+
+- 日期：2026-10-14。
+- 状态：界面已实现；PR #151 首轮 macOS 15 CI 的真实 Electron、深浅色及小窗口回归已通过。本机自动化环境的 Electron 初始化仍 SIGABRT；其他平台结果见 PR 检查。
+- 来源：用户确认原有 UI 登录成功并提供截图，要求先统一账号模块与外部工作台风格。
+- 决定：沿用工作台的中性深浅色与紧凑设置弹窗，将账号名称、服务地址和登录状态集中展示；连接参数默认折叠，未配置时展开；统一按钮、输入框、状态提示和间距，正文独立滚动，底部操作保持可见。已登录时显示安全存储状态，未登录时保留本地功能可用说明。
+- 边界：仅调整展示，不修改 OIDC、IPC、凭据保存或业务授权。用户提供的登录成功证据属于修改前版本；新版由 macOS CI 验证真实窗口与布局，仍不能替代系统浏览器或打包钥匙串验收。

@@ -5,6 +5,23 @@ const os = require('node:os');
 const path = require('node:path');
 const { RuntimeAssetManager, validateRuntimeAssets } = require('./runtime-assets.cjs');
 const { PackManager, createArchive, digest } = require('./index.cjs');
+
+async function assertChildReaped(pid) {
+  // macOS CI can still observe the PID immediately after the child's close
+  // event. Bound the reaping check; a live/leaked child must still fail.
+  const deadline = Date.now() + 2000;
+  while (Date.now() < deadline) {
+    try {
+      process.kill(pid, 0);
+    } catch (error) {
+      assert.equal(error.code, 'ESRCH');
+      return;
+    }
+    await new Promise(resolve => setTimeout(resolve, 10));
+  }
+  assert.fail(`Installer child ${pid} remains observable after close.`);
+}
+
 function fixture(t) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-toolchain-test-'));
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
@@ -457,9 +474,10 @@ test('late installer abort waits for the real child to finish before reporting c
     return true;
   });
   // Windows terminates directly instead of dispatching the JS SIGTERM handler.
-  // On every platform rejection must follow actual process termination.
-  assert.throws(() => process.kill(pid, 0), { code: 'ESRCH' });
+  // Check the delayed exit marker before waiting, so an early rejection cannot
+  // pass merely because the child eventually exits during the reaping check.
   if (process.platform !== 'win32') assert.equal(fs.readFileSync(marker, 'utf8'), 'exited');
+  await assertChildReaped(pid);
 });
 
 test(
@@ -492,8 +510,8 @@ test(
       },
     );
     const pid = Number(fs.readFileSync(ready, 'utf8'));
-    assert.throws(() => process.kill(pid, 0), { code: 'ESRCH' });
     if (process.platform !== 'win32') assert.equal(fs.readFileSync(marker, 'utf8'), 'exited');
+    await assertChildReaped(pid);
   },
 );
 

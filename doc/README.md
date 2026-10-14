@@ -26,6 +26,7 @@ Godot/PCB 的源工程文件另有[受限只读预览](engineering-file-viewers.
 
 | 文档 | 内容 |
 | --- | --- |
+| [平台账号登录](platform-account.md) | Obol 标准 OIDC、Desktop/CLI、凭证轮换、云端消费者与待完成的真实联调 |
 | [Kimi Code 迁移](kimi-code-migration.md) | 固定 2.1.1、认证 Server API、身份映射与外壳兼容验收 |
 | [Kimi 后台兼容](kimi-background-compatibility.md) | 原生后台 Bash、WaitFor、自动续答与 Headless 生命周期 |
 | [系统架构](architecture.md) | Kimi Code、桌面端、Broker、工业运行时与领域包的职责和数据流 |

@@ -75,6 +75,8 @@ pnpm dev
 
 在 **Settings → Model API** 配置模型，再添加本地工程并选择领域。打开右侧工作区即可浏览文件；查看文件不需要模型 API Key。
 
+**设置 → 平台账号** 提供可选的系统浏览器登录，使用标准 OIDC Authorization Code + PKCE，并支持 Obol 文档规定的授权码粘贴兜底（含 SSH/无浏览器场景）。接入需要已注册的 native client 和明确的业务服务地址；Desktop 在主进程保存凭证，CLI 提供 `account login|status|logout`，可显式启用平台模型和远程服务。未登录仍可本地工作和使用自有 API Key。配置方法与尚待完成的真实平台验收见[平台账号](packages/harness-auth/README.md)。
+
 **API 格式**按模型服务选择，与 Kimi Agent 内核分开。官方 MiniMax Chat Completions 使用兼容 OpenAI 配置；思考开关和档位因模型、协议而异，当前实测与缺口见[模型 API 兼容说明](doc/model-api-compatibility.md)。
 
 准备脚本检查随包 **Kimi Code 2.1.1**，桌面和 CLI 共用认证 Server API 接入，不需要单独安装 Python Kimi。历史、诊断与兼容性边界见[迁移记录](doc/kimi-code-migration.md)。版图查看另需 KLayout Python，可运行 `pnpm --filter @industrial-agent-harness/desktop setup:layout`，或设置 `KLAYOUT_PYTHON`。
@@ -163,7 +165,7 @@ pnpm run test:release
 pnpm run format:check
 ```
 
-[Harness CI 门禁](.github/workflows/ci.yml)在 Linux x64/arm64、macOS arm64、Windows x64 执行共享包与独立 CLI 包回归，在 macOS/Windows 验证桌面安装，在 Apple Silicon 与 Linux x86-64 验证工业 Core 闭环，Linux 还检查实际安装的 Chip CLI。[CI 回归说明](doc/ci-regression.md)列出依赖、保留证据与明确的覆盖缺口；跳过不代表支持。安全问题按 [SECURITY.md](SECURITY.md) 的流程报告。
+[Harness CI 门禁](.github/workflows/ci.yml)在代码 PR 保留四平台共享包/CLI 回归、macOS/Windows 桌面启动和 Linux 工业 Core 闭环；main 推送及手动完整运行额外验收 macOS 15/26 原生流程、全新 Domain 安装及 Linux 安装器升级/Docker 执行。[CI 回归说明](doc/ci-regression.md)列出依赖、保留证据与明确的覆盖缺口；跳过不代表支持。安全问题按 [SECURITY.md](SECURITY.md) 的流程报告。
 
 ## 预览版范围
 

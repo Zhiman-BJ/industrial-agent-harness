@@ -1,25 +1,29 @@
 # CI 回归与托管环境
 
-入口是 [Harness CI](../.github/workflows/ci.yml)：每个 PR、`main` 推送和手动运行都会执行完整门禁。环境由 GitHub 托管 runner 提供，每个 job 获得独立的干净机器，不需要维护自有虚拟机池。
+入口是 [Harness CI](../.github/workflows/ci.yml)：代码 PR 和默认手动运行执行核心检查；`main` 推送以及手动选择 `full=true` 时执行完整验收。纯文档 PR 仅运行仓库层，独立的 Architecture contract 检查仍按原有规则执行。环境由 GitHub 托管 runner 提供，每个 job 获得独立的干净机器，不需要维护自有虚拟机池。调度修订见 [ADR-008](decisions.md#adr-008核心-pr-检查与完整验收分层)。
 
-| 回归层 | 托管环境 | 必需验证 |
-| --- | --- | --- |
-| 仓库与协议 | Ubuntu 24.04 x64 | 格式、架构边界、Pack/类型兼容、桌面构建、Python Runtime、实际 MCP transport、Icarus 独立 RTL 验证 |
-| 跨平台基础 | Ubuntu 24.04 x64 / ARM64、macOS 15 ARM64、Windows 2025 x64 | 共享包、CLI、SDK、Viewer 边界、资源与持久化，以及 Chip/PCB/Godot/CAD 四种独立 CLI 包的实际消费 |
-| 桌面安装 | macOS 15 ARM64、Windows 2025 x64 | 打包应用首次启动、内置资源与 Domain 安装流程 |
-| Linux 安装与工业闭环 | Ubuntu 22.04 x86-64 | bubblewrap/seccomp、真实 Kimi/Verilator、成功/失败/取消/恢复、干净 Chip 安装包、实际安装消费与重复安装 |
-| 原生工业闭环 | macOS 15 / 26 ARM64 | 实际 Seatbelt、Verilator、FreeCAD、固定 Kimi Code、持久化事实、审批拒绝、失败恢复、图像/并行会话、聊天恢复、空闲回收与强制中断，以及真实 CAD 产物的桌面查看 |
-| 原生安装消费 | macOS 15 / 26 ARM64 | 独立安装 CAD、PCB、Godot，保留签名、原生准备、API/CLI/Desktop 工程任务、独立验证和恢复断言 |
+| 回归层 | 托管环境 | 核心检查 | 完整验收额外执行 |
+| --- | --- | --- | --- |
+| 仓库与协议 | Ubuntu 24.04 x64 | 格式、架构边界、Pack/类型兼容、桌面构建、Python Runtime、实际 MCP transport、Icarus 独立 RTL 验证 | — |
+| 跨平台基础 | Ubuntu 24.04 x64 / ARM64、macOS 15 ARM64、Windows 2025 x64 | 共享包、CLI、SDK、Viewer 边界、资源与持久化，以及 Chip/PCB/Godot/CAD 四种独立 CLI 包的实际消费 | — |
+| 桌面安装 | macOS 15 ARM64、Windows 2025 x64 | 打包应用首次启动、安装引导、工作台、语言切换、并行会话与设置 | 完整 Domain 安装；macOS 真实 CAD 安装、修复与工程任务 |
+| Linux 工业闭环与安装 | Ubuntu 22.04 x86-64 | bubblewrap/seccomp、真实 Kimi/Verilator、成功/失败/取消/恢复、打包 Headless Agent 与 bootstrap 回归 | 旧版升级、干净 Chip 安装包、实际安装消费、重复安装及宿主 Docker 执行 |
+| 原生工业闭环 | macOS 15 / 26 ARM64 | — | 实际 Seatbelt、Verilator、FreeCAD、固定 Kimi Code、持久化事实、审批拒绝、失败恢复、图像/并行会话、聊天恢复、空闲回收与强制中断，以及真实 CAD 产物的桌面查看 |
+| 原生安装消费 | macOS 15 / 26 ARM64 | — | 独立安装 CAD、PCB、Godot，保留签名、原生准备、API/CLI/Desktop 工程任务、独立验证和恢复断言 |
+
+账号登录回归保留在独立的 Account integration workflow；本次不改变它的触发条件。仅改 Desktop 的代码 PR 也执行全部四个平台的基础回归，避免漏掉平台专属的账号存储行为。
+
+需要合并前完整验收时，在 Actions 的 Harness CI 中选择对应分支并勾选完整验收，或运行 `gh workflow run ci.yml --ref <branch> -f full=true`。复用 Desktop/Linux 工作流的其他调用者默认仍执行完整验收。
 
 `ubuntu-24.04`、`ubuntu-24.04-arm`、`macos-15`、`windows-2025` 直接对应原生 OS/架构机器。基础测试还会检查 Node 实际报告的 OS 与架构，避免把交叉编译当作目标平台运行。Node 固定为 24，pnpm 固定为 11.1.3，Python 为 3.13，uv 为 0.11.6，Kimi Code 为 2.1.1；安装遵循已有锁文件。CI 使用本地 HTTP 模型 fixture，不需要模型 API 密钥。
 
 ## 门禁与证据
 
-`All checks passed` 汇总全部必需回归层；任何一层失败、取消或整个 job 被跳过，汇总都失败。它可以作为分支保护的必需检查；新增 workflow 不会自动修改仓库分支保护设置。所有层都必需，不把 Windows 失败降为观察项。桌面回归每个 PR 都执行，避免路径过滤导致必需检查缺席。
+`All checks passed` 按本次核心/完整计划汇总：任何必需层缺席、失败、取消或意外跳过，汇总都失败；只接受调度计划明确省略的层。文件列表获取失败会阻止通过，列表达到 API 上限则执行完整验收。分支保护继续要求 `All checks passed` 和 `Architecture contract`；本次不修改保护规则、架构 checker、policy 或已有原生测试目录。Windows 核心检查仍是必需项。
 
 `scripts/ci-tests.cjs` 记录执行文件、平台、Node 版本、计数与跳过项；零测试、失败、取消、TODO 或未登记跳过都失败。原生闭环和独立 RTL benchmark 不允许跳过，缺少对应门禁要求的 Kimi、Python Runtime、FreeCAD、Verilator 或 Icarus 会失败。回归 JSON 与桌面/原生/CLI 日志通过 Actions artifacts 保留 14 天；失败和取消时也尝试上传已产生的证据。更新 PR 会取消同一 PR 的旧运行。
 
-Portable 测试流设有三分钟的终止信号；测试已通过但进程仍持有未清理的句柄时，也会中止并记录失败文件，避免等待整个 job 到期。超时与取消仍导致门禁失败。原生工业套件沿用原有时限。`native-installed` 在独立必跑机器上串行执行三个全新托管安装用例，`native` 保留其余工业闭环；两者都不允许跳过，任一失败仍阻止汇总通过。隔离避免大型 app 准备和 Desktop Godot 任务与有明确执行截止的 CAD/RTL 测试争用同一台机器。官方归档缓存仍完整校验后复制到每个独立 store，不复用已经安装的 app。收集报告时只排除 fixture 中的 `installed/.runtime-assets` 原生输入，保留工程输出、聊天、安装报告及 Pack 身份；Actions 原先也不上传该隐藏依赖目录。
+Portable 测试流设有三分钟的终止信号；测试已通过但进程仍持有未清理的句柄时，也会中止并记录失败文件，避免等待整个 job 到期。Windows 打包步骤限时十分钟，卡住时明确失败。超时与取消仍导致门禁失败。原生工业套件沿用原有时限。完整验收中，`native-installed` 在独立必跑机器上串行执行三个全新托管安装用例，`native` 保留其余工业闭环；两者都不允许跳过，任一失败仍阻止汇总通过。隔离避免大型 app 准备和 Desktop Godot 任务与有明确执行截止的 CAD/RTL 测试争用同一台机器。官方归档缓存仍完整校验后复制到每个独立 store，不复用已经安装的 app。收集报告时只排除 fixture 中的 `installed/.runtime-assets` 原生输入，保留工程输出、聊天、安装报告及 Pack 身份；Actions 原先也不上传该隐藏依赖目录。
 
 有三类明确的覆盖缺口，保留在报告中：
 
@@ -33,7 +37,7 @@ Linux/Windows 基础回归与 Windows 桌面启动不等于工业 Agent 验收�
 
 ## Apple Silicon CAD 安装门禁
 
-桌面安装工作流从实际 DMG 复制 Core，首选 CAD 后由生产 Pack Manager 下载和准备固定官方 FreeCAD。清除开发命令路径，在独立 store 用真实 Kimi Code、审批、建模、尺寸修改、独立回读和 OCCT Viewer 验证，再测试损坏修复与重启。模型响应来自本地受控服务，不评价模型推理质量。证据包括 `acceptance.json`、`restart.json`、界面截图与实际工程输出，排除大型 app 和依赖缓存。原生 CAD 失败不能降级为仅检查注册或跳过。详见 [分发说明](macos-cad-distribution.md)。
+完整验收的桌面安装工作流从实际 DMG 复制 Core，首选 CAD 后由生产 Pack Manager 下载和准备固定官方 FreeCAD。清除开发命令路径，在独立 store 用真实 Kimi Code、审批、建模、尺寸修改、独立回读和 OCCT Viewer 验证，再测试损坏修复与重启。模型响应来自本地受控服务，不评价模型推理质量。证据包括 `acceptance.json`、`restart.json`、界面截图与实际工程输出，排除大型 app 和依赖缓存。原生 CAD 失败不能降级为仅检查注册或跳过。详见 [分发说明](macos-cad-distribution.md)。
 
 ## 本地复现
 

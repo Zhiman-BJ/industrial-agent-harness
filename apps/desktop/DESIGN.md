@@ -299,6 +299,22 @@ existing meaning. Preserve multi-selection, accurate catalog states, cancellatio
 retry, update, repair and next-step actions while changing presentation. The visible
 word “installed” must remain distinct from verified executable readiness.
 
+### Platform account
+
+The account dialog follows the compact installation-dialog rhythm: a 16 px medium
+title, 22 px horizontal inset, 32 px close target, and the shared neutral raised
+surface. Account name and issuer form one compact identity block beside the actual
+sign-in status; green is reserved for the signed-in state. Credential-storage
+information is secondary text, and the local-use hint appears while signed out.
+
+Connection fields stay under a disclosure, initially open when setup is required.
+The body scrolls independently while the header and right-aligned login, cancel,
+or logout action remain visible. Browser sign-in and code submission use the
+neutral primary button; connection saving and browser reopening use secondary
+buttons. Inputs, warnings, focus rings, and checkboxes resolve from the active
+theme. The account selftest includes both themes and 640 × 480 layout checks;
+these checks require a working native Electron session to establish visual evidence.
+
 ### Inputs / Fields
 
 The composer uses panel tone around a raised body, with a thin border. Empty sessions include a project strip above that body. Input starts at 64 px high, or 50 px in short empty sessions, resizes between 50 and 160 px, and uses the conversation role. Focus-within adds an accent border and 1 px outline offset by 3 px. Border motion is 160 ms with `cubic-bezier(0.16, 1, 0.3, 1)`; reduced motion disables it.
