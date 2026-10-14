@@ -294,7 +294,16 @@ class TaskService {
       );
       entry.resultContext = resultContext;
       resultContext.onIndustrialResult = async result => {
-        resultContext.register(result);
+        // Result display (register/view) is a presentation concern. The
+        // mutation already committed in the Runtime, so a display failure
+        // must never block scope synchronization — the caller needs the
+        // fresh state identity either way.
+        let displayError = null;
+        try {
+          resultContext.register(result);
+        } catch (error) {
+          displayError = error;
+        }
         if (entry.resultContext === resultContext) {
           const refreshed = resolveProjectTask(
             entry.project.domain,
@@ -309,7 +318,16 @@ class TaskService {
           entry.trace.push(...refreshed.trace);
         }
         emit({ type: 'industrial-result', ...result });
-        return resultContext.view();
+        if (displayError) {
+          console.error('Industrial result display failed:', displayError.message);
+          return undefined;
+        }
+        try {
+          return resultContext.view();
+        } catch (error) {
+          console.error('Industrial result view failed:', error.message);
+          return undefined;
+        }
       };
       for (const [id, artifact] of options.artifacts || [])
         await this.context(entry).observeArtifact({
