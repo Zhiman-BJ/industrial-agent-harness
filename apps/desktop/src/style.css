@@ -2504,6 +2504,10 @@ body,
   border-radius: 10px;
   box-shadow: 0 6px 22px rgba(0, 0, 0, 0.18);
 }
+.ia-chat-menu.up {
+  top: auto;
+  bottom: calc(100% + 2px);
+}
 .ia-chat-menu button {
   display: flex;
   align-items: center;
