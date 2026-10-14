@@ -37,7 +37,7 @@ test('registered gateway intersects the current scope while direct providers ret
   assert.equal(providers[0].toolIds.length, 25);
   assert.deepEqual(listMcpServers('pcb'), []);
   assert.deepEqual(listMcpServers('godot'), []);
-  assert.deepEqual(selectMcpServers({ domain: 'pcb', tools: ['pcb.bench.add_track'] }), []);
+  assert.deepEqual(selectMcpServers({ domain: 'pcb', tools: ['pcb.design.add_track'] }), []);
   const scope = { domain: 'chip', tools: ['eda.harness.get_server_info'] };
   assert.deepEqual(selectMcpServers(scope)[0].allowedToolIds, scope.tools);
   assert.deepEqual(selectMcpServers(scope, ['chip-pack.eda']), []);

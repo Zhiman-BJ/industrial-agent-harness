@@ -99,7 +99,7 @@ function loadDomainPacks() {
         !capability.id ||
         capabilityIds.has(capability.id) ||
         !capability.keywords?.length ||
-        !capability.tools?.length ||
+        !Array.isArray(capability.tools) || // skills-only capabilities carry knowledge, not tools
         capability.tools.some(
           tool => JSON.stringify(tool) !== JSON.stringify(declared.get(tool.id)),
         )

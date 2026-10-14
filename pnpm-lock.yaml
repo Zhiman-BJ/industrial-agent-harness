@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@zhiman-bj/industrial-domain-packs':
-        specifier: https://codeload.github.com/Zhiman-BJ/industrial-domain-packs/tar.gz/f8d0185db5ad668de7e5e3a5bc664dd580dd543c
-        version: https://codeload.github.com/Zhiman-BJ/industrial-domain-packs/tar.gz/f8d0185db5ad668de7e5e3a5bc664dd580dd543c(@industrial-agent-harness/domain-runtime@packages+domain-runtime)
+        specifier: https://codeload.github.com/Zhiman-BJ/industrial-domain-packs/tar.gz/64db8696896939104c2aef685961bd481e3626a4
+        version: https://codeload.github.com/Zhiman-BJ/industrial-domain-packs/tar.gz/64db8696896939104c2aef685961bd481e3626a4(@industrial-agent-harness/domain-runtime@packages+domain-runtime)(zod@4.6.5)
     devDependencies:
       '@eslint/js':
         specifier: ^10.0.1
@@ -61,8 +61,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/pack-manager
       '@zhiman-bj/industrial-domain-packs':
-        specifier: https://codeload.github.com/Zhiman-BJ/industrial-domain-packs/tar.gz/f8d0185db5ad668de7e5e3a5bc664dd580dd543c
-        version: https://codeload.github.com/Zhiman-BJ/industrial-domain-packs/tar.gz/f8d0185db5ad668de7e5e3a5bc664dd580dd543c(@industrial-agent-harness/domain-runtime@packages+domain-runtime)
+        specifier: https://codeload.github.com/Zhiman-BJ/industrial-domain-packs/tar.gz/64db8696896939104c2aef685961bd481e3626a4
+        version: https://codeload.github.com/Zhiman-BJ/industrial-domain-packs/tar.gz/64db8696896939104c2aef685961bd481e3626a4(@industrial-agent-harness/domain-runtime@packages+domain-runtime)(zod@4.6.5)
 
   apps/desktop:
     dependencies:
@@ -100,8 +100,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/viewer-core
       '@zhiman-bj/industrial-domain-packs':
-        specifier: https://codeload.github.com/Zhiman-BJ/industrial-domain-packs/tar.gz/f8d0185db5ad668de7e5e3a5bc664dd580dd543c
-        version: https://codeload.github.com/Zhiman-BJ/industrial-domain-packs/tar.gz/f8d0185db5ad668de7e5e3a5bc664dd580dd543c(@industrial-agent-harness/domain-runtime@packages+domain-runtime)
+        specifier: https://codeload.github.com/Zhiman-BJ/industrial-domain-packs/tar.gz/64db8696896939104c2aef685961bd481e3626a4
+        version: https://codeload.github.com/Zhiman-BJ/industrial-domain-packs/tar.gz/64db8696896939104c2aef685961bd481e3626a4(@industrial-agent-harness/domain-runtime@packages+domain-runtime)(zod@4.6.5)
       electron-updater:
         specifier: 6.8.9
         version: 6.8.9
@@ -156,7 +156,7 @@ importers:
         version: link:../domain-skills
       '@modelcontextprotocol/sdk':
         specifier: 1.30.1
-        version: 1.30.1
+        version: 1.30.1(zod@4.6.5)
       '@moonshot-ai/kimi-code':
         specifier: 2.1.1
         version: 2.1.1
@@ -192,7 +192,7 @@ importers:
         version: link:../domain-skills
       '@modelcontextprotocol/sdk':
         specifier: 1.30.1
-        version: 1.30.1
+        version: 1.30.1(zod@4.6.5)
       ajv:
         specifier: 8.17.1
         version: 8.17.1
@@ -514,6 +514,7 @@ packages:
     engines: {node: '>=18'}
     peerDependencies:
       '@cfworker/json-schema': ^4.1.1
+      zod: ^3.25 || ^4.0
     peerDependenciesMeta:
       '@cfworker/json-schema':
         optional: true
@@ -923,8 +924,8 @@ packages:
     resolution: {integrity: sha512-/5NV/vDALVFDXgLmfsy9TRCBlKwO2LNBFzpzvb9iIj+jR+eSc6DLYYvVOdivT/jm7MtU6TebYuRmzEOI7w40UA==}
     engines: {node: '>=10.0.0'}
 
-  '@zhiman-bj/industrial-domain-packs@https://codeload.github.com/Zhiman-BJ/industrial-domain-packs/tar.gz/f8d0185db5ad668de7e5e3a5bc664dd580dd543c':
-    resolution: {tarball: https://codeload.github.com/Zhiman-BJ/industrial-domain-packs/tar.gz/f8d0185db5ad668de7e5e3a5bc664dd580dd543c}
+  '@zhiman-bj/industrial-domain-packs@https://codeload.github.com/Zhiman-BJ/industrial-domain-packs/tar.gz/64db8696896939104c2aef685961bd481e3626a4':
+    resolution: {gitHosted: true, integrity: sha512-xE27HGZL8YR6PSUe1nwgUMnGuFk1KXbLnozZJmPoejOmhCp4OqSmUbc4p8dLshKthTh2wZDTFR0y6GPYPWfofg==, tarball: https://codeload.github.com/Zhiman-BJ/industrial-domain-packs/tar.gz/64db8696896939104c2aef685961bd481e3626a4}
     version: 0.5.2
     engines: {node: '>=24'}
     peerDependencies:
@@ -962,11 +963,6 @@ packages:
 
   ajv-formats@3.0.1:
     resolution: {integrity: sha512-8iUql50EUR+uUcdRQ3HDqa6EVyo3docL8g5WJ3FNcWmu62IbkGUue/pEyLBW8VGKKucTPgqeks4fIU1DA4yowQ==}
-    peerDependencies:
-      ajv: ^8.0.0
-    peerDependenciesMeta:
-      ajv:
-        optional: true
 
   ajv@6.15.0:
     resolution: {integrity: sha512-fgFx7Hfoq60ytK2c7DhnF8jIvzYgOMxfugjLOSMHjLIPgenqa7S7oaagATUq99mV6IYvN2tRmC0wnTYX6iPbMw==}
@@ -3250,11 +3246,11 @@ snapshots:
       '@mariozechner/clipboard-win32-x64-msvc': 0.3.9
     optional: true
 
-  '@modelcontextprotocol/sdk@1.30.1':
+  '@modelcontextprotocol/sdk@1.30.1(zod@4.6.5)':
     dependencies:
       '@hono/node-server': 2.1.1(hono@4.13.9)
       ajv: 8.17.1
-      ajv-formats: 3.0.1(ajv@8.17.1)
+      ajv-formats: 3.0.1
       content-type: 1.0.5
       cors: 2.8.6
       cross-spawn: 7.0.6
@@ -3591,15 +3587,16 @@ snapshots:
 
   '@xmldom/xmldom@0.8.15': {}
 
-  '@zhiman-bj/industrial-domain-packs@https://codeload.github.com/Zhiman-BJ/industrial-domain-packs/tar.gz/f8d0185db5ad668de7e5e3a5bc664dd580dd543c(@industrial-agent-harness/domain-runtime@packages+domain-runtime)':
+  '@zhiman-bj/industrial-domain-packs@https://codeload.github.com/Zhiman-BJ/industrial-domain-packs/tar.gz/64db8696896939104c2aef685961bd481e3626a4(@industrial-agent-harness/domain-runtime@packages+domain-runtime)(zod@4.6.5)':
     dependencies:
-      '@modelcontextprotocol/sdk': 1.30.1
+      '@modelcontextprotocol/sdk': 1.30.1(zod@4.6.5)
       ajv: 8.17.1
     optionalDependencies:
       '@industrial-agent-harness/domain-runtime': link:packages/domain-runtime
     transitivePeerDependencies:
       - '@cfworker/json-schema'
       - supports-color
+      - zod
 
   abbrev@4.0.0: {}
 
@@ -3620,8 +3617,8 @@ snapshots:
     dependencies:
       ajv: 6.15.0
 
-  ajv-formats@3.0.1(ajv@8.17.1):
-    optionalDependencies:
+  ajv-formats@3.0.1:
+    dependencies:
       ajv: 8.17.1
 
   ajv@6.15.0:

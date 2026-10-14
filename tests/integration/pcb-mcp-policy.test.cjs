@@ -28,7 +28,7 @@ test('Desktop/CLI PCB policy keeps public Skills local and withholds the frozen 
   const enabled = resolveProjectTask('pcb', { task: 'KiCad board edit' }).scope;
   assert.deepEqual(enabled.tools, ['pcb.kicad.edit', 'pcb.kicad.verify']);
   assert.deepEqual(selectMcpServers(enabled), []);
-  assert.ok(!enabled.tools.some(id => id.startsWith('pcb.bench.')));
+  assert.ok(!enabled.tools.some(id => id.startsWith('pcb.design.')));
 });
 test('real CLI scopes typed PCB Runtime Actions without starting any native process', t => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'public-pcb-cli-'));
@@ -55,14 +55,14 @@ test('real CLI scopes typed PCB Runtime Actions without starting any native proc
   assert.deepEqual(rows[0].scope.tools, ['pcb.kicad.edit', 'pcb.kicad.verify']);
   assert.equal(rows.at(-1).status, 'scoped');
 });
-test('PCB bench tool names resolve the declared bench surface through the Broker without standalone MCP servers', () => {
+test('PCB design tool names resolve the declared surface through the Broker without standalone MCP servers', () => {
   const scope = resolveProjectTask('pcb', {
-    task: 'pcb.bench.place_component verify_design finalize_claims',
+    task: 'pcb.design.place_component verify_design finalize_claims',
   }).scope;
-  const bench = scope.tools.filter(id => id.startsWith('pcb.bench.'));
-  assert.equal(bench.length, 89);
-  assert.ok(bench.includes('pcb.bench.project_status'));
-  assert.ok(bench.includes('pcb.bench.run_python'));
+  const design = scope.tools.filter(id => id.startsWith('pcb.design.'));
+  assert.equal(design.length, 89);
+  assert.ok(design.includes('pcb.design.project_status'));
+  assert.ok(design.includes('pcb.design.run_python'));
   // The bounded native profile stays reachable on its own keywords.
   const native = resolveProjectTask('pcb', { task: 'KiCad board edit' }).scope;
   assert.deepEqual(native.tools, ['pcb.kicad.edit', 'pcb.kicad.verify']);
