@@ -6,17 +6,18 @@ The shared module uses pinned `openid-client` 6.8.8 for discovery, Authorization
 
 ## Configure
 
-Register a **native/public** client in the platform with loopback callbacks enabled. A real client ID is required; this repository does not invent or ship a production registration. Desktop: Settings → Platform account → Platform connection. Environment overrides are supported:
+Nothing to configure for the Zhiman platform: both editions sign in to `https://auth.zhiman.cn` with the registered native client `harness-desktop-1` (application `harness-desktop`) and use the model API `https://api.zhiman.cn/v1`. A native client ID is public; native clients have no secret, and PKCE with the registered loopback redirect protects the sign-in. Another platform is set in Desktop under Settings → Platform account → Advanced: platform connection, or with environment overrides:
 
 | Variable | Meaning |
 | --- | --- |
 | `INDUSTRIAL_AUTH_ISSUER` | Issuer origin; defaults to `https://auth.zhiman.cn` |
-| `INDUSTRIAL_AUTH_CLIENT_ID` | Registered native client ID; required |
-| `INDUSTRIAL_AUTH_AUDIENCE` | Application slug accepted by the connected services; distinct from client ID |
+| `INDUSTRIAL_AUTH_CLIENT_ID` | Registered native client ID; defaults to `harness-desktop-1` |
+| `INDUSTRIAL_AUTH_AUDIENCE` | Slug of the application the native client belongs to; defaults to `harness-desktop` with the default client |
+| `INDUSTRIAL_AUTH_MODEL_BASE_URL` | Model API including `/v1`; defaults to `https://api.zhiman.cn/v1` only with the default issuer |
 | `INDUSTRIAL_AUTH_REMOTE_ORIGIN` | Explicit remote service origin |
-| `INDUSTRIAL_AUTH_MODEL_BASE_URL` | Explicit model endpoint, including `/v1` when required |
+| `INDUSTRIAL_AUTH_REMOTE_AUDIENCE` | Application slug of the remote service; required with the remote origin |
 
-The configured model and remote endpoints must accept the **same registered application audience** in this first version. Different-audience applications require separate authorizations; there is no token-exchange or invented multi-audience flow. Services must independently verify the token and enforce project ownership, permissions and quotas. Login does not assert that these server integrations already exist.
+One sign-in serves every connected service. For each service the client refreshes with that service's URL as RFC 8707 `resource` ([Obol ADR 0007](https://github.com/zhimanai/obol/blob/main/docs/adr/0007-gateway-accepts-account-tokens.md)) and gets a token whose audience is only that service: `obol-api` for the model API, the remote audience for the remote service. Tokens are verified for that audience before use and cached per service in the session. A service the user has no grant for answers `invalid_target`; the client reports *This account cannot use this service* and the sign-in stays valid for everything else. Services must still verify tokens and enforce project ownership, permissions and quotas themselves.
 
 ## Credentials and lifecycle
 
@@ -29,17 +30,15 @@ The configured model and remote endpoints must accept the **same registered appl
 
 ## Cloud consumers
 
-These are opt-in client integration points, not verified Obol business-service support. The current [Obol API guide](https://github.com/zhimanai/obol/blob/main/docs/api-quickstart.md) specifies project API keys for inference, and the remote service checkout uses preconfigured Bearer credentials. Use the existing API-key path until the services explicitly support account access tokens.
+The Obol model gateway accepts account tokens for `obol-api` ([integration guide, section 8](https://github.com/zhimanai/obol/blob/main/docs/account-integration.md)): usage is billed to the signed-in user's own Obol account, opened with its signup credit on the first call. The remote service checkout still uses preconfigured Bearer credentials until it verifies account tokens.
 
 The remote client obtains a token per request through an injected credential provider. Only GET + `401 WWW-Authenticate: Bearer error="invalid_token"` retries once after refresh. It never retries mutation requests or a `403`; existing request journals remain authoritative. Account subject participates in remote binding identity, and existing clients reject account changes.
 
-Desktop's **Use platform account for model API** and CLI `run --platform-account` use a bounded loopback model proxy. It accepts a random local session key, fixed routes and an exact upstream; platform tokens are verified for issuer, application audience, signature, expiry and `typ=at+jwt` before forwarding. Streaming responses are forwarded without whole-response buffering. The local key is all Kimi receives. BYOK remains a separate model source. Logout closes the local proxy; the selected platform source does not silently fall back to a saved API key. Model name/protocol/context parameters remain in Model API settings.
+Desktop's model source (Settings → Model API → Model source: **Platform account**, the default) and CLI `run --platform-account` use a bounded loopback model proxy. With the platform source, the model is chosen from the platform's `/v1/models`, which also fills in its context window; the API format is OpenAI-compatible and the API URL and key fields do not apply. It accepts a random local session key, fixed routes and an exact upstream; platform tokens for `obol-api` are verified for issuer, audience, signature, expiry and `typ=at+jwt` before forwarding. A `401` from the model API refreshes the token and retries the request once; `402` (balance), `403` (no access) and `429` reach the kernel as short explanations, never as upstream bodies. Streaming responses are forwarded without whole-response buffering. The local key is all Kimi receives. BYOK remains a separate model source. Logout closes the local proxy; the selected platform source does not silently fall back to a saved API key. Model name/protocol/context parameters remain in Model API settings.
 
 ## CLI
 
 ```sh
-export INDUSTRIAL_AUTH_CLIENT_ID='<registered-native-client-id>'
-export INDUSTRIAL_AUTH_AUDIENCE='<registered-application-slug>'
 node apps/cli/src/main.cjs account login --allow-file-store
 node apps/cli/src/main.cjs account status --allow-file-store
 node apps/cli/src/main.cjs run --platform-account --project-dir /path/to/project --domain DOMAIN --task '...'

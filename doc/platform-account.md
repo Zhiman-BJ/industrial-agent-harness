@@ -27,14 +27,17 @@
 | Issuer | 默认生产 `https://auth.zhiman.cn`；可配置 dev/local |
 | Native client ID | 必须真实注册且开启本机回调；不能使用应用 slug 代替 |
 | Application audience | 模型/远程服务实际接受的应用 slug |
-| 模型 API base URL | 明确绑定的可信模型服务地址，含服务要求的路径前缀 |
+| 模型 API base URL | Obol 模型 API，含 `/v1`；生产 `https://api.zhiman.cn/v1` |
 | 远程服务 origin | 明确绑定的可信服务；服务端仍须验证 JWT、权限和项目归属 |
+| 远程服务 audience | 远程服务在账号中心的应用 slug；服务要在权限清单里登记 `resource` 为上面的 origin |
 
-当前版本一份账号配置绑定一个应用 audience。模型 API 和远程服务必须同属此授权应用；如果两者属于不同应用，需要分别注册/授权，不能将一个 Token 当作跨 audience 的万能凭证。未实现 Token Exchange，不推断 Obol 已支持此协议。
+一次登录可以访问多个服务（Obol [ADR 0007](https://github.com/zhimanai/obol/blob/main/docs/adr/0007-gateway-accepts-account-tokens.md)，已在 Obol 实现）。客户端用同一个 Refresh Token、以服务地址作为 RFC 8707 `resource` 分别刷新，每个服务拿到只属于自己的 Token：模型 API 的 audience 固定为 Obol 内置应用 `obol-api`，远程服务的 audience 单独配置（`remoteAudience`）。Token 按服务缓存在会话里，使用前按该服务的 audience 验签。用户在某个服务没有授权时，Obol 返回 `invalid_target` 且不轮换 Refresh Token：客户端只提示“该账号无权使用此服务”，登录保持有效，其他服务不受影响。
 
-2026-10-14 追加核对：Obol 的 [API 快速开始](https://github.com/zhimanai/obol/blob/main/docs/api-quickstart.md)要求项目 API Key；本地远程服务仍按预配置凭据哈希认证。当前模型代理转发账号 Token 的能力仅是客户端扩展点，不能直接宣称适用于当前 Obol 网关。登录模块与这些业务服务的接入分开验收，现有 API Key 配置仍是已文档化的模型接入路径。
+模型调用：Obol 网关直接接受 `obol-api` Token，费用记在登录用户自己的 Obol 账户（首次调用自动开户并获得注册赠送）。模型代理遇到 401 会刷新后重试一次；402/403/429 转为简短说明交给 Kimi，不透传上游响应。远程服务仍使用预配置 Bearer 凭据，等服务端支持验证账号 Token 后再切换。
 
-已在 Obol 运营台核对用户登记的 native client `harness-desktop-1`，所属应用为 `harness-desktop`，本机回调已开启；用户确认已解决应用授权要求。client ID 是应用标识，不是个人凭据，仍由部署配置提供，不写成公共客户端的默认值。模型与远程服务的账号鉴权尚未联调；组织切换、额度接口不在本次范围。
+已在 Obol 运营台核对用户登记的 native client `harness-desktop-1`，所属应用为 `harness-desktop`，本机回调已开启；用户确认已解决应用授权要求。
+
+2026-10-14 产品决定：内部版和开源版都**默认连接知满平台**（issuer `https://auth.zhiman.cn`、client `harness-desktop-1`、应用 `harness-desktop`、模型 API `https://api.zhiman.cn/v1`），用户安装后直接登录即可，无需配置。native client 没有密钥，client ID 是公开标识，安全依赖 PKCE 和登记的回调地址。其他平台在“高级：平台连接”或环境变量中覆盖；只有使用默认 issuer 时才默认使用知满的模型 API。模型来源移到模型 API 设置里，默认是平台账号；选平台账号时模型从平台的 `/v1/models` 中选择并自动填入上下文长度，API 地址和密钥不再适用。模型与远程服务的账号鉴权尚未联调；组织切换、额度接口不在本次范围。
 
 ## 验证记录（2026-10-14）
 
@@ -47,7 +50,9 @@
 | 新版原生界面回归 | [PR #151 首轮账号 CI](https://github.com/Zhiman-BJ/industrial-agent-harness/actions/runs/38524395997) 的 macOS 15 检查已通过真实 Electron 登录、取消、错误/正确粘贴、刷新、退出和深浅色/640×480 布局，并上传截图。本机自动化环境仍在 Electron 初始化阶段 SIGABRT。 |
 | Windows 首轮 CI | 登录协议通过，软链接拒绝测试失败；Windows 不提供 O_NOFOLLOW。已补齐读取前 lstat 检查和打开后的文件身份比对，保留软链接测试并增加文件替换竞态回归；后续平台结果见 PR 检查。 |
 | 打包后的安全存储、Windows ACL | 待验收；受控加密适配器通过不能替代真实钥匙串或安装包验证。 |
-| 模型 API / 远程服务账号鉴权 | 未验收；配置 audience 不表示业务服务已接受该 Token。 |
+| 按服务换取 Token | 受控 issuer 回归通过：按 resource 刷新并保存轮换后的 Refresh Token、按服务缓存、到期和被拒后刷新、无权服务不退出登录、audience 不符拒绝转发、模型代理 401 重试一次与 402/403 说明。 |
+| 模型 API 账号鉴权（生产） | 待用本机 harness + 生产 Obol 手动验收。 |
+| 远程服务账号鉴权 | 未验收；远程服务尚未验证账号 Token。 |
 
 共享协议测试包含错误 state/nonce/ID Token audience/签名、Access Token audience、刷新轮换与并发、崩溃标记、取消后迟到回调、刷新途中退出撤销最新凭据、模型流式转发和错误脱敏。Desktop IPC 只接受主窗口主 frame，渲染器不能读取 Token。
 

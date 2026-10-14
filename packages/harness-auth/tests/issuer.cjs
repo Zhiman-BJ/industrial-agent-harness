@@ -7,7 +7,15 @@ async function createIssuer() {
   const jwk = { ...(await exportJWK(publicKey)), kid: 'test-key', alg: 'RS256', use: 'sig' };
   const codes = new Map(),
     refreshTokens = new Set();
-  const calls = { refresh: 0, token: 0, revoke: 0, model: 0, headers: [], revokedTokens: [] };
+  const calls = {
+    refresh: 0,
+    token: 0,
+    revoke: 0,
+    model: 0,
+    headers: [],
+    revokedTokens: [],
+    resources: [],
+  };
   const behavior = {
     invalidGrant: false,
     badNonce: false,
@@ -15,6 +23,12 @@ async function createIssuer() {
     badSignature: false,
     lostRefresh: false,
     tokenDelay: 0,
+    // Resources (RFC 8707) the signed-in user has no grant for: invalid_target, nothing rotated.
+    deniedResources: new Set(),
+    // Overrides the aud the issuer puts in tokens for a resource.
+    resourceAudience: {},
+    // The model API answers 401 invalid_token this many times, as after a sign-out elsewhere.
+    modelRejections: 0,
   };
   let origin;
   const sign = (payload, audience, typ = 'JWT') =>
@@ -98,8 +112,18 @@ async function createIssuer() {
           await new Promise(resolve => setTimeout(resolve, behavior.tokenDelay));
       } else {
         calls.refresh++;
-        if (behavior.invalidGrant || !refreshTokens.delete(form.get('refresh_token')))
+        calls.resources.push(form.get('resource'));
+        if (behavior.invalidGrant || !refreshTokens.has(form.get('refresh_token')))
           return json({ error: 'invalid_grant' }, 400);
+        if (form.getAll('resource').length > 1) return json({ error: 'invalid_target' }, 400);
+        if (form.has('resource') && !audiences()[form.get('resource')])
+          return json({ error: 'invalid_target', error_description: 'unknown resource' }, 400);
+        if (behavior.deniedResources.has(form.get('resource')))
+          return json(
+            { error: 'invalid_target', error_description: 'no access to application' },
+            400,
+          );
+        refreshTokens.delete(form.get('refresh_token'));
         if (behavior.lostRefresh) return req.socket.destroy();
         await behavior.beforeRefreshResponse?.();
       }
@@ -113,7 +137,7 @@ async function createIssuer() {
             roles: ['user'],
             permissions: ['task:read'],
           },
-          'harness',
+          form.has('resource') ? audiences()[form.get('resource')] : 'harness',
           'at+jwt',
         ),
         refresh_token: refresh,
@@ -129,14 +153,36 @@ async function createIssuer() {
           : {}),
       });
     }
+    if (url.pathname === '/v1/models') {
+      calls.model++;
+      calls.headers.push(req.headers.authorization);
+      return json({
+        object: 'list',
+        data: [
+          { id: 'zhiman36_27b', object: 'model', capabilities: { context_window: 262144 } },
+          { id: 'qwen3.5-9b', object: 'model', capabilities: { context_window: 16384 } },
+        ],
+      });
+    }
     if (url.pathname === '/v1/chat/completions') {
       calls.model++;
       calls.headers.push(req.headers.authorization);
+      if (behavior.modelRejections > 0) {
+        behavior.modelRejections--;
+        res.writeHead(401, { 'WWW-Authenticate': 'Bearer error="invalid_token"' });
+        return res.end('{"error":{"code":"unauthenticated"}}');
+      }
       res.writeHead(200, { 'Content-Type': 'text/event-stream' });
       res.write('data: {"text":"hello"}\n\n');
       return res.end('data: [DONE]\n\n');
     }
     return json({ error: 'not_found' }, 404);
+  });
+  // The services this issuer knows: Obol's built-in model API and one remote service.
+  const audiences = () => ({
+    [origin + '/v1']: 'obol-api',
+    [origin]: 'remote-service',
+    ...behavior.resourceAudience,
   });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   origin = `http://127.0.0.1:${server.address().port}`;
@@ -151,6 +197,7 @@ async function createIssuer() {
       audience: 'harness',
       modelBaseUrl: origin + '/v1',
       remoteOrigin: origin,
+      remoteAudience: 'remote-service',
     },
     authorize: async url => {
       const response = await fetch(url, { redirect: 'manual' });

@@ -160,12 +160,91 @@ test('revoked refresh token clears credentials and requires a new login', async 
   assert.equal(store.read(), null);
   assert.equal(auth.view().status, 'reauth_required');
 });
+const audienceOf = token =>
+  JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString()).aud;
+
+test('one sign-in gets a token per service by resource and keeps the rotated refresh token', async t => {
+  const { issuer, auth, store, login } = await setup(t);
+  await login();
+  const own = store.read();
+  const model = await auth.serviceToken('model', issuer.config.modelBaseUrl);
+  assert.equal(audienceOf(model), 'obol-api');
+  assert.deepEqual(issuer.calls.resources, [issuer.config.modelBaseUrl]);
+  const after = store.read();
+  assert.notEqual(after.refreshToken, own.refreshToken);
+  assert.equal(after.accessToken, own.accessToken, "the client's own token is kept");
+  // Cached until it nears expiry; the remote service gets a token of its own.
+  assert.equal(await auth.serviceToken('model', issuer.config.modelBaseUrl), model);
+  const remote = await auth.serviceToken('remote', issuer.config.remoteOrigin);
+  assert.equal(audienceOf(remote), 'remote-service');
+  assert.equal(issuer.calls.refresh, 2);
+  assert.equal(await auth.accessToken(), own.accessToken);
+});
+test('service tokens refresh near expiry and when the service rejects them', async t => {
+  const { issuer, auth, login, expire } = await setup(t);
+  await login();
+  await auth.serviceToken('model', issuer.config.modelBaseUrl);
+  await auth.serviceToken('model', issuer.config.modelBaseUrl);
+  assert.equal(issuer.calls.refresh, 1);
+  expire();
+  const second = await auth.serviceToken('model', issuer.config.modelBaseUrl);
+  assert.equal(issuer.calls.refresh, 2);
+  await auth.serviceToken('model', issuer.config.modelBaseUrl, { rejectedToken: second });
+  assert.equal(issuer.calls.refresh, 3);
+});
+test('a service the user may not use is refused without signing out', async t => {
+  const { issuer, auth, store, login } = await setup(t);
+  await login();
+  issuer.behavior.deniedResources.add(issuer.config.remoteOrigin);
+  const before = store.read();
+  await assert.rejects(auth.serviceToken('remote', issuer.config.remoteOrigin), error => {
+    assert.equal(error.code, 'service_denied');
+    return true;
+  });
+  assert.equal(auth.view().status, 'signed_in');
+  assert.equal(store.read().refreshToken, before.refreshToken);
+  assert.equal(store.read().refreshPending, false);
+  assert.equal(
+    audienceOf(await auth.serviceToken('model', issuer.config.modelBaseUrl)),
+    'obol-api',
+  );
+});
 test('access token for a different application is not forwarded', async t => {
   const { issuer, auth, login } = await setup(t);
   await login();
-  auth.config.audience = 'different-application';
+  issuer.behavior.resourceAudience[issuer.config.modelBaseUrl] = 'harness';
   await assert.rejects(auth.serviceToken('model', issuer.config.modelBaseUrl), /verified/);
   assert.equal(issuer.calls.model, 0);
+});
+test('an unconfigured install signs in to the Zhiman platform and uses its model API', () => {
+  assert.deepEqual(validateConfig({}), {
+    issuer: 'https://auth.zhiman.cn',
+    clientId: 'harness-desktop-1',
+    audience: 'harness-desktop',
+    remoteOrigin: '',
+    remoteAudience: '',
+    modelBaseUrl: 'https://api.zhiman.cn/v1',
+  });
+  // Another platform keeps the registered client, but never borrows Zhiman's model API.
+  const local = validateConfig({ issuer: 'http://127.0.0.1:8080' });
+  assert.equal(local.clientId, 'harness-desktop-1');
+  assert.equal(local.modelBaseUrl, '');
+  assert.equal(
+    validateConfig({ issuer: 'http://127.0.0.1:8080', modelBaseUrl: 'http://127.0.0.1:8080/v1' })
+      .modelBaseUrl,
+    'http://127.0.0.1:8080/v1',
+  );
+});
+test('a remote service needs its application audience configured', () => {
+  assert.throws(
+    () => validateConfig({ clientId: 'harness-native', remoteOrigin: 'https://remote.example' }),
+    /audience/,
+  );
+  assert.equal(
+    validateConfig({ clientId: 'harness-native', modelBaseUrl: 'https://api.example/v1' })
+      .modelBaseUrl,
+    'https://api.example/v1',
+  );
 });
 test('cancel and timeout close the listener and do not retain credentials', async t => {
   const { issuer, auth, store } = await setup(t, { loginTimeoutMs: 40 });
@@ -220,9 +299,32 @@ test('loopback model proxy forwards streams with current service token and denie
   assert.match(await response.text(), /\[DONE\]/);
   assert.equal(issuer.calls.refresh, 1);
   assert.ok(issuer.calls.headers[0].startsWith('Bearer ey'));
+  assert.equal(audienceOf(issuer.calls.headers[0].slice(7)), 'obol-api');
   assert.ok(!issuer.calls.headers[0].includes(proxy.apiKey));
+  // A token the model API rejects is refreshed and the request retried once.
+  issuer.behavior.modelRejections = 1;
+  const refreshes = issuer.calls.refresh;
+  assert.match(await (await request('/chat/completions')).text(), /\[DONE\]/);
+  assert.equal(issuer.calls.refresh, refreshes + 1);
+  issuer.behavior.modelRejections = 2;
+  assert.equal((await request('/chat/completions')).status, 401);
   await auth.logout();
   assert.equal((await request('/chat/completions')).status, 401);
+});
+test('model proxy explains a model API the account may not use', async t => {
+  const { issuer, auth, login } = await setup(t);
+  await login();
+  const proxy = await createModelProxy({ auth, fetch, createServer });
+  t.after(proxy.close);
+  issuer.behavior.deniedResources.add(issuer.config.modelBaseUrl);
+  const response = await fetch(proxy.endpoint + '/chat/completions', {
+    method: 'POST',
+    headers: { authorization: 'Bearer ' + proxy.apiKey },
+    body: '{}',
+  });
+  assert.equal(response.status, 403);
+  assert.match(await response.text(), /cannot use/);
+  assert.equal(auth.view().status, 'signed_in');
 });
 test('unsafe issuer and target substitution are rejected', async t => {
   assert.throws(() => validateConfig({ issuer: 'http://example.com' }), /HTTPS/);

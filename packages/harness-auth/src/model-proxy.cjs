@@ -13,15 +13,25 @@ async function createModelProxy({ auth, fetch = global.fetch, createServer = htt
   const key = crypto.randomBytes(32).toString('base64url');
   const active = new Set();
   let origin;
+  // What the kernel shows for an upstream failure; upstream bodies are never relayed.
+  const explanations = {
+    402: 'Platform balance is insufficient. Top up in the Obol console.',
+    403: 'This account cannot use the platform model service.',
+    429: 'Platform model service is busy. Try again shortly.',
+  };
   const server = createServer(async (request, response) => {
-    const reply = status => {
+    const reply = (status, headers = {}) => {
       response.writeHead(status, {
         'Content-Type': 'application/json',
         'Cache-Control': 'no-store',
+        ...headers,
       });
       response.end(
         JSON.stringify({
-          error: { message: 'Platform model request unavailable.', type: 'platform_auth_error' },
+          error: {
+            message: explanations[status] || 'Platform model request unavailable.',
+            type: 'platform_auth_error',
+          },
         }),
       );
     };
@@ -52,24 +62,44 @@ async function createModelProxy({ auth, fetch = global.fetch, createServer = htt
         if (size > 16 * 1048576) return reply(413);
         chunks.push(chunk);
       }
-      const token = await auth.serviceToken('model', base);
-      if (auth.view().user?.sub !== subject) return reply(401);
-      const upstream = await fetch(base + '/' + route, {
-        method: request.method,
-        redirect: 'error',
-        signal: controller.signal,
-        headers: {
-          authorization: `Bearer ${token}`,
-          'content-type': 'application/json',
-          ...(request.headers['anthropic-version']
-            ? { 'anthropic-version': request.headers['anthropic-version'] }
-            : {}),
-        },
-        body: request.method === 'POST' ? Buffer.concat(chunks) : undefined,
-      });
+      const send = async options => {
+        const token = await auth.serviceToken('model', base, options);
+        if (auth.view().user?.sub !== subject) return { token, upstream: null };
+        const upstream = await fetch(base + '/' + route, {
+          method: request.method,
+          redirect: 'error',
+          signal: controller.signal,
+          headers: {
+            authorization: `Bearer ${token}`,
+            'content-type': 'application/json',
+            ...(request.headers['anthropic-version']
+              ? { 'anthropic-version': request.headers['anthropic-version'] }
+              : {}),
+          },
+          body: request.method === 'POST' ? Buffer.concat(chunks) : undefined,
+        });
+        return { token, upstream };
+      };
+      let sent;
+      try {
+        sent = await send();
+        // A token the API no longer accepts (signed out elsewhere, rotated keys)
+        // is refreshed once; a second rejection is final.
+        if (sent.upstream?.status === 401) {
+          await sent.upstream.body?.cancel();
+          sent = await send({ rejectedToken: sent.token });
+        }
+      } catch (error) {
+        if (error?.code === 'service_denied') return reply(403);
+        if (error?.code === 'login_required') return reply(401);
+        throw error;
+      }
+      const { upstream } = sent;
+      if (!upstream) return reply(401);
       if (!upstream.ok) {
         await upstream.body?.cancel();
-        return reply(upstream.status);
+        const retry = upstream.headers.get('retry-after');
+        return reply(upstream.status, retry ? { 'Retry-After': retry } : {});
       }
       response.writeHead(200, {
         'content-type': upstream.headers.get('content-type') || 'application/json',

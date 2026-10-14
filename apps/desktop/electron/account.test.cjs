@@ -149,3 +149,62 @@ test('signed-out platform model selection can explicitly return to a personal AP
     false,
   );
 });
+
+function platformAccount(t, directory, options = {}) {
+  const account = new DesktopAccount({
+    directory,
+    environment: {},
+    shell: { openExternal: async () => {} },
+    safeStorage: { isEncryptionAvailable: () => false },
+    ...options,
+  });
+  t.after(() => account.close());
+  return account;
+}
+test('a fresh install takes its model from the platform account', async t => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'desktop-account-fresh-'));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const account = platformAccount(t, directory);
+  const view = account.view();
+  assert.equal(view.usePlatformModel, true);
+  assert.equal(view.config.clientId, 'harness-desktop-1');
+  assert.equal(view.config.modelBaseUrl, 'https://api.zhiman.cn/v1');
+  // Pointing at another platform keeps the chosen model source.
+  const local = await account.configure({
+    issuer: 'http://127.0.0.1:8080',
+    modelBaseUrl: 'http://127.0.0.1:8080/v1',
+  });
+  assert.equal(local.usePlatformModel, true);
+  assert.equal(local.config.modelBaseUrl, 'http://127.0.0.1:8080/v1');
+  // The source can be chosen before signing in; the proxy opens at sign-in.
+  assert.equal((await account.useModel(false)).usePlatformModel, false);
+  assert.equal((await account.useModel(true)).usePlatformModel, true);
+  assert.equal(account.proxy, null);
+});
+test('the platform lists its models with their context windows for the signed-in user', async t => {
+  const { createIssuer } = require('@industrial-agent-harness/harness-auth/tests/issuer.cjs');
+  const {
+    fetch,
+    createServer,
+  } = require('@industrial-agent-harness/harness-auth/tests/memory-http.cjs');
+  const issuer = await createIssuer();
+  t.after(issuer.close);
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'desktop-account-models-'));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const account = platformAccount(t, directory, { fetch });
+  await account.configure(issuer.config);
+  await assert.rejects(account.models(), /Sign in/);
+  account.auth.fetch = fetch;
+  account.auth.createServer = createServer;
+  await account.auth.login({
+    openBrowser: async url => {
+      assert.equal((await fetch(await issuer.authorize(url))).status, 200);
+    },
+  });
+  assert.deepEqual(await account.models(), [
+    { id: 'zhiman36_27b', contextWindow: 262144 },
+    { id: 'qwen3.5-9b', contextWindow: 16384 },
+  ]);
+  const sent = issuer.calls.headers.at(-1).slice('Bearer '.length);
+  assert.equal(JSON.parse(Buffer.from(sent.split('.')[1], 'base64url')).aud, 'obol-api');
+});

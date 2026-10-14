@@ -3,8 +3,10 @@ export type AccountConfig = {
   clientId: string;
   audience: string;
   remoteOrigin: string;
+  remoteAudience: string;
   modelBaseUrl: string;
 };
+export type PlatformModel = { id: string; contextWindow: number | null };
 export type AccountView = {
   status:
     | 'not_configured'
@@ -33,6 +35,7 @@ declare global {
       cancel(): Promise<AccountView>;
       logout(): Promise<AccountView>;
       useModel(enabled: boolean): Promise<AccountView>;
+      models(): Promise<PlatformModel[]>;
       onChanged(callback: (view: AccountView) => void): () => void;
     };
   }

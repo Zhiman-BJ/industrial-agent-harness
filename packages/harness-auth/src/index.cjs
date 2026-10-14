@@ -1,7 +1,7 @@
 const http = require('node:http');
 const crypto = require('node:crypto');
 const { EventEmitter } = require('node:events');
-const { validateConfig, trustedUrl } = require('./config.cjs');
+const { MODEL_AUDIENCE, validateConfig, trustedUrl } = require('./config.cjs');
 const { SessionStore } = require('./store.cjs');
 
 const messages = {
@@ -15,6 +15,7 @@ const messages = {
   invalid_code: 'Paste the complete code#state from the account center.',
   no_pending_login: 'Start sign-in before submitting an authorization code.',
   login_consumed: 'Sign-in is already being completed.',
+  service_denied: 'This account cannot use this service. Contact your administrator.',
 };
 function authError(code) {
   return Object.assign(Error(messages[code] || messages.protocol_error), { code });
@@ -365,6 +366,8 @@ class AuthManager extends EventEmitter {
       expiresAt: this.now() + expires * 1000,
       user,
       refreshPending: false,
+      // Access tokens for other services (RFC 8707 resource → token), from the same sign-in.
+      services: previous?.services || {},
     };
   }
   cancel() {
@@ -427,17 +430,83 @@ class AuthManager extends EventEmitter {
       }
     });
   }
-  async serviceToken(service, target, options) {
+  // A token for a service other than the client's own application: the model
+  // API (Obol's built-in obol-api) or the remote service. Each is asked for with
+  // its URL as RFC 8707 resource from the same sign-in, so every token carries
+  // only that service's audience. A service the user may not use is refused
+  // without touching the sign-in.
+  async serviceToken(service, target, { rejectedToken } = {}) {
     const epoch = this.epoch;
-    const expected =
+    const binding =
       service === 'remote'
-        ? this.config.remoteOrigin
+        ? { resource: this.config.remoteOrigin, audience: this.config.remoteAudience }
         : service === 'model'
-          ? this.config.modelBaseUrl
-          : '';
-    if (!expected || trustedUrl(target) !== expected || !this.config.audience)
+          ? { resource: this.config.modelBaseUrl, audience: MODEL_AUDIENCE }
+          : {};
+    if (!binding.resource || !binding.audience || trustedUrl(target) !== binding.resource)
       throw Error('This service is not bound to the platform account.');
-    const token = await this.accessToken(options);
+    const { resource, audience } = binding;
+    const token = await this.store.transaction(async tx => {
+      if (epoch !== this.epoch) throw authError('cancelled');
+      const session = tx.read();
+      if (
+        !session ||
+        session.binding !== this.identity ||
+        !session.refreshToken ||
+        session.refreshPending
+      ) {
+        this.user = null;
+        this.changed('reauth_required');
+        throw authError('login_required');
+      }
+      const cached = session.services?.[resource];
+      if (cached && cached.expiresAt > this.now() + 60000 && cached.accessToken !== rejectedToken)
+        return cached.accessToken;
+      const { oidc, config } = await this.protocol();
+      tx.write({ ...session, refreshPending: true });
+      let tokens;
+      try {
+        tokens = await oidc.refreshTokenGrant(config, session.refreshToken, { resource });
+      } catch (error) {
+        // invalid_target leaves the refresh token unrotated: only this service is refused.
+        if (error?.error === 'invalid_target') {
+          tx.write(session);
+          throw authError('service_denied');
+        }
+        tx.clear();
+        this.user = null;
+        const safe =
+          error?.error === 'invalid_grant'
+            ? authError('login_required')
+            : authError('refresh_uncertain');
+        this.changed('reauth_required', safe.message);
+        throw safe;
+      }
+      const expires = Number(tokens.expires_in);
+      if (
+        !tokens.refresh_token ||
+        !tokens.access_token ||
+        !Number.isFinite(expires) ||
+        expires <= 0 ||
+        (tokens.claims()?.sub && tokens.claims().sub !== session.user.sub)
+      ) {
+        tx.clear();
+        this.user = null;
+        this.changed('reauth_required', messages.protocol_error);
+        throw authError('protocol_error');
+      }
+      tx.write({
+        ...session,
+        refreshToken: tokens.refresh_token,
+        refreshPending: false,
+        services: {
+          ...session.services,
+          [resource]: { accessToken: tokens.access_token, expiresAt: this.now() + expires * 1000 },
+        },
+      });
+      if (epoch !== this.epoch) throw authError('cancelled');
+      return tokens.access_token;
+    });
     const { config, oidc } = await this.protocol();
     const jose = await import('jose');
     this.jwks ||= jose.createRemoteJWKSet(new URL(config.serverMetadata().jwks_uri), {
@@ -447,7 +516,7 @@ class AuthManager extends EventEmitter {
     try {
       const { payload } = await jose.jwtVerify(token, this.jwks, {
         issuer: this.config.issuer,
-        audience: this.config.audience,
+        audience,
         typ: 'at+jwt',
         algorithms: ['RS256'],
         clockTolerance: 30,
