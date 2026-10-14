@@ -71,7 +71,7 @@ async function run(window) {
     );
     await wait(`Boolean(document.querySelector('.ia-capability'))`);
     await evaluate(
-      `document.querySelector('.ia-capability-nav button[title="MCP servers"]').click()`,
+      `document.querySelector('.ia-capability-nav button[title="Tools & MCP"]').click()`,
     );
     await evaluate(`document.querySelector('.ia-external-mcp > button').click()`);
     await wait(
@@ -149,7 +149,7 @@ async function run(window) {
     await evaluate(`document.querySelector('.ia-capability-header button').click()`);
     await evaluate(`document.querySelector('.ia-project-row').click()`);
     await wait(
-      `document.querySelector('.ia-project-resources[aria-label="MCP servers"]')?.innerText.includes('computer-use')`,
+      `document.querySelector('.ia-project-resources[aria-label="Tools & MCP"]')?.innerText.includes('computer-use')`,
     );
     await evaluate(
       `window.viewerHost.resourceSet({projectId:'external-chip',kind:'mcp',id:'external.computer-use',mode:'disabled'})`,
