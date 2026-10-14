@@ -64,6 +64,27 @@ test('distribution discovery finds the owner root and missing trees return null'
   assert.equal(readDistributionLock(path.join(os.tmpdir(), 'absent-' + Date.now())), null);
 });
 
+test('unreleased images and a non-Linux Docker engine fail before downloading', async t => {
+  const f = await fixture(t);
+  let downloads = 0;
+  global.fetch = async () => {
+    downloads++;
+    throw Error('No download should start.');
+  };
+  const docker = dockerFixture(f);
+  await assert.rejects(
+    acquireImage({ ...f.options, image: 'unreleased', command: docker.command }),
+    /no released version/,
+  );
+  assert.equal(docker.calls.length, 0);
+  await assert.rejects(
+    acquireImage({ ...f.options, command: async () => 'windows' }),
+    /Linux Docker/,
+  );
+  assert.equal(downloads, 0);
+  assert.deepEqual(fs.readdirSync(f.temporaryDirectory), []);
+});
+
 for (const classic of [false, true])
   test(`untagged OCI acquisition verifies ${classic ? 'classic config' : 'containerd manifest'} identity and creates a usable tag`, async t => {
     const f = await fixture(t),

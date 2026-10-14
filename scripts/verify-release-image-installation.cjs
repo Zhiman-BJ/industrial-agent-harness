@@ -2,6 +2,9 @@
 // Explicit real-release acceptance, outside the offline portable test suite.
 // Usage: node scripts/verify-release-image-installation.cjs <fresh-output> [domain]
 // Build the desktop renderer first. Requires a running Linux Docker engine.
+// Optional HARNESS_CONTAINER_INSTALL_EXECUTABLE exercises a packaged app.
+// Optional HARNESS_CONTAINER_INSTALL_IMAGE_CACHE copies prior verified receipts;
+// live Docker identity is still checked and the report labels this as warm reuse.
 const fs = require('node:fs');
 const path = require('node:path');
 const https = require('node:https');
@@ -33,6 +36,17 @@ const tls = createLocalhostCertificate(),
 fs.writeFileSync(cert, tls.cert);
 const store = path.join(output, 'store'),
   feed = path.join(output, 'feed');
+const reuse = process.env.HARNESS_CONTAINER_INSTALL_IMAGE_CACHE;
+if (reuse) {
+  const destination = path.join(store, '.container-images');
+  fs.mkdirSync(destination, { recursive: true });
+  for (const name of fs.readdirSync(reuse)) {
+    if (!/^[a-f0-9]{64}\.json$/.test(name)) continue;
+    const file = path.join(reuse, name);
+    if (!fs.lstatSync(file).isFile()) throw Error('Only regular image receipts may be reused.');
+    fs.copyFileSync(file, path.join(destination, name), fs.constants.COPYFILE_EXCL);
+  }
+}
 let lastReport = 0;
 function child(command, args, environment, log) {
   return new Promise((resolve, reject) => {
@@ -158,12 +172,13 @@ async function main() {
     );
     const config = path.join(output, 'feed-config.json');
     fs.writeFileSync(config, JSON.stringify({ channel: 'stable' }));
-    const electron = require(
-      require.resolve('electron', { paths: [path.join(root, 'apps/desktop')] }),
-    );
+    const packaged = process.env.HARNESS_CONTAINER_INSTALL_EXECUTABLE;
+    const electron =
+      packaged ||
+      require(require.resolve('electron', { paths: [path.join(root, 'apps/desktop')] }));
     await child(
       electron,
-      ['apps/desktop', '--container-install-selftest'],
+      [...(packaged ? [] : ['apps/desktop']), '--container-install-selftest'],
       {
         ...environment,
         INDUSTRIAL_HARNESS_PACK_FEED_FILE: config,
@@ -176,11 +191,14 @@ async function main() {
       started,
       finished: new Date().toISOString(),
       host: `${process.platform}-${process.arch}`,
+      sourceCommit: (await run('git', ['rev-parse', 'HEAD'], { cwd: root })).trim(),
       owner: owner.identity,
       domain,
       images: receipts,
-      cli: 'cold install, repair and remove passed',
-      desktop: 'renderer/preload/IPC install and repair passed; verified Docker images reused',
+      cli: `${reuse ? 'verified image reuse' : 'cold install'}, repair and remove passed`,
+      desktop:
+        'installation and repair buttons through renderer/preload/IPC passed; verified Docker images reused',
+      packaged: Boolean(packaged),
       engine: JSON.parse(await run('docker', ['version', '--format', '{{json .Server}}'])),
       limitation:
         'Image preparation and container startup only; no additional engineering or OS qualification claimed.',
