@@ -134,6 +134,7 @@ contextBridge.exposeInMainWorld('harnessAccount', {
   cancel: () => ipcRenderer.invoke('account:cancel'),
   logout: () => ipcRenderer.invoke('account:logout'),
   useModel: enabled => ipcRenderer.invoke('account:use-model', enabled),
+  models: () => ipcRenderer.invoke('account:models'),
   onChanged: callback => {
     const listener = (_event, view) => callback(view);
     ipcRenderer.on('account:changed', listener);

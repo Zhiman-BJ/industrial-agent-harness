@@ -5,6 +5,9 @@ import type {
   ModelProfile,
   ModelProfileStatus,
 } from '@industrial-agent-harness/viewer-builtin/api';
+import type { AccountView, PlatformModel } from '../account-api';
+
+type Source = 'platform' | 'key';
 
 const initial: ModelProfileStatus = {
   provider: 'kimi',
@@ -31,12 +34,32 @@ export function ModelSettings({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  // Where the model comes from: the signed-in platform account, which bills the
+  // user's own Obol account, or the user's own API key.
+  const [account, setAccount] = useState<AccountView | null>(null);
+  const [source, setSource] = useState<Source>('platform');
+  const [models, setModels] = useState<PlatformModel[] | null>(null);
+  const platform = source === 'platform';
   useEffect(() => {
     void window
       .viewerHost!.modelGet()
       .then(setProfile)
       .catch(reason => setError(String(reason)));
+    void window.harnessAccount
+      ?.get()
+      .then(view => {
+        setAccount(view);
+        setSource(view.usePlatformModel ? 'platform' : 'key');
+      })
+      .catch(() => setSource('key'));
   }, []);
+  useEffect(() => {
+    if (!platform || !account?.user || models) return;
+    void window.harnessAccount
+      .models()
+      .then(setModels)
+      .catch(() => setModels([]));
+  }, [platform, account, models]);
   function patch(value: Partial<ModelProfile>) {
     setProfile(current => ({ ...current, ...value }));
   }
@@ -45,9 +68,13 @@ export function ModelSettings({
     setError('');
     setMessage('');
     try {
+      if (account && account.usePlatformModel !== platform)
+        setAccount(await window.harnessAccount.useModel(platform));
+      // The platform's model API speaks the OpenAI-compatible protocol.
       const next = await window.viewerHost!.modelSave({
         ...profile,
-        apiKey: apiKey || undefined,
+        ...(platform ? { provider: 'openai_legacy' as const } : {}),
+        apiKey: platform ? undefined : apiKey || undefined,
         clearApiKey,
       });
       setProfile(next);
@@ -83,50 +110,96 @@ export function ModelSettings({
           </button>
         </header>
         <div className="ia-model-fields">
-          <label>
-            {t('API format')}{' '}
-            <select
-              value={profile.provider}
-              onChange={event =>
-                patch({
-                  provider: event.target.value as ModelProfile['provider'],
-                  imageInputMode: 'auto',
-                })
-              }
-            >
-              <option value="kimi">{t('Kimi (Moonshot) API')}</option>
-              <option value="openai_legacy">{t('OpenAI-compatible')}</option>
-            </select>
-          </label>
-          <label>
-            {t('API base URL')}{' '}
-            <input
-              value={profile.endpoint}
-              onChange={event => patch({ endpoint: event.target.value, imageInputMode: 'auto' })}
-              spellCheck={false}
-            />
-          </label>
+          {account && (
+            <label>
+              {t('Model source')}{' '}
+              <select value={source} onChange={event => setSource(event.target.value as Source)}>
+                <option value="platform">{t('Platform account')}</option>
+                <option value="key">{t('Your own API key')}</option>
+              </select>
+            </label>
+          )}
+          {platform && account && (
+            <small>
+              {account.user
+                ? t('Provided by your platform account. Usage is billed to your Obol account.')
+                : t('Sign in under Settings → Platform account to use platform models.')}
+            </small>
+          )}
+          {!platform && (
+            <label>
+              {t('API format')}{' '}
+              <select
+                value={profile.provider}
+                onChange={event =>
+                  patch({
+                    provider: event.target.value as ModelProfile['provider'],
+                    imageInputMode: 'auto',
+                  })
+                }
+              >
+                <option value="kimi">{t('Kimi (Moonshot) API')}</option>
+                <option value="openai_legacy">{t('OpenAI-compatible')}</option>
+              </select>
+            </label>
+          )}
+          {!platform && (
+            <label>
+              {t('API base URL')}{' '}
+              <input
+                value={profile.endpoint}
+                onChange={event => patch({ endpoint: event.target.value, imageInputMode: 'auto' })}
+                spellCheck={false}
+              />
+            </label>
+          )}
           <label>
             {t('Model')}{' '}
-            <input
-              value={profile.model}
-              onChange={event => patch({ model: event.target.value, imageInputMode: 'auto' })}
-              spellCheck={false}
-            />
+            {platform && models?.length ? (
+              <select
+                value={models.some(m => m.id === profile.model) ? profile.model : ''}
+                onChange={event => {
+                  const chosen = models.find(m => m.id === event.target.value);
+                  if (chosen)
+                    patch({
+                      model: chosen.id,
+                      contextSize: chosen.contextWindow ?? profile.contextSize,
+                      imageInputMode: 'auto',
+                    });
+                }}
+              >
+                <option value="" disabled>
+                  {t('Choose a model')}
+                </option>
+                {models.map(m => (
+                  <option key={m.id} value={m.id}>
+                    {m.id}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                value={profile.model}
+                onChange={event => patch({ model: event.target.value, imageInputMode: 'auto' })}
+                spellCheck={false}
+              />
+            )}
           </label>
-          <label>
-            {t('API key')}{' '}
-            <input
-              type="password"
-              value={apiKey}
-              onChange={event => setApiKey(event.target.value)}
-              placeholder={
-                profile.hasApiKey ? t('Saved · enter a new key to replace') : t('Enter API key')
-              }
-              autoComplete="off"
-              spellCheck={false}
-            />
-          </label>
+          {!platform && (
+            <label>
+              {t('API key')}{' '}
+              <input
+                type="password"
+                value={apiKey}
+                onChange={event => setApiKey(event.target.value)}
+                placeholder={
+                  profile.hasApiKey ? t('Saved · enter a new key to replace') : t('Enter API key')
+                }
+                autoComplete="off"
+                spellCheck={false}
+              />
+            </label>
+          )}
           <div className="ia-model-row">
             <label>
               {t('Context size')}{' '}
@@ -166,18 +239,20 @@ export function ModelSettings({
               'Auto recognizes verified model/API combinations. For other vision models choose Enabled; this declares support and does not add vision to a text-only model.',
             )}
           </small>
-          <small>
-            {profile.hasApiKey
-              ? profile.keyPersisted
-                ? t('API key is stored using your OS credential protection.')
-                : t('API key is available for this app session only.')
-              : t('An API key is required to run a Kimi turn.')}
-          </small>
+          {!platform && (
+            <small>
+              {profile.hasApiKey
+                ? profile.keyPersisted
+                  ? t('API key is stored using your OS credential protection.')
+                  : t('API key is available for this app session only.')
+                : t('An API key is required to run a Kimi turn.')}
+            </small>
+          )}
           {error && <p className="ia-model-error">{t(error)}</p>}
           {message && <p className="ia-model-success">{t(message)}</p>}
         </div>
         <footer>
-          {profile.hasApiKey && (
+          {profile.hasApiKey && !platform && (
             <button onClick={() => void save(true)} disabled={saving}>
               {t('Remove key')}
             </button>

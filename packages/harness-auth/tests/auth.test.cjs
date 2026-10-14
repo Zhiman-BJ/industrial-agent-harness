@@ -216,6 +216,25 @@ test('access token for a different application is not forwarded', async t => {
   await assert.rejects(auth.serviceToken('model', issuer.config.modelBaseUrl), /verified/);
   assert.equal(issuer.calls.model, 0);
 });
+test('an unconfigured install signs in to the Zhiman platform and uses its model API', () => {
+  assert.deepEqual(validateConfig({}), {
+    issuer: 'https://auth.zhiman.cn',
+    clientId: 'harness-desktop-1',
+    audience: 'harness-desktop',
+    remoteOrigin: '',
+    remoteAudience: '',
+    modelBaseUrl: 'https://api.zhiman.cn/v1',
+  });
+  // Another platform keeps the registered client, but never borrows Zhiman's model API.
+  const local = validateConfig({ issuer: 'http://127.0.0.1:8080' });
+  assert.equal(local.clientId, 'harness-desktop-1');
+  assert.equal(local.modelBaseUrl, '');
+  assert.equal(
+    validateConfig({ issuer: 'http://127.0.0.1:8080', modelBaseUrl: 'http://127.0.0.1:8080/v1' })
+      .modelBaseUrl,
+    'http://127.0.0.1:8080/v1',
+  );
+});
 test('a remote service needs its application audience configured', () => {
   assert.throws(
     () => validateConfig({ clientId: 'harness-native', remoteOrigin: 'https://remote.example' }),

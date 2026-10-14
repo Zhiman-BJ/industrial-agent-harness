@@ -6,14 +6,14 @@ The shared module uses pinned `openid-client` 6.8.8 for discovery, Authorization
 
 ## Configure
 
-Register a **native/public** client in the platform with loopback callbacks enabled. A real client ID is required; this repository does not invent or ship a production registration. Desktop: Settings → Platform account → Platform connection. Environment overrides are supported:
+Nothing to configure for the Zhiman platform: both editions sign in to `https://auth.zhiman.cn` with the registered native client `harness-desktop-1` (application `harness-desktop`) and use the model API `https://api.zhiman.cn/v1`. A native client ID is public; native clients have no secret, and PKCE with the registered loopback redirect protects the sign-in. Another platform is set in Desktop under Settings → Platform account → Advanced: platform connection, or with environment overrides:
 
 | Variable | Meaning |
 | --- | --- |
 | `INDUSTRIAL_AUTH_ISSUER` | Issuer origin; defaults to `https://auth.zhiman.cn` |
-| `INDUSTRIAL_AUTH_CLIENT_ID` | Registered native client ID; required |
-| `INDUSTRIAL_AUTH_AUDIENCE` | Slug of the application the native client belongs to; distinct from client ID |
-| `INDUSTRIAL_AUTH_MODEL_BASE_URL` | Obol model API including `/v1`, e.g. `https://api.zhiman.cn/v1` |
+| `INDUSTRIAL_AUTH_CLIENT_ID` | Registered native client ID; defaults to `harness-desktop-1` |
+| `INDUSTRIAL_AUTH_AUDIENCE` | Slug of the application the native client belongs to; defaults to `harness-desktop` with the default client |
+| `INDUSTRIAL_AUTH_MODEL_BASE_URL` | Model API including `/v1`; defaults to `https://api.zhiman.cn/v1` only with the default issuer |
 | `INDUSTRIAL_AUTH_REMOTE_ORIGIN` | Explicit remote service origin |
 | `INDUSTRIAL_AUTH_REMOTE_AUDIENCE` | Application slug of the remote service; required with the remote origin |
 
@@ -34,14 +34,11 @@ The Obol model gateway accepts account tokens for `obol-api` ([integration guide
 
 The remote client obtains a token per request through an injected credential provider. Only GET + `401 WWW-Authenticate: Bearer error="invalid_token"` retries once after refresh. It never retries mutation requests or a `403`; existing request journals remain authoritative. Account subject participates in remote binding identity, and existing clients reject account changes.
 
-Desktop's **Use platform account for model API** and CLI `run --platform-account` use a bounded loopback model proxy. It accepts a random local session key, fixed routes and an exact upstream; platform tokens for `obol-api` are verified for issuer, audience, signature, expiry and `typ=at+jwt` before forwarding. A `401` from the model API refreshes the token and retries the request once; `402` (balance), `403` (no access) and `429` reach the kernel as short explanations, never as upstream bodies. Streaming responses are forwarded without whole-response buffering. The local key is all Kimi receives. BYOK remains a separate model source. Logout closes the local proxy; the selected platform source does not silently fall back to a saved API key. Model name/protocol/context parameters remain in Model API settings.
+Desktop's model source (Settings → Model API → Model source: **Platform account**, the default) and CLI `run --platform-account` use a bounded loopback model proxy. With the platform source, the model is chosen from the platform's `/v1/models`, which also fills in its context window; the API format is OpenAI-compatible and the API URL and key fields do not apply. It accepts a random local session key, fixed routes and an exact upstream; platform tokens for `obol-api` are verified for issuer, audience, signature, expiry and `typ=at+jwt` before forwarding. A `401` from the model API refreshes the token and retries the request once; `402` (balance), `403` (no access) and `429` reach the kernel as short explanations, never as upstream bodies. Streaming responses are forwarded without whole-response buffering. The local key is all Kimi receives. BYOK remains a separate model source. Logout closes the local proxy; the selected platform source does not silently fall back to a saved API key. Model name/protocol/context parameters remain in Model API settings.
 
 ## CLI
 
 ```sh
-export INDUSTRIAL_AUTH_CLIENT_ID='<registered-native-client-id>'
-export INDUSTRIAL_AUTH_AUDIENCE='<registered-application-slug>'
-export INDUSTRIAL_AUTH_MODEL_BASE_URL='https://api.zhiman.cn/v1'
 node apps/cli/src/main.cjs account login --allow-file-store
 node apps/cli/src/main.cjs account status --allow-file-store
 node apps/cli/src/main.cjs run --platform-account --project-dir /path/to/project --domain DOMAIN --task '...'

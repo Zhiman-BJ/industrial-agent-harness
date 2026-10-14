@@ -35,7 +35,9 @@
 
 模型调用：Obol 网关直接接受 `obol-api` Token，费用记在登录用户自己的 Obol 账户（首次调用自动开户并获得注册赠送）。模型代理遇到 401 会刷新后重试一次；402/403/429 转为简短说明交给 Kimi，不透传上游响应。远程服务仍使用预配置 Bearer 凭据，等服务端支持验证账号 Token 后再切换。
 
-已在 Obol 运营台核对用户登记的 native client `harness-desktop-1`，所属应用为 `harness-desktop`，本机回调已开启；用户确认已解决应用授权要求。client ID 是应用标识，不是个人凭据，仍由部署配置提供，不写成公共客户端的默认值。模型与远程服务的账号鉴权尚未联调；组织切换、额度接口不在本次范围。
+已在 Obol 运营台核对用户登记的 native client `harness-desktop-1`，所属应用为 `harness-desktop`，本机回调已开启；用户确认已解决应用授权要求。
+
+2026-10-14 产品决定：内部版和开源版都**默认连接知满平台**（issuer `https://auth.zhiman.cn`、client `harness-desktop-1`、应用 `harness-desktop`、模型 API `https://api.zhiman.cn/v1`），用户安装后直接登录即可，无需配置。native client 没有密钥，client ID 是公开标识，安全依赖 PKCE 和登记的回调地址。其他平台在“高级：平台连接”或环境变量中覆盖；只有使用默认 issuer 时才默认使用知满的模型 API。模型来源移到模型 API 设置里，默认是平台账号；选平台账号时模型从平台的 `/v1/models` 中选择并自动填入上下文长度，API 地址和密钥不再适用。模型与远程服务的账号鉴权尚未联调；组织切换、额度接口不在本次范围。
 
 ## 验证记录（2026-10-14）
 

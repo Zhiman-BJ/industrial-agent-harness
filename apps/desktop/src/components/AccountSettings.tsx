@@ -194,18 +194,10 @@ export function AccountSettings({ onClose }: { onClose: () => void }) {
               {t('Secure storage is unavailable. This sign-in lasts only until the app closes.')}
             </p>
           )}
-          {view && (view.config.modelBaseUrl || view.usePlatformModel) && (
-            <label className="ia-account-model-toggle">
-              <input
-                type="checkbox"
-                checked={view.usePlatformModel}
-                disabled={busy || pending || (!view.user && !view.usePlatformModel)}
-                onChange={event =>
-                  void act(() => window.harnessAccount.useModel(event.target.checked))
-                }
-              />
-              {t('Use platform account for model API')}
-            </label>
+          {view?.user && view.usePlatformModel && (
+            <p className="ia-account-note">
+              {t('Model calls use this account. Change the model source in Model API settings.')}
+            </p>
           )}
           {!view?.user && (
             <p className="ia-account-note">
@@ -215,7 +207,7 @@ export function AccountSettings({ onClose }: { onClose: () => void }) {
           {config && (
             <details className="ia-account-connection" open={view?.status === 'not_configured'}>
               <summary>
-                {t('Platform connection')}
+                {t('Advanced: platform connection')}
                 <ChevronDown size={14} aria-hidden="true" />
               </summary>
               <div className="ia-account-connection-fields">

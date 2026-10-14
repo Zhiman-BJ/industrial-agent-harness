@@ -22,11 +22,11 @@ function createCliAccount(environment = process.env, allowFileStore = false) {
 const usage = `industrial-harness account login|status|logout [--no-browser] [--allow-file-store]
 
 Uses standard OIDC authorization code + PKCE through the system browser.
-Set INDUSTRIAL_AUTH_CLIENT_ID to a registered Obol native client with loopback callbacks enabled.
-Optional: INDUSTRIAL_AUTH_ISSUER (default https://auth.zhiman.cn), INDUSTRIAL_AUTH_AUDIENCE,
-INDUSTRIAL_AUTH_MODEL_BASE_URL (e.g. https://api.zhiman.cn/v1; run --platform-account then
-bills the model to your own Obol account), INDUSTRIAL_AUTH_REMOTE_ORIGIN with
-INDUSTRIAL_AUTH_REMOTE_AUDIENCE (the remote service's application slug).
+Signs in to the Zhiman platform by default (https://auth.zhiman.cn, client harness-desktop-1);
+run --platform-account then bills the model (https://api.zhiman.cn/v1) to your own Obol account.
+Another platform: INDUSTRIAL_AUTH_ISSUER, INDUSTRIAL_AUTH_CLIENT_ID, INDUSTRIAL_AUTH_AUDIENCE,
+INDUSTRIAL_AUTH_MODEL_BASE_URL; a remote service: INDUSTRIAL_AUTH_REMOTE_ORIGIN with
+INDUSTRIAL_AUTH_REMOTE_AUDIENCE (its application slug).
 CLI persistence requires explicit --allow-file-store (private 0600 credential file).
 Without it, credentials remain in memory for this command only.
 --no-browser uses code paste only; open the URL on any device and paste code#state on stdin.

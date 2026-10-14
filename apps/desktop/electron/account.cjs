@@ -17,7 +17,9 @@ class DesktopAccount {
     environment = process.env,
     onChange = () => {},
     assertIdle = () => {},
+    fetch = global.fetch,
   }) {
+    this.fetch = fetch;
     this.directory = directory;
     this.safeStorage = safeStorage;
     this.shell = shell;
@@ -35,12 +37,13 @@ class DesktopAccount {
         decrypt: bytes => safeStorage.decryptString(bytes),
       },
     });
+    // The platform account is the model source until the user picks their own key.
     try {
       this.modelEnabled =
         JSON.parse(fs.readFileSync(path.join(directory, 'desktop-preferences.json'), 'utf8'))
           .usePlatformModel === true;
-    } catch {
-      this.modelEnabled = false;
+    } catch (error) {
+      this.modelEnabled = error.code === 'ENOENT';
     }
     try {
       this.bind(readConfig(directory, environment));
@@ -97,11 +100,9 @@ class DesktopAccount {
       )
         throw Error('This account setting is managed by the application operator.');
     writePrivate(path.join(this.directory, 'config.json'), JSON.stringify(config, null, 2));
-    this.modelEnabled = false;
-    writePrivate(
-      path.join(this.directory, 'desktop-preferences.json'),
-      JSON.stringify({ usePlatformModel: false }),
-    );
+    // The model source stays as chosen; the next sign-in opens the proxy to the new platform.
+    this.proxy?.close();
+    this.proxy = null;
     this.auth.close();
     this.bind(config);
     this.onChange(this.view());
@@ -126,7 +127,8 @@ class DesktopAccount {
     this.assertIdle();
     if (typeof enabled !== 'boolean') throw Error('Invalid model authentication mode.');
     let nextProxy = null;
-    if (enabled) {
+    // Signed out, the choice is only saved; signing in opens the proxy.
+    if (enabled && this.auth.view().user) {
       await this.auth.serviceToken('model', this.auth.config.modelBaseUrl);
       nextProxy = await createModelProxy({ auth: this.auth });
     }
@@ -144,6 +146,25 @@ class DesktopAccount {
     this.modelEnabled = enabled;
     this.onChange(this.view());
     return this.view();
+  }
+  // The models the platform offers this user, with their context windows, so the
+  // model settings can offer a choice instead of a free-text name.
+  async models() {
+    if (!this.auth.view().user) throw Error('Sign in to the platform account first.');
+    const base = this.auth.config.modelBaseUrl;
+    const token = await this.auth.serviceToken('model', base);
+    const response = await this.fetch(base + '/models', {
+      redirect: 'error',
+      headers: { authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) throw Error('Platform model list unavailable.');
+    const body = await response.json();
+    return (Array.isArray(body?.data) ? body.data : [])
+      .filter(model => typeof model?.id === 'string' && model.id.length <= 128)
+      .map(model => ({
+        id: model.id,
+        contextWindow: Number(model.capabilities?.context_window) || null,
+      }));
   }
   close() {
     this.proxy?.close();
@@ -170,6 +191,7 @@ function registerAccountHandlers({ ipcMain, getWindow, account }) {
     },
     logout: () => account.logout(),
     'use-model': enabled => account.useModel(enabled),
+    models: () => account.models(),
   };
   for (const [name, action] of Object.entries(handlers))
     ipcMain.handle('account:' + name, (event, request) => {

@@ -153,6 +153,17 @@ async function createIssuer() {
           : {}),
       });
     }
+    if (url.pathname === '/v1/models') {
+      calls.model++;
+      calls.headers.push(req.headers.authorization);
+      return json({
+        object: 'list',
+        data: [
+          { id: 'zhiman36_27b', object: 'model', capabilities: { context_window: 262144 } },
+          { id: 'qwen3.5-9b', object: 'model', capabilities: { context_window: 16384 } },
+        ],
+      });
+    }
     if (url.pathname === '/v1/chat/completions') {
       calls.model++;
       calls.headers.push(req.headers.authorization);
