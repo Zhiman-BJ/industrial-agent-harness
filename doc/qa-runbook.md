@@ -108,9 +108,10 @@
 | T2-17 | `test:results` | 任务成果卡：自动成果生成、版本关联、预览与历史重载（PR #72 引入）。**驱动真实 CAD 任务并断言结果卡与渲染三角数，同 T2-16 需 FreeCAD 前置**；CI 中该路径由 T4 native 套件的 `task-results-freecad/kimi.test.cjs` 覆盖，selftest 本身不进任何 workflow 循环 |
 | T2-18 | `test:model-sync` | 模型/项目配置广播同步：非 UI 的 `model:save`、`project:create` 后渲染端状态免刷新（PR #75 引入） |
 | T2-20 | `test:browser` | 工作区内嵌浏览器标签（PR #132）：导航、安全边界与工作区集成 |
+| T2-21 | `test:account` | Obol OIDC 登录（PR #151）：真实 Electron 登录、令牌刷新、取消、粘贴凭据与登出；协议层（签名 OIDC、loopback 真实 socket 验签）由 `account-login.yml` 的单测步覆盖 |
 | T2-19 | `node apps/desktop/scripts/test-install-experience.cjs` | 引导式安装体验（域选择/准备中断退出恢复），需先 build，quit 模式仅 darwin（PR #77 引入）；由 desktop-package.yml 的 mac job 执行 |
 
-CI 参考集：`desktop-package.yml` 跑 `ui language parallel gui-settings` 及 T2-19 install-experience 自测（仅 mac）；`industrial-core.yml` 跑 `chats logs mcp subagents kicad engineering ui language documents images parallel model-sync`。另有 `--replay-selftest`（PR #141：轨迹回放走产品事件咽喉）为裸 flag 驱动，暂无 `test:` 入口、不在任何 CI 循环，手动执行 `pnpm --filter @industrial-agent-harness/desktop exec electron . --replay-selftest`。本地全量即把上表全部执行（共 21 个入口，其中 T2-16/T2-17 受 FreeCAD 前置约束）。
+CI 参考集：`desktop-package.yml` 跑 `ui language parallel gui-settings` 及 T2-19 install-experience 自测（仅 mac）；`industrial-core.yml` 跑 `chats logs mcp subagents kicad engineering ui language documents images parallel model-sync`。另有 `--replay-selftest`（PR #141：轨迹回放走产品事件咽喉）为裸 flag 驱动，暂无 `test:` 入口、不在任何 CI 循环，手动执行 `pnpm --filter @industrial-agent-harness/desktop exec electron . --replay-selftest`。本地全量即把上表全部执行（共 22 个入口，其中 T2-16/T2-17 受 FreeCAD 前置约束）。
 
 ### T3 Transport 与 Benchmark（CI：structure.yml 后段）
 
@@ -207,7 +208,7 @@ pnpm run test:ci -- portable 2>&1 | tee "$EVID/portable.log"; mv dist/ci-reports
 pnpm run smoke:ci-packages 2>&1 | tee "$EVID/packages.log"                                  # T1-2
 pnpm --filter @industrial-agent-harness/desktop build                                        # T2 前置
 export INDUSTRIAL_UI_SCREENSHOTS="$PWD/$EVID/ui"; mkdir -p "$INDUSTRIAL_UI_SCREENSHOTS"
-for suite in ui parallel language gui-settings messages chats logs mcp external-mcp subagents images kicad godot engineering documents model-sync browser; do
+for suite in ui parallel language gui-settings messages chats logs mcp external-mcp subagents images kicad godot engineering documents model-sync browser account; do
   pnpm --filter @industrial-agent-harness/desktop "test:$suite" 2>&1 | tee "$EVID/desktop-$suite.log"
 done
 # T2 CAD 入口（test:cad / test:cad-resize / test:results）不在标准档：需先完成 T4-1 的 FreeCAD 准备
@@ -243,7 +244,8 @@ node scripts/qa-cleanup.cjs --apply 2>&1 | tee "$EVID/qa-cleanup.log"           
 | 层 | Workflow | 触发与门控 |
 | --- | --- | --- |
 | T0/T3 | `structure.yml`（repository 层：format/architecture/release/**lint**/治理文档存在性检查 + macOS 条件性 platform probe 构建 + benchmark/transport） | 每次必跑 |
-| T1 | `ci.yml` portable 矩阵 | PR 触及共享代码时跑；docs-only PR 跳过 |
+| T1 | `ci.yml` portable 矩阵（含 `harness-auth` 包单测自动发现） | PR 触及共享代码时跑；docs-only PR 跳过 |
+| 鉴权 | `account-login.yml`（macos-15 + windows-2025） | paths 触发（`packages/harness-auth/**`、`apps/**`、lockfile）：协议单测（loopback 验签，无外网/无 secrets）+ 桌面 `test:account`；证据留档 14 天 |
 | T2/T5 | `desktop-package.yml` | 非 docs-only PR 跑（mac+win；T2-19 install-experience 自测仅 mac） |
 | T4 | `industrial-core.yml` | 非 docs-only PR 跑（darwin arm64） |
 | T6 | `industrial-linux.yml` | PR 触及共享代码时跑（linux x64） |
