@@ -1,7 +1,7 @@
 const path = require('node:path');
 const fs = require('node:fs');
 const {
-  AuthManager,
+  createAccountManager,
   SessionStore,
   readConfig,
   validateConfig,
@@ -50,7 +50,7 @@ class DesktopAccount {
     }
   }
   bind(config) {
-    this.auth = new AuthManager({ config, store: this.store });
+    this.auth = createAccountManager({ config, store: this.store });
     this.auth.on('change', () => {
       if (!this.auth.view().user) {
         this.proxy?.close();
@@ -60,9 +60,11 @@ class DesktopAccount {
     });
   }
   view() {
+    const config = { ...this.auth.config };
+    delete config.services;
     return {
       ...this.auth.view(),
-      config: this.auth.config,
+      config,
       usePlatformModel: Boolean(this.modelEnabled),
     };
   }
@@ -81,7 +83,13 @@ class DesktopAccount {
     this.assertIdle();
     if (this.auth.view().user || this.auth.pending || this.auth.starting)
       throw Error('Sign out before changing the account platform.');
-    const config = validateConfig(value);
+    const sameIdentity = ['issuer', 'clientId', 'audience'].every(
+      key => value[key] === this.auth.config[key],
+    );
+    const config = validateConfig({
+      ...value,
+      services: value.services || (sameIdentity ? this.auth.config.services : undefined),
+    });
     // Environment overrides are controlled by the operator, never silently ignored.
     for (const [key, name] of Object.entries({
       issuer: 'ISSUER',

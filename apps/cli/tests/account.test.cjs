@@ -139,3 +139,56 @@ test('CLI manual login cancels cleanly when stdin closes', async t => {
   );
   assert.equal(auth.view().user, null);
 });
+
+test('CLI completes both grants through one stdin reader and emits one account', async t => {
+  const { createAccountManager } = require('@industrial-agent-harness/harness-auth');
+  const issuer = await createIssuer({ clients: { first: 'models', second: 'mcp' } });
+  t.after(issuer.close);
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'cli-dual-login-'));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const auth = createAccountManager({
+    config: {
+      ...issuer.config,
+      clientId: 'first',
+      audience: 'models',
+      services: {
+        model: { clientId: 'first', audience: 'models' },
+        remote: { clientId: 'second', audience: 'mcp' },
+      },
+    },
+    store: new SessionStore({ directory }),
+    fetch,
+    createServer,
+  });
+  const input = new PassThrough();
+  t.after(() => input.destroy());
+  const events = [];
+  const authorize = [];
+  auth.on('manual-authorization', url => {
+    authorize.push(
+      issuer.authorize(url).then(callback => {
+        const parsed = new URL(callback);
+        input.write(
+          parsed.searchParams.get('code') + '#' + parsed.searchParams.get('state') + '\n',
+        );
+      }),
+    );
+  });
+  await runAccount(
+    ['login', '--no-browser'],
+    { write: line => events.push(JSON.parse(line)) },
+    {},
+    { auth, input },
+  );
+  await Promise.all(authorize);
+  assert.equal(events.filter(event => event.type === 'account').length, 1);
+  assert.equal(events.at(-1).status, 'signed_in');
+  assert.equal(issuer.calls.token, 2);
+  assert.equal(input.listenerCount('data'), 0);
+  for (const account of auth.accounts.values()) {
+    const session = account.store.read();
+    assert.ok(!JSON.stringify(events).includes(session.refreshToken));
+  }
+  await auth.logout();
+  assert.deepEqual(issuer.calls.revokedClients.sort(), ['first', 'second']);
+});

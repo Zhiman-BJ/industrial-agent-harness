@@ -42,7 +42,40 @@ function validateConfig(value) {
   const modelBaseUrl = value.modelBaseUrl ? trustedUrl(value.modelBaseUrl) : '';
   if ((remoteOrigin || modelBaseUrl) && !audience)
     throw Error('Configure the platform application audience before connecting a service.');
-  return { issuer, clientId, audience, remoteOrigin, modelBaseUrl };
+  const result = { issuer, clientId, audience, remoteOrigin, modelBaseUrl };
+  if (value.resource) result.resource = trustedUrl(value.resource);
+  // Registered public identifiers are not credentials. Keep the two grants
+  // below the existing account UI, and preserve custom single-app deployments.
+  const profiles =
+    value.services ||
+    (issuer === 'https://auth.zhiman.cn' &&
+    clientId === 'harness-desktop-1' &&
+    audience === 'harness-desktop'
+      ? {
+          model: { clientId, audience: 'obol-api', resource: 'https://api.zhiman.cn' },
+          remote: { clientId: 'industrial-agent-harness', audience: 'industrial-mcp-remote' },
+        }
+      : null);
+  if (profiles) {
+    if (
+      !profiles.model ||
+      !profiles.remote ||
+      Object.keys(profiles).some(key => !['model', 'remote'].includes(key))
+    )
+      throw Error('Configure both platform service authorizations.');
+    result.services = {};
+    for (const service of ['model', 'remote']) {
+      const profile = profiles[service];
+      for (const id of [profile.clientId, profile.audience])
+        if (typeof id !== 'string' || !id || id.length > 128 || /[^a-zA-Z0-9._-]/.test(id))
+          throw Error('Invalid platform service identifier.');
+      if (profile.clientId === profile.audience)
+        throw Error('Client ID must differ from the application audience.');
+      result.services[service] = { clientId: profile.clientId, audience: profile.audience };
+      if (profile.resource) result.services[service].resource = trustedUrl(profile.resource);
+    }
+  }
+  return result;
 }
 
 function readConfig(directory, environment = process.env) {

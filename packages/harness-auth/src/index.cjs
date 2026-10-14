@@ -11,6 +11,7 @@ const messages = {
   login_required: 'Your session has expired. Sign in again.',
   protocol_error: 'Platform sign-in could not be verified. Check the account configuration.',
   unavailable: 'The account service is unavailable. Try again.',
+  resource_denied: 'This account cannot access the requested service.',
   refresh_uncertain: 'Session renewal could not be confirmed. Sign in again.',
   invalid_code: 'Paste the complete code#state from the account center.',
   no_pending_login: 'Start sign-in before submitting an authorization code.',
@@ -21,6 +22,7 @@ function authError(code) {
 }
 function safeError(error) {
   if (Object.hasOwn(messages, error?.code)) return error;
+  if (error?.error === 'invalid_target') return authError('resource_denied');
   if (error?.error === 'access_denied') return authError('access_denied');
   if (error?.error === 'invalid_grant') return authError('login_required');
   return authError('protocol_error');
@@ -41,6 +43,7 @@ class AuthManager extends EventEmitter {
     createServer = http.createServer,
     loginTimeoutMs = 300000,
     now = Date.now,
+    legacyBindings = [],
   }) {
     super();
     this.config = validateConfig(config);
@@ -49,10 +52,15 @@ class AuthManager extends EventEmitter {
     this.createServer = createServer;
     this.now = now;
     this.loginTimeoutMs = loginTimeoutMs;
-    this.identity = crypto.createHash('sha256').update(JSON.stringify(this.config)).digest('hex');
+    const binding = { ...this.config };
+    delete binding.services;
+    this.legacyBindings = new Set(legacyBindings);
+    this.identity = crypto.createHash('sha256').update(JSON.stringify(binding)).digest('hex');
     this.epoch = 0;
     this.state = 'signed_out';
     this.user = null;
+    this.exchanges = new Set();
+    this.revocationFailed = false;
   }
   view() {
     return {
@@ -123,10 +131,15 @@ class AuthManager extends EventEmitter {
       });
     return this.protocolPromise;
   }
+  bound(session) {
+    return (
+      session && (session.binding === this.identity || this.legacyBindings.has(session.binding))
+    );
+  }
   async restore() {
     return this.store.transaction(async tx => {
       const session = tx.read();
-      if (session?.binding === this.identity && !session.refreshPending) {
+      if (this.bound(session) && !session.refreshPending) {
         this.user = session.user;
         this.changed('signed_in');
       } else {
@@ -161,18 +174,23 @@ class AuthManager extends EventEmitter {
       // Attach immediately so cancellation during browser launch is always handled.
       result.catch(() => {});
       const manualRedirect = this.config.issuer + '/oauth/code';
-      const accept = async url => {
+      const exchange = async url => {
         if (epoch !== this.epoch) throw authError('cancelled');
         if (consumed) throw authError('login_consumed');
         consumed = true;
         let tokens;
         try {
-          tokens = await oidc.authorizationCodeGrant(config, url, {
-            pkceCodeVerifier: verifier,
-            expectedState: state,
-            expectedNonce: nonce,
-            idTokenExpected: true,
-          });
+          tokens = await oidc.authorizationCodeGrant(
+            config,
+            url,
+            {
+              pkceCodeVerifier: verifier,
+              expectedState: state,
+              expectedNonce: nonce,
+              idTokenExpected: true,
+            },
+            this.config.resource ? { resource: this.config.resource } : undefined,
+          );
           const claims = tokens.claims();
           if (!claims?.sub || !tokens.refresh_token) throw authError('protocol_error');
           let user = {
@@ -205,10 +223,21 @@ class AuthManager extends EventEmitter {
               .tokenRevocation(config, tokens.refresh_token, {
                 token_type_hint: 'refresh_token',
               })
-              .catch(() => {});
+              .catch(() => {
+                this.revocationFailed = true;
+              });
           }
           throw safeError(error);
         }
+      };
+      const accept = url => {
+        const pending = exchange(url);
+        this.exchanges.add(pending);
+        pending.then(
+          () => this.exchanges.delete(pending),
+          () => this.exchanges.delete(pending),
+        );
+        return pending;
       };
       let redirect;
       const callback = async (request, response) => {
@@ -270,6 +299,7 @@ class AuthManager extends EventEmitter {
         oidc.buildAuthorizationUrl(config, {
           redirect_uri: target,
           response_type: 'code',
+          ...(this.config.resource ? { resource: this.config.resource } : {}),
           scope: 'openid profile offline_access',
           state,
           nonce,
@@ -377,17 +407,13 @@ class AuthManager extends EventEmitter {
     return this.store.transaction(async tx => {
       if (epoch !== this.epoch) throw authError('cancelled');
       const session = tx.read();
-      if (
-        !session ||
-        session.binding !== this.identity ||
-        !session.refreshToken ||
-        session.refreshPending
-      ) {
+      if (!session || !this.bound(session) || !session.refreshToken || session.refreshPending) {
         this.user = null;
         this.changed('reauth_required');
         throw authError('login_required');
       }
       if (
+        session.binding === this.identity &&
         session.expiresAt > this.now() + 60000 &&
         (!rejectedToken || rejectedToken !== session.accessToken)
       ) {
@@ -400,7 +426,11 @@ class AuthManager extends EventEmitter {
       tx.write({ ...session, refreshPending: true });
       this.changed('refreshing');
       try {
-        const tokens = await oidc.refreshTokenGrant(config, session.refreshToken);
+        const tokens = await oidc.refreshTokenGrant(
+          config,
+          session.refreshToken,
+          this.config.resource ? { resource: this.config.resource } : undefined,
+        );
         if (
           !tokens.refresh_token ||
           (tokens.claims()?.sub && tokens.claims().sub !== session.user.sub)
@@ -416,6 +446,15 @@ class AuthManager extends EventEmitter {
         return next.accessToken;
       } catch (error) {
         if (error?.code === 'cancelled') throw error;
+        // Obol guarantees invalid_target rolls back before refresh rotation.
+        // Keep this grant; unavailable service access must not erase the account.
+        if (error?.error === 'invalid_target') {
+          tx.write(session);
+          this.user = session.user;
+          const denied = authError('resource_denied');
+          this.changed('signed_in', denied.message);
+          throw denied;
+        }
         tx.clear();
         this.user = null;
         const safe =
@@ -460,11 +499,12 @@ class AuthManager extends EventEmitter {
   }
   async logout() {
     this.cancel();
-    let revoked = true;
+    await Promise.allSettled([...this.exchanges]);
+    let revoked = !this.revocationFailed;
     await this.store.transaction(async tx => {
       try {
         const session = tx.read();
-        if (session?.binding === this.identity && session.refreshToken) {
+        if (this.bound(session) && session.refreshToken) {
           const { oidc, config } = await this.protocol();
           await oidc.tokenRevocation(config, session.refreshToken, {
             token_type_hint: 'refresh_token',
@@ -472,6 +512,7 @@ class AuthManager extends EventEmitter {
         }
       } catch {
         revoked = false;
+        this.revocationFailed = true;
       } finally {
         tx.clear();
         this.user = null;
@@ -491,4 +532,10 @@ module.exports = {
   authError,
   ...require('./config.cjs'),
   ...require('./store.cjs'),
+  createAccountManager: options => {
+    const config = validateConfig(options.config);
+    return config.services
+      ? new (require('./account-manager.cjs').AccountManager)({ ...options, config })
+      : new AuthManager({ ...options, config });
+  },
 };

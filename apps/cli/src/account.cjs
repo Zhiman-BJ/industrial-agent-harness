@@ -3,7 +3,7 @@ const readline = require('node:readline');
 const { Writable } = require('node:stream');
 const { openBrowser } = require('@industrial-agent-harness/harness-auth/src/system-browser.cjs');
 const {
-  AuthManager,
+  createAccountManager,
   SessionStore,
   authDirectory,
   readConfig,
@@ -11,7 +11,7 @@ const {
 
 function createCliAccount(environment = process.env, allowFileStore = false) {
   const directory = authDirectory(environment);
-  return new AuthManager({
+  return createAccountManager({
     config: readConfig(directory, environment),
     store: new SessionStore({
       directory: path.join(directory, 'cli'),
@@ -56,17 +56,18 @@ async function runAccount(argv, output = process.stdout, environment = process.e
           environment.SSH_CONNECTION ||
           (process.platform === 'linux' && !environment.DISPLAY && !environment.WAYLAND_DISPLAY),
       );
-      auth.once('authorization', url => {
+      auth.on('authorization', url => {
         if (auth.view().login?.loopbackAvailable)
           send({ type: 'account_authorization', url, callback: 'same-machine-loopback' });
       });
-      auth.once('manual-authorization', url => {
+      auth.on('manual-authorization', url => {
         send({
           type: 'account_authorization',
           url,
           callback: 'paste-code',
           input: 'code#state via stdin',
         });
+        if (reader) return;
         const input = options.input || process.stdin;
         // A terminal must not echo authorization codes or put them in command history.
         reader = readline.createInterface({
