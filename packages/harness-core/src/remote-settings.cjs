@@ -84,10 +84,16 @@ function selectedSnapshot(directory, selected) {
 }
 
 class RemoteSettings {
-  constructor({ directory = defaultResourceDirectory(), environment = process.env, fetch } = {}) {
+  constructor({
+    directory = defaultResourceDirectory(),
+    environment = process.env,
+    fetch,
+    account,
+  } = {}) {
     this.directory = directory;
     this.environment = environment;
     this.fetch = fetch;
+    this.account = account;
     this.file = path.join(directory, 'remote-settings.json');
     this.reviews = new Map();
     this.locks = new Set();
@@ -116,7 +122,10 @@ class RemoteSettings {
   configuration() {
     const saved = this.read().service || {};
     const url =
-      this.environment.INDUSTRIAL_REMOTE_SERVICE_URL || saved.serviceUrl || defaults.serviceUrl;
+      this.environment.INDUSTRIAL_REMOTE_SERVICE_URL ||
+      this.account?.config.remoteOrigin ||
+      saved.serviceUrl ||
+      defaults.serviceUrl;
     const credentialEnv =
       this.environment.INDUSTRIAL_REMOTE_CREDENTIAL_ENV ||
       saved.credentialEnv ||
@@ -126,14 +135,35 @@ class RemoteSettings {
     return { url: url ? serviceUrl(url) : null, credentialEnv, serverId: saved.serverId || null };
   }
   identity() {
-    return hash(JSON.stringify(this.configuration()));
+    const config = this.configuration();
+    const account = this.accountFor(config);
+    return hash(
+      JSON.stringify({
+        ...config,
+        ...(account
+          ? { account: account.identity, subject: account.view().user?.sub || null }
+          : {}),
+      }),
+    );
+  }
+  accountFor(config = this.configuration()) {
+    return this.account?.config.remoteOrigin === config.url ? this.account : null;
   }
   client() {
     const config = this.configuration();
     if (!config.url) throw Error('Zhiman Remote is not configured.');
+    const account = this.accountFor(config);
+    const subject = account?.view().user?.sub;
     return new RemoteClient({
       url: config.url,
       credential: this.environment[config.credentialEnv],
+      credentialProvider: account
+        ? async options => {
+            if (!subject || account.view().user?.sub !== subject)
+              throw Error('Sign in to the project account again.');
+            return account.serviceToken('remote', config.url, options);
+          }
+        : undefined,
       journalDirectory: path.join(this.directory, 'remote-requests'),
       fetch: this.fetch,
     });
@@ -141,7 +171,11 @@ class RemoteSettings {
   view() {
     const config = this.configuration();
     if (!config.url) return { status: 'not_configured', domains: [] };
-    if (!config.credentialEnv || !this.environment[config.credentialEnv])
+    if (
+      this.accountFor(config)
+        ? !this.account.view().user
+        : !config.credentialEnv || !this.environment[config.credentialEnv]
+    )
       return { status: 'credentials_missing', domains: [] };
     return this.connectionIdentity === this.identity()
       ? this.connection

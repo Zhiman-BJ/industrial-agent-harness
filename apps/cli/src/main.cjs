@@ -20,6 +20,12 @@ const { loadArtifacts } = require('./lib/artifact-manifest.cjs');
 const { runMcp } = require('./mcp.cjs');
 const { main: inspectDiagnosticLog } = require('./inspect-log.cjs');
 const { runRemote } = require('./remote.cjs');
+const { runAccount, createCliAccount } = require('./account.cjs');
+const {
+  RemoteSettings,
+  defaultResourceDirectory,
+} = require('@industrial-agent-harness/harness-core');
+const { createModelProxy } = require('@industrial-agent-harness/harness-auth/src/model-proxy.cjs');
 const { runDomains } = require('./domains.cjs');
 const {
   defaults,
@@ -33,6 +39,7 @@ industrial-harness chats --project-dir DIR --domain DOMAIN [--chat-dir DIR]
 industrial-harness doctor --project-dir DIR --domain DOMAIN
 industrial-harness inspect-log --file FILE
 industrial-harness remote --help
+industrial-harness account --help
 industrial-harness mcp --help
 industrial-harness domains list|available|install|update|remove [options]
 
@@ -46,6 +53,7 @@ Options:
   --context-size N             Model context size
   --no-thinking                Disable thinking mode
   --image-input                Enable model image input for screenshot services
+  --platform-account          Use the saved platform account (explicit 0600 CLI store)
   --api-key-env NAME           Environment variable containing the API key
   --kimi-executable PATH       Kimi CLI executable (or set KIMI_EXECUTABLE)
   --approval POLICY            reject (default), approve, approve_for_session, auto
@@ -74,11 +82,25 @@ async function run(
   const projectDir = fs.realpathSync(path.resolve(options.projectDir));
   if (!fs.statSync(projectDir).isDirectory()) throw Error('Project path must be a directory.');
   const project = { id: projectDir, path: projectDir, domain: options.domain };
+  const account = options.platformAccount ? createCliAccount(environment, true) : null;
+  if (account) await account.restore();
+  let modelProxy;
   const tasks = new TaskService({
     environment,
     Session,
     chatDirectory: options.chatDir,
-    runtimeOptions: { directory: options.stateDir || environment.INDUSTRIAL_HARNESS_STATE_DIR },
+    runtimeOptions: {
+      directory: options.stateDir || environment.INDUSTRIAL_HARNESS_STATE_DIR,
+      ...(account
+        ? {
+            remoteSettings: new RemoteSettings({
+              directory: defaultResourceDirectory(environment),
+              environment,
+              account,
+            }),
+          }
+        : {}),
+    },
     contextOptions: { directory: options.stateDir || environment.INDUSTRIAL_HARNESS_STATE_DIR },
   });
   const runId = crypto.randomUUID();
@@ -140,13 +162,25 @@ async function run(
       send({ type: 'result', status: 'scoped' });
       return 0;
     }
+    if (account) {
+      if (options.endpoint || options.apiKeyEnv)
+        throw Error('Platform account cannot be combined with a custom endpoint or API key.');
+      await account.serviceToken('model', account.config.modelBaseUrl);
+      modelProxy = await createModelProxy({ auth: account });
+    }
     const provider = options.provider || 'kimi';
-    if (provider === 'openai_legacy' && !options.endpoint && !environment.OPENAI_BASE_URL)
+    if (
+      provider === 'openai_legacy' &&
+      !modelProxy &&
+      !options.endpoint &&
+      !environment.OPENAI_BASE_URL
+    )
       throw Error('Set --endpoint or OPENAI_BASE_URL for the OpenAI-compatible provider.');
     const profile = validateProfile({
       ...defaults,
       provider,
       endpoint:
+        modelProxy?.endpoint ||
         options.endpoint ||
         (provider === 'kimi' ? environment.KIMI_BASE_URL : environment.OPENAI_BASE_URL) ||
         defaults.endpoint,
@@ -157,7 +191,7 @@ async function run(
       imageInputMode: options.imageInput ? 'enabled' : defaults.imageInputMode,
     });
     const keyName = options.apiKeyEnv || (provider === 'kimi' ? 'KIMI_API_KEY' : 'OPENAI_API_KEY');
-    const apiKey = environment[keyName];
+    const apiKey = modelProxy?.apiKey || environment[keyName];
     if (!apiKey) throw Error(`Set ${keyName} in the environment before running Kimi.`);
     const artifacts = await loadArtifacts(options.artifactManifest, projectDir);
     configDir = fs.mkdtempSync(path.join(os.tmpdir(), 'industrial-harness-cli-'));
@@ -285,6 +319,8 @@ async function run(
     try {
       await tasks.close();
     } finally {
+      modelProxy?.close();
+      account?.close();
       await guiBridge?.close?.().catch(() => {});
       if (configDir) fs.rmSync(configDir, { recursive: true, force: true });
     }
@@ -293,6 +329,10 @@ async function run(
 
 async function main() {
   try {
+    if (process.argv[2] === 'account') {
+      process.exitCode = await runAccount(process.argv.slice(3));
+      return;
+    }
     if (process.argv[2] === 'remote') {
       process.exitCode = await runRemote(process.argv.slice(3));
       return;

@@ -53,11 +53,12 @@ function serviceUrl(value) {
 
 // Data-only protocol client. No server-supplied path, executable or image is run locally.
 class RemoteClient {
-  constructor({ url, credential, journalDirectory, fetch = global.fetch }) {
+  constructor({ url, credential, credentialProvider, journalDirectory, fetch = global.fetch }) {
     this.url = serviceUrl(url);
-    if (!credential || /[\r\n]/.test(credential))
+    if (!credentialProvider && (!credential || /[\r\n]/.test(credential)))
       throw Error('Remote credentials are not configured.');
     this.credential = credential;
+    this.credentialProvider = credentialProvider;
     this.journalDirectory = journalDirectory;
     this.fetch = fetch;
   }
@@ -65,22 +66,38 @@ class RemoteClient {
     return `/v1/projects/${uuid(project)}${suffix ? '/' + suffix : ''}`;
   }
   async request(route, { method = 'GET', body, binary = false } = {}) {
-    const response = await this.fetch(this.url + route, {
-      method,
-      redirect: 'error',
-      signal: AbortSignal.timeout(30000),
-      headers: {
-        Authorization: 'Bearer ' + this.credential,
-        ...(body
-          ? {
-              'Content-Type': Buffer.isBuffer(body)
-                ? 'application/octet-stream'
-                : 'application/json',
-            }
-          : {}),
-      },
-      body: body === undefined ? undefined : Buffer.isBuffer(body) ? body : JSON.stringify(body),
-    });
+    const credential = this.credentialProvider ? await this.credentialProvider() : this.credential;
+    if (typeof credential !== 'string' || !credential || /[\r\n]/.test(credential))
+      throw Error('Remote credentials are not configured.');
+    const send = token =>
+      this.fetch(this.url + route, {
+        method,
+        redirect: 'error',
+        signal: AbortSignal.timeout(30000),
+        headers: {
+          Authorization: 'Bearer ' + token,
+          ...(body
+            ? {
+                'Content-Type': Buffer.isBuffer(body)
+                  ? 'application/octet-stream'
+                  : 'application/json',
+              }
+            : {}),
+        },
+        body: body === undefined ? undefined : Buffer.isBuffer(body) ? body : JSON.stringify(body),
+      });
+    let response = await send(credential);
+    // Only an explicit invalid_token challenge on a read is safe to retry.
+    // Mutations retain their journal/request identity and are never replayed here.
+    if (
+      method === 'GET' &&
+      this.credentialProvider &&
+      response.status === 401 &&
+      /Bearer\s+.*error="invalid_token"/i.test(response.headers.get('www-authenticate') || '')
+    ) {
+      await response.body?.cancel();
+      response = await send(await this.credentialProvider({ rejectedToken: credential }));
+    }
     if (!response.ok) {
       // Never forward arbitrary server diagnostics (which may contain credentials) into the renderer/model.
       const detail = await response.json().catch(() => ({}));

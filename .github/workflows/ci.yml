@@ -5,6 +5,11 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+    inputs:
+      full:
+        description: 'Run full native, installation and upgrade acceptance'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -17,21 +22,17 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Area gating: documentation-only pull requests keep only the repository
-  # structure layer, and pull requests confined to apps/desktop skip the
-  # shared-package Portable matrix and the Linux chip installer acceptance
-  # (neither layer ships Desktop UI code). Pushes to main and manual
-  # dispatches always run every layer, so merged code keeps the full net.
-  # The classification rules live in scripts/ci-areas.cjs and are unit-tested
-  # by the portable suite, so this job checks out the repository to require
-  # the shared module.
+  # Core PR checks retain four native Portable platforms, packaged Desktop
+  # startup and a real Linux engineering path. Main pushes and manual full
+  # runs additionally execute the unchanged macOS native acceptance matrices
+  # and full installation/upgrade scenarios. See ADR-008.
   changes:
     name: Detect changed areas
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     outputs:
-      docs_only: ${{ steps.areas.outputs.docs_only }}
-      shared_changed: ${{ steps.areas.outputs.shared_changed }}
+      core: ${{ steps.areas.outputs.core }}
+      full: ${{ steps.areas.outputs.full }}
     steps:
       - uses: actions/checkout@v4
       - name: Classify changed files
@@ -39,36 +40,32 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const { classify } = require('./scripts/ci-areas.cjs');
-            if (context.eventName !== 'pull_request') {
-              core.setOutput('docs_only', 'false');
-              core.setOutput('shared_changed', 'true');
-              return;
-            }
+            const { plan } = require('./scripts/ci-areas.cjs');
             const entries = [];
-            for (let page = 1; page <= 30; page += 1) {
-              const chunk = await github.rest.pulls.listFiles({
-                ...context.repo,
-                pull_number: context.issue.number,
-                per_page: 100,
-                page,
-              });
-              entries.push(...chunk.data.map(entry => ({
-                filename: entry.filename,
-                previous_filename: entry.previous_filename,
-              })));
-              if (chunk.data.length < 100) break;
-            }
-            if (entries.length >= 3000) {
-              // Too many files to classify reliably; run every layer.
-              core.setOutput('docs_only', 'false');
-              core.setOutput('shared_changed', 'true');
-              return;
+            if (context.eventName === 'pull_request') {
+              for (let page = 1; page <= 30; page += 1) {
+                const chunk = await github.rest.pulls.listFiles({
+                  ...context.repo,
+                  pull_number: context.issue.number,
+                  per_page: 100,
+                  page,
+                });
+                entries.push(...chunk.data.map(entry => ({
+                  filename: entry.filename,
+                  previous_filename: entry.previous_filename,
+                })));
+                if (chunk.data.length < 100) break;
+              }
             }
             core.info(`Changed files (${entries.length}):\n${entries.map(entry => entry.filename).join('\n')}`);
-            const { docsOnly, sharedChanged } = classify(entries);
-            core.setOutput('docs_only', String(docsOnly));
-            core.setOutput('shared_changed', String(sharedChanged));
+            const selected = plan(entries, {
+              eventName: context.eventName,
+              // An incomplete file listing must never select the docs-only path.
+              full: entries.length >= 3000 || [true, 'true'].includes(context.payload.inputs?.full),
+            });
+            for (const [name, enabled] of Object.entries(selected)) {
+              core.setOutput(name, String(enabled));
+            }
 
   repository:
     uses: ./.github/workflows/structure.yml
@@ -76,7 +73,7 @@ jobs:
   portable:
     name: Portable (${{ matrix.platform }}-${{ matrix.arch }})
     needs: changes
-    if: needs.changes.outputs.shared_changed == 'true'
+    if: needs.changes.outputs.core == 'true'
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 25
     strategy:
@@ -149,18 +146,22 @@ jobs:
 
   desktop:
     needs: changes
-    if: needs.changes.outputs.docs_only == 'false'
+    if: needs.changes.outputs.core == 'true'
     uses: ./.github/workflows/desktop-package.yml
+    with:
+      full: ${{ needs.changes.outputs.full == 'true' }}
 
   industrial:
     needs: changes
-    if: needs.changes.outputs.docs_only == 'false'
+    if: needs.changes.outputs.full == 'true'
     uses: ./.github/workflows/industrial-core.yml
 
   industrial-linux:
     needs: changes
-    if: needs.changes.outputs.shared_changed == 'true'
+    if: needs.changes.outputs.core == 'true'
     uses: ./.github/workflows/industrial-linux.yml
+    with:
+      full: ${{ needs.changes.outputs.full == 'true' }}
 
   all-checks-passed:
     name: All checks passed
@@ -171,6 +172,7 @@ jobs:
     env:
       REQUIRED_JOBS: ${{ toJSON(needs) }}
     steps:
+      - uses: actions/checkout@v4
       - name: Require every scheduled regression layer to succeed
         run: |
           node <<'NODE'
@@ -178,12 +180,9 @@ jobs:
           for (const [name, job] of Object.entries(jobs)) {
             console.log(`${name}: ${job.result}`);
           }
-          // Gated layers may be skipped by design; anything that actually ran
-          // must pass, and the area detection itself must never fail silently.
-          const failed = Object.entries(jobs).filter(
-            ([name, job]) => job.result !== 'success' && !(job.result === 'skipped' && name !== 'changes'),
-          );
+          const failed = require('./scripts/ci-areas.cjs').failedJobs(jobs);
           if (failed.length > 0) {
+            console.error(`Required CI layers did not pass: ${failed.join(', ')}`);
             process.exit(1);
           }
           NODE

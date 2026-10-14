@@ -1,0 +1,62 @@
+name: Platform account login
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/account-login.yml'
+      - 'packages/harness-auth/**'
+      - 'apps/cli/**'
+      - 'apps/desktop/**'
+      - 'pnpm-lock.yaml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: account-login-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  account-login:
+    name: Account login (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, windows-2025]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.1.3
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: pnpm
+      - name: Install pinned dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Verify signed OIDC with real loopback sockets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist/ci-reports/account
+          node --test packages/harness-auth/tests/*.test.cjs apps/cli/tests/account.test.cjs apps/desktop/electron/account.test.cjs packages/harness-core/tests/account-remote.test.cjs 2>&1 | tee dist/ci-reports/account/protocol.log
+      - name: Build Desktop
+        run: pnpm --filter @industrial-agent-harness/desktop build
+      - name: Verify real Electron login, refresh, cancellation, paste and logout
+        shell: bash
+        env:
+          INDUSTRIAL_UI_SCREENSHOTS: ${{ github.workspace }}/dist/ci-reports/account/screenshots
+        run: |
+          set -euo pipefail
+          pnpm --filter @industrial-agent-harness/desktop test:account 2>&1 | tee dist/ci-reports/account/desktop.log
+      - name: Retain account verification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: account-login-${{ matrix.os }}
+          path: dist/ci-reports/account/
+          if-no-files-found: warn
+          retention-days: 14

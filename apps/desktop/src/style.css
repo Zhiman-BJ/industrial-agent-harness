@@ -4706,3 +4706,239 @@ body {
   background: var(--ia-panel, #f7f7f5);
   border-bottom: 1px solid var(--ia-border, #e5e6e3);
 }
+
+.ia-model-modal.ia-account-modal {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - 40px);
+  overflow: hidden;
+}
+.ia-account-modal > header {
+  flex: none;
+  gap: 16px;
+  padding: 18px 22px 16px;
+}
+.ia-account-modal > header h2 {
+  margin: 0 0 4px;
+  font-size: 16px;
+  line-height: 1.5;
+}
+.ia-account-modal > header .ia-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: var(--ia-control-size);
+  height: var(--ia-control-size);
+  padding: 0;
+}
+.ia-account-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 0;
+  overflow: auto;
+  padding: 20px 22px;
+  font-size: var(--ia-font-sm);
+}
+.ia-account-identity {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.ia-account-person {
+  min-width: 0;
+}
+.ia-account-person h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.ia-account-person p {
+  margin: 4px 0 0;
+  color: var(--ia-muted);
+  font-size: var(--ia-font-xs);
+  overflow-wrap: anywhere;
+}
+.ia-account-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ia-muted);
+  font-size: var(--ia-font-xs);
+}
+.ia-account-status-dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.ia-account-status[data-status='signed_in'] {
+  color: var(--ia-success);
+}
+.ia-account-status[data-status='reauth_required'],
+.ia-account-status[data-status='not_configured'] {
+  color: var(--ia-warning);
+}
+.ia-account-note {
+  margin: 0;
+  color: var(--ia-muted);
+  font-size: var(--ia-font-xs);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.ia-account-storage {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.ia-account-storage svg {
+  flex: none;
+}
+.ia-account-warning {
+  color: var(--ia-warning);
+}
+.ia-account-error {
+  color: var(--ia-danger);
+}
+.ia-account-manual,
+.ia-account-connection-fields {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+.ia-account-manual {
+  padding-top: 16px;
+  border-top: 1px solid var(--ia-border);
+}
+.ia-account-manual label,
+.ia-account-connection label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  color: var(--ia-muted);
+  font-size: var(--ia-font-sm);
+  font-weight: 400;
+}
+.ia-account-modal input:not([type='checkbox']) {
+  width: 100%;
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid var(--ia-border);
+  border-radius: 6px;
+  background: var(--ia-bg);
+  color: var(--ia-text);
+  font: inherit;
+  font-size: var(--ia-font-sm);
+}
+.ia-account-modal input:disabled {
+  opacity: 0.6;
+}
+.ia-account-modal input:focus-visible,
+.ia-account-connection summary:focus-visible {
+  outline: 2px solid var(--ia-accent);
+  outline-offset: 3px;
+}
+.ia-account-modal .ia-account-button {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 7px;
+  min-height: var(--ia-control-size);
+  padding: 8px 12px;
+  border: 1px solid var(--ia-border);
+  font-size: var(--ia-font-sm);
+}
+.ia-account-open-browser {
+  justify-self: start;
+}
+.ia-account-submit,
+.ia-account-save {
+  justify-self: end;
+}
+.ia-account-modal button.primary {
+  border-color: transparent;
+  background: var(--ia-accent);
+  color: var(--ia-bg);
+}
+.ia-account-modal button.primary:hover:not(:disabled) {
+  background: var(--ia-accent);
+  opacity: 0.85;
+}
+.ia-account-model-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--ia-font-sm);
+}
+.ia-account-model-toggle input {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: var(--ia-accent);
+}
+.ia-account-connection {
+  border-top: 1px solid var(--ia-border);
+}
+.ia-account-connection summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: var(--ia-control-size);
+  margin-top: 8px;
+  border-radius: 6px;
+  color: var(--ia-muted);
+  list-style: none;
+  cursor: pointer;
+}
+.ia-account-connection summary::-webkit-details-marker {
+  display: none;
+}
+.ia-account-connection summary:hover {
+  color: var(--ia-text);
+}
+.ia-account-connection summary svg {
+  flex: none;
+}
+.ia-account-connection[open] > summary svg {
+  transform: rotate(180deg);
+}
+.ia-account-connection-fields {
+  padding-top: 12px;
+}
+.ia-account-modal > .ia-account-actions {
+  flex: none;
+  gap: 16px;
+  padding: 14px 22px;
+}
+.ia-account-actions > span {
+  min-width: 0;
+  font-size: var(--ia-font-xs);
+  color: var(--ia-muted);
+}
+.ia-account-modal > .ia-account-actions button {
+  flex: none;
+  min-height: var(--ia-control-size);
+  font-size: var(--ia-font-sm);
+}
+@media (max-width: 480px) {
+  .ia-account-modal > header,
+  .ia-account-content,
+  .ia-account-modal > .ia-account-actions {
+    padding-inline: 16px;
+  }
+  .ia-account-modal > .ia-account-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 10px;
+  }
+  .ia-account-actions > span:not(:empty) {
+    flex-basis: 100%;
+  }
+}
