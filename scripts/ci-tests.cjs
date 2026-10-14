@@ -121,6 +121,9 @@ function allowedSkips(suite, platform = process.platform) {
     skips.push(
       'timeout and cancellation kill descendants and close the result promise',
       'natural parent exit also cleans up orphaned tools before close',
+      // GitHub Windows runners have no docker engine; the acquisition
+      // plumbing is exercised on POSIX platforms.
+      'acquireImage downloads the release tar, verifies it and loads it through docker',
     );
   }
   return skips;
@@ -131,14 +134,14 @@ function assess(summary, skipped, allowed = [], expectedTests) {
   const counts = summary?.counts;
   const ok = Boolean(
     summary?.success &&
-      counts?.tests > 0 &&
-      counts?.passed > 0 &&
-      (expectedTests === undefined || counts.tests === expectedTests) &&
-      counts.failed === 0 &&
-      counts.cancelled === 0 &&
-      counts.todo === 0 &&
-      counts.skipped === skipped.length &&
-      unexpectedSkips.length === 0,
+    counts?.tests > 0 &&
+    counts?.passed > 0 &&
+    (expectedTests === undefined || counts.tests === expectedTests) &&
+    counts.failed === 0 &&
+    counts.cancelled === 0 &&
+    counts.todo === 0 &&
+    counts.skipped === skipped.length &&
+    unexpectedSkips.length === 0,
   );
   return { ok, unexpectedSkips };
 }
