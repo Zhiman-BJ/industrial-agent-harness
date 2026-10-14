@@ -326,11 +326,32 @@ test('public built-in Pack releases retain owned resources and keep the public P
   );
   assert.equal(result.status, 0, result.stderr);
   const catalog = JSON.parse(fs.readFileSync(path.join(output, 'catalog.unsigned.json')));
+  const owner = require('@zhiman-bj/industrial-domain-packs');
+  const distributionBytes = fs.readFileSync(
+    path.join(owner.root, 'provenance/runtime-distribution.json'),
+  );
+  const distribution = JSON.parse(distributionBytes);
   assert.deepEqual(catalog.packs.map(pack => pack.domain).sort(), ['cad', 'chip', 'godot', 'pcb']);
   for (const item of catalog.packs) {
     const bytes = fs.readFileSync(path.join(output, item.url));
     assert.equal(digest(bytes), item.sha256);
     const { bundle, files } = decodeArchive(bytes);
+    assert.deepEqual(
+      files.find(file => file.path === 'provenance/runtime-distribution.json')?.bytes,
+      distributionBytes,
+      'The authenticated Pack must preserve the pinned owner lock byte for byte.',
+    );
+    const released = distribution.images.filter(
+      image => image.pack === item.domain && image.current != null,
+    );
+    assert.deepEqual(
+      bundle.containerImages,
+      released.map(image => image.id),
+    );
+    assert.equal(
+      item.containerDownloadSize,
+      released.reduce((total, image) => total + image.current.ociArchiveBytes, 0),
+    );
     assert.ok(files.some(file => file.path === 'LICENSE'));
     assert.ok(files.some(file => file.path === 'THIRD_PARTY_NOTICES.md'));
     if (item.domain === 'cad')

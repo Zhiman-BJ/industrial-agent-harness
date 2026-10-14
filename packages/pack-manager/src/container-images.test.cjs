@@ -1,225 +1,213 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const crypto = require('node:crypto');
 const fs = require('node:fs');
-const https = require('node:https');
 const os = require('node:os');
 const path = require('node:path');
+const https = require('node:https');
 const { spawn } = require('node:child_process');
 const { createLocalhostCertificate } = require('./localhost-tls.cjs');
-const { readDistributionLock, resolveImageAsset } = require('./container-images.cjs');
+const { writeOciFixture, dockerFixture } = require('./container-image-fixture.cjs');
+const {
+  acquireImage,
+  resolveImageAsset,
+  readDistributionLock,
+  ContainerImageManager,
+} = require('./container-images.cjs');
 
-const configDigest = 'sha256:' + 'b'.repeat(64);
-
-function lockFixture() {
+async function fixture(t, options) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'image-acquisition-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const identity = await writeOciFixture(path.join(root, 'image.tar'), options);
+  const temporaryDirectory = path.join(root, 'downloads');
+  fs.mkdirSync(temporaryDirectory);
+  const previous = global.fetch;
+  global.fetch = async () => ({ ok: true, status: 200, body: fs.createReadStream(identity.file) });
+  t.after(() => {
+    global.fetch = previous;
+  });
   return {
-    schemaVersion: 1,
-    registry: 'ghcr.io',
-    imageNamespace: 'zhiman-bj',
-    releaseAssetUrlTemplate: 'https://github.com/example/example/releases/download/{tag}/{archive}',
-    registryManifestUrlTemplate: 'https://ghcr.io/v2/{namespace}/{repository}/manifests/{digest}',
-    images: [
-      {
-        id: 'industrial-chip-tools',
-        repository: 'industrial-chip-tools',
-        recipe: 'packs/chip/eda-harness/Dockerfile.tools',
-        context: 'packs/chip/eda-harness',
-        platform: 'linux/amd64',
-        tagPattern: 'chip-v*',
-        current: {
-          tag: 'chip-v0.1.0',
-          imageDigest: 'sha256:' + 'a'.repeat(64),
-          configDigest,
-          ociArchive: 'industrial-chip-tools-chip-v0.1.0.tar',
-          ociArchiveSha256: '0'.repeat(64),
-          ociArchiveBytes: 4096,
-          releasedAt: '2026-10-14T10:57:00Z',
-        },
-      },
-      {
-        id: 'industrial-pcb-runtime',
-        repository: 'industrial-pcb-runtime',
-        recipe: 'packs/pcb/Dockerfile.local-dev',
-        context: 'packs/pcb',
-        platform: 'linux/amd64',
-        tagPattern: 'pcb-v*',
-        current: null,
-      },
-    ],
+    ...identity,
+    root,
+    temporaryDirectory,
+    options: { distribution: { lock: identity.lock }, image: 'review-image', temporaryDirectory },
   };
 }
 
-test('the distribution lock resolves by id, repository, tagged and registry-prefixed references', () => {
-  const found = { lock: lockFixture() };
-  const expectedUrl =
-    'https://github.com/example/example/releases/download/chip-v0.1.0/industrial-chip-tools-chip-v0.1.0.tar';
-  for (const reference of [
-    'industrial-chip-tools',
-    'industrial-chip-tools:chip-v0.1.0',
-    'ghcr.io/zhiman-bj/industrial-chip-tools:chip-v0.1.0',
-  ]) {
-    const asset = resolveImageAsset(found, reference);
-    assert.equal(asset.released, true);
-    assert.equal(asset.imageRef, 'industrial-chip-tools:chip-v0.1.0');
-    assert.equal(asset.url, expectedUrl);
-    assert.equal(asset.configDigest, configDigest);
-    assert.equal(asset.bytes, 4096);
-  }
-  assert.equal(resolveImageAsset(found, 'unknown-image'), null);
-  const unreleased = resolveImageAsset(found, 'industrial-pcb-runtime');
-  assert.equal(unreleased.released, false);
-  assert.equal(resolveImageAsset({ lock: { images: [] } }, 'anything'), null);
+test('explicit registry, namespace, tag and digest must agree with the locked release', async t => {
+  const f = await fixture(t);
+  for (const image of [
+    'review-image',
+    'review-image:v1',
+    'ghcr.io/example/review-image:v1',
+    'review-image@' + f.lock.images[0].current.imageDigest,
+  ])
+    assert.equal(resolveImageAsset({ lock: f.lock }, image).imageRef, 'review-image:v1');
+  for (const image of [
+    'review-image:v0',
+    'ghcr.io/other/review-image:v1',
+    'other.io/example/review-image:v1',
+    'review-image@sha256:' + 'a'.repeat(64),
+  ])
+    assert.throws(() => resolveImageAsset({ lock: f.lock }, image), /does not match/);
+  assert.equal(resolveImageAsset({ lock: f.lock }, 'missing'), null);
+  assert.equal(resolveImageAsset({ lock: f.lock }, 'unreleased').released, false);
 });
 
-test('the lock is discovered above the pack directory and absent trees return null', () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'container-images-'));
-  const packDirectory = path.join(root, 'packs', 'chip');
-  fs.mkdirSync(packDirectory, { recursive: true });
-  fs.mkdirSync(path.join(root, 'provenance'));
+test('distribution discovery finds the owner root and missing trees return null', async t => {
+  const f = await fixture(t);
+  fs.mkdirSync(path.join(f.root, 'provenance'));
   fs.writeFileSync(
-    path.join(root, 'provenance', 'runtime-distribution.json'),
-    JSON.stringify(lockFixture()),
+    path.join(f.root, 'provenance/runtime-distribution.json'),
+    JSON.stringify(f.lock),
   );
-  const found = readDistributionLock(packDirectory);
-  assert.equal(found.lock.images.length, 2);
-  const empty = fs.mkdtempSync(path.join(os.tmpdir(), 'container-images-empty-'));
-  assert.equal(readDistributionLock(empty), null);
-  fs.rmSync(root, { recursive: true, force: true });
-  fs.rmSync(empty, { recursive: true, force: true });
+  assert.deepEqual(readDistributionLock(path.join(f.root, 'packs/review')).lock, f.lock);
+  assert.equal(readDistributionLock(path.join(os.tmpdir(), 'absent-' + Date.now())), null);
 });
 
-async function releaseFixture() {
-  const tls = createLocalhostCertificate();
-  const payload = crypto.randomBytes(4096);
-  const sha256 = crypto.createHash('sha256').update(payload).digest('hex');
-  const server = https.createServer({ key: tls.key, cert: tls.cert }, (req, res) => {
-    if (req.url.endsWith('.tar')) {
-      res.setHeader('content-type', 'application/octet-stream');
-      res.end(payload);
-      return;
-    }
-    res.statusCode = 404;
-    res.end();
+for (const classic of [false, true])
+  test(`untagged OCI acquisition verifies ${classic ? 'classic config' : 'containerd manifest'} identity and creates a usable tag`, async t => {
+    const f = await fixture(t),
+      docker = dockerFixture(f, { classic });
+    const result = await acquireImage({ ...f.options, command: docker.command });
+    assert.equal(result.imageId, classic ? f.configDigest : f.manifestDigest);
+    assert.ok(docker.calls.some(args => args[1] === 'tag' && args[3] === result.imageRef));
+    assert.deepEqual(fs.readdirSync(f.temporaryDirectory), []);
   });
-  const port = await new Promise(resolve =>
-    server.listen(0, '127.0.0.1', () => resolve(server.address().port)),
-  );
-  return { server, port, payload, sha256, cert: tls.cert };
-}
 
-// The in-process fetch validates TLS; the acquisition runs in a child that
-// trusts the fixture certificate, mirroring the transfer-bearer suite.
-function childAcquire(directory, { lockFile, dockerDirectory, image }) {
-  const script = path.join(directory, 'acquire.cjs');
+test('streaming a 256 MiB archive keeps payload memory bounded', async t => {
+  const f = await fixture(t, { layerBytes: 256 * 1024 * 1024 }),
+    docker = dockerFixture(f);
+  let peak = 0;
+  await acquireImage({
+    ...f.options,
+    command: docker.command,
+    onProgress: () => {
+      peak = Math.max(peak, process.memoryUsage().arrayBuffers);
+    },
+  });
+  assert.ok(peak < 160 * 1024 * 1024, `payload memory peaked at ${peak}`);
+});
+
+test('failed downloads, OCI verification, Docker load and inspect remove staging even with keepArchive', async t => {
+  const f = await fixture(t);
+  for (const failAt of ['load', 'image inspect']) {
+    const docker = dockerFixture(f, { failAt });
+    await assert.rejects(
+      acquireImage({ ...f.options, keepArchive: true, command: docker.command }),
+      /Docker failure/,
+    );
+    assert.deepEqual(fs.readdirSync(f.temporaryDirectory), []);
+  }
+  f.lock.images[0].current.ociArchiveSha256 = 'a'.repeat(64);
+  const docker = dockerFixture(f);
+  await assert.rejects(acquireImage({ ...f.options, command: docker.command }), /sha256 mismatch/);
+  assert.ok(!docker.calls.some(args => args[0] === 'load'));
+  assert.deepEqual(fs.readdirSync(f.temporaryDirectory), []);
+});
+
+test('truncated and oversized downloads fail before docker load', async t => {
+  const f = await fixture(t),
+    docker = dockerFixture(f);
+  for (const change of [-1, 2]) {
+    f.lock.images[0].current.ociArchiveBytes += change;
+    await assert.rejects(acquireImage({ ...f.options, command: docker.command }), /size/);
+    assert.deepEqual(fs.readdirSync(f.temporaryDirectory), []);
+  }
+  assert.ok(!docker.calls.some(args => args[0] === 'load'));
+});
+
+test('OCI metadata content must match its descriptor before loading', async t => {
+  const f = await fixture(t, { badConfig: true }),
+    docker = dockerFixture(f);
+  await assert.rejects(acquireImage({ ...f.options, command: docker.command }), /metadata digest/);
+  assert.ok(!docker.calls.some(args => args[0] === 'load'));
+  assert.deepEqual(fs.readdirSync(f.temporaryDirectory), []);
+});
+
+test('a valid archive for another platform is rejected before Docker load', async t => {
+  const f = await fixture(t),
+    docker = dockerFixture(f);
+  f.lock.images[0].platform = 'linux/arm64';
+  await assert.rejects(acquireImage({ ...f.options, command: docker.command }), /platform/);
+  assert.ok(!docker.calls.some(args => args[0] === 'load'));
+  assert.deepEqual(fs.readdirSync(f.temporaryDirectory), []);
+});
+
+test('cancellation after the final download chunk cannot start docker load', async t => {
+  const f = await fixture(t),
+    docker = dockerFixture(f),
+    controller = new AbortController();
+  await assert.rejects(
+    acquireImage({
+      ...f.options,
+      command: docker.command,
+      signal: controller.signal,
+      onProgress: p => {
+        if (p.received === f.bytes) controller.abort(Error('cancelled at download completion'));
+      },
+    }),
+    /cancelled/,
+  );
+  assert.ok(!docker.calls.some(args => args[0] === 'load'));
+  assert.deepEqual(fs.readdirSync(f.temporaryDirectory), []);
+});
+
+test('successful retention is explicit and failed identities never produce receipts', async t => {
+  const f = await fixture(t),
+    docker = dockerFixture(f);
+  const result = await acquireImage({ ...f.options, command: docker.command, keepArchive: true });
+  assert.equal(fs.statSync(result.archive).size, f.bytes);
+  const manager = new ContainerImageManager({
+    directory: f.root,
+    command: dockerFixture(f, { failAt: 'load' }).command,
+  });
+  await assert.rejects(manager.ensure(f.lock, ['review-image']), /Docker failure/);
+  assert.deepEqual(fs.readdirSync(manager.directory), []);
+});
+
+test('a prepared image is reused only while Docker retains its verified identity', async t => {
+  const f = await fixture(t),
+    docker = dockerFixture(f);
+  const manager = new ContainerImageManager({ directory: f.root, command: docker.command });
+  await manager.ensure(f.lock, ['review-image']);
+  const [result] = await manager.ensure(f.lock, ['review-image']);
+  assert.equal(result.reused, true);
+  assert.equal(docker.calls.filter(args => args[0] === 'load').length, 1);
+  manager.command = dockerFixture(f).command;
+  assert.equal((await manager.ensure(f.lock, ['review-image']))[0].reused, undefined);
+});
+
+test('real HTTPS transport verifies the release bytes with a portable Docker fixture', async t => {
+  const f = await fixture(t),
+    tls = createLocalhostCertificate();
+  const server = https.createServer(tls, (_req, res) => fs.createReadStream(f.file).pipe(res));
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => new Promise(resolve => server.close(resolve)));
+  f.lock.releaseAssetUrlTemplate = `https://127.0.0.1:${server.address().port}/{tag}/{archive}`;
+  const cert = path.join(f.root, 'cert.pem');
+  fs.writeFileSync(cert, tls.cert);
+  const script = path.join(f.root, 'child.cjs');
   fs.writeFileSync(
     script,
-    `const { acquireImage } = require(${JSON.stringify(
-      path.resolve(__dirname, 'container-images.cjs'),
-    )});
-     acquireImage({
-       packDirectory: ${JSON.stringify(path.dirname(path.dirname(lockFile)))},
-       image: ${JSON.stringify(image)},
-       environment: { ...process.env, PATH: ${JSON.stringify(dockerDirectory)} + ':' + process.env.PATH },
-     })
-       .then(result => { console.log(JSON.stringify(result)); })
-       .catch(error => { console.error(error.message); process.exit(1); });`,
+    `const { acquireImage } = require(${JSON.stringify(require.resolve('./container-images.cjs'))});
+    const { dockerFixture } = require(${JSON.stringify(require.resolve('./container-image-fixture.cjs'))});
+    acquireImage({ ...${JSON.stringify(f.options)}, command: dockerFixture(${JSON.stringify({ manifestDigest: f.manifestDigest, configDigest: f.configDigest })}).command })
+      .then(result => console.log(JSON.stringify(result))).catch(error => { console.error(error); process.exitCode = 1; });`,
   );
-  return new Promise(resolve => {
+  const done = await new Promise(resolve => {
     const child = spawn(process.execPath, [script], {
-      env: { ...process.env, NODE_EXTRA_CA_CERTS: path.join(directory, 'localhost-cert.pem') },
+      env: { ...process.env, NODE_EXTRA_CA_CERTS: cert },
     });
     let stdout = '',
       stderr = '';
-    child.stdout.on('data', chunk => (stdout += chunk));
-    child.stderr.on('data', chunk => (stderr += chunk));
-    child.on('exit', status => resolve({ status, stdout, stderr }));
-  });
-}
-
-function dockerShim(directory, configDigestValue, loadedRef) {
-  fs.mkdirSync(directory, { recursive: true });
-  const docker = path.join(directory, 'docker');
-  fs.writeFileSync(
-    docker,
-    `#!/bin/sh
-     case "$1" in
-       load) echo "Loaded image: ${loadedRef}" ;;
-       image) echo "${configDigestValue}" ;;
-       *) echo "unexpected: $*" >&2; exit 9 ;;
-     esac
-     exit 0`,
-  );
-  fs.chmodSync(docker, 0o755);
-  return docker;
-}
-
-test(
-  'acquireImage downloads the release tar, verifies it and loads it through docker',
-  // GitHub Windows runners have no docker engine and cannot execute the POSIX
-  // docker shim; the docker plumbing runs on POSIX where the shim works.
-  { timeout: 30000, skip: process.platform === 'win32' },
-  async t => {
-    const fixture = await releaseFixture();
-    t.after(() => new Promise(resolve => fixture.server.close(resolve)));
-    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'container-images-run-'));
-    t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
-    fs.writeFileSync(path.join(directory, 'localhost-cert.pem'), fixture.cert);
-
-    const root = path.join(directory, 'pack-root');
-    fs.mkdirSync(path.join(root, 'provenance'), { recursive: true });
-    const lock = lockFixture();
-    lock.images[0].current.ociArchiveSha256 = fixture.sha256;
-    lock.releaseAssetUrlTemplate = `https://127.0.0.1:${fixture.port}/releases/download/{tag}/{archive}`;
-    const lockFile = path.join(root, 'provenance', 'runtime-distribution.json');
-    fs.writeFileSync(lockFile, JSON.stringify(lock));
-
-    const dockerDirectory = path.join(directory, 'bin');
-    dockerShim(dockerDirectory, configDigest, 'industrial-chip-tools:chip-v0.1.0');
-
-    const done = await childAcquire(directory, {
-      lockFile,
-      dockerDirectory,
-      image: 'industrial-chip-tools',
+    child.stdout.on('data', b => {
+      stdout += b;
     });
-    assert.equal(done.status, 0, done.stderr);
-    const result = JSON.parse(done.stdout);
-    assert.equal(result.imageRef, 'industrial-chip-tools:chip-v0.1.0');
-    assert.equal(result.sha256, fixture.sha256);
-    assert.equal(result.bytes, 4096);
-  },
-);
-
-test('acquireImage refuses tampered bytes and unreleased images', { timeout: 30000 }, async t => {
-  const fixture = await releaseFixture();
-  t.after(() => new Promise(resolve => fixture.server.close(resolve)));
-  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'container-images-bad-'));
-  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
-  fs.writeFileSync(path.join(directory, 'localhost-cert.pem'), fixture.cert);
-
-  const root = path.join(directory, 'pack-root');
-  fs.mkdirSync(path.join(root, 'provenance'), { recursive: true });
-  const lock = lockFixture();
-  lock.images[0].current.ociArchiveSha256 = 'f'.repeat(64); // mismatching pin
-  lock.releaseAssetUrlTemplate = `https://127.0.0.1:${fixture.port}/releases/download/{tag}/{archive}`;
-  const lockFile = path.join(root, 'provenance', 'runtime-distribution.json');
-  fs.writeFileSync(lockFile, JSON.stringify(lock));
-
-  const dockerDirectory = path.join(directory, 'bin');
-  dockerShim(dockerDirectory, configDigest, 'industrial-chip-tools:chip-v0.1.0');
-
-  const tampered = await childAcquire(directory, {
-    lockFile,
-    dockerDirectory,
-    image: 'industrial-chip-tools',
+    child.stderr.on('data', b => {
+      stderr += b;
+    });
+    child.on('close', code => resolve({ code, stdout, stderr }));
   });
-  assert.notEqual(tampered.status, 0);
-  assert.match(tampered.stderr, /sha256 mismatch/);
-
-  const unreleased = await childAcquire(directory, {
-    lockFile,
-    dockerDirectory,
-    image: 'industrial-pcb-runtime',
-  });
-  assert.notEqual(unreleased.status, 0);
-  assert.match(unreleased.stderr, /no released version/);
+  assert.equal(done.code, 0, done.stderr);
+  assert.equal(JSON.parse(done.stdout).manifestDigest, f.manifestDigest);
 });

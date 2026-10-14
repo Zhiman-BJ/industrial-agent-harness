@@ -20,6 +20,39 @@ Core-owned optional `.hpack` files may also ship inside the application resource
 
 Optional `runtimeAssets` declarations prepare pinned macOS arm64 vendor applications in `<store>/.runtime-assets/`: streaming HTTPS download, exact size/SHA-256, read-only DMG mount or validated ZIP extraction, full app copy with upstream licenses, signature verification, bounded version probe, atomic activation and repair. Large applications remain separate from bounded `.hpack` archives. Interrupted staging is not ready; versions and the verified download cache are retained. Removing a Pack preserves this reusable runtime cache. Desktop and CLI use the same resolved dependency environment.
 
+Optional `containerImages` declarations select released image IDs from the owner's unchanged
+`provenance/runtime-distribution.json`, included in the authenticated `.hpack`. Desktop and CLI
+install/update/repair call the same `PackManager.prepareRuntime` path before Pack activation.
+The primary image channel is an anonymous HTTPS release tarball; a running Linux Docker engine
+is an external prerequisite. Entries with no published release are not automatically selected.
+Installing images does not configure a project's execution profile or qualify an engineering task.
+
+Container preparation streams bytes to disk while checking the exact size and SHA-256. It reads
+bounded OCI metadata without extracting layers, verifies the locked config digest and platform,
+and derives the archived manifest digest. These identities differ from a registry index digest.
+After `docker load`, it verifies the immutable manifest ID (containerd store) or config ID
+(classic store), then creates and checks the locked repository tag. Untagged OCI exports work;
+human-readable Docker output is not an identity source. Explicit registry, namespace, tag or
+digest constraints must match the lock.
+
+Container receipts in `<store>/.container-images/` record the verified identities. Readiness and
+reuse also inspect the current Docker tag; a removed or replaced image needs preparation again.
+Repair reads the integrity-checked installed lock, ignoring standalone discovery overrides.
+Failure/cancellation removes temporary tar files and preserves the active Pack; successful
+managed preparation also removes the tar. Pack removal keeps Docker images and receipts for
+reuse. Download space is checked on the store filesystem; Docker manages its own storage and
+may fail independently. Catalog estimates include container download bytes and a conservative
+expanded-size estimate, not a measurement of Docker's available storage.
+
+The standalone developer command is
+`node scripts/acquire-container-image.cjs <owner-directory> <image> [--keep-archive]`.
+Only this discovery API honors `INDUSTRIAL_HARNESS_RUNTIME_DISTRIBUTION`; explicit retention applies
+only after success. Real release acceptance is separate from portable fixtures:
+`node scripts/verify-release-image-installation.cjs <fresh-output> [domain]`, after building
+the Desktop renderer. It exercises CLI cold installation, repair and removal, then the real
+Desktop renderer/preload/IPC installation and repair with verified Docker images reused.
+Reports distinguish installation/container startup from engineering acceptance.
+
 Installation does not execute archive installer scripts. Registered runtime modules execute later as
 trusted code, through shared runtime execution and verification boundaries. Broker disclosure
 and archive signatures do not provide a generic sandbox for arbitrary third-party code.

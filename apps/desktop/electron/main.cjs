@@ -163,6 +163,7 @@ if (
     '--replay-selftest',
     '--packaged-smoke',
     '--install-experience-selftest',
+    '--container-install-selftest',
   ].some(flag => process.argv.includes(flag))
 )
   app.setPath('userData', fs.mkdtempSync(path.join(os.tmpdir(), 'industrial-harness-selftest-')));
@@ -924,7 +925,7 @@ function registerHandlers() {
       packManager.assertIdle(request.domain);
       const bundle = packManager.list().find(item => item.domain === request.domain);
       if (!bundle) throw Error('Domain is not installed.');
-      await packManager.runtimeAssets.ensure(bundle.runtimeAssets, {
+      await packManager.prepareRuntime(bundle, {
         recheck: true,
         signal: domainController.signal,
         onProgress: progress => {
@@ -1718,6 +1719,11 @@ async function createWindow() {
   });
   if (process.env.INDUSTRIAL_DEV_URL) await window.loadURL(process.env.INDUSTRIAL_DEV_URL);
   else await window.loadURL('app://viewer/index.html');
+  if (process.argv.includes('--container-install-selftest')) {
+    await require('./container-install-selftest.cjs').run(window, { manager: packManager });
+    app.quit();
+    return;
+  }
   if (process.argv.includes('--cad-install-selftest')) {
     await require('./selftest-language.cjs').setLanguage(window, 'en');
     await require('./cad-install-selftest.cjs').run(window, {

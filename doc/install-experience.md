@@ -1,5 +1,12 @@
 # Installation experience
 
+The current source also prepares released container images through the shared Desktop/CLI
+installer. The immutable owner's lock travels inside the authenticated Pack; anonymous release
+tarballs are streamed, verified and loaded into an external Linux Docker engine before Pack
+activation. Repair and readiness check the installed lock and live Docker identity. See
+[container installation](container-image-installation.md) for the contract and separate real-release
+acceptance. The historical native candidate results below retain their original identities.
+
 The 1.0.1-beta.1 local desktop candidate addresses issue #60 on macOS Apple Silicon. It consumes Domain Packs 0.5.1 at immutable commit `09c39193e199de61941882f0e92f10ed7789dbd2`; the lockfile binds the archive integrity. Domain dependencies remain maintained by the Pack owner. The Core contains the generic installer, catalog, readiness descriptions and a small durable installation status record shared by CLI and Desktop.
 
 ## User flow

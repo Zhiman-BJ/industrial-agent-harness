@@ -751,3 +751,11 @@ CSV/TSV 显示表格并提供表头开关、全文筛选与分页；普通 JSON 
 状态：已确定，源码实现；原生验证以 `domain-tool-resources.md` 为准。
 
 用户要求各领域准确显示已接入的工具，修复 Runtime 提供方被 MCP 服务目录过滤后产生的空提示。项目详情和能力中心统一展示领域运行工具、独立 MCP 与外部 MCP；名称、ID、用途、版本和数量取自当前注册，不把历史 MCP schema 冒充实际 Runtime 工具。全局默认及项目继承/覆盖同时进入共享 Broker/Runtime 权限；启用不表示依赖就绪。未配置、搜索无结果和加载失败有分别可理解的提示。
+
+## PD-078：release tarball 是容器镜像安装主通道
+
+- 日期：2026-10-14。
+- 状态：源码实现；真实 release 安装验证结果单独记录。
+- 来源：用户确认 tarball 为主通道，要求直接修复 #172 的五项问题并补齐 Desktop／CLI 安装链路。
+- 决定：owner 维护镜像配方、锁与 release；Harness 的共享 Pack Manager 消费签名 Pack 内原样固定的锁，负责匿名下载、大小与 SHA-256 校验、OCI 身份及平台校验、Docker 加载与固定 tag、安装和修复回执。两个入口均在依赖准备完成后激活 Pack，失败保留旧版本并清理临时 tar。
+- 边界：Docker Linux engine 是外部前提；未发布镜像不伪装成可自动准备。Registry index、归档 manifest 与 config 摘要分别校验适用的身份，不混用。镜像准备成功不自动更改项目执行配置，也不扩大领域工程或跨平台资格。验证与复现入口见[容器镜像安装](container-image-installation.md)。
