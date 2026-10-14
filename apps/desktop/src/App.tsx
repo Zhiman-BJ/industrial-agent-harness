@@ -27,6 +27,7 @@ import {
   Pencil,
   Play,
   Plus,
+  RefreshCw,
   Settings2,
   Square,
   Sun,
@@ -837,6 +838,15 @@ export function App() {
       );
     } catch (reason) {
       setProjectError(String(reason));
+    }
+  }
+  // Manual refresh for the file tree: agent-driven events already trigger a
+  // reload, but edits made outside the app never reach the renderer (#165).
+  async function refreshFileTree() {
+    try {
+      setProjectFiles(await window.viewerHost!.projectFiles());
+    } catch (reason) {
+      setError(String(reason));
     }
   }
   // Full renderer-side adoption of new project bindings: refresh the file
@@ -2133,7 +2143,17 @@ export function App() {
                   </div>
                   {fileTreeOpen && (
                     <aside className="ia-workspace-tree">
-                      <div className="ia-file-search">{t('FILES')}</div>
+                      <div className="ia-file-search">
+                        {t('FILES')}
+                        <button
+                          className="ia-file-refresh"
+                          onClick={() => void refreshFileTree()}
+                          title={t('Refresh file list')}
+                          aria-label={t('Refresh file list')}
+                        >
+                          <RefreshCw size={11} />
+                        </button>
+                      </div>
                       <button className="ia-file-root" onClick={() => setPage('project')}>
                         <ChevronDown size={13} />
                         <FolderOpen size={14} />
