@@ -119,8 +119,9 @@ try {
           .split('\n')
           .map(JSON.parse)[0].scope;
       assert.deepEqual(pcbScope([]).tools, ['pcb.kicad.edit', 'pcb.kicad.verify']);
+      assert.deepEqual(pcbScope(['--disable-mcp', 'pcb-bench.tools']).tools, []);
       assert.throws(
-        () => pcbScope(['--disable-mcp', 'pcb-bench.tools']),
+        () => pcbScope(['--disable-mcp', 'unknown-provider']),
         error => error.stdout.includes('Unknown project MCP'),
       );
       assert.ok(fs.existsSync(path.join(packageRoot, 'domain-packs/pcb/runtime/index.cjs')));
@@ -156,8 +157,12 @@ try {
         'godot.scene.edit',
         'godot.scene.verify',
       ]);
+      assert.deepEqual(
+        godotScope('Develop a Godot game', ['--disable-mcp', 'godot.local']).tools,
+        [],
+      );
       assert.throws(
-        () => godotScope('Develop a Godot game', ['--disable-mcp', 'godot.local']),
+        () => godotScope('Develop a Godot game', ['--disable-mcp', 'unknown-provider']),
         error => error.stdout.includes('Unknown project MCP'),
       );
       assert.ok(

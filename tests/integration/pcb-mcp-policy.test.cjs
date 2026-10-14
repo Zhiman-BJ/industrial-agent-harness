@@ -9,12 +9,16 @@ const {
   ResourceSettings,
   resolveProjectTask,
 } = require('../../packages/harness-core/src/index.cjs');
-const { selectMcpServers } = require('../../packages/domain-mcp/src/index.cjs');
+const { selectMcpServers, listMcpServers } = require('../../packages/domain-mcp/src/index.cjs');
 test('Desktop/CLI PCB policy keeps public Skills local and withholds the frozen private MCP modification path', t => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'public-pcb-policy-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const catalog = resourceCatalog('pcb');
-  assert.deepEqual(catalog.mcpServers, []);
+  const provider = catalog.mcpServers.find(item => item.id === 'pcb-bench.tools');
+  assert.equal(provider.transport, 'runtime');
+  assert.ok(provider.toolIds.includes('pcb.kicad.edit'));
+  assert.ok(provider.toolIds.includes('pcb.kicad.verify'));
+  assert.deepEqual(listMcpServers('pcb'), []);
   const settings = new ResourceSettings(path.join(root, 'settings'));
   settings.set(catalog, { kind: 'skill', id: 'pcb.design.e2e', mode: 'disabled' });
   const disabled = resolveProjectTask(
@@ -29,6 +33,15 @@ test('Desktop/CLI PCB policy keeps public Skills local and withholds the frozen 
   assert.deepEqual(enabled.tools, ['pcb.kicad.edit', 'pcb.kicad.verify']);
   assert.deepEqual(selectMcpServers(enabled), []);
   assert.ok(!enabled.tools.some(id => id.startsWith('pcb.bench.')));
+  settings.set(catalog, { kind: 'mcp', id: provider.id, mode: 'disabled' });
+  const disabledProvider = resolveProjectTask(
+    'pcb',
+    { task: 'KiCad board edit' },
+    undefined,
+    undefined,
+    settings.snapshot(catalog, root).effective,
+  );
+  assert.ok(disabledProvider.scope.tools.every(id => !provider.toolIds.includes(id)));
 });
 test('real CLI scopes typed PCB Runtime Actions without starting any native process', t => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'public-pcb-cli-'));
