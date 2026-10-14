@@ -239,9 +239,14 @@ function externalTools(getScope, lookupArtifact, disclose, readContextPage) {
           if (!getScope()?.tools.includes(canonicalId))
             throw Error('Tool is outside the current Broker scope.');
           const artifact = await lookupArtifact(artifactId);
+          // Collected artifacts carry typed kinds like "waveform.vcd"; accept the
+          // exact category and its typed sub-kinds.
+          const expectedKind = canonicalId.split('.')[1];
           if (
             !artifact ||
-            (canonicalId.startsWith('eda.') && artifact.kind !== canonicalId.split('.')[1])
+            (canonicalId.startsWith('eda.') &&
+              artifact.kind !== expectedKind &&
+              !artifact.kind.startsWith(`${expectedKind}.`))
           )
             throw Error('Artifact is unavailable for this tool.');
           return {
