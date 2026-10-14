@@ -49,6 +49,6 @@
     "typescript-eslint": "^8.71.1"
   },
   "dependencies": {
-    "@zhiman-bj/industrial-domain-packs": "https://codeload.github.com/Zhiman-BJ/industrial-domain-packs/tar.gz/64db8696896939104c2aef685961bd481e3626a4"
+    "@zhiman-bj/industrial-domain-packs": "https://codeload.github.com/Zhiman-BJ/industrial-domain-packs/tar.gz/8ef1de607dad59088ee65f4298552aa719fcbff7"
   }
 }

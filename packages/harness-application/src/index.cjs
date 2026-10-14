@@ -347,7 +347,7 @@ class TaskService {
       entry.agent ||= new this.Session(
         entry.project.path,
         () => entry.scope,
-        id => this.context(entry).readArtifact(id),
+        id => this.lookupAgentArtifact(entry, id),
         id => this.detail(entry, id),
         emit,
         () => (options.getConfig || this.options.getConfig)(entry),
@@ -533,6 +533,22 @@ class TaskService {
   }
   evidence(entry, id) {
     return entry.runtimeBundle?.runtime.readArtifact(id) || this.context(entry).readArtifact(id);
+  }
+  // Agent artifact metadata tools receive ids from verification evidence, which
+  // live in the industrial runtime store; observed project files live in the
+  // context store. Check the runtime store first so evidence stays readable.
+  async lookupAgentArtifact(entry, id) {
+    const recorded = entry.runtimeBundle?.runtime?.get('artifact', id);
+    if (recorded)
+      return {
+        id: recorded.id,
+        kind: recorded.kind,
+        name: recorded.relativePath.split('/').pop(),
+        relativePath: recorded.relativePath,
+        sizeBytes: recorded.sizeBytes,
+        sha256: recorded.sha256,
+      };
+    return this.context(entry).readArtifact(id);
   }
   async close() {
     if (this.closing) return this.closing;

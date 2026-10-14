@@ -313,3 +313,54 @@ test('Runtime resource settings reach the shared task service and execution boun
   );
   assert.equal(result.action.status, 'completed');
 });
+
+test('agent artifact lookup reads run evidence from the runtime store and falls back to observed files', async t => {
+  const crypto = require('node:crypto');
+  const desktop = fixture(t);
+  await desktop.tasks.prepare(desktop.entry, { task: 'create and edit project files' });
+  const runtime = desktop.entry.runtimeBundle?.runtime;
+  assert.ok(runtime, 'industrial runtime should be bound after prepare');
+
+  // Run evidence (e.g. a verified simulation VCD) is collected into the
+  // industrial runtime store, not the observed project-file table. The agent
+  // metadata tools must still resolve it (issue #150).
+  const evidence = {
+    schemaVersion: '1',
+    id: crypto.randomUUID(),
+    projectId: 'a'.repeat(64),
+    runId: crypto.randomUUID(),
+    actionId: crypto.randomUUID(),
+    kind: 'waveform.vcd',
+    relativePath: '.eda/runs/R1/01-rtl.simulate/work/wave.vcd',
+    sha256: 'b'.repeat(64),
+    sizeBytes: 632,
+    source: 'domain-tool',
+    inputHashes: {},
+  };
+  runtime.put('artifact', evidence.id, evidence);
+
+  const meta = await desktop.tasks.lookupAgentArtifact(desktop.entry, evidence.id);
+  assert.equal(meta.id, evidence.id);
+  assert.equal(meta.kind, 'waveform.vcd');
+  assert.equal(meta.name, 'wave.vcd');
+  assert.equal(meta.relativePath, evidence.relativePath);
+  assert.equal(meta.sha256, evidence.sha256);
+  assert.equal(meta.content, undefined, 'metadata lookup must not drag blob content along');
+
+  // Observed project files still resolve through the context store fallback.
+  fs.writeFileSync(path.join(desktop.project.path, 'note.txt'), 'observed\n');
+  const observed = await desktop.tasks.context(desktop.entry).observeArtifact({
+    id: crypto.randomUUID(),
+    kind: 'text',
+    file: path.join(desktop.project.path, 'note.txt'),
+  });
+  const fallback = await desktop.tasks.lookupAgentArtifact(desktop.entry, observed.id);
+  assert.equal(fallback.id, observed.id);
+  assert.equal(fallback.kind, 'text');
+
+  // Unknown ids keep the original honest error.
+  await assert.rejects(
+    () => desktop.tasks.lookupAgentArtifact(desktop.entry, crypto.randomUUID()),
+    /Artifact is unavailable/,
+  );
+});
