@@ -103,21 +103,26 @@ test('desktop main-window IPC completes manual login with encrypted storage and 
 test('corrupt account storage cannot prevent local application startup', async t => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'desktop-account-'));
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  let decryptCalls = 0;
   const account = new DesktopAccount({
     directory,
     environment: {},
     shell: {},
     safeStorage: {
       isEncryptionAvailable: () => true,
+      getSelectedStorageBackend: () => 'test',
       decryptString: () => {
+        decryptCalls += 1;
         throw Error('keychain locked');
       },
     },
   });
   t.after(() => account.close());
-  fs.mkdirSync(path.join(directory, 'desktop'), { recursive: true });
+  fs.mkdirSync(path.join(directory, 'desktop'), { recursive: true, mode: 0o700 });
   fs.writeFileSync(path.join(directory, 'desktop/session.enc'), 'invalid', { mode: 0o600 });
   const view = await account.restore();
+  assert.equal(decryptCalls, 1);
+  assert.equal(view.persistent, true);
   assert.equal(view.user, null);
   assert.match(view.error, /unlock/);
 });
