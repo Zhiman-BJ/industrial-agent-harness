@@ -239,3 +239,77 @@ test('background tasks retain leases until their native completion; cancel and a
   assert.equal(tasks.sessions.busy(entry), false);
   assert.equal(tasks.history(project, entry.id).turns[0].status, 'completed');
 });
+
+test('Runtime resource settings reach the shared task service and execution boundary', async t => {
+  const { tasks, entry, project, root } = fixture(t);
+  const directory = path.join(root, 'fixture-pack');
+  fs.mkdirSync(directory);
+  fs.writeFileSync(
+    path.join(directory, 'runtime.cjs'),
+    `
+    module.exports.createRuntimePlugin = () => ({
+      tools: [{descriptor: {schemaVersion: '1', id: 'fixture.inspect', version: '1.0.0', risk: 'read-only', verification: []},
+        execute() { return {executionSucceeded: true, artifacts: [], diagnostics: []}; }}],
+      capabilities: [{id: 'fixture.inspect', domain: 'chip', title: 'Fixture inspection',
+        stages: [], keywords: ['inspect'], priority: 100, skills: [],
+        tools: [{id: 'fixture.inspect', summary: 'Inspect fixture'}], verification: []}]
+    });`,
+  );
+  const registry = {
+    domains: [{ id: 'chip' }],
+    skills: [],
+    capabilities: [],
+    providerPacks: [
+      {
+        id: 'fixture-pack',
+        domain: 'chip',
+        provider: {
+          id: 'fixture.runtime',
+          domain: 'chip',
+          transport: 'runtime',
+          title: 'Fixture Runtime',
+          tools: [],
+        },
+      },
+    ],
+    runtimePacks: [
+      {
+        id: 'fixture-pack',
+        domain: 'chip',
+        version: '1',
+        directory,
+        runtime: { entry: 'runtime.cjs' },
+      },
+    ],
+  };
+  tasks.options.getRegistry = () => registry;
+  const catalog = require('@industrial-agent-harness/harness-core').resourceCatalog('chip', [], {
+    registry,
+  });
+  const enabled = await tasks.prepare(entry, { task: 'inspect fixture' }, { persist: false });
+  assert.ok(enabled.scope.tools.includes('fixture.inspect'));
+  tasks.settings.set(catalog, { kind: 'mcp', id: 'fixture.runtime', mode: 'disabled' });
+  const disabled = await tasks.prepare(entry, { task: 'inspect fixture' }, { persist: false });
+  assert.ok(!disabled.scope.tools.includes('fixture.inspect'));
+  const runtime = entry.runtimeBundle.runtime;
+  const state = await runtime.inspect();
+  const rejected = await runtime.execute(
+    { toolId: 'fixture.inspect', inputs: {}, expectedStateId: state.id },
+    { scope: disabled.scope },
+  );
+  assert.equal(rejected.action.status, 'failed');
+  assert.match(rejected.action.diagnostics.join('\n'), /outside the current Broker scope/);
+  tasks.settings.set(
+    catalog,
+    { kind: 'mcp', id: 'fixture.runtime', mode: 'enabled' },
+    project.path,
+  );
+  const overridden = await tasks.prepare(entry, { task: 'inspect fixture' }, { persist: false });
+  assert.ok(overridden.scope.tools.includes('fixture.inspect'));
+  const currentState = await runtime.inspect();
+  const result = await runtime.execute(
+    { toolId: 'fixture.inspect', inputs: {}, expectedStateId: currentState.id },
+    { scope: overridden.scope },
+  );
+  assert.equal(result.action.status, 'completed');
+});

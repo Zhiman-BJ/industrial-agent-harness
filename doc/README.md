@@ -39,6 +39,7 @@ Godot/PCB 的源工程文件另有[受限只读预览](engineering-file-viewers.
 | [KiCad Viewer V1](kicad-viewer.md) | PCB domain 的本地板图/原理图查看、文件边界与运行时来源 |
 | [Godot/PCB 工程文件预览](engineering-file-viewers.md) | 场景、脚本、库、制造文件与 3D 素材的只读查看、格式边界和验证 |
 | [Godot Viewer V1](godot-viewer.md) | Web Export 准备、Scene Tree 与 Viewer Bridge 的当前接入边界 |
+| [领域工具与 MCP 资源](domain-tool-resources.md) | 实际 Runtime 工具清单、独立 MCP、全局默认/项目覆盖与 UI 验证 |
 | [共享 Chip Pack MCP](domain-mcp-integration.md) | Desktop/CLI 注册、Scope 网关、项目绑定、审批与实测 |
 | [PCB／Godot 专业 Runtime](pcb-godot-runtime.md) | 公开首批任务、精确依赖、独立验证、安装路径与失败／恢复验收 |
 | [领域安装体验](install-experience.md) | 1.0.1-beta.1 五域展示、四域安装、官方依赖准备、取消恢复、旧版数据保留验收及正式发行边界 |

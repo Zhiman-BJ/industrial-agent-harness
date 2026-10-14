@@ -1,5 +1,8 @@
 const path = require('node:path');
 const root = __dirname;
+// Windows workspace discovery can return a Git Bash path that the collector
+// cannot read. Keep its environment fallback aligned with the pnpm deployment.
+process.env.npm_config_user_agent = require('./package.json').packageManager.replace('@', '/');
 const updateUrl =
   process.env.HARNESS_CORE_UPDATE_URL || 'https://updates.invalid/industrial-agent-harness/beta';
 const release = process.env.HARNESS_RELEASE_BUILD === '1';

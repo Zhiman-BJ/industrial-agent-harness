@@ -33,6 +33,15 @@ const deployed =
       );
 if (deployed.error) throw deployed.error;
 if (deployed.status !== 0) process.exit(deployed.status || 1);
+// Deploy omits the workspace lockfile and root packageManager field. Preserve
+// the pinned manager so electron-builder collects the staged pnpm dependency
+// graph instead of falling back to npm's scan of the virtual store.
+const stageManifestPath = path.join(target, 'package.json');
+const stageManifest = JSON.parse(fs.readFileSync(stageManifestPath, 'utf8'));
+stageManifest.packageManager = JSON.parse(
+  fs.readFileSync(path.join(root, 'package.json'), 'utf8'),
+).packageManager;
+fs.writeFileSync(stageManifestPath, JSON.stringify(stageManifest, null, 2) + '\n');
 // Legacy deploy can retain the root application's self-link to its checkout.
 const selfLink = path.join(
   target,

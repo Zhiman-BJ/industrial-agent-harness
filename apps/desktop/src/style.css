@@ -1732,6 +1732,62 @@ body,
   height: 15px;
   accent-color: var(--ia-accent);
 }
+.ia-resource-entry {
+  min-width: 0;
+}
+.ia-resource-info {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.ia-resource-row > select,
+.ia-resource-row > input {
+  flex-shrink: 0;
+}
+.ia-resource-tools {
+  border-bottom: 1px solid var(--ia-border);
+  padding: 8px 0 12px;
+}
+.ia-resource-tools summary {
+  cursor: pointer;
+  font-size: 11px;
+  color: var(--ia-muted);
+}
+.ia-resource-tools ul {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+  max-height: 340px;
+  overflow-y: auto;
+}
+.ia-resource-tools li {
+  padding: 10px 12px;
+  border-top: 1px solid var(--ia-border);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+.ia-resource-tools li > div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 6px;
+}
+.ia-resource-tools small {
+  color: var(--ia-muted);
+  font-size: 10px;
+}
+.ia-resource-tools code {
+  display: block;
+  font-size: 10px;
+  color: var(--ia-muted);
+  margin: 4px 0;
+}
+.ia-resource-tools li p {
+  margin: 4px 0 0;
+}
+.ia-resource-tools summary:focus-visible {
+  outline: 2px solid var(--ia-accent);
+  outline-offset: 3px;
+}
 
 /* Fullscreen keeps the mounted Viewer and its runtime session intact. */
 .ia-workspace:fullscreen {

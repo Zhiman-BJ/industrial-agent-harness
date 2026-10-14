@@ -120,7 +120,7 @@ export function ProjectDetails({
             />
             <ResourceList
               kind="mcpServers"
-              heading={t('MCP servers')}
+              heading={t('Tools & MCP')}
               key={`mcp-${project.id}${project.domain}${resourceRevision}`}
               projectId={project.id}
               busy={busy}
