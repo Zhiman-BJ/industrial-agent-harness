@@ -166,7 +166,7 @@ pnpm run test:release
 pnpm run format:check
 ```
 
-The [Harness CI gate](.github/workflows/ci.yml) runs shared-package and packaged CLI regressions on Linux x64/arm64, macOS arm64 and Windows x64, desktop installation on macOS/Windows, and the industrial Core path on Apple Silicon and Linux x86-64, including the actual installed Chip CLI. [CI regression coverage](doc/ci-regression.md) documents dependencies, retained evidence and explicit coverage gaps; a skipped test does not establish support. Report security issues through the process in [SECURITY.md](SECURITY.md).
+The [Harness CI gate](.github/workflows/ci.yml) keeps four-platform shared-package/CLI regressions, macOS/Windows desktop startup and the Linux industrial Core path on code PRs. Main pushes and manual full runs also qualify macOS 15/26 native workflows, fresh Domain installations and Linux installer upgrades/Docker execution. [CI regression coverage](doc/ci-regression.md) documents dependencies, retained evidence and explicit coverage gaps; a skipped test does not establish support. Report security issues through the process in [SECURITY.md](SECURITY.md).
 
 ## Preview scope
 

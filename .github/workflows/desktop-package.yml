@@ -2,6 +2,11 @@ name: Desktop install smoke
 
 on:
   workflow_call:
+    inputs:
+      full:
+        description: 'Include fresh Domain installations and the complete CAD acceptance'
+        type: boolean
+        default: true
 
 jobs:
   packaged-first-run:
@@ -61,6 +66,7 @@ jobs:
           ./apps/desktop/node_modules/.bin/electron-builder --projectDir dist/desktop-stage-ci --config "$GITHUB_WORKSPACE/electron-builder.config.cjs" --mac dmg --arm64 --publish never
       - name: Package Windows application
         if: matrix.platform == 'windows'
+        timeout-minutes: 10
         shell: pwsh
         run: |
           & .\apps\desktop\node_modules\.bin\electron-builder.cmd --projectDir dist/desktop-stage-ci --config "$env:GITHUB_WORKSPACE\electron-builder.config.cjs" --win dir --publish never
@@ -69,9 +75,13 @@ jobs:
         run: |
           mkdir -p dist/ci-reports
           node scripts/smoke-packaged-desktop.cjs 2>&1 | tee dist/ci-reports/desktop-first-run.log
+      - name: Verify full Domain installation
+        if: inputs.full
+        shell: bash
+        run: |
           node scripts/smoke-packaged-desktop.cjs --domains 2>&1 | tee dist/ci-reports/desktop-domains.log
       - name: Verify clean Apple Silicon CAD installation and real native tasks
-        if: matrix.platform == 'mac'
+        if: inputs.full && matrix.platform == 'mac'
         shell: bash
         run: node scripts/smoke-packaged-cad.cjs dist/ci-reports/cad-install --dmg
 

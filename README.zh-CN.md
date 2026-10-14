@@ -165,7 +165,7 @@ pnpm run test:release
 pnpm run format:check
 ```
 
-[Harness CI 门禁](.github/workflows/ci.yml)在 Linux x64/arm64、macOS arm64、Windows x64 执行共享包与独立 CLI 包回归，在 macOS/Windows 验证桌面安装，在 Apple Silicon 与 Linux x86-64 验证工业 Core 闭环，Linux 还检查实际安装的 Chip CLI。[CI 回归说明](doc/ci-regression.md)列出依赖、保留证据与明确的覆盖缺口；跳过不代表支持。安全问题按 [SECURITY.md](SECURITY.md) 的流程报告。
+[Harness CI 门禁](.github/workflows/ci.yml)在代码 PR 保留四平台共享包/CLI 回归、macOS/Windows 桌面启动和 Linux 工业 Core 闭环；main 推送及手动完整运行额外验收 macOS 15/26 原生流程、全新 Domain 安装及 Linux 安装器升级/Docker 执行。[CI 回归说明](doc/ci-regression.md)列出依赖、保留证据与明确的覆盖缺口；跳过不代表支持。安全问题按 [SECURITY.md](SECURITY.md) 的流程报告。
 
 ## 预览版范围
 

@@ -26,4 +26,39 @@ function classify(entries) {
   return { docsOnly, sharedChanged };
 }
 
-module.exports = { classify, docs, withinDesktop };
+// PRs exercise the core product paths. Main pushes and an explicit manual full
+// run also qualify fresh installations and both supported macOS versions.
+function plan(entries, { eventName, full = false }) {
+  if (typeof full !== 'boolean') throw Error('full must be a boolean.');
+  const complete = full || !['pull_request', 'workflow_dispatch'].includes(eventName);
+  return {
+    core: complete || eventName !== 'pull_request' || !classify(entries).docsOnly,
+    full: complete,
+  };
+}
+
+function failedJobs(jobs) {
+  const { core, full } = jobs.changes?.outputs || {};
+  if (
+    !['true', 'false'].includes(core) ||
+    !['true', 'false'].includes(full) ||
+    (full === 'true' && core !== 'true')
+  )
+    return ['changes'];
+  const expected = {
+    changes: true,
+    repository: true,
+    portable: core === 'true',
+    desktop: core === 'true',
+    'industrial-linux': core === 'true',
+    industrial: full === 'true',
+  };
+  return Object.entries(expected)
+    .filter(([name, required]) => {
+      const result = jobs[name]?.result;
+      return result !== 'success' && !(result === 'skipped' && !required);
+    })
+    .map(([name]) => name);
+}
+
+module.exports = { classify, docs, withinDesktop, plan, failedJobs };
