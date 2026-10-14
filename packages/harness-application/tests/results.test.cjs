@@ -456,3 +456,39 @@ test('cancelled requests preserve actual partial outputs and never authorize aut
     false,
   );
 });
+
+test('result display failures never block scope state synchronization', async t => {
+  const f = setup(t, async ({ apply, context }) => {
+    const first = JSON.parse((await apply([change('one.txt', 'one')])).output);
+    const realRegister = context.register.bind(context);
+    context.register = () => {
+      throw Error('controlled display failure');
+    };
+    const second = JSON.parse((await apply([change('two.txt', 'two')])).output);
+    context.register = realRegister;
+    assert.equal(second.actionStatus, 'completed');
+    assert.notEqual(
+      second.stateId,
+      first.stateId,
+      'scope must expose the fresh state identity despite the display failure',
+    );
+    assert.equal(second.results, undefined, 'failed display is omitted from the tool output');
+    const realView = context.view.bind(context);
+    context.view = value => {
+      if (value === undefined) throw Error('controlled view failure');
+      return realView(value);
+    };
+    const third = JSON.parse((await apply([change('three.txt', 'three')])).output);
+    context.view = realView;
+    assert.equal(third.actionStatus, 'completed');
+    assert.notEqual(third.stateId, second.stateId);
+    assert.equal(third.results, undefined, 'a view failure is isolated the same way');
+    const fourth = JSON.parse((await apply([change('four.txt', 'four')])).output);
+    assert.equal(fourth.actionStatus, 'completed');
+    assert.ok(fourth.results, 'recovered display returns the result view again');
+  });
+  // Assertions inside the Kernel script surface as a turn error, not a test
+  // failure — assert the final status so nothing is swallowed.
+  const done = await f.run('display failure isolation');
+  assert.equal(done.status, 'completed');
+});
