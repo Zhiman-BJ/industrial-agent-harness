@@ -349,13 +349,11 @@ test('agent artifact lookup reads run evidence from the runtime store and falls 
 
   // Observed project files still resolve through the context store fallback.
   fs.writeFileSync(path.join(desktop.project.path, 'note.txt'), 'observed\n');
-  const observed = await desktop.tasks
-    .context(desktop.entry)
-    .observeArtifact({
-      id: crypto.randomUUID(),
-      kind: 'text',
-      file: path.join(desktop.project.path, 'note.txt'),
-    });
+  const observed = await desktop.tasks.context(desktop.entry).observeArtifact({
+    id: crypto.randomUUID(),
+    kind: 'text',
+    file: path.join(desktop.project.path, 'note.txt'),
+  });
   const fallback = await desktop.tasks.lookupAgentArtifact(desktop.entry, observed.id);
   assert.equal(fallback.id, observed.id);
   assert.equal(fallback.kind, 'text');
