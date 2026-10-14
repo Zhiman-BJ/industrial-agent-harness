@@ -8,15 +8,24 @@ const {
   listDomains,
   listSkills,
 } = require('@industrial-agent-harness/domain-skills');
-const { listMcpServers, ExternalMcpRegistry } = require('@industrial-agent-harness/domain-mcp');
+const { listToolProviders, ExternalMcpRegistry } = require('@industrial-agent-harness/domain-mcp');
 const {
   ResourceSettings,
   defaultResourceDirectory,
   effectiveResourcePolicy,
 } = require('./resource-settings.cjs');
 
-function resourceCatalog(domain, external = []) {
-  return { skills: listSkills(domain), mcpServers: listMcpServers(domain, external) };
+function resourceCatalog(domain, external = [], options = {}) {
+  const skills = options.registry
+    ? (options.registry.skills || [])
+        .filter(item => item.domain === '*' || !domain || item.domain === domain)
+        .map(item => {
+          const skill = { ...item };
+          delete skill.file;
+          return skill;
+        })
+    : listSkills(domain);
+  return { skills, mcpServers: listToolProviders(domain, external, options) };
 }
 function runtimeCapabilities(registry, bundle) {
   return [
@@ -27,17 +36,22 @@ function runtimeCapabilities(registry, bundle) {
   ];
 }
 
-function effectiveCapabilities(registry, disabled = {}) {
+function effectiveCapabilities(registry, disabled = {}, providers) {
   const disabledSkills = new Set(disabled.skills || []);
   const disabledMcp = new Set(disabled.mcpServers || []);
   // Resolve providers once per request so newly installed Packs remain visible.
   const disabledToolsByDomain = new Map();
   if (disabledMcp.size)
-    for (const server of listMcpServers()) {
+    for (const server of providers || listToolProviders()) {
       if (!disabledMcp.has(server.id)) continue;
       if (!disabledToolsByDomain.has(server.domain))
         disabledToolsByDomain.set(server.domain, new Set());
-      for (const id of server.toolIds || []) disabledToolsByDomain.get(server.domain).add(id);
+      for (const id of [
+        ...(server.toolIds || []),
+        ...(server.declaredToolIds || []),
+        ...(server.standaloneMcp?.tools || []).map(tool => tool.id),
+      ])
+        disabledToolsByDomain.get(server.domain).add(id);
     }
   return registry.map(item => {
     const disabledTools = disabledToolsByDomain.get(item.domain);
@@ -57,6 +71,7 @@ function resolveProjectTask(
   disabled = {},
   external = [],
   validDomains = listDomains(registry),
+  providers,
 ) {
   if (!validDomains.some(item => item.id === domain)) throw Error('Choose a valid project domain.');
   if (request?.domain && request.domain !== domain)
@@ -64,7 +79,7 @@ function resolveProjectTask(
   const resolver = request?.state ? resolveFromState : resolve;
   const result = resolver(
     { ...request, domain },
-    effectiveCapabilities(registry, disabled),
+    effectiveCapabilities(registry, disabled, providers),
     previous,
   );
   const enabledExternal = external.filter(

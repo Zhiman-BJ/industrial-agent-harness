@@ -81,3 +81,32 @@ test('artifact metadata and injected scope reject oversized responses without si
     /Industrial Context limit/,
   );
 });
+
+test('typed artifact kinds like waveform.vcd match their eda inspect tool category', async () => {
+  const scope = {
+    domain: 'chip',
+    stage: 'rtl',
+    capabilityIds: ['chip.verification.waveform.inspect'],
+    skills: [],
+    tools: ['eda.waveform.inspect'],
+  };
+  const tools = externalTools(
+    () => scope,
+    async id => ({ id, kind: 'waveform.vcd' }),
+    () => null,
+  );
+  const inspect = tools.find(tool => tool.name === 'eda_waveform_inspect');
+  const result = await inspect.handler({ artifactId: 'evidence' });
+  assert.match(result.output, /waveform\.vcd/);
+
+  // Unrelated kinds stay rejected.
+  const mismatched = externalTools(
+    () => scope,
+    async id => ({ id, kind: 'report.simulation' }),
+    () => null,
+  );
+  await assert.rejects(
+    mismatched.find(tool => tool.name === 'eda_waveform_inspect').handler({ artifactId: 'x' }),
+    /unavailable for this tool/,
+  );
+});

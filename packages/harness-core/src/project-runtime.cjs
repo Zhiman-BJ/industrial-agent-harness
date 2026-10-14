@@ -122,6 +122,7 @@ function createProjectRuntime({
     protectedPaths: [...protectedPaths, runtime.directory],
     packId: pack?.id || 'project-workspace',
     packVersion: pack?.version || '1.0.0',
+    domainTools: plugin.tools || [],
   };
 }
 function readProjectRecords({
