@@ -155,7 +155,9 @@ function dockerShim(directory, configDigestValue, loadedRef) {
 
 test(
   'acquireImage downloads the release tar, verifies it and loads it through docker',
-  { timeout: 30000 },
+  // GitHub Windows runners have no docker engine and cannot execute the POSIX
+  // docker shim; the docker plumbing runs on POSIX where the shim works.
+  { timeout: 30000, skip: process.platform === 'win32' },
   async t => {
     const fixture = await releaseFixture();
     t.after(() => new Promise(resolve => fixture.server.close(resolve)));
