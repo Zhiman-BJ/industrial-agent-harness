@@ -1,0 +1,16 @@
+name: sobel-example
+top: sobel_top
+inputs:
+  rtl: [rtl/**/*.sv]
+  testbench: [tb/**/*.sv]
+  sdc: [constraints/*.sdc]
+runtime:
+  kind: docker
+  image: eda-harness-tools:dev
+  resources:
+    cpu: 2
+    memory_gb: 4
+    timeout_seconds: 300
+constraints:
+  lint.errors: { op: '==', value: 0, unit: count }
+required_verification: [rtl.lint]
