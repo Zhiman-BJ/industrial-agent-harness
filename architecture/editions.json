@@ -304,6 +304,7 @@
       "kind": "workflow",
       "paths": [
         ".github/workflows/ci.yml",
+        ".github/workflows/account-login.yml",
         ".github/workflows/structure.yml",
         ".github/workflows/industrial-core.yml",
         ".github/workflows/industrial-linux.yml",

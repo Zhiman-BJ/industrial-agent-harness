@@ -46,17 +46,117 @@ async function run(window, account, fixture) {
     await wait("!document.querySelector('.ia-account-actions button').disabled");
     await evaluate("document.querySelector('.ia-account-actions button').click()");
   };
-  await wait("Boolean(document.querySelector('.ia-settings-button'))");
-  await evaluate("document.querySelector('.ia-settings-button').click()");
-  await evaluate(
-    "Array.from(document.querySelectorAll('.ia-settings-row')).find(row => /Platform account|平台账号/.test(row.textContent)).querySelector('button').click()",
-  );
-  await wait("Boolean(document.querySelector('.ia-account-modal'))");
+  const openAccount = async () => {
+    await wait("Boolean(document.querySelector('.ia-settings-button'))");
+    await evaluate("document.querySelector('.ia-settings-button').click()");
+    await wait("Boolean(document.querySelector('.ia-settings-row'))");
+    await evaluate(
+      "Array.from(document.querySelectorAll('.ia-settings-row')).find(row => /Platform account|平台账号/.test(row.textContent)).querySelector('button').click()",
+    );
+    await wait("Boolean(document.querySelector('.ia-account-modal'))");
+  };
+  const setTheme = async theme => {
+    const dark = theme === 'dark';
+    if (
+      await evaluate(
+        `document.querySelector('.ia-app').classList.contains('theme-dark') === ${dark}`,
+      )
+    )
+      return;
+    // Switch through the existing settings control without reloading an active sign-in.
+    await evaluate("document.querySelector('.ia-account-modal > header button').click()");
+    await wait("!document.querySelector('.ia-account-modal')");
+    await evaluate("document.querySelector('.ia-settings-button').click()");
+    await wait("Boolean(document.querySelector('.ia-settings-row'))");
+    await evaluate(
+      "Array.from(document.querySelectorAll('.ia-settings-row')).find(row => /Appearance|外观/.test(row.textContent)).querySelector('button').click()",
+    );
+    await wait(`document.querySelector('.ia-app').classList.contains('theme-dark') === ${dark}`);
+    await evaluate("document.querySelector('.ia-settings-title button').click()");
+    await wait("!document.querySelector('.ia-settings-title')");
+    await openAccount();
+  };
+  const settleLayout = () =>
+    evaluate(
+      'document.fonts.ready.then(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))',
+    );
+  const checkLayout = async name => {
+    const geometry = await evaluate(`(() => {
+      const modal = document.querySelector('.ia-account-modal');
+      const content = modal.querySelector('.ia-account-content');
+      const header = modal.querySelector(':scope > header');
+      const footer = modal.querySelector('.ia-account-actions');
+      const withinViewport = element => {
+        const rect = element.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0 && rect.left >= 0 && rect.top >= 0
+          && rect.right <= innerWidth + 1 && rect.bottom <= innerHeight + 1;
+      };
+      return {
+        fits: withinViewport(modal),
+        horizontalOverflow: [modal, content].some(element => element.scrollWidth > element.clientWidth + 1),
+        actionsVisible: [header, footer, ...header.querySelectorAll('button'), ...footer.querySelectorAll('button')].every(withinViewport),
+        headerTop: header.getBoundingClientRect().top,
+        footerTop: footer.getBoundingClientRect().top,
+      };
+    })()`);
+    assert.equal(geometry.fits, true, `${name}: account dialog fits the viewport`);
+    assert.equal(geometry.horizontalOverflow, false, `${name}: no horizontal overflow`);
+    assert.equal(geometry.actionsVisible, true, `${name}: header and footer actions stay visible`);
+    return geometry;
+  };
+  const captureThemes = async (name, ready) => {
+    const originalSize = window.getContentSize();
+    const originalTheme = await evaluate(
+      "document.querySelector('.ia-app').classList.contains('theme-dark') ? 'dark' : 'light'",
+    );
+    try {
+      for (const theme of ['light', 'dark']) {
+        window.setContentSize(...originalSize);
+        await setTheme(theme);
+        await wait(ready);
+        await settleLayout();
+        await checkLayout(`${name}-${theme}`);
+        await capture(`${name}-${theme}`);
+        window.setContentSize(640, 480);
+        await wait('innerWidth === 640 && innerHeight === 480');
+        await settleLayout();
+        const before = await checkLayout(`${name}-${theme}-compact`);
+        await evaluate(
+          "document.querySelector('.ia-account-content').scrollTop = document.querySelector('.ia-account-content').scrollHeight",
+        );
+        await settleLayout();
+        const after = await checkLayout(`${name}-${theme}-compact-scrolled`);
+        assert.equal(
+          after.headerTop,
+          before.headerTop,
+          'Scrolling account content keeps the header fixed',
+        );
+        assert.equal(
+          after.footerTop,
+          before.footerTop,
+          'Scrolling account content keeps the footer fixed',
+        );
+        await evaluate("document.querySelector('.ia-account-content').scrollTop = 0");
+        await settleLayout();
+        await capture(`${name}-${theme}-compact`);
+      }
+    } finally {
+      window.setContentSize(...originalSize);
+      await setTheme(originalTheme);
+      await wait(ready);
+      await settleLayout();
+    }
+  };
+  await openAccount();
   await clickAction();
   await wait("document.querySelector('.ia-account-modal').textContent.includes('138****1234')");
   const view = await evaluate('window.harnessAccount.get()');
   assert.equal(view.status, 'signed_in');
   await capture('account-signed-in');
+  await captureThemes(
+    'account-signed-in',
+    "document.querySelector('.ia-account-identity')?.textContent.includes('138****1234')",
+  );
   const serialized = JSON.stringify(view);
   for (const forbidden of ['access_token', 'refresh_token', 'accessToken', 'refreshToken'])
     assert.ok(!serialized.includes(forbidden));
@@ -76,6 +176,10 @@ async function run(window, account, fixture) {
   await clickAction();
   await wait("Boolean(document.querySelector('.ia-account-modal form'))");
   await capture('account-paste-code');
+  await captureThemes(
+    'account-paste-code',
+    "Boolean(document.querySelector('.ia-account-modal form input[type=password]'))",
+  );
   await evaluate("document.querySelector('.ia-account-modal form button[type=button]').click()");
   let codeTimeout;
   try {

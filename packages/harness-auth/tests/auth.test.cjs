@@ -51,7 +51,7 @@ test('real discovery → PKCE loopback → signed ID token → userinfo → rota
   assert.equal(view.status, 'signed_in');
   const before = store.read();
   assert.ok(before.refreshToken);
-  assert.equal(fs.statSync(store.file).mode & 0o777, 0o600);
+  if (process.platform !== 'win32') assert.equal(fs.statSync(store.file).mode & 0o777, 0o600);
   assert.ok(!JSON.stringify(view).includes(before.accessToken));
   expire();
   await Promise.all(Array.from({ length: 12 }, () => auth.accessToken()));

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { X } from 'lucide-react';
+import { ChevronDown, ExternalLink, ShieldCheck, X } from 'lucide-react';
 import { useDisplayText } from '@industrial-agent-harness/viewer-builtin/text';
 import type { AccountConfig, AccountView } from '../account-api';
 
@@ -109,22 +109,32 @@ export function AccountSettings({ onClose }: { onClose: () => void }) {
         <header>
           <div>
             <h2>{t('Platform account')}</h2>
-            <p>{t('Sign in with your platform account. Cloud services require separate setup.')}</p>
+            <p>{t('Manage your sign-in and platform connection.')}</p>
           </div>
-          <button onClick={onClose} aria-label={t('Close settings')}>
+          <button className="ia-icon" onClick={onClose} aria-label={t('Close settings')}>
             <X size={17} />
           </button>
         </header>
-        <div className="ia-model-fields">
-          <p role="status">{view ? t(labels[view.status]) : t('Loading…')}</p>
-          {view?.user && (
-            <p>
-              <strong>{view.user.name}</strong>
+        <div className="ia-account-content">
+          <div className="ia-account-identity">
+            <div className="ia-account-person">
+              <h3>{view?.user?.name || t('Your account')}</h3>
+              {view?.issuer && <p>{view.issuer}</p>}
+            </div>
+            <span className="ia-account-status" data-status={view?.status} role="status">
+              <span className="ia-account-status-dot" aria-hidden="true" />
+              {view ? t(labels[view.status]) : t('Loading…')}
+            </span>
+          </div>
+          {view?.user && view.persistent && (
+            <p className="ia-account-note ia-account-storage">
+              <ShieldCheck size={14} aria-hidden="true" />
+              {t('Sign-in is saved securely on this device.')}
             </p>
           )}
-          <p>{view?.issuer}</p>
           {pending && view?.login && (
             <form
+              className="ia-account-manual"
               onSubmit={event => {
                 event.preventDefault();
                 if (submittingCode || !code.trim()) return;
@@ -136,7 +146,7 @@ export function AccountSettings({ onClose }: { onClose: () => void }) {
                 );
               }}
             >
-              <p>
+              <p className="ia-account-note">
                 {t(
                   'If the browser does not return, open code sign-in and paste the complete authorization code below.',
                 )}
@@ -151,9 +161,11 @@ export function AccountSettings({ onClose }: { onClose: () => void }) {
               </label>
               <button
                 type="button"
+                className="ia-account-button ia-account-open-browser"
                 disabled={submittingCode}
                 onClick={() => void act(() => window.harnessAccount.openManual())}
               >
+                <ExternalLink size={14} aria-hidden="true" />
                 {t('Open code sign-in')}
               </button>
               <label>
@@ -168,18 +180,22 @@ export function AccountSettings({ onClose }: { onClose: () => void }) {
                   onChange={event => setCode(event.target.value)}
                 />
               </label>
-              <button type="submit" disabled={submittingCode || !code.trim()}>
+              <button
+                className="ia-account-button primary ia-account-submit"
+                type="submit"
+                disabled={submittingCode || !code.trim()}
+              >
                 {t('Complete sign-in')}
               </button>
             </form>
           )}
           {view && !view.persistent && (
-            <p>
+            <p className="ia-account-note ia-account-warning">
               {t('Secure storage is unavailable. This sign-in lasts only until the app closes.')}
             </p>
           )}
           {view && (view.config.modelBaseUrl || view.usePlatformModel) && (
-            <label>
+            <label className="ia-account-model-toggle">
               <input
                 type="checkbox"
                 checked={view.usePlatformModel}
@@ -191,45 +207,66 @@ export function AccountSettings({ onClose }: { onClose: () => void }) {
               {t('Use platform account for model API')}
             </label>
           )}
-          <p>{t('Local features and your own API keys remain available without signing in.')}</p>
+          {!view?.user && (
+            <p className="ia-account-note">
+              {t('Local features and your own API keys remain available without signing in.')}
+            </p>
+          )}
           {config && (
-            <details open={view?.status === 'not_configured'}>
-              <summary>{t('Platform connection')}</summary>
-              {(
-                [
-                  ['issuer', 'Account issuer'],
-                  ['clientId', 'Native client ID'],
-                  ['audience', 'Application audience'],
-                  ['remoteOrigin', 'Remote service origin'],
-                  ['modelBaseUrl', 'Model API base URL'],
-                ] as const
-              ).map(([key, label]) => (
-                <label key={key}>
-                  {t(label)}
-                  <input
-                    value={config[key]}
-                    disabled={busy || pending || Boolean(view?.user)}
-                    autoComplete="off"
-                    onChange={event => setConfig({ ...config, [key]: event.target.value })}
-                  />
-                </label>
-              ))}
-              <button
-                disabled={busy || pending || Boolean(view?.user)}
-                onClick={() => void act(() => window.harnessAccount.configure(config))}
-              >
-                {t('Save connection')}
-              </button>
+            <details className="ia-account-connection" open={view?.status === 'not_configured'}>
+              <summary>
+                {t('Platform connection')}
+                <ChevronDown size={14} aria-hidden="true" />
+              </summary>
+              <div className="ia-account-connection-fields">
+                {view?.user && (
+                  <p className="ia-account-note">
+                    {t('Sign out to change the platform connection.')}
+                  </p>
+                )}
+                {(
+                  [
+                    ['issuer', 'Account issuer'],
+                    ['clientId', 'Native client ID'],
+                    ['audience', 'Application audience'],
+                    ['remoteOrigin', 'Remote service origin'],
+                    ['modelBaseUrl', 'Model API base URL'],
+                  ] as const
+                ).map(([key, label]) => (
+                  <label key={key}>
+                    {t(label)}
+                    <input
+                      value={config[key]}
+                      disabled={busy || pending || Boolean(view?.user)}
+                      autoComplete="off"
+                      spellCheck={false}
+                      onChange={event => setConfig({ ...config, [key]: event.target.value })}
+                    />
+                  </label>
+                ))}
+                <button
+                  className="ia-account-button ia-account-save"
+                  disabled={busy || pending || Boolean(view?.user)}
+                  onClick={() => void act(() => window.harnessAccount.configure(config))}
+                >
+                  {t('Save connection')}
+                </button>
+              </div>
             </details>
           )}
           {(error || view?.error) && (
-            <p role="alert" className="ia-sidebar-error">
+            <p role="alert" className="ia-account-note ia-account-error">
               {t(error || view?.error || '')}
             </p>
           )}
-          {notice && <p role="status">{t(notice)}</p>}
+          {notice && (
+            <p className="ia-account-note ia-account-warning" role="status">
+              {t(notice)}
+            </p>
+          )}
         </div>
         <footer className="ia-account-actions">
+          <span>{view?.user && t('Signing out does not stop submitted remote tasks.')}</span>
           {pending ? (
             <button onClick={() => void act(() => window.harnessAccount.cancel())}>
               {t('Cancel sign-in')}
@@ -240,13 +277,13 @@ export function AccountSettings({ onClose }: { onClose: () => void }) {
             </button>
           ) : (
             <button
+              className="primary"
               disabled={busy || !view?.config.clientId}
               onClick={() => void act(() => window.harnessAccount.login())}
             >
               {t('Sign in with browser')}
             </button>
           )}
-          <span>{t('Signing out does not stop submitted remote tasks.')}</span>
         </footer>
       </section>
     </div>

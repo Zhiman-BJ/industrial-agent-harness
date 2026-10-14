@@ -3556,6 +3556,22 @@
       "en": "Platform account",
       "zh-CN": "平台账号"
     },
+    "Manage your sign-in and platform connection.": {
+      "en": "Manage your sign-in and platform connection.",
+      "zh-CN": "管理登录状态与平台连接。"
+    },
+    "Your account": {
+      "en": "Your account",
+      "zh-CN": "你的账号"
+    },
+    "Sign-in is saved securely on this device.": {
+      "en": "Sign-in is saved securely on this device.",
+      "zh-CN": "登录凭据已安全保存在此设备。"
+    },
+    "Sign out to change the platform connection.": {
+      "en": "Sign out to change the platform connection.",
+      "zh-CN": "退出登录后可修改平台连接。"
+    },
     "Sign in to use cloud APIs and remote environments.": {
       "en": "Sign in to use cloud APIs and remote environments.",
       "zh-CN": "登录后使用云端 API 和远程环境。"
