@@ -6,6 +6,7 @@ const zlib = require('node:zlib');
 const { Transfer, TransferProgress } = require('./transfer.cjs');
 const { availableSpace, footprint, checkSpace } = require('./install-space.cjs');
 const { RuntimeAssetManager, validateRuntimeAssets } = require('./runtime-assets.cjs');
+const containerImages = require('./container-images.cjs');
 const { InstallationJournal } = require('./installation-journal.cjs');
 
 const MAX_COMPRESSED = 128 * 1024 * 1024;
@@ -784,4 +785,7 @@ module.exports = {
   validateBundle,
   RuntimeAssetManager,
   compareVersions,
+  readDistributionLock: containerImages.readDistributionLock,
+  resolveImageAsset: containerImages.resolveImageAsset,
+  acquireImage: containerImages.acquireImage,
 };
