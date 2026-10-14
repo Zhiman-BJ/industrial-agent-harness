@@ -85,3 +85,11 @@ AUTH_TEST_TRANSPORT=memory node --test packages/harness-auth/tests/*.test.cjs \
 | 正式 Obol / OS 安全存储 / 三平台安装包 | 未验收；需要真实 client 注册及允许启动 Electron/监听回环端口的环境 |
 
 IPC 集成测试中的加密适配器是受控替身，验证主窗口身份限制、调用路径和凭证不进入界面；不等同于真实钥匙串测试。新增登录 URL 仅包含授权请求参数，不包含授权码、Token 或 PKCE verifier。完整授权码由用户输入，经狭窄 IPC/CLI stdin 一次提交后清空；错误信息不回显输入。
+
+## 2026-10-14 完整登录验收跟进
+
+- 已定位本机 Electron SIGABRT 的崩溃栈：macOS `_RegisterApplication` / `NSApplication sharedApplication`，发生于进入应用登录代码之前；本轮未通过关闭安全机制或修改登录逻辑规避环境限制。
+- 本机未配置 `INDUSTRIAL_AUTH_CLIENT_ID`，也没有已保存的账号连接配置，因此尚不具备真实 Obol 账号联调条件。
+- 新增 `.github/workflows/account-login.yml`：macOS 15 / Windows 2025，固定依赖安装、真实 loopback socket OIDC 回归、桌面生产构建、实际 Electron 登录/刷新/取消/粘贴/退出自测。测试使用受控签名服务，不冒充生产 Obol；日志和三张 UI 状态截图作为 Actions artifacts 保留。
+- CI 尚未触发。普通 `git push` 因当前终端无法解析 github.com 失败；GitHub 连接器能读仓库，但创建 Git tree 返回 `403 Resource not accessible by integration`。未创建远端分支或 PR，未改 main。
+- 下一步：在有写权限和正常网络的开发环境推送 `codex/obol-standard-login-20261014` 并打开 PR；确认新增两平台检查通过后，使用真实注册的 native client ID 验证 Obol 登录。用户本机也可直接执行 `pnpm --filter @industrial-agent-harness/desktop build` 和 `pnpm --filter @industrial-agent-harness/desktop test:account`。这些步骤未完成前，只能报告此前 51 项受控协议/集成回归及构建通过。
