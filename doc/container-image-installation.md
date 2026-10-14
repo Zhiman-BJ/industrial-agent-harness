@@ -62,3 +62,7 @@ node scripts/verify-release-image-installation.cjs dist/release-image-installati
 preload → IPC 安装及修复，复用之前验证过的 Docker 镜像。输出包含日志、镜像身份、
 Docker 版本、桌面状态及截图；桌面这一步是镜像复用，不宣称第二次冷下载。
 具体实测环境与结果在完成后记录，不能由 portable fixture 推导跨平台或工程资格。
+
+验证已打包应用时，可将 `HARNESS_CONTAINER_INSTALL_EXECUTABLE` 指向其实际可执行文件。
+`HARNESS_CONTAINER_INSTALL_IMAGE_CACHE` 可指向前次验证的 `.container-images` 目录，
+只复制普通回执文件；正式准备仍检查 Docker 中的当前身份，报告明确标为镜像复用。

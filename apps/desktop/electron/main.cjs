@@ -1788,8 +1788,38 @@ async function createWindow() {
     );
     if (process.env.HARNESS_PACKAGED_SMOKE_FEED_DIR) {
       const planned = JSON.parse(process.env.HARNESS_PACKAGED_SMOKE_DOMAINS || '[]');
-      if (!planned.length || planned.some(item => !item.id || !item.label))
+      const dockerFailures = JSON.parse(process.env.HARNESS_PACKAGED_SMOKE_DOCKER_FAILURES || '[]');
+      if (
+        (!planned.length && !dockerFailures.length) ||
+        [...planned, ...dockerFailures].some(item => !item.id || !item.label)
+      )
         throw Error('Packaged smoke requires an explicit platform-qualified install plan.');
+      // Container preparation is now part of activation. Hosted Desktop runners
+      // without a Linux engine must exercise the visible failure and rollback,
+      // rather than count registration alone as a successful container install.
+      if (!planned.length) window.hide();
+      for (const item of dockerFailures) {
+        const selector = JSON.stringify(`.ia-domain-install-row[data-domain="${item.id}"] input`);
+        await waitFor(`Boolean(document.querySelector(${selector}))`);
+        await click(`document.querySelector(${selector}).click()`);
+        await waitFor(`!document.querySelector('.ia-domains-primary').disabled`);
+        await click(`document.querySelector('.ia-domains-primary').click()`);
+        await waitFor(`window.viewerHost.domainStatus().then(status =>
+          status.lastOperation?.outcome === 'failed' && /docker/i.test(status.lastOperation.error || '')
+          && !status.installed.some(pack => pack.domain === ${JSON.stringify(item.id)})
+          && Boolean(document.querySelector('[role="alert"]'))
+          && !document.querySelector('.ia-domains-primary').disabled)`);
+        if (
+          fs.existsSync(packManager.containerImages.directory) &&
+          fs
+            .readdirSync(packManager.containerImages.directory)
+            .some(name => name.startsWith('industrial-image-'))
+        )
+          throw Error('Failed engine prerequisite left a temporary image archive.');
+        await click(
+          `if (document.querySelector(${selector}).checked) document.querySelector(${selector}).click()`,
+        );
+      }
       await waitFor(
         `document.querySelectorAll('.ia-domain-install-row').length >= ${planned.length}`,
       );
@@ -1811,7 +1841,12 @@ async function createWindow() {
         await click(`document.querySelector('.ia-domain-setup [data-action="done"]').click()`);
         await waitFor(`!document.querySelector('.ia-domains-modal')`);
       }
-      await installInitial(initial);
+      if (initial.length) await installInitial(initial);
+      else {
+        await click(`document.querySelectorAll('.ia-domains-actions button')[1].click()`);
+        await waitFor(`!document.querySelector('.ia-domains-modal')`);
+        window.showInactive();
+      }
       for (const item of planned.slice(initial.length)) {
         if (
           !(await window.webContents.executeJavaScript(

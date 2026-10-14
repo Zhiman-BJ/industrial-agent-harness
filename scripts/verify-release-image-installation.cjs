@@ -187,6 +187,12 @@ async function main() {
       },
       'desktop.log',
     );
+    const desktopReport = JSON.parse(fs.readFileSync(path.join(output, 'desktop.json')));
+    assert.equal(
+      desktopReport.installed.catalog.state,
+      'connected',
+      'Desktop must verify the signed HTTPS feed; bundled fallback is not this acceptance path.',
+    );
     const summary = {
       started,
       finished: new Date().toISOString(),
