@@ -3,6 +3,7 @@ export type AccountConfig = {
   clientId: string;
   audience: string;
   remoteOrigin: string;
+  remoteAudience: string;
   modelBaseUrl: string;
 };
 export type AccountView = {

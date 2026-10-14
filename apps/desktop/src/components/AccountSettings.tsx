@@ -230,6 +230,7 @@ export function AccountSettings({ onClose }: { onClose: () => void }) {
                     ['clientId', 'Native client ID'],
                     ['audience', 'Application audience'],
                     ['remoteOrigin', 'Remote service origin'],
+                    ['remoteAudience', 'Remote service audience'],
                     ['modelBaseUrl', 'Model API base URL'],
                   ] as const
                 ).map(([key, label]) => (

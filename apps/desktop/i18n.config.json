@@ -3632,6 +3632,10 @@
       "en": "Remote service origin",
       "zh-CN": "远程服务地址"
     },
+    "Remote service audience": {
+      "en": "Remote service audience",
+      "zh-CN": "远程服务应用标识（Audience）"
+    },
     "Model API base URL": {
       "en": "Model API base URL",
       "zh-CN": "模型 API 基础地址"
@@ -3679,6 +3683,10 @@
     "This account cannot access the application. Contact your administrator.": {
       "en": "This account cannot access the application. Contact your administrator.",
       "zh-CN": "该账号无权访问此应用，请联系管理员。"
+    },
+    "This account cannot use this service. Contact your administrator.": {
+      "en": "This account cannot use this service. Contact your administrator.",
+      "zh-CN": "该账号无权使用此服务，请联系管理员。"
     },
     "Your session has expired. Sign in again.": {
       "en": "Your session has expired. Sign in again.",

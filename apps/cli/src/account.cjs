@@ -23,7 +23,10 @@ const usage = `industrial-harness account login|status|logout [--no-browser] [--
 
 Uses standard OIDC authorization code + PKCE through the system browser.
 Set INDUSTRIAL_AUTH_CLIENT_ID to a registered Obol native client with loopback callbacks enabled.
-Optional: INDUSTRIAL_AUTH_ISSUER (default https://auth.zhiman.cn), INDUSTRIAL_AUTH_AUDIENCE.
+Optional: INDUSTRIAL_AUTH_ISSUER (default https://auth.zhiman.cn), INDUSTRIAL_AUTH_AUDIENCE,
+INDUSTRIAL_AUTH_MODEL_BASE_URL (e.g. https://api.zhiman.cn/v1; run --platform-account then
+bills the model to your own Obol account), INDUSTRIAL_AUTH_REMOTE_ORIGIN with
+INDUSTRIAL_AUTH_REMOTE_AUDIENCE (the remote service's application slug).
 CLI persistence requires explicit --allow-file-store (private 0600 credential file).
 Without it, credentials remain in memory for this command only.
 --no-browser uses code paste only; open the URL on any device and paste code#state on stdin.

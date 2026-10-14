@@ -88,6 +88,7 @@ class DesktopAccount {
       clientId: 'CLIENT_ID',
       audience: 'AUDIENCE',
       remoteOrigin: 'REMOTE_ORIGIN',
+      remoteAudience: 'REMOTE_AUDIENCE',
       modelBaseUrl: 'MODEL_BASE_URL',
     }))
       if (

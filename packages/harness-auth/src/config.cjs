@@ -26,12 +26,17 @@ function trustedUrl(value) {
   return url.href.replace(/\/$/, '');
 }
 
+// Obol's model API is its built-in application obol-api: tokens for it are
+// requested with the model base URL as RFC 8707 resource.
+const MODEL_AUDIENCE = 'obol-api';
+
 function validateConfig(value) {
   const issuer = trustedUrl(value.issuer || 'https://auth.zhiman.cn');
   if (new URL(issuer).pathname !== '/') throw Error('Obol issuer must be an origin.');
   const clientId = value.clientId || '';
   const audience = value.audience || '';
-  for (const id of [clientId, audience])
+  const remoteAudience = value.remoteAudience || '';
+  for (const id of [clientId, audience, remoteAudience])
     if (typeof id !== 'string' || id.length > 128 || /[^a-zA-Z0-9._-]/.test(id))
       throw Error('Invalid platform application identifier.');
   if (clientId && clientId === audience)
@@ -40,9 +45,11 @@ function validateConfig(value) {
   if (remoteOrigin && new URL(remoteOrigin).pathname !== '/')
     throw Error('Remote service must be an origin.');
   const modelBaseUrl = value.modelBaseUrl ? trustedUrl(value.modelBaseUrl) : '';
-  if ((remoteOrigin || modelBaseUrl) && !audience)
-    throw Error('Configure the platform application audience before connecting a service.');
-  return { issuer, clientId, audience, remoteOrigin, modelBaseUrl };
+  if (remoteOrigin && !remoteAudience)
+    throw Error('Configure the remote service application audience before connecting it.');
+  if (clientId && clientId === remoteAudience)
+    throw Error('Client ID must differ from the remote service audience.');
+  return { issuer, clientId, audience, remoteOrigin, remoteAudience, modelBaseUrl };
 }
 
 function readConfig(directory, environment = process.env) {
@@ -57,6 +64,7 @@ function readConfig(directory, environment = process.env) {
     clientId: 'CLIENT_ID',
     audience: 'AUDIENCE',
     remoteOrigin: 'REMOTE_ORIGIN',
+    remoteAudience: 'REMOTE_AUDIENCE',
     modelBaseUrl: 'MODEL_BASE_URL',
   };
   for (const [key, name] of Object.entries(names))
@@ -64,4 +72,4 @@ function readConfig(directory, environment = process.env) {
       saved[key] = environment['INDUSTRIAL_AUTH_' + name];
   return validateConfig(saved);
 }
-module.exports = { authDirectory, trustedUrl, validateConfig, readConfig };
+module.exports = { MODEL_AUDIENCE, authDirectory, trustedUrl, validateConfig, readConfig };
