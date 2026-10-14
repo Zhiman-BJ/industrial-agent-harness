@@ -7,10 +7,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
 const { createLocalhostCertificate } = require('./localhost-tls.cjs');
-const {
-  readDistributionLock,
-  resolveImageAsset,
-} = require('./container-images.cjs');
+const { readDistributionLock, resolveImageAsset } = require('./container-images.cjs');
 
 const configDigest = 'sha256:' + 'b'.repeat(64);
 
@@ -19,8 +16,7 @@ function lockFixture() {
     schemaVersion: 1,
     registry: 'ghcr.io',
     imageNamespace: 'zhiman-bj',
-    releaseAssetUrlTemplate:
-      'https://github.com/example/example/releases/download/{tag}/{archive}',
+    releaseAssetUrlTemplate: 'https://github.com/example/example/releases/download/{tag}/{archive}',
     registryManifestUrlTemplate: 'https://ghcr.io/v2/{namespace}/{repository}/manifests/{digest}',
     images: [
       {
@@ -129,11 +125,9 @@ function childAcquire(directory, { lockFile, dockerDirectory, image }) {
        .catch(error => { console.error(error.message); process.exit(1); });`,
   );
   return new Promise(resolve => {
-    const child = spawn(
-      process.execPath,
-      [script],
-      { env: { ...process.env, NODE_EXTRA_CA_CERTS: path.join(directory, 'localhost-cert.pem') } },
-    );
+    const child = spawn(process.execPath, [script], {
+      env: { ...process.env, NODE_EXTRA_CA_CERTS: path.join(directory, 'localhost-cert.pem') },
+    });
     let stdout = '',
       stderr = '';
     child.stdout.on('data', chunk => (stdout += chunk));
@@ -193,41 +187,37 @@ test(
   },
 );
 
-test(
-  'acquireImage refuses tampered bytes and unreleased images',
-  { timeout: 30000 },
-  async t => {
-    const fixture = await releaseFixture();
-    t.after(() => new Promise(resolve => fixture.server.close(resolve)));
-    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'container-images-bad-'));
-    t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
-    fs.writeFileSync(path.join(directory, 'localhost-cert.pem'), fixture.cert);
+test('acquireImage refuses tampered bytes and unreleased images', { timeout: 30000 }, async t => {
+  const fixture = await releaseFixture();
+  t.after(() => new Promise(resolve => fixture.server.close(resolve)));
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'container-images-bad-'));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  fs.writeFileSync(path.join(directory, 'localhost-cert.pem'), fixture.cert);
 
-    const root = path.join(directory, 'pack-root');
-    fs.mkdirSync(path.join(root, 'provenance'), { recursive: true });
-    const lock = lockFixture();
-    lock.images[0].current.ociArchiveSha256 = 'f'.repeat(64); // mismatching pin
-    lock.releaseAssetUrlTemplate = `https://127.0.0.1:${fixture.port}/releases/download/{tag}/{archive}`;
-    const lockFile = path.join(root, 'provenance', 'runtime-distribution.json');
-    fs.writeFileSync(lockFile, JSON.stringify(lock));
+  const root = path.join(directory, 'pack-root');
+  fs.mkdirSync(path.join(root, 'provenance'), { recursive: true });
+  const lock = lockFixture();
+  lock.images[0].current.ociArchiveSha256 = 'f'.repeat(64); // mismatching pin
+  lock.releaseAssetUrlTemplate = `https://127.0.0.1:${fixture.port}/releases/download/{tag}/{archive}`;
+  const lockFile = path.join(root, 'provenance', 'runtime-distribution.json');
+  fs.writeFileSync(lockFile, JSON.stringify(lock));
 
-    const dockerDirectory = path.join(directory, 'bin');
-    dockerShim(dockerDirectory, configDigest, 'industrial-chip-tools:chip-v0.1.0');
+  const dockerDirectory = path.join(directory, 'bin');
+  dockerShim(dockerDirectory, configDigest, 'industrial-chip-tools:chip-v0.1.0');
 
-    const tampered = await childAcquire(directory, {
-      lockFile,
-      dockerDirectory,
-      image: 'industrial-chip-tools',
-    });
-    assert.notEqual(tampered.status, 0);
-    assert.match(tampered.stderr, /sha256 mismatch/);
+  const tampered = await childAcquire(directory, {
+    lockFile,
+    dockerDirectory,
+    image: 'industrial-chip-tools',
+  });
+  assert.notEqual(tampered.status, 0);
+  assert.match(tampered.stderr, /sha256 mismatch/);
 
-    const unreleased = await childAcquire(directory, {
-      lockFile,
-      dockerDirectory,
-      image: 'industrial-pcb-runtime',
-    });
-    assert.notEqual(unreleased.status, 0);
-    assert.match(unreleased.stderr, /no released version/);
-  },
-);
+  const unreleased = await childAcquire(directory, {
+    lockFile,
+    dockerDirectory,
+    image: 'industrial-pcb-runtime',
+  });
+  assert.notEqual(unreleased.status, 0);
+  assert.match(unreleased.stderr, /no released version/);
+});

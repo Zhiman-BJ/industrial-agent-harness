@@ -41,7 +41,10 @@ function readDistributionLock(from) {
 // name, `repository:tag`, or a registry-prefixed reference.
 function resolveImageAsset({ lock }, image) {
   if (!lock || !Array.isArray(lock.images)) return null;
-  const lastSegment = String(image || '').trim().split('/').pop();
+  const lastSegment = String(image || '')
+    .trim()
+    .split('/')
+    .pop();
   const [name] = lastSegment.split(':');
   for (const entry of lock.images) {
     if (entry?.id !== name && entry?.repository !== name) continue;
@@ -130,7 +133,11 @@ async function acquireImage({
   const output = run(docker, ['load', '-i', archive], environment);
   const imageRef = loadedImageRef(output, asset.imageRef);
   if (asset.configDigest) {
-    const identity = run(docker, ['image', 'inspect', '--format', '{{.Id}}', imageRef], environment);
+    const identity = run(
+      docker,
+      ['image', 'inspect', '--format', '{{.Id}}', imageRef],
+      environment,
+    );
     if (identity !== asset.configDigest)
       throw Error(
         `Loaded image identity ${identity} does not match the lock config digest ${asset.configDigest}.`,
