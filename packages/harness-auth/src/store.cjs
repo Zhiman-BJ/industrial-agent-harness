@@ -99,11 +99,18 @@ class SessionStore {
   read() {
     if (!this.persistent()) return this.memory;
     try {
-      const fd = fs.openSync(this.file, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
+      // O_NOFOLLOW is unavailable on Windows. Reject links before opening and
+      // compare file identities afterwards so a replacement cannot change the target.
+      const entry = fs.lstatSync(this.file);
+      if (!entry.isFile() || entry.isSymbolicLink())
+        throw Error('Account credential file must be a regular file.');
+      const fd = fs.openSync(this.file, fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW || 0));
       try {
         const stat = fs.fstatSync(fd);
         if (
           !stat.isFile() ||
+          stat.dev !== entry.dev ||
+          stat.ino !== entry.ino ||
           stat.size > 65536 ||
           (process.platform !== 'win32' && stat.mode & 0o077)
         )

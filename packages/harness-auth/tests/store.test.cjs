@@ -66,6 +66,30 @@ test('CLI file store is explicit and rejects unsafe permissions and symlinks', a
   fs.symlinkSync(target, store.file);
   assert.throws(() => store.read(), /unlock/);
 });
+test('credential reads reject replacement between the path check and opening the file', async t => {
+  const directory = temp(t),
+    store = new SessionStore({ directory, allowPlaintext: true });
+  await store.transaction(tx => tx.write({ refreshToken: 'original' }));
+  const replacement = path.join(directory, 'replacement');
+  fs.writeFileSync(replacement, JSON.stringify({ refreshToken: 'replacement' }), { mode: 0o600 });
+  const originalOpen = fs.openSync;
+  let replaced = false;
+  const open = t.mock.method(fs, 'openSync', (file, ...args) => {
+    if (file === store.file && !replaced) {
+      replaced = true;
+      fs.renameSync(store.file, path.join(directory, 'previous'));
+      fs.renameSync(replacement, store.file);
+    }
+    return originalOpen(file, ...args);
+  });
+  try {
+    assert.throws(() => store.read(), /unlock/);
+    assert.equal(replaced, true);
+  } finally {
+    open.mock.restore();
+  }
+  assert.equal(store.read().refreshToken, 'replacement');
+});
 test('memory-only commands do not delete an opted-in CLI file session', async t => {
   const directory = temp(t);
   const persisted = new SessionStore({ directory, allowPlaintext: true });
