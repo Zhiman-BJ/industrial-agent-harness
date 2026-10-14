@@ -306,7 +306,7 @@ const tasks = new TaskService({
   },
   packManager: managedPacks ? packManager : null,
   getRegistry: currentRegistry,
-  resourcePolicy: project => projectResourcePolicy(project),
+  resourcePolicy: (project, catalog) => projectResourcePolicy(project, catalog),
   getConfig: entry => runtimeConfig(entry.project, entry.externalServers, entry.id),
   logDirectory: diagnosticDirectory(),
   plugins: () => [guiPlugin(), browserPlugin()],
@@ -435,11 +435,17 @@ const externalRegistry = new ExternalMcpRegistry(path.dirname(resourceSettings.f
 const remoteSettings = new RemoteSettings({ directory: path.dirname(resourceSettings.file) });
 const projectRuntimes = tasks.projects;
 function resourceCatalog(domain) {
-  return baseResourceCatalog(domain, externalRegistry.records());
+  return baseResourceCatalog(domain, externalRegistry.records(), {
+    registry: currentRegistry(),
+    environment: tasks.projects.options.environment,
+  });
 }
 let changingResources = false;
-function projectResourcePolicy(project = activeProject()) {
-  return resourceSettings.snapshot(resourceCatalog(project?.domain), project?.path).effective;
+function projectResourcePolicy(
+  project = activeProject(),
+  catalog = resourceCatalog(project?.domain),
+) {
+  return resourceSettings.snapshot(catalog, project?.path).effective;
 }
 
 function configDir() {

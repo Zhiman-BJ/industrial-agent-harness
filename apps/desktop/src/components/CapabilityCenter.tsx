@@ -108,7 +108,7 @@ export function CapabilityCenter({
   }
   const sections = [
     { id: 'packs' as const, label: t('Domain packs'), icon: Blocks },
-    { id: 'mcp' as const, label: t('MCP servers'), icon: CircuitBoard },
+    { id: 'mcp' as const, label: t('Tools & MCP'), icon: CircuitBoard },
     { id: 'skills' as const, label: t('Skills'), icon: Wrench },
     { id: 'diagnostics' as const, label: t('Runtime diagnostics'), icon: Stethoscope },
   ];

@@ -4,9 +4,9 @@ Exposes compact discovery, selected tool schemas, and scoped calls backed by a d
 
 P0 工业执行边界已变更：真实 Kimi 及子 MCP 在 macOS 中只读实际 Project，遗留 Gateway mutation 会可见失败，不再作为正式工程写入路径；当前 Chip RTL Core 使用宿主 scoped `industrial_action_call` 经过规范 Runtime。显式注册外部 MCP 已经经由宿主 Runtime 审批与持久 Action/响应执行；外部响应仍未验收。下文的 Gateway 注册/传输 API 仍存在，不能据此声称工业 mutation 或工程验收已支持。事实和平台矩阵见 [P0 工业运行时](../../doc/p0-industrial-runtime.md) 与 [安全边界](../../SECURITY.md)。
 
-默认已注册 Chip Pack EDA Harness 0.6.0：25 个 canonical Tool ID，固定源码与 Python MCP 依赖。Desktop 与 CLI 共用此注册和策略，按当前 Scope 生成独立 Kimi 会话 mcp.json。
-PCB 同时注册 `pcb-bench.tools`：89 个工具来自固定的外部 PCB-bench 后端，设计 Skill 加载完整资源树。配置与实际协议已验证，原生镜像执行仍待实测；安装与约束见 [PCB MCP 接入](../../doc/pcb-mcp-integration.md)。
-Godot 同时注册 `godot.local`：5 个工具来自仓库固定资源，绑定本机 Godot 4，按任务选择检查或开发 Skill。见 [Godot game MCP](../../doc/godot-mcp-integration.md)。
+`listToolProviders` 生成领域工具资源目录，优先读取当前 Runtime factory 的实际 ToolDescriptor 注册，并包含外部 MCP 发现结果。稳定资源 ID 用于全局默认与项目覆盖。该目录用于 UI 和共享权限策略，不生成独立 MCP 子进程。
+
+`listMcpServers` 只生成独立 MCP 服务清单；保留 Runtime 提供方过滤。旧版 Pack 同时保留独立 MCP 声明时，资源目录通过 `standaloneMcp` 分开展示这套声明与当前 Runtime 工具。目录数量取决于当前 Pack 版本和配置，不能用历史 Chip 25 / PCB 89 / Godot 5 的 MCP 声明数量代表当前任务可调用数量。核对数据及权限/界面验证见[领域工具资源](../../doc/domain-tool-resources.md)。
 受控 Gateway 只披露 discovery/describe/call/result-read 四个工具，在真正调用时校验范围、项目路径和参数。普通直连 provider 仍要求全部声明工具在 Scope 内。
 
 注册数据来自仓库校验过的 Domain Pack 清单；项目只能保存稳定资源 ID 的启用策略，不能添加任意启动命令。配置 UI 提供全局默认与项目三态覆盖。缺少依赖时返回安装路径指引，不自动安装软件，不修改用户全局 Kimi 设置。

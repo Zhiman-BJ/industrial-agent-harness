@@ -70,9 +70,14 @@ class TaskService {
     return entry;
   }
   policy(entry, registry) {
-    const catalog = resourceCatalog(entry.project.domain, entry.externalServers);
+    const catalog = resourceCatalog(entry.project.domain, entry.externalServers, {
+      registry,
+      runtimeBundle: entry.runtimeBundle,
+      environment: this.environment,
+    });
+    entry.resourceCatalog = catalog;
     const saved =
-      this.options.resourcePolicy?.(entry.project) ||
+      this.options.resourcePolicy?.(entry.project, catalog) ||
       this.settings.snapshot(catalog, entry.project.path).effective;
     const disabled = {
       skills: [...new Set([...saved.skills, ...(entry.overrides?.skills || [])])],
@@ -101,6 +106,7 @@ class TaskService {
       entry.disabled,
       entry.externalServers,
       registry.domains,
+      entry.resourceCatalog.mcpServers,
     );
   }
   async diagnose(project) {
@@ -313,6 +319,7 @@ class TaskService {
             entry.disabled,
             entry.externalServers,
             this.registry().domains,
+            entry.resourceCatalog.mcpServers,
           );
           Object.assign(entry.scope, refreshed.scope);
           entry.trace.push(...refreshed.trace);

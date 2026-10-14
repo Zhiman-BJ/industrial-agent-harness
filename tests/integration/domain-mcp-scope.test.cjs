@@ -11,7 +11,7 @@ const {
 } = require('../../packages/harness-core/src/index.cjs');
 const { prepareSessionFiles } = require('../../packages/agent-kimi/src/index.cjs');
 const { providerRuntime } = require('../../packages/domain-mcp/src/gateway.cjs');
-const { selectMcpServers } = require('../../packages/domain-mcp/src/index.cjs');
+const { selectMcpServers, listMcpServers } = require('../../packages/domain-mcp/src/index.cjs');
 const execute = promisify(execFile);
 let runtime;
 try {
@@ -34,7 +34,17 @@ test(
     fs.writeFileSync(path.join(directory, 'config.toml'), 'default_model = "industrial"\n');
     const catalog = resourceCatalog('chip');
     assert.equal(catalog.mcpServers[0].id, 'chip-pack.eda');
-    assert.deepEqual(resourceCatalog('pcb').mcpServers, []);
+    const pcbProviders = resourceCatalog('pcb').mcpServers;
+    assert.ok(
+      pcbProviders.some(
+        provider => provider.transport === 'runtime' && provider.toolIds.includes('pcb.kicad.edit'),
+      ),
+    );
+    assert.deepEqual(
+      listMcpServers('pcb'),
+      [],
+      'Runtime resources remain outside standalone MCP configuration',
+    );
     const { scope } = resolveProjectTask('chip', { task: 'project status' });
     const session = prepareSessionFiles(
       scope,

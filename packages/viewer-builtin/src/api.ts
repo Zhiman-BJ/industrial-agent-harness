@@ -515,7 +515,24 @@ export interface CoreUpdateState {
 }
 export interface ResourceCatalog {
   skills: Array<{ id: string; domain: string; title: string; enabledByDefault: boolean }>;
-  mcpServers: Array<{ id: string; domain: string; title: string; enabledByDefault: boolean }>;
+  mcpServers: Array<{
+    id: string;
+    domain: string;
+    title: string;
+    enabledByDefault: boolean;
+    version?: string;
+    transport?: string;
+    external?: boolean;
+    catalogSource?: 'runtime-descriptors' | 'provider-manifest' | 'external-discovery';
+    toolIds?: string[];
+    declaredToolIds?: string[];
+    tools?: Array<{ id: string; title?: string; description?: string; risk?: string }>;
+    standaloneMcp?: {
+      transport: string;
+      tools: Array<{ id: string; title?: string; description?: string; risk?: string }>;
+    };
+    catalogError?: string;
+  }>;
 }
 
 export type ResourceMode = 'inherit' | 'enabled' | 'disabled';

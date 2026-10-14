@@ -28,6 +28,7 @@ async function prepare(config, modelDirectory) {
     activeId: 'mcp-chip',
     projects: [
       { id: 'mcp-chip', name: 'Chip MCP test', path: fs.realpathSync(directory), domain: 'chip' },
+      ...require('./tool-resources-selftest.cjs').prepare(config),
     ],
   });
   saveProfile(modelDirectory, {
@@ -39,6 +40,8 @@ async function prepare(config, modelDirectory) {
   });
 }
 async function run(window) {
+  const providerId = require('@industrial-agent-harness/harness-core').resourceCatalog('chip')
+    .mcpServers[0].id;
   const evaluate = script => window.webContents.executeJavaScript(script, true);
   async function wait(script) {
     const deadline = Date.now() + 30000;
@@ -54,12 +57,13 @@ async function run(window) {
       await evaluate(
         `window.viewerHost.resourceGet({projectId:'mcp-chip'}).then(state=>state.catalog.mcpServers[0].id)`,
       ),
-      'chip-pack.eda',
+      providerId,
     );
     await evaluate(`document.querySelector('.ia-project-row').click()`);
     await wait(`document.querySelector('.ia-project-resources')?.innerText.includes('Chip Pack')`);
+    await require('./tool-resources-selftest.cjs').run(window, evidence);
     await evaluate(
-      `window.viewerHost.resourceSet({projectId:'mcp-chip',kind:'mcp',id:'chip-pack.eda',mode:'disabled'})`,
+      `window.viewerHost.resourceSet({projectId:'mcp-chip',kind:'mcp',id:${JSON.stringify(providerId)},mode:'disabled'})`,
     );
     assert.deepEqual(
       await evaluate(
@@ -68,7 +72,7 @@ async function run(window) {
       [],
     );
     await evaluate(
-      `window.viewerHost.resourceSet({projectId:'mcp-chip',kind:'mcp',id:'chip-pack.eda',mode:'inherit'})`,
+      `window.viewerHost.resourceSet({projectId:'mcp-chip',kind:'mcp',id:${JSON.stringify(providerId)},mode:'inherit'})`,
     );
     await evaluate(`document.querySelector('.ia-project-start').click()`);
     await wait(`Boolean(document.querySelector('.ia-composer textarea'))`);
@@ -102,7 +106,7 @@ async function run(window) {
     console.log(
       JSON.stringify({
         ok: true,
-        provider: 'chip-pack.eda',
+        provider: providerId,
         desktop: true,
         pinnedKimi: true,
         approvals: 1,
