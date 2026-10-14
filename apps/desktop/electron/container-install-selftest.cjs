@@ -29,7 +29,7 @@ async function run(window, { manager }) {
   await evaluate(`window.__releaseImageProgress = [];
     window.__releaseImageUnsubscribe = window.viewerHost.onDomainProgress(p => {
       if (p.phase !== 'downloading' || p.received === p.total) window.__releaseImageProgress.push(p);
-    })`);
+    }); void 0;`);
   try {
     await evaluate(`(() => {
       const input = document.querySelector(${row}).querySelector('input');
@@ -70,10 +70,10 @@ async function run(window, { manager }) {
       path.join(output, 'desktop.png'),
       (await window.webContents.capturePage()).toPNG(),
     );
-    console.log('Real release-image Desktop installation and repair passed.');
   } finally {
-    await evaluate('window.__releaseImageUnsubscribe()');
+    await evaluate('window.__releaseImageUnsubscribe(); void 0');
   }
+  console.log('Real release-image Desktop installation and repair passed.');
 }
 
 module.exports = { run };

@@ -25,6 +25,8 @@ Docker containerd 存储使用 manifest ID，classic 存储使用 config ID；�
 Docker；本地镜像缺失或被替换时显示需要准备。临时 tar 在成功、失败和取消后清理。
 卸载 Pack 保留 Docker 镜像和小型回执，重装可以复用。下载目录检查磁盘空间；Docker
 可能使用独立磁盘，其剩余空间由引擎负责，不能把 UI 的保守展开估算当成实际容量检测。
+Docker Desktop 中已安装镜像显示在 **Images → Local**。安装不创建常驻容器；验证用的
+临时容器完成后自动清理，因此 **Containers** 页不一定出现新条目。
 
 ## 使用与边界
 
@@ -61,7 +63,21 @@ node scripts/verify-release-image-installation.cjs dist/release-image-installati
 会实际下载镜像，随后检查容器能启动、修复并卸载 Pack。Desktop 再通过真实 renderer →
 preload → IPC 安装及修复，复用之前验证过的 Docker 镜像。输出包含日志、镜像身份、
 Docker 版本、桌面状态及截图；桌面这一步是镜像复用，不宣称第二次冷下载。
-具体实测环境与结果在完成后记录，不能由 portable fixture 推导跨平台或工程资格。
+2026-10-14 实测在 macOS arm64、Docker Desktop Linux engine 29.5.2（containerd）通过：
+
+- CLI 冷安装实际下载两个 `chip-v0.1.0` release tarball，共 1,976,178,688 字节，完成
+  校验、加载、tag、Pack 激活、修复及卸载；成功后无临时 tar。两个 linux/amd64 镜像均实际启动成功。
+- 源码 Desktop 和未签名 macOS arm64 打包应用均通过真实安装及 Check/repair 按钮验证，
+  签名 feed 连接正常，状态为 ready；这两轮复用已验证镜像，未重复冷下载。
+- 实际 release 下载中断后，记录 cancelled，未激活 Pack，未残留临时 tar。
+  打包应用另用隔离的非 Linux engine fixture 验证失败提示和不激活行为；该模拟不代表本机 Docker 状态。
+- 18 项镜像回归、portable suite（573 通过，1 项既有允许跳过）、架构与发行门禁、
+  Electron UI／安装／退出和打包首次启动检查通过。
+
+镜像身份、环境、内存采样及验证范围见[实测记录](evidence/release-image-installation-20261014.json)，
+界面见[打包应用截图](evidence/release-image-installation-20261014.png)。首次全流程中的 CLI
+阶段通过后，桌面自测监听器的跨进程序列化出错；修复自测后，源码与打包 UI 流程分别完整通过。
+classic 存储仅有 fixture 覆盖；本记录不推导 Linux／Windows 的真实镜像安装或领域工程资格。
 
 验证已打包应用时，可将 `HARNESS_CONTAINER_INSTALL_EXECUTABLE` 指向其实际可执行文件。
 `HARNESS_CONTAINER_INSTALL_IMAGE_CACHE` 可指向前次验证的 `.container-images` 目录，

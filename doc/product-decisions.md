@@ -755,7 +755,7 @@ CSV/TSV 显示表格并提供表头开关、全文筛选与分页；普通 JSON 
 ## PD-078：release tarball 是容器镜像安装主通道
 
 - 日期：2026-10-14。
-- 状态：源码实现；真实 release 安装验证结果单独记录。
+- 状态：已实现；macOS arm64 上真实 release CLI 冷安装、修复、卸载与源码／未签名打包 Desktop 的镜像复用安装、修复已通过，见[实测记录](evidence/release-image-installation-20261014.json)。
 - 来源：用户确认 tarball 为主通道，要求直接修复 #172 的五项问题并补齐 Desktop／CLI 安装链路。
 - 决定：owner 维护镜像配方、锁与 release；Harness 的共享 Pack Manager 消费签名 Pack 内原样固定的锁，负责匿名下载、大小与 SHA-256 校验、OCI 身份及平台校验、Docker 加载与固定 tag、安装和修复回执。两个入口均在依赖准备完成后激活 Pack，失败保留旧版本并清理临时 tar。
 - 边界：Docker Linux engine 是外部前提；未发布镜像不伪装成可自动准备。Registry index、归档 manifest 与 config 摘要分别校验适用的身份，不混用。镜像准备成功不自动更改项目执行配置，也不扩大领域工程或跨平台资格。验证与复现入口见[容器镜像安装](container-image-installation.md)。
