@@ -121,6 +121,9 @@ function allowedSkips(suite, platform = process.platform) {
     skips.push(
       'timeout and cancellation kill descendants and close the result promise',
       'natural parent exit also cleans up orphaned tools before close',
+      // GitHub Windows runners have no docker engine; the acquisition
+      // plumbing is exercised on POSIX platforms.
+      'acquireImage downloads the release tar, verifies it and loads it through docker',
     );
   }
   return skips;
