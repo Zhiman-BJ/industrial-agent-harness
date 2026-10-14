@@ -3551,6 +3551,190 @@
     "Supporting results ({0})": {
       "en": "Supporting results ({0})",
       "zh-CN": "附件与报告（{0}）"
+    },
+    "Platform account": {
+      "en": "Platform account",
+      "zh-CN": "平台账号"
+    },
+    "Sign in to use cloud APIs and remote environments.": {
+      "en": "Sign in to use cloud APIs and remote environments.",
+      "zh-CN": "登录后使用云端 API 和远程环境。"
+    },
+    "Account setup required": {
+      "en": "Account setup required",
+      "zh-CN": "尚未配置账号接入"
+    },
+    "Signed out": {
+      "en": "Signed out",
+      "zh-CN": "未登录"
+    },
+    "Waiting for browser sign-in…": {
+      "en": "Waiting for browser sign-in…",
+      "zh-CN": "等待浏览器完成登录…"
+    },
+    "Signed in": {
+      "en": "Signed in",
+      "zh-CN": "已登录"
+    },
+    "Renewing session…": {
+      "en": "Renewing session…",
+      "zh-CN": "正在续期登录…"
+    },
+    "Sign in again": {
+      "en": "Sign in again",
+      "zh-CN": "重新登录"
+    },
+    "Secure storage is unavailable. This sign-in lasts only until the app closes.": {
+      "en": "Secure storage is unavailable. This sign-in lasts only until the app closes.",
+      "zh-CN": "安全存储不可用。本次登录仅在应用关闭前有效。"
+    },
+    "Use platform account for model API": {
+      "en": "Use platform account for model API",
+      "zh-CN": "使用平台账号调用模型 API"
+    },
+    "Local features and your own API keys remain available without signing in.": {
+      "en": "Local features and your own API keys remain available without signing in.",
+      "zh-CN": "未登录时仍可使用本地功能和自带 API Key。"
+    },
+    "Platform connection": {
+      "en": "Platform connection",
+      "zh-CN": "平台连接配置"
+    },
+    "Account issuer": {
+      "en": "Account issuer",
+      "zh-CN": "账号服务地址"
+    },
+    "Native client ID": {
+      "en": "Native client ID",
+      "zh-CN": "原生客户端 ID"
+    },
+    "Application audience": {
+      "en": "Application audience",
+      "zh-CN": "应用标识（Audience）"
+    },
+    "Remote service origin": {
+      "en": "Remote service origin",
+      "zh-CN": "远程服务地址"
+    },
+    "Model API base URL": {
+      "en": "Model API base URL",
+      "zh-CN": "模型 API 基础地址"
+    },
+    "Save connection": {
+      "en": "Save connection",
+      "zh-CN": "保存连接配置"
+    },
+    "Cancel sign-in": {
+      "en": "Cancel sign-in",
+      "zh-CN": "取消登录"
+    },
+    "Sign out": {
+      "en": "Sign out",
+      "zh-CN": "退出登录"
+    },
+    "Sign in with browser": {
+      "en": "Sign in with browser",
+      "zh-CN": "在浏览器中登录"
+    },
+    "Signing out does not stop submitted remote tasks.": {
+      "en": "Signing out does not stop submitted remote tasks.",
+      "zh-CN": "退出登录不会停止已提交的远程任务。"
+    },
+    "Signed out locally. The server session could not be revoked; retry from the account center.": {
+      "en": "Signed out locally. The server session could not be revoked; retry from the account center.",
+      "zh-CN": "本机已退出登录。服务端会话未能撤销，请前往账号中心处理。"
+    },
+    "Unable to load account settings.": {
+      "en": "Unable to load account settings.",
+      "zh-CN": "无法加载账号设置。"
+    },
+    "Account operation failed.": {
+      "en": "Account operation failed.",
+      "zh-CN": "账号操作失败。"
+    },
+    "Sign-in cancelled.": {
+      "en": "Sign-in cancelled.",
+      "zh-CN": "已取消登录。"
+    },
+    "Sign-in timed out. Try again.": {
+      "en": "Sign-in timed out. Try again.",
+      "zh-CN": "登录超时，请重试。"
+    },
+    "This account cannot access the application. Contact your administrator.": {
+      "en": "This account cannot access the application. Contact your administrator.",
+      "zh-CN": "该账号无权访问此应用，请联系管理员。"
+    },
+    "Your session has expired. Sign in again.": {
+      "en": "Your session has expired. Sign in again.",
+      "zh-CN": "登录已失效，请重新登录。"
+    },
+    "Platform sign-in could not be verified. Check the account configuration.": {
+      "en": "Platform sign-in could not be verified. Check the account configuration.",
+      "zh-CN": "平台登录校验失败，请检查接入配置。"
+    },
+    "The account service is unavailable. Try again.": {
+      "en": "The account service is unavailable. Try again.",
+      "zh-CN": "账号服务暂不可用，请稍后重试。"
+    },
+    "Session renewal could not be confirmed. Sign in again.": {
+      "en": "Session renewal could not be confirmed. Sign in again.",
+      "zh-CN": "无法确认登录续期结果，请重新登录。"
+    },
+    "Cannot unlock saved account credentials.": {
+      "en": "Cannot unlock saved account credentials.",
+      "zh-CN": "无法解锁已保存的账号凭证。"
+    },
+    "Cannot read platform account configuration.": {
+      "en": "Cannot read platform account configuration.",
+      "zh-CN": "无法读取平台账号配置。"
+    },
+    "Sign out before changing the account platform.": {
+      "en": "Sign out before changing the account platform.",
+      "zh-CN": "修改账号平台前请先退出登录。"
+    },
+    "This account setting is managed by the application operator.": {
+      "en": "This account setting is managed by the application operator.",
+      "zh-CN": "此账号配置由应用运营方管理。"
+    },
+    "Configure a registered native client ID first.": {
+      "en": "Configure a registered native client ID first.",
+      "zh-CN": "请先配置已注册的原生客户端 ID。"
+    },
+    "Sign-in is already in progress.": {
+      "en": "Sign-in is already in progress.",
+      "zh-CN": "正在登录，请稍候。"
+    },
+    "Use an HTTPS platform URL (loopback HTTP is allowed for local development).": {
+      "en": "Use an HTTPS platform URL (loopback HTTP is allowed for local development).",
+      "zh-CN": "请使用 HTTPS 平台地址，本机开发可使用回环 HTTP 地址。"
+    },
+    "Obol issuer must be an origin.": {
+      "en": "Obol issuer must be an origin.",
+      "zh-CN": "Obol 账号地址不能包含路径。"
+    },
+    "Invalid platform application identifier.": {
+      "en": "Invalid platform application identifier.",
+      "zh-CN": "平台应用标识无效。"
+    },
+    "Client ID must differ from the application audience.": {
+      "en": "Client ID must differ from the application audience.",
+      "zh-CN": "客户端 ID 不能与应用标识相同。"
+    },
+    "Remote service must be an origin.": {
+      "en": "Remote service must be an origin.",
+      "zh-CN": "远程服务地址不能包含路径。"
+    },
+    "Configure the platform application audience before connecting a service.": {
+      "en": "Configure the platform application audience before connecting a service.",
+      "zh-CN": "连接服务前请配置应用标识。"
+    },
+    "This service is not bound to the platform account.": {
+      "en": "This service is not bound to the platform account.",
+      "zh-CN": "该服务尚未绑定到平台账号。"
+    },
+    "Sign in and configure the platform model service first.": {
+      "en": "Sign in and configure the platform model service first.",
+      "zh-CN": "请先登录并配置平台模型服务。"
     }
   }
 }

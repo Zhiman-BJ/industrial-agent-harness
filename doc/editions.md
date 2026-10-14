@@ -33,6 +33,7 @@ Domain Packs 按既有外部仓库（industrial-domain-packs）所有权消费�
 | `packages.agent-kimi` | Kimi 固定内核接入（诊断日志文件除外） | public | agent-kernel | 已确定 |
 | `packages.pack-manager` / `domain-skills` / `domain-mcp` | Pack 消费、默认 Skill/MCP 声明（冻结领域快照除外） | public | pack-consumption | 已确定 |
 | `packages.computer-use-bridge` | GUI 横切插件 | public | cross-cutting-plugin | 已确定 |
+| `packages.harness-auth` | 可选的标准 OIDC 账号、凭证生命周期与平台模型代理 | public | cross-cutting-plugin | 已确定（PD-074） |
 | `packages.viewer-core` / `viewer-builtin` | 只读 Viewer 内核与内置 Viewer | public | viewer | 已确定 |
 | `packages.sdk` | Node SDK 与 stdio JSON-RPC | public | adapter | 已确定 |
 | `examples.public` | 示例工程（Sobel、bench 烟测等） | public | examples | 已确定 |

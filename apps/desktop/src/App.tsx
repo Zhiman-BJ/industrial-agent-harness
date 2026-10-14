@@ -61,6 +61,7 @@ import { MessageRail } from './components/MessageRail';
 import { WindowControls } from './components/WindowControls';
 import { CoreUpdatePanel } from './components/CoreUpdatePanel';
 import { ComputerUseSettings } from './components/ComputerUseSettings';
+import { AccountSettings } from './components/AccountSettings';
 import { ModelSettings } from './components/ModelSettings';
 import { RemoteTaskStatus } from './components/RemoteExecution';
 import { ProjectDetails } from './components/ProjectDetails';
@@ -159,6 +160,7 @@ export function App() {
   const [viewerFullscreen, setViewerFullscreen] = useState(false);
   const [fullscreenError, setFullscreenError] = useState('');
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
   const [modelSettingsOpen, setModelSettingsOpen] = useState(false);
   const [capabilitySection, setCapabilitySection] = useState<CapabilitySection>('packs');
   const [capabilityReturn, setCapabilityReturn] = useState<'chat' | 'project'>('chat');
@@ -1367,6 +1369,17 @@ export function App() {
                     <Bug size={14} /> {debug ? t('On') : t('Off')}
                   </button>
                 </div>
+                <div className="ia-settings-row">
+                  <span>{t('Platform account')}</span>
+                  <button
+                    onClick={() => {
+                      setSettingsOpen(false);
+                      setAccountOpen(true);
+                    }}
+                  >
+                    {t('Manage')}
+                  </button>
+                </div>
                 <ComputerUseSettings />
                 <div className="ia-settings-row">
                   <span>{t('Model API')}</span>
@@ -2218,6 +2231,7 @@ export function App() {
           onClose={() => setCoreUpdateOpen(false)}
         />
       )}
+      {accountOpen && <AccountSettings onClose={() => setAccountOpen(false)} />}
       {modelSettingsOpen && (
         <ModelSettings
           onClose={() => setModelSettingsOpen(false)}

@@ -72,6 +72,8 @@ pnpm dev
 
 Open **Settings → Model API** to configure your model, then add a local project and select its domain. Open the right-hand workspace to browse files. File previews work without a model API key.
 
+**Settings → Platform account** offers optional system-browser sign-in using standard OIDC Authorization Code + PKCE. A registered native client and explicit service endpoints are required. Desktop keeps tokens in the main process; CLI provides `account login|status|logout` and opt-in platform model/remote access. Local work and user-supplied API keys remain available without signing in. See [platform account setup and validation limits](packages/harness-auth/README.md).
+
 Select the server's **API format** independently of the Kimi agent kernel. Official MiniMax Chat Completions uses OpenAI-compatible settings; thinking controls vary by model and protocol. See [tested model API behavior and remaining gaps](doc/model-api-compatibility.md).
 
 **The layout button** switches between the classic split view and a shared chat/file/Viewer tab strip. `+` browses project files; single-click reuses a preview tab, while double-click or the pin keeps it. Switching retains drafts and Viewer state. The window fits the display work area and uses tabs automatically when narrow. [Responsive layouts](doc/desktop-layouts.md).

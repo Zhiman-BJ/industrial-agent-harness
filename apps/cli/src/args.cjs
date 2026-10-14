@@ -42,6 +42,10 @@ function parseArgs(argv) {
   };
   for (let index = 1; index < argv.length; index++) {
     const flag = argv[index];
+    if (flag === '--platform-account') {
+      options.platformAccount = true;
+      continue;
+    }
     if (flag === '--scope-only') {
       options.scopeOnly = true;
       continue;

@@ -108,6 +108,18 @@
       "decisionStatus": "decided"
     },
     {
+      "id": "packages.harness-auth",
+      "edition": "public",
+      "kind": "package",
+      "paths": ["packages/harness-auth"],
+      "entry": "packages/harness-auth/src/index.cjs",
+      "dependencyClass": "cross-cutting-plugin",
+      "publicStatementSource": "packages/harness-auth/README.md",
+      "requiredTests": ["packages/harness-auth/tests/auth.test.cjs", "packages/harness-auth/tests/store.test.cjs"],
+      "decisionStatus": "decided",
+      "decisionNote": "Optional standard platform sign-in, explicitly requested for the open-source client on 2026-10-14."
+    },
+    {
       "id": "packages.harness-core",
       "edition": "public",
       "kind": "package",
