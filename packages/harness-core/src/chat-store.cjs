@@ -47,6 +47,23 @@ function cleanChatTitle(title) {
   return value;
 }
 
+// Models asked for a bare title sometimes answer with a markdown heading or a
+// conversational opener ("I need to be transparent…"). Reject those so the
+// chat keeps its task-derived title instead of picking up agent prose (#163).
+const GENERATED_TITLE_OPENER =
+  /^(?:i\s|i'm|i've|i'd\s|i\s+cannot|i\s+can't|i\s+don't|sorry|okay|ok[\s,.!]|sure[\s,.!]|let me|yes[\s,.!]|no[\s,.!]|好的|抱歉|对不起|让我|我来)/i;
+function sanitizeGeneratedTitle(text) {
+  if (typeof text !== 'string') return null;
+  const withoutThought = text.replace(/<think>[\s\S]*?(<\/think>|$)/g, '');
+  const title = deriveChatTitle(withoutThought)
+    .replace(/^#+\s*/, '')
+    .replace(/^["'`「『【]+|["'`」』】]+$/g, '')
+    .replace(/(?:会话|session|chat)$/i, '')
+    .trim();
+  if (!title || GENERATED_TITLE_OPENER.test(title)) return null;
+  return title;
+}
+
 // Product history and opaque adapter identities. Model context remains owned by the agent runtime.
 class ChatStore {
   constructor(directory = defaultChatDirectory()) {
@@ -494,4 +511,4 @@ class ChatStore {
     this.statements.clear();
   }
 }
-module.exports = { ChatStore, defaultChatDirectory, deriveChatTitle };
+module.exports = { ChatStore, defaultChatDirectory, deriveChatTitle, sanitizeGeneratedTitle };

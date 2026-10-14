@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
-const { ChatStore, deriveChatTitle } = require('../src/index.cjs');
+const { ChatStore, deriveChatTitle, sanitizeGeneratedTitle } = require('../src/index.cjs');
 
 function fixture(t) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'industrial-chat-store-'));
@@ -356,6 +356,43 @@ test('chat titles derive concisely, rename validates, and auto titles never over
     store.list(project, 'test-domain').map(item => item.id),
     before,
   );
+});
+
+test('generated titles are stripped of markdown and conversational openers rejected', () => {
+  // Markdown headings observed in the wild ("# RTL Simulation…") lose the prefix
+  // before the concise-title cap applies, so '#' never consumes the budget.
+  const heading = sanitizeGeneratedTitle(
+    '# RTL Simulation and Assertion Verification for the counter design',
+  );
+  assert.ok(heading.startsWith('RTL Simulation'), `prefix stripped: ${heading}`);
+  assert.ok([...heading].length <= 49, `cap applies after stripping: ${heading}`);
+
+  // Conversational openers are not titles; the chat keeps its derived title.
+  assert.equal(
+    sanitizeGeneratedTitle('I need to be transparent with you: I cannot run simulations here'),
+    null,
+  );
+  assert.equal(
+    sanitizeGeneratedTitle("I don't see any code or file attached to your message"),
+    null,
+  );
+  assert.equal(sanitizeGeneratedTitle('好的，我来帮你运行仿真'), null);
+  assert.equal(sanitizeGeneratedTitle('抱歉，无法完成该任务'), null);
+
+  // Thought blocks, quote/bracket wrapping and filler suffixes are cleaned.
+  assert.equal(sanitizeGeneratedTitle('<think>考虑中…</think>RTL 仿真验证'), 'RTL 仿真验证');
+  assert.equal(sanitizeGeneratedTitle('「修复 PCB 布线」'), '修复 PCB 布线');
+  assert.equal(sanitizeGeneratedTitle('布线修复会话'), '布线修复');
+
+  // Legitimate titles pass through untouched, including ones starting with "I"
+  // when not a first-person sentence (word boundary guards e.g. "I2C").
+  assert.equal(sanitizeGeneratedTitle('修复 PCB 布线问题'), '修复 PCB 布线问题');
+  assert.equal(sanitizeGeneratedTitle('I2C 总线时序修复'), 'I2C 总线时序修复');
+
+  // Empty or non-string output is rejected.
+  assert.equal(sanitizeGeneratedTitle('##  \n'), null);
+  assert.equal(sanitizeGeneratedTitle(''), null);
+  assert.equal(sanitizeGeneratedTitle(null), null);
 });
 
 test('schema v1 databases gain the custom-title flag on open and newer schemas are rejected', t => {
