@@ -239,3 +239,35 @@ test('background tasks retain leases until their native completion; cancel and a
   assert.equal(tasks.sessions.busy(entry), false);
   assert.equal(tasks.history(project, entry.id).turns[0].status, 'completed');
 });
+
+test('agent artifact lookup prefers industrial runtime evidence over the context store', async t => {
+  const { tasks, entry } = fixture(t);
+  entry.runtimeBundle = {
+    runtime: {
+      get: (kind, id) =>
+        kind === 'artifact' && id === 'run-evidence'
+          ? {
+              id: 'run-evidence',
+              kind: 'waveform.vcd',
+              relativePath: '.eda/runs/1/wave.vcd',
+              sizeBytes: 42,
+              sha256: 'deadbeef',
+            }
+          : undefined,
+    },
+  };
+  // Pre-seed a context store double; the runtime record must win for its own id.
+  entry.context = { readArtifact: id => ({ id, kind: 'file' }), close() {} };
+  const recorded = await tasks.lookupAgentArtifact(entry, 'run-evidence');
+  assert.deepEqual(recorded, {
+    id: 'run-evidence',
+    kind: 'waveform.vcd',
+    name: 'wave.vcd',
+    relativePath: '.eda/runs/1/wave.vcd',
+    sizeBytes: 42,
+    sha256: 'deadbeef',
+  });
+  // Ids unknown to the runtime store fall back to the observed context store.
+  const observed = await tasks.lookupAgentArtifact(entry, 'ctx-only');
+  assert.deepEqual(observed, { id: 'ctx-only', kind: 'file' });
+});

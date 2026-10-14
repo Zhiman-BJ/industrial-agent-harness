@@ -31,6 +31,25 @@ test('general project tasks receive no industrial tools', () => {
   assert.deepEqual(tools, []);
 });
 
+test('typed artifact kinds like waveform.vcd satisfy their eda category tool', async () => {
+  const tools = externalTools(
+    () => ({
+      capabilityIds: ['chip.verification.waveform.inspect'],
+      tools: ['eda.waveform.inspect'],
+    }),
+    async id => ({ id, kind: 'waveform.vcd' }),
+    () => null,
+  );
+  const result = await tools[1].handler({ artifactId: 'wave' });
+  assert.match(result.output, /wave/);
+  const mismatched = externalTools(
+    () => ({ capabilityIds: ['chip.rtl.netlist.inspect'], tools: ['eda.netlist.inspect'] }),
+    async id => ({ id, kind: 'waveform.vcd' }),
+    () => null,
+  );
+  await assert.rejects(mismatched[1].handler({ artifactId: 'wave' }), /unavailable/);
+});
+
 test('capability detail can be narrowed and stale capability calls are rejected', async () => {
   let scope = { capabilityIds: ['chip.rtl.netlist.inspect'], tools: [] };
   const tools = externalTools(
