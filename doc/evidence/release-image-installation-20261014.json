@@ -66,9 +66,9 @@
     },
     "packaged": {
       "passed": true,
-      "finished": "2026-10-14T13:04:26.078Z",
-      "asarSha256": "62750519c19d88451ef895f6aafefc0805b22662af354b381c00e082fa3a152f",
-      "asarBytes": 203512556,
+      "finished": "2026-10-14T13:17:01.653Z",
+      "asarSha256": "0fb96abf0d3bc6a822376f9f8b98090942880349f9e3732610f467c535637f50",
+      "asarBytes": 203516428,
       "signed": false
     },
     "signedFeed": "connected",
@@ -102,10 +102,10 @@
     }
   },
   "checks": {
-    "containerRegressions": 18,
+    "containerRegressions": 20,
     "portable": {
-      "tests": 574,
-      "passed": 573,
+      "tests": 578,
+      "passed": 577,
       "skipped": 1,
       "failed": 0
     },
@@ -120,5 +120,48 @@
     "Classic storage tested with fixtures; real Docker uses containerd.",
     "No Linux/Windows real-release installation or engineering qualification claimed.",
     "Cold CLI stages passed before a Desktop selftest listener serialization error; after fixing the test, source and packaged UI runs completed successfully using verified images."
-  ]
+  ],
+  "missingAndUnreachableDocker": {
+    "finished": "2026-10-14T13:16:55.262Z",
+    "host": "darwin-arm64",
+    "results": [
+      {
+        "mode": "missing",
+        "adapter": "cli",
+        "passed": true,
+        "outcome": "failed",
+        "message": "Docker was not found. Install Docker Desktop (macOS/Windows) or Docker Engine (Linux), make sure the docker command is available, then retry.",
+        "activatedPacks": 0,
+        "imageDownloads": 0
+      },
+      {
+        "mode": "missing",
+        "adapter": "desktop",
+        "passed": true,
+        "outcome": "failed",
+        "message": "Docker was not found. Install Docker Desktop (macOS/Windows) or Docker Engine (Linux), make sure the docker command is available, then retry.",
+        "activatedPacks": 0,
+        "imageDownloads": 0
+      },
+      {
+        "mode": "unreachable",
+        "adapter": "cli",
+        "passed": true,
+        "outcome": "failed",
+        "message": "Docker could not be reached. Start Docker Desktop or your Linux Docker engine, then retry. If it is already running, check the active Docker connection.",
+        "activatedPacks": 0,
+        "imageDownloads": 0
+      },
+      {
+        "mode": "unreachable",
+        "adapter": "desktop",
+        "passed": true,
+        "outcome": "failed",
+        "message": "Docker could not be reached. Start Docker Desktop or your Linux Docker engine, then retry. If it is already running, check the active Docker connection.",
+        "activatedPacks": 0,
+        "imageDownloads": 0
+      }
+    ],
+    "isolation": "Child environment only; host Docker installation, engine and context unchanged"
+  }
 }

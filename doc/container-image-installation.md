@@ -77,7 +77,7 @@ Docker 版本、桌面状态及截图；桌面这一步是镜像复用，不宣�
   签名 feed 连接正常，状态为 ready；这两轮复用已验证镜像，未重复冷下载。
 - 实际 release 下载中断后，记录 cancelled，未激活 Pack，未残留临时 tar。
   打包应用另用隔离的非 Linux engine fixture 验证失败提示和不激活行为；该模拟不代表本机 Docker 状态。
-- 18 项镜像回归、portable suite（573 通过，1 项既有允许跳过）、架构与发行门禁、
+- 20 项镜像回归、portable suite（577 通过，1 项既有允许跳过）、架构与发行门禁、
   Electron UI／安装／退出和打包首次启动检查通过。
 
 镜像身份、环境、内存采样及验证范围见[实测记录](evidence/release-image-installation-20261014.json)，
@@ -89,6 +89,10 @@ classic 存储仅有 fixture 覆盖；本记录不推导 Linux／Windows 的真�
 `HARNESS_CONTAINER_INSTALL_IMAGE_CACHE` 可指向前次验证的 `.container-images` 目录，
 只复制普通回执文件；正式准备仍检查 Docker 中的当前身份，报告明确标为镜像复用。
 
-在 macOS／Linux 使用 `node scripts/verify-docker-prerequisites.cjs <新输出目录>
-<已有真实-release-验证目录> <打包应用可执行文件>` 可分别验证命令缺失与引擎不可达。
+命令缺失与引擎不可达也已在 CLI 和打包 Desktop 分别验证通过。在 macOS／Linux 可复现：
+
+```sh
+node scripts/verify-docker-prerequisites.cjs <新输出目录> <已有真实-release-验证目录> <打包应用可执行文件>
+```
+
 前者仅清空子进程 PATH，后者仅指定不存在的本地 socket；不会卸载、停止或修改本机 Docker。
