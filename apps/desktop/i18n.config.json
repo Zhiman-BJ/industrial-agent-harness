@@ -4,15 +4,11 @@
   "locales": {
     "zh-CN": {
       "label": "简体中文",
-      "systemLanguages": [
-        "zh"
-      ]
+      "systemLanguages": ["zh"]
     },
     "en": {
       "label": "English",
-      "systemLanguages": [
-        "en"
-      ]
+      "systemLanguages": ["en"]
     }
   },
   "messages": {
@@ -623,6 +619,10 @@
     "Refresh agent logs": {
       "en": "Refresh agent logs",
       "zh-CN": "刷新 Agent 日志"
+    },
+    "Refresh file list": {
+      "en": "Refresh file list",
+      "zh-CN": "刷新文件列表"
     },
     "Agent run": {
       "en": "Agent run",
@@ -3680,6 +3680,10 @@
       "en": "This account cannot access the application. Contact your administrator.",
       "zh-CN": "该账号无权访问此应用，请联系管理员。"
     },
+    "This account cannot use this service. Contact your administrator.": {
+      "en": "This account cannot use this service. Contact your administrator.",
+      "zh-CN": "该账号无权使用此服务，请联系管理员。"
+    },
     "Your session has expired. Sign in again.": {
       "en": "Your session has expired. Sign in again.",
       "zh-CN": "登录已失效，请重新登录。"
@@ -3789,72 +3793,72 @@
       "zh-CN": "正在完成登录，请稍候。"
     },
     "Tools & MCP": {
-        "en": "Tools & MCP",
-        "zh-CN": "领域工具与 MCP"
+      "en": "Tools & MCP",
+      "zh-CN": "领域工具与 MCP"
     },
     "Search providers and tools": {
-        "en": "Search providers and tools",
-        "zh-CN": "搜索工具提供方和工具"
+      "en": "Search providers and tools",
+      "zh-CN": "搜索工具提供方和工具"
     },
     "Domain Runtime": {
-        "en": "Domain Runtime",
-        "zh-CN": "领域运行工具"
+      "en": "Domain Runtime",
+      "zh-CN": "领域运行工具"
     },
     "External MCP": {
-        "en": "External MCP",
-        "zh-CN": "外部 MCP"
+      "en": "External MCP",
+      "zh-CN": "外部 MCP"
     },
     "Standalone MCP": {
-        "en": "Standalone MCP",
-        "zh-CN": "独立 MCP 服务"
+      "en": "Standalone MCP",
+      "zh-CN": "独立 MCP 服务"
     },
     "{0} registered tools": {
-        "en": "{0} registered tools",
-        "zh-CN": "已注册 {0} 个工具"
+      "en": "{0} registered tools",
+      "zh-CN": "已注册 {0} 个工具"
     },
     "Registered tools ({0})": {
-        "en": "Registered tools ({0})",
-        "zh-CN": "工具清单（{0}）"
+      "en": "Registered tools ({0})",
+      "zh-CN": "工具清单（{0}）"
     },
     "Standalone MCP tools ({0})": {
-        "en": "Standalone MCP tools ({0})",
-        "zh-CN": "独立 MCP 工具（{0}）"
+      "en": "Standalone MCP tools ({0})",
+      "zh-CN": "独立 MCP 工具（{0}）"
     },
     "Separate MCP transport. These declarations are not the current Runtime tool list.": {
-        "en": "Separate MCP transport. These declarations are not the current Runtime tool list.",
-        "zh-CN": "独立 MCP 接入通道。此清单与当前任务的领域运行工具分别注册。"
+      "en": "Separate MCP transport. These declarations are not the current Runtime tool list.",
+      "zh-CN": "独立 MCP 接入通道。此清单与当前任务的领域运行工具分别注册。"
     },
     "Tool list": {
-        "en": "Tool list",
-        "zh-CN": "工具清单"
+      "en": "Tool list",
+      "zh-CN": "工具清单"
     },
     "Read only": {
-        "en": "Read only",
-        "zh-CN": "只读"
+      "en": "Read only",
+      "zh-CN": "只读"
     },
     "Changes require approval": {
-        "en": "Changes require approval",
-        "zh-CN": "修改需审批"
+      "en": "Changes require approval",
+      "zh-CN": "修改需审批"
     },
     "Enable access here. Check software and service readiness in Runtime diagnostics.": {
-        "en": "Enable access here. Check software and service readiness in Runtime diagnostics.",
-        "zh-CN": "此处控制工具是否启用；软件与服务的就绪状态请查看运行诊断。"
+      "en": "Enable access here. Check software and service readiness in Runtime diagnostics.",
+      "zh-CN": "此处控制工具是否启用；软件与服务的就绪状态请查看运行诊断。"
     },
     "No active tools are registered. Check the domain setup in Domain packs and Runtime diagnostics.": {
-        "en": "No active tools are registered. Check the domain setup in Domain packs and Runtime diagnostics.",
-        "zh-CN": "当前未注册可用的运行工具。请在领域包和运行诊断中检查配置。"
+      "en": "No active tools are registered. Check the domain setup in Domain packs and Runtime diagnostics.",
+      "zh-CN": "当前未注册可用的运行工具。请在领域包和运行诊断中检查配置。"
     },
     "No resources match your search.": {
-        "en": "No resources match your search.",
-        "zh-CN": "没有匹配的资源。"
+      "en": "No resources match your search.",
+      "zh-CN": "没有匹配的资源。"
     },
     "No tool providers are registered for this domain. Install a domain pack or add an external MCP service.": {
-        "en": "No tool providers are registered for this domain. Install a domain pack or add an external MCP service.",
-        "zh-CN": "此领域尚未注册工具提供方。请安装领域包或添加外部 MCP 服务。"
+      "en": "No tool providers are registered for this domain. Install a domain pack or add an external MCP service.",
+      "zh-CN": "此领域尚未注册工具提供方。请安装领域包或添加外部 MCP 服务。"
     },
     "Could not load this tool provider. Check Runtime diagnostics.": {
-        "en": "Could not load this tool provider. Check Runtime diagnostics.",
-        "zh-CN": "无法加载此工具提供方，请查看运行诊断。"
+      "en": "Could not load this tool provider. Check Runtime diagnostics.",
+      "zh-CN": "无法加载此工具提供方，请查看运行诊断。"
     }
   }
 }

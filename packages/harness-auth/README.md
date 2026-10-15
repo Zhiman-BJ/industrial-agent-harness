@@ -12,34 +12,41 @@ Register a **native/public** client in the platform with loopback callbacks enab
 | --- | --- |
 | `INDUSTRIAL_AUTH_ISSUER` | Issuer origin; defaults to `https://auth.zhiman.cn` |
 | `INDUSTRIAL_AUTH_CLIENT_ID` | Registered native client ID; required |
-| `INDUSTRIAL_AUTH_AUDIENCE` | Application slug accepted by the connected services; distinct from client ID |
-| `INDUSTRIAL_AUTH_REMOTE_ORIGIN` | Explicit remote service origin |
+| `INDUSTRIAL_AUTH_AUDIENCE` | Application slug the native client belongs to; distinct from client ID |
+| `INDUSTRIAL_AUTH_REMOTE_ORIGIN` | Explicit remote service origin; leave empty until deployed |
+| `INDUSTRIAL_AUTH_REMOTE_AUDIENCE` | Operator-only service audience, defaults to `industrial-mcp-remote`; also supported as `remoteAudience` in config.json |
 | `INDUSTRIAL_AUTH_MODEL_BASE_URL` | Explicit model endpoint, including `/v1` when required |
 
-The configured model and remote endpoints must accept the **same registered application audience** in this first version. Different-audience applications require separate authorizations; there is no token-exchange or invented multi-audience flow. Services must independently verify the token and enforce project ownership, permissions and quotas. Login does not assert that these server integrations already exist.
+One sign-in, one rotating refresh family, and a separate access token for each service. Login does not request a resource, so lack of remote access cannot prevent sign-in or model use. On demand the shared manager refreshes with RFC 8707 `resource`: the configured model base URL for audience `obol-api`, or the configured remote origin for its service audience. Obol supports matching a registered resource's path prefixes. The remote deployment must register the origin used here, not only a narrower MCP path. No second native client or browser authorization is needed. The account UI remains unchanged; service audiences and caches stay internal.
+
+Existing main-branch login sessions retain their binding and acquire service tokens lazily. Cache entries bind both resource and audience. Changing the operator's remote audience cannot reuse its old token. Credentials from the unmerged dual-grant experiment are not imported.
 
 ## Credentials and lifecycle
 
 - Desktop keeps credential material in the main process and encrypts it with Electron `safeStorage`. Linux `basic_text` is rejected. If encryption is unavailable, credentials stay in memory for that app process. Locked/corrupt storage does not prevent local app startup.
 - CLI uses a separate session. Its default store is memory only. `account login --allow-file-store` explicitly opts into a private 0600 file; this is not encrypted storage. Pass the flag to status/logout as well. Windows ACL qualification is pending.
-- `SessionStore.transaction` serializes local and inter-process operations using `proper-lockfile`; refresh re-reads the latest saved token inside the lock and atomically saves its replacement. Access tokens refresh on demand 60 seconds before expiry. No background polling is required.
+- `SessionStore.transaction` serializes local and inter-process operations using `proper-lockfile`; refresh re-reads the latest saved token inside the lock and atomically saves its replacement. Login and both service tokens share this lock; each resource keeps its own cache. Access tokens refresh on demand 60 seconds before expiry. No background polling is required.
 - A durable refresh-in-progress marker prevents replay after a crash or ambiguous network response. `invalid_grant`, uncertain refresh or a crash marker requires sign-in again. Transient discovery failure before refresh leaves the saved refresh token intact.
-- Logout cancels pending login, attempts refresh-token revocation and removes local credentials even when revocation fails. The UI reports unsuccessful server revocation. It does not sign out the entire system browser's SSO session or cancel submitted remote jobs.
+- `invalid_target` leaves the refresh family unconsumed: only that service cache is evicted, sign-in and other service tokens remain usable.
+- Logout cancels pending login, waits for late exchanges/refresh, attempts the latest refresh-token revocation and removes local credentials even when revocation fails. The UI reports unsuccessful server revocation. It does not sign out the entire system browser's SSO session or cancel submitted remote jobs.
 - IPC exposes only curated account state, non-secret configuration and the current authorization URL (never the PKCE verifier). Pasted codes are submitted once, cleared from the input and never persisted or logged. Tokens do not enter renderer storage, project files, Domain Packs, model context or diagnostic events.
 
 ## Cloud consumers
 
-These are opt-in client integration points, not verified Obol business-service support. The current [Obol API guide](https://github.com/zhimanai/obol/blob/main/docs/api-quickstart.md) specifies project API keys for inference, and the remote service checkout uses preconfigured Bearer credentials. Use the existing API-key path until the services explicitly support account access tokens.
+This implementation targets Obol's existing [account API access contract](https://github.com/zhimanai/obol/blob/main/docs/account-api-access.md), without changing or deploying Obol. Direct API consumers create their own keys in Console; CLI/Desktop account mode uses login access tokens and never creates a user API key. Obol may provision the user's personal billing account on first inference; its internal login billing record has no usable API-key secret. Production model acceptance and real remote connectivity remain separate deployment checks.
+
+Use `https://api.zhiman.cn/v1` for the OpenAI model protocol, or `https://api.zhiman.cn/anthropic/v1` for Anthropic. Model names, context limits and protocol stay in the existing model settings. There is no silent API-key fallback.
 
 The remote client obtains a token per request through an injected credential provider. Only GET + `401 WWW-Authenticate: Bearer error="invalid_token"` retries once after refresh. It never retries mutation requests or a `403`; existing request journals remain authoritative. Account subject participates in remote binding identity, and existing clients reject account changes.
 
-Desktop's **Use platform account for model API** and CLI `run --platform-account` use a bounded loopback model proxy. It accepts a random local session key, fixed routes and an exact upstream; platform tokens are verified for issuer, application audience, signature, expiry and `typ=at+jwt` before forwarding. Streaming responses are forwarded without whole-response buffering. The local key is all Kimi receives. BYOK remains a separate model source. Logout closes the local proxy; the selected platform source does not silently fall back to a saved API key. Model name/protocol/context parameters remain in Model API settings.
+Desktop's **Use platform account for model API** and CLI `run --platform-account` use a bounded loopback model proxy. It accepts a random local session key, fixed routes and an exact upstream; platform tokens are verified for issuer, exact service audience, subject, client ID, signature, expiry and `typ=at+jwt` before forwarding. An explicit `401 WWW-Authenticate: Bearer error="invalid_token"` refreshes and retries the model request once (including generation); plain 401, transport failure and other statuses never replay. Upstream error bodies are discarded; 402/403/429 receive fixed balance/access/rate-limit explanations. Streaming responses are forwarded without whole-response buffering. The local key is all Kimi receives. BYOK remains a separate model source. Logout closes the local proxy; the selected platform source does not silently fall back to a saved API key. Model name/protocol/context parameters remain in Model API settings.
 
 ## CLI
 
 ```sh
 export INDUSTRIAL_AUTH_CLIENT_ID='<registered-native-client-id>'
 export INDUSTRIAL_AUTH_AUDIENCE='<registered-application-slug>'
+export INDUSTRIAL_AUTH_MODEL_BASE_URL='https://api.zhiman.cn/v1'
 node apps/cli/src/main.cjs account login --allow-file-store
 node apps/cli/src/main.cjs account status --allow-file-store
 node apps/cli/src/main.cjs run --platform-account --project-dir /path/to/project --domain DOMAIN --task '...'
@@ -60,5 +67,7 @@ pnpm test:architecture
 ```
 
 The account selftest uses a controlled signed OIDC provider and the actual preload/main/renderer path, without SMS or production credentials. When socket listening is prohibited, `AUTH_TEST_TRANSPORT=memory node --test packages/harness-auth/tests/*.test.cjs` exercises the same HTTP handlers and real protocol/JWT libraries using in-memory transport. This is protocol validation, not OS loopback, browser or packaged-keychain acceptance.
+
+On 2026-10-15, 88 targeted account/adapter/remote/model/language tests passed with real loopback sockets. Obol's existing `TestPostgresM0/account_api_access/real_harness_client` also passed with race detection against unmodified main `7137bd8` and this checkout, using temporary PostgreSQL/Redis and synthetic inference. It exercised sign-in, model proxy calls, resource refresh and immediate rejection of the old model token after logout. Production inference and a deployed remote MCP were not exercised.
 
 Public references: [RFC 8252](https://www.rfc-editor.org/rfc/rfc8252), [RFC 9700](https://www.rfc-editor.org/rfc/rfc9700), [openid-client](https://github.com/panva/openid-client), [Electron safeStorage](https://www.electronjs.org/docs/latest/api/safe-storage).

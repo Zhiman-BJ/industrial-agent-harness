@@ -94,7 +94,7 @@ async function runDomains(argv, output = process.stdout) {
       journal.begin([options.domain], 'repair');
       const bundle = manager.list().find(item => item.domain === options.domain);
       if (!bundle) throw Error('Domain is not installed.');
-      await manager.runtimeAssets.ensure(bundle.runtimeAssets, {
+      await manager.prepareRuntime(bundle, {
         recheck: true,
         onProgress,
         signal: controller.signal,

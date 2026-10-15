@@ -101,6 +101,10 @@ Linux x86-64 芯片用户可使用[一键安装](releases/chip-linux-installer-v
 
 ## 领域扩展
 
+Desktop 和 CLI 共用 release 镜像安装及修复。Pack 声明的已发布容器镜像从固定 release
+tarball 下载，校验文件和 OCI 身份后加载到运行中的 Linux Docker engine，再激活 Pack。
+Docker 仍是外部前提；项目执行配置和工程资格分别验收。详见[容器安装契约](doc/container-image-installation.md)。
+
 项目详情和能力中心的**领域工具与 MCP**显示当前 Runtime 的实际工具名称、ID、数量和提供方版本，并支持工具搜索。全局默认和项目覆盖进入共享任务服务；工具注册、启用与依赖就绪分别展示。见[领域工具资源清单与验证](doc/domain-tool-resources.md)。
 
 | 领域                                                                                                                            | 预览版已提供                                                                                         | 依赖与限制                                                                                             |
@@ -195,4 +199,4 @@ pnpm run format:check
 
 CLI 和 Desktop 现共用 Harness 任务服务；领域声明、Skill 和实现来自一个固定版本的 Domain Packs。见[消费迁移与验收](doc/shared-task-and-pack-consumption.md)。
 
-PCB 与 Godot 专业 Runtime Actions 提供有限的 macOS Apple Silicon 原生任务，领域实现统一维护在精确固定的 Domain Packs 包中。当前 1.0.1-beta.1 源码消费端固定 Domain Packs 0.5.2 提交 `b9759342cace66df0be0c4559b7c24fb28ea07d9`，由通用 Pack Manager 准备声明中的官方原生软件。见[任务边界、依赖与验收](doc/pcb-godot-runtime.md)；其他平台与远端仍未验收。
+PCB 与 Godot 专业 Runtime Actions 提供有限的 macOS Apple Silicon 原生任务，领域实现统一维护在精确固定的 Domain Packs 包中。当前源码消费端固定 Domain Packs 0.5.2 提交 `8ef1de607dad59088ee65f4298552aa719fcbff7`，由通用 Pack Manager 准备声明中的官方原生软件。见[任务边界、依赖与验收](doc/pcb-godot-runtime.md)；其他平台与远端仍未验收。

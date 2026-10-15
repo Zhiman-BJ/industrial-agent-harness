@@ -15,6 +15,7 @@ const messages = {
   invalid_code: 'Paste the complete code#state from the account center.',
   no_pending_login: 'Start sign-in before submitting an authorization code.',
   login_consumed: 'Sign-in is already being completed.',
+  service_denied: 'This account cannot use this service. Contact your administrator.',
 };
 function authError(code) {
   return Object.assign(Error(messages[code] || messages.protocol_error), { code });
@@ -49,7 +50,12 @@ class AuthManager extends EventEmitter {
     this.createServer = createServer;
     this.now = now;
     this.loginTimeoutMs = loginTimeoutMs;
-    this.identity = crypto.createHash('sha256').update(JSON.stringify(this.config)).digest('hex');
+    // Preserve existing login bindings. Service audiences are bound separately in
+    // their cache entries; changing one cannot reuse the old service token.
+    const binding = { ...this.config };
+    delete binding.remoteAudience;
+    this.identity = crypto.createHash('sha256').update(JSON.stringify(binding)).digest('hex');
+    this.exchanges = new Set();
     this.epoch = 0;
     this.state = 'signed_out';
     this.user = null;
@@ -137,6 +143,7 @@ class AuthManager extends EventEmitter {
     });
   }
   async login({ openBrowser, manualOnly = false } = {}) {
+    if (this.loggingOut) throw authError('cancelled');
     if (this.pending || this.starting) throw Error('Sign-in is already in progress.');
     const epoch = ++this.epoch;
     this.starting = true;
@@ -161,7 +168,7 @@ class AuthManager extends EventEmitter {
       // Attach immediately so cancellation during browser launch is always handled.
       result.catch(() => {});
       const manualRedirect = this.config.issuer + '/oauth/code';
-      const accept = async url => {
+      const exchange = async url => {
         if (epoch !== this.epoch) throw authError('cancelled');
         if (consumed) throw authError('login_consumed');
         consumed = true;
@@ -201,14 +208,19 @@ class AuthManager extends EventEmitter {
                 if (tx.read()?.refreshToken === tokens.refresh_token) tx.clear();
               })
               .catch(() => {});
-            await oidc
-              .tokenRevocation(config, tokens.refresh_token, {
-                token_type_hint: 'refresh_token',
-              })
-              .catch(() => {});
+            await this.revoke(oidc, config, tokens.refresh_token);
           }
           throw safeError(error);
         }
+      };
+      const accept = url => {
+        const pending = exchange(url);
+        this.exchanges.add(pending);
+        pending.then(
+          () => this.exchanges.delete(pending),
+          () => this.exchanges.delete(pending),
+        );
+        return pending;
       };
       let redirect;
       const callback = async (request, response) => {
@@ -365,6 +377,7 @@ class AuthManager extends EventEmitter {
       expiresAt: this.now() + expires * 1000,
       user,
       refreshPending: false,
+      services: previous?.services || {},
     };
   }
   cancel() {
@@ -372,9 +385,57 @@ class AuthManager extends EventEmitter {
     this.pending?.cancel();
     this.changed(this.user ? 'signed_in' : 'signed_out');
   }
-  async accessToken({ rejectedToken } = {}) {
+  async accessToken(options = {}) {
+    return this.tokenFor(null, options);
+  }
+  async serviceToken(service, target, options = {}) {
+    const endpoint =
+      service === 'model'
+        ? this.config.modelBaseUrl
+        : service === 'remote'
+          ? this.config.remoteOrigin
+          : '';
+    if (!endpoint || trustedUrl(target) !== endpoint)
+      throw Error('This service is not bound to the platform account.');
+    return this.tokenFor(
+      {
+        resource: endpoint,
+        audience: service === 'model' ? 'obol-api' : this.config.remoteAudience,
+      },
+      options,
+    );
+  }
+  async verifyServiceToken(token, audience, subject) {
+    const { config, oidc } = await this.protocol();
+    const jose = await import('jose');
+    this.jwks ||= jose.createRemoteJWKSet(new URL(config.serverMetadata().jwks_uri), {
+      [jose.customFetch]: config[oidc.customFetch],
+      timeoutDuration: 15000,
+    });
+    try {
+      const { payload } = await jose.jwtVerify(token, this.jwks, {
+        issuer: this.config.issuer,
+        audience,
+        typ: 'at+jwt',
+        algorithms: ['RS256'],
+        requiredClaims: ['sub', 'exp', 'iat', 'client_id'],
+        clockTolerance: 30,
+      });
+      if (
+        payload.sub !== subject ||
+        payload.aud !== audience ||
+        payload.client_id !== this.config.clientId
+      )
+        throw authError('protocol_error');
+      return payload.exp * 1000;
+    } catch {
+      throw authError('protocol_error');
+    }
+  }
+  async tokenFor(binding, { rejectedToken } = {}) {
     const epoch = this.epoch;
-    return this.store.transaction(async tx => {
+    if (this.loggingOut) throw authError('cancelled');
+    const token = await this.store.transaction(async tx => {
       if (epoch !== this.epoch) throw authError('cancelled');
       const session = tx.read();
       if (
@@ -387,97 +448,134 @@ class AuthManager extends EventEmitter {
         this.changed('reauth_required');
         throw authError('login_required');
       }
-      if (
-        session.expiresAt > this.now() + 60000 &&
-        (!rejectedToken || rejectedToken !== session.accessToken)
-      ) {
+      const cached = binding ? session.services?.[binding.resource] : session;
+      const bound =
+        !binding ||
+        (cached?.resource === binding.resource && cached?.audience === binding.audience);
+      if (bound && cached?.expiresAt > this.now() + 60000 && cached.accessToken !== rejectedToken) {
+        if (binding)
+          await this.verifyServiceToken(cached.accessToken, binding.audience, session.user.sub);
+        if (epoch !== this.epoch) throw authError('cancelled');
         this.user = session.user;
-        return session.accessToken;
+        return cached.accessToken;
       }
       const { oidc, config } = await this.protocol();
-      // Persist intent before a rotating refresh. A crash/ambiguous response must
-      // never replay a potentially consumed refresh token and revoke its family.
-      tx.write({ ...session, refreshPending: true });
+      if (epoch !== this.epoch) throw authError('cancelled');
+      // All resources and the login token share ONE rotating refresh family and
+      // the same inter-process lock. Always re-read after acquiring that lock.
+      const retained = { ...session, services: { ...session.services } };
+      if (binding) delete retained.services[binding.resource];
+      tx.write({ ...retained, refreshPending: true });
       this.changed('refreshing');
+      let tokens;
       try {
-        const tokens = await oidc.refreshTokenGrant(config, session.refreshToken);
-        if (
-          !tokens.refresh_token ||
-          (tokens.claims()?.sub && tokens.claims().sub !== session.user.sub)
-        )
-          throw authError('protocol_error');
-        const next = this.session(tokens, session.user, session);
-        tx.write(next);
-        // Logout waits for this lock: retain the replacement so it can revoke
-        // the current refresh token, without letting the cancelled request use it.
-        if (epoch !== this.epoch) throw authError('cancelled');
-        this.user = next.user;
-        this.changed('signed_in');
-        return next.accessToken;
+        tokens = await oidc.refreshTokenGrant(
+          config,
+          session.refreshToken,
+          binding ? { resource: binding.resource } : undefined,
+        );
       } catch (error) {
-        if (error?.code === 'cancelled') throw error;
+        // Obol rolls invalid_target back without consuming the refresh token.
+        if (binding && error?.error === 'invalid_target') {
+          tx.write(retained);
+          if (epoch !== this.epoch) throw authError('cancelled');
+          this.user = session.user;
+          this.changed('signed_in');
+          throw authError('service_denied');
+        }
         tx.clear();
         this.user = null;
         const safe =
           error?.error === 'invalid_grant'
             ? authError('login_required')
             : authError('refresh_uncertain');
-        this.changed('reauth_required', safe.message);
+        if (epoch === this.epoch) this.changed('reauth_required', safe.message);
         throw safe;
       }
+      let next;
+      try {
+        if (
+          !tokens.refresh_token ||
+          (tokens.claims()?.sub && tokens.claims().sub !== session.user.sub)
+        )
+          throw authError('protocol_error');
+        const issued = this.session(tokens, session.user, retained);
+        if (binding) {
+          const expiresAt = await this.verifyServiceToken(
+            tokens.access_token,
+            binding.audience,
+            session.user.sub,
+          );
+          next = {
+            ...retained,
+            refreshToken: tokens.refresh_token,
+            refreshPending: false,
+            services: {
+              ...retained.services,
+              [binding.resource]: {
+                ...binding,
+                accessToken: tokens.access_token,
+                expiresAt: Math.min(issued.expiresAt, expiresAt),
+              },
+            },
+          };
+        } else next = issued;
+        tx.write(next);
+      } catch (error) {
+        // A response may already have rotated the family even if its token is
+        // malformed. Revoke that replacement before discarding the session.
+        await this.revoke(oidc, config, tokens.refresh_token || session.refreshToken);
+        tx.clear();
+        this.user = null;
+        if (epoch === this.epoch) this.changed('reauth_required', messages.protocol_error);
+        throw safeError(error);
+      }
+      // Retain the replacement for logout, but never release it to a cancelled request.
+      if (epoch !== this.epoch) throw authError('cancelled');
+      this.user = session.user;
+      this.changed('signed_in');
+      return tokens.access_token;
     });
-  }
-  async serviceToken(service, target, options) {
-    const epoch = this.epoch;
-    const expected =
-      service === 'remote'
-        ? this.config.remoteOrigin
-        : service === 'model'
-          ? this.config.modelBaseUrl
-          : '';
-    if (!expected || trustedUrl(target) !== expected || !this.config.audience)
-      throw Error('This service is not bound to the platform account.');
-    const token = await this.accessToken(options);
-    const { config, oidc } = await this.protocol();
-    const jose = await import('jose');
-    this.jwks ||= jose.createRemoteJWKSet(new URL(config.serverMetadata().jwks_uri), {
-      [jose.customFetch]: config[oidc.customFetch],
-      timeoutDuration: 15000,
-    });
-    try {
-      const { payload } = await jose.jwtVerify(token, this.jwks, {
-        issuer: this.config.issuer,
-        audience: this.config.audience,
-        typ: 'at+jwt',
-        algorithms: ['RS256'],
-        clockTolerance: 30,
-      });
-      if (epoch !== this.epoch || payload.sub !== this.user?.sub) throw authError('protocol_error');
-    } catch {
-      throw authError('protocol_error');
-    }
+    if (epoch !== this.epoch) throw authError('cancelled');
     return token;
   }
-  async logout() {
+  async revoke(oidc, config, token) {
+    try {
+      await oidc.tokenRevocation(config, token, { token_type_hint: 'refresh_token' });
+    } catch {
+      this.revocationFailed = true;
+    }
+  }
+  logout() {
+    if (!this.loggingOut) {
+      this.loggingOut = this.finishLogout().finally(() => {
+        this.loggingOut = null;
+      });
+    }
+    return this.loggingOut;
+  }
+  async finishLogout() {
     this.cancel();
-    let revoked = true;
+    // Code exchanges run outside the session lock. Wait for late responses and
+    // their revocation too, so logout never reports completion prematurely.
+    await Promise.allSettled([...this.exchanges]);
     await this.store.transaction(async tx => {
       try {
         const session = tx.read();
         if (session?.binding === this.identity && session.refreshToken) {
           const { oidc, config } = await this.protocol();
-          await oidc.tokenRevocation(config, session.refreshToken, {
-            token_type_hint: 'refresh_token',
-          });
+          await this.revoke(oidc, config, session.refreshToken);
         }
       } catch {
-        revoked = false;
+        this.revocationFailed = true;
       } finally {
         tx.clear();
         this.user = null;
         this.changed('signed_out');
       }
     });
+    const revoked = !this.revocationFailed;
+    this.revocationFailed = false;
     return { ...this.view(), revoked };
   }
   close() {
