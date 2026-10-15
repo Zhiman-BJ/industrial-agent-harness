@@ -13,7 +13,7 @@ const { startModel } = require('../../../tests/integration/fixtures/domain-mcp-m
 
 test(
   'real Kimi completes a Runtime callback beyond 60 seconds and keeps its idle session without replay',
-  { timeout: 120000 },
+  { skip: !['darwin', 'linux'].includes(process.platform), timeout: 120000 },
   async t => {
     const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-code-heartbeat-'));
     const project = path.join(directory, 'project');
