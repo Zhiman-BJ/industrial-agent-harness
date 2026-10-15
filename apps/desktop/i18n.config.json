@@ -3680,6 +3680,10 @@
       "en": "This account cannot access the application. Contact your administrator.",
       "zh-CN": "该账号无权访问此应用，请联系管理员。"
     },
+    "This account cannot use this service. Contact your administrator.": {
+      "en": "This account cannot use this service. Contact your administrator.",
+      "zh-CN": "该账号无权使用此服务，请联系管理员。"
+    },
     "Your session has expired. Sign in again.": {
       "en": "Your session has expired. Sign in again.",
       "zh-CN": "登录已失效，请重新登录。"
