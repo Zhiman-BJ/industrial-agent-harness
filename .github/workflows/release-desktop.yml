@@ -100,10 +100,36 @@ jobs:
             test -n "$CSC_LINK" && test -n "$CSC_KEY_PASSWORD" && test -n "$APPLE_API_KEY" && test -n "$APPLE_API_KEY_ID" && test -n "$APPLE_API_ISSUER"
             ./apps/desktop/node_modules/.bin/electron-builder --projectDir dist/desktop-stage-release --config "$GITHUB_WORKSPACE/electron-builder.config.cjs" --mac dmg zip --arm64 --publish never
           else
-            echo "::warning::Apple signing credentials are not configured; building an unsigned internal installer."
+            echo "::warning::Apple signing credentials are not configured; building an ad-hoc signed internal installer."
             unset CSC_LINK CSC_KEY_PASSWORD
-            CSC_IDENTITY_AUTO_DISCOVERY=false ./apps/desktop/node_modules/.bin/electron-builder --projectDir dist/desktop-stage-release --config "$GITHUB_WORKSPACE/electron-builder.config.cjs" --mac dmg zip --arm64 --publish never
+            export CSC_IDENTITY_AUTO_DISCOVERY=false
+            ./apps/desktop/node_modules/.bin/electron-builder --projectDir dist/desktop-stage-release --config "$GITHUB_WORKSPACE/electron-builder.config.cjs" --mac dir --arm64 --publish never
+            codesign --force --deep --sign - "dist/desktop-release/mac-arm64/Industrial Agent Harness.app"
+            codesign --verify --deep --strict "dist/desktop-release/mac-arm64/Industrial Agent Harness.app"
+            ./apps/desktop/node_modules/.bin/electron-builder --projectDir dist/desktop-stage-release --config "$GITHUB_WORKSPACE/electron-builder.config.cjs" --mac dmg zip --arm64 --prepackaged "$GITHUB_WORKSPACE/dist/desktop-release/mac-arm64/Industrial Agent Harness.app" --publish never
           fi
+      - name: Verify macOS DMG structure and signature
+        if: matrix.platform == 'mac'
+        shell: bash
+        run: |
+          dmg=$(ls dist/desktop-release/*.dmg | head -1)
+          echo "Verifying $dmg"
+          volume=$(hdiutil attach -nobrowse -readonly "$dmg" | sed -n 's/.*Apple_HFS[[:space:]]*//p' | tail -1)
+          if test -z "$volume" || ! test -d "$volume"; then
+            echo "::error::Could not locate the mounted volume for $dmg"
+            hdiutil attach -nobrowse -readonly "$dmg" 2>&1 || true
+            ls -la /Volumes/ || true
+            exit 1
+          fi
+          if ! test -d "$volume/Industrial Agent Harness.app/Contents/MacOS"; then
+            echo "::error::DMG bundle layout is broken under $volume"
+            find "$volume" -maxdepth 3 -print | head -20
+            exit 1
+          fi
+          codesign --verify --deep --strict "$volume/Industrial Agent Harness.app"
+          codesign -dv "$volume/Industrial Agent Harness.app" 2>&1 | grep 'Signature='
+          hdiutil detach "$volume" -quiet
+          echo "DMG structure and signature verified: $dmg"
       - name: Build Windows NSIS installer (signed when credentials exist)
         if: matrix.platform == 'windows'
         shell: pwsh
@@ -175,14 +201,16 @@ jobs:
           notes="doc/releases/$version.md"
           if ! test -f "$notes"; then notes=""; fi
           if ! gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            prerelease=false
+            if test "$signed" = false; then prerelease=true; fi
             if test -n "$notes"; then
-              gh release create "$GITHUB_REF_NAME" --target "$GITHUB_SHA" --prerelease="$signed" --title "$title" --notes-file "$notes"
+              gh release create "$GITHUB_REF_NAME" --target "$GITHUB_SHA" --prerelease="$prerelease" --title "$title" --notes-file "$notes"
             else
-              gh release create "$GITHUB_REF_NAME" --target "$GITHUB_SHA" --prerelease="$signed" --title "$title" --generate-notes
+              gh release create "$GITHUB_REF_NAME" --target "$GITHUB_SHA" --prerelease="$prerelease" --title "$title" --generate-notes
             fi
           fi
           if test "$signed" = false && test -f "$notes"; then
-            printf '\n> ⚠️ 未签名内测构建：签名凭据未配置。macOS 首次打开需在「系统设置 → 隐私与安全性」选择「仍要打开」；本版无应用内自动更新。\n' >> "$notes"
+            printf '\n> ⚠️ 未签名内测构建：签名凭据未配置。macOS 包带 ad-hoc 签名，首次打开可在「系统设置 → 隐私与安全性」选择「仍要打开」（或用 curl 命令行下载，完全无弹窗）；本版无应用内自动更新。\n' >> "$notes"
             gh release edit "$GITHUB_REF_NAME" --notes-file "$notes"
           fi
           find release-assets -maxdepth 1 -type f -print0 | xargs -0 -r gh release upload "$GITHUB_REF_NAME" --clobber
