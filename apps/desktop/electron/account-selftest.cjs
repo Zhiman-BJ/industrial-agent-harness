@@ -40,15 +40,29 @@ async function run(window, account, fixture) {
       if (await evaluate(script)) return;
       await new Promise(resolve => setTimeout(resolve, 50));
     }
-    throw Error('Account UI selftest timed out.');
+    throw Error(`Account UI selftest timed out waiting for: ${script.slice(0, 160)}`);
+  };
+  // The settings gear lives in the sidebar, which React unmounts below the
+  // 760px breakpoint (App.tsx sidebarVisible). After restoring the window from
+  // the compact 640px pass, the renderer's resize listener and React commit
+  // still need a beat — clicking the gear before that round-trip lands races
+  // and intermittently hits a null element. Wait for the sidebar to be back.
+  const restoreSidebar = async () => {
+    await wait("Boolean(document.querySelector('.ia-settings-button'))");
+    await evaluate(
+      'new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))',
+    );
+  };
+  const click = async selector => {
+    await wait(`Boolean(document.querySelector(${JSON.stringify(selector)}))`);
+    await evaluate(`document.querySelector(${JSON.stringify(selector)}).click()`);
   };
   const clickAction = async () => {
     await wait("!document.querySelector('.ia-account-actions button').disabled");
-    await evaluate("document.querySelector('.ia-account-actions button').click()");
+    await click('.ia-account-actions button');
   };
   const openAccount = async () => {
-    await wait("Boolean(document.querySelector('.ia-settings-button'))");
-    await evaluate("document.querySelector('.ia-settings-button').click()");
+    await click('.ia-settings-button');
     await wait("Boolean(document.querySelector('.ia-settings-row'))");
     await evaluate(
       "Array.from(document.querySelectorAll('.ia-settings-row')).find(row => /Platform account|平台账号/.test(row.textContent)).querySelector('button').click()",
@@ -64,15 +78,15 @@ async function run(window, account, fixture) {
     )
       return;
     // Switch through the existing settings control without reloading an active sign-in.
-    await evaluate("document.querySelector('.ia-account-modal > header button').click()");
+    await click('.ia-account-modal > header button');
     await wait("!document.querySelector('.ia-account-modal')");
-    await evaluate("document.querySelector('.ia-settings-button').click()");
+    await click('.ia-settings-button');
     await wait("Boolean(document.querySelector('.ia-settings-row'))");
     await evaluate(
       "Array.from(document.querySelectorAll('.ia-settings-row')).find(row => /Appearance|外观/.test(row.textContent)).querySelector('button').click()",
     );
     await wait(`document.querySelector('.ia-app').classList.contains('theme-dark') === ${dark}`);
-    await evaluate("document.querySelector('.ia-settings-title button').click()");
+    await click('.ia-settings-title button');
     await wait("!document.querySelector('.ia-settings-title')");
     await openAccount();
   };
@@ -109,9 +123,17 @@ async function run(window, account, fixture) {
     const originalTheme = await evaluate(
       "document.querySelector('.ia-app').classList.contains('theme-dark') ? 'dark' : 'light'",
     );
+    const restore = async () => {
+      window.setContentSize(...originalSize);
+      await restoreSidebar();
+      await setTheme(originalTheme);
+      await wait(ready);
+      await settleLayout();
+    };
     try {
       for (const theme of ['light', 'dark']) {
         window.setContentSize(...originalSize);
+        await restoreSidebar();
         await setTheme(theme);
         await wait(ready);
         await settleLayout();
@@ -140,11 +162,16 @@ async function run(window, account, fixture) {
         await settleLayout();
         await capture(`${name}-${theme}-compact`);
       }
-    } finally {
-      window.setContentSize(...originalSize);
-      await setTheme(originalTheme);
-      await wait(ready);
-      await settleLayout();
+      await restore();
+    } catch (error) {
+      // The original failure is the signal; restore best-effort and never let
+      // a restore timeout mask it behind a generic "selftest timed out".
+      try {
+        await restore();
+      } catch (restoreError) {
+        error.message += ` [theme restore also failed: ${restoreError.message}]`;
+      }
+      throw error;
     }
   };
   await openAccount();
@@ -180,7 +207,7 @@ async function run(window, account, fixture) {
     'account-paste-code',
     "Boolean(document.querySelector('.ia-account-modal form input[type=password]'))",
   );
-  await evaluate("document.querySelector('.ia-account-modal form button[type=button]').click()");
+  await click('.ia-account-modal form button[type=button]');
   let codeTimeout;
   try {
     await Promise.race([
@@ -203,7 +230,7 @@ async function run(window, account, fixture) {
       input.dispatchEvent(new Event('input', { bubbles: true }));
     })()`);
     await wait("!document.querySelector('.ia-account-modal form button[type=submit]').disabled");
-    await evaluate("document.querySelector('.ia-account-modal form button[type=submit]').click()");
+    await click('.ia-account-modal form button[type=submit]');
   };
   await enter('invalid');
   await wait("Boolean(document.querySelector('.ia-account-modal [role=alert]'))");
