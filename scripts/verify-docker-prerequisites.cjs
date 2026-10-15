@@ -136,6 +136,7 @@ async function main() {
         const manager = new PackManager({ directory: store });
         assert.deepEqual(manager.list(), []);
         assert.equal(fs.existsSync(manager.containerImages.directory), false);
+        assert.equal(fs.existsSync(manager.runtimeAssets.directory), false);
         results.push({
           mode,
           adapter,
@@ -144,6 +145,7 @@ async function main() {
           message: journal.error.split('\n')[0],
           activatedPacks: 0,
           imageDownloads: 0,
+          nativeDownloads: 0,
         });
       }
     }

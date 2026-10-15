@@ -192,6 +192,31 @@ async function download(asset, archive, options) {
   );
 }
 
+async function checkLinuxEngine({ docker, environment, command, signal }) {
+  signal?.throwIfAborted();
+  const execute = args => command(docker, args, { env: environment, signal, timeout: 30000 });
+  let engine;
+  try {
+    engine = (await execute(['info', '--format', '{{.OSType}}'])).trim();
+  } catch (error) {
+    signal?.throwIfAborted();
+    if (error.code === 'ENOENT')
+      throw Error(
+        'Docker was not found. Install Docker Desktop (macOS/Windows) or Docker Engine (Linux), make sure the docker command is available, then retry.',
+        { cause: error },
+      );
+    throw Error(
+      'Docker could not be reached. Start Docker Desktop or your Linux Docker engine, then retry. If it is already running, check the active Docker connection.\n' +
+        error.message,
+      { cause: error },
+    );
+  }
+  if (engine !== 'linux')
+    throw Error(
+      'Release images require a Linux Docker engine. Switch Docker to Linux containers, then retry.',
+    );
+}
+
 async function acquireImage({
   packDirectory,
   distribution,
@@ -217,26 +242,7 @@ async function acquireImage({
     command(docker, args, { env: environment, signal, timeout: 10 * 60 * 1000 });
   signal?.throwIfAborted();
   report({ phase: 'checking' });
-  let engine;
-  try {
-    engine = (await execute(['info', '--format', '{{.OSType}}'])).trim();
-  } catch (error) {
-    signal?.throwIfAborted();
-    if (error.code === 'ENOENT')
-      throw Error(
-        'Docker was not found. Install Docker Desktop (macOS/Windows) or Docker Engine (Linux), make sure the docker command is available, then retry.',
-        { cause: error },
-      );
-    throw Error(
-      'Docker could not be reached. Start Docker Desktop or your Linux Docker engine, then retry. If it is already running, check the active Docker connection.\n' +
-        error.message,
-      { cause: error },
-    );
-  }
-  if (engine !== 'linux')
-    throw Error(
-      'Release images require a Linux Docker engine. Switch Docker to Linux containers, then retry.',
-    );
+  await checkLinuxEngine({ docker, environment, command, signal });
   fs.mkdirSync(temporaryDirectory, { recursive: true });
   report({
     phase: 'checking-space',
@@ -348,6 +354,17 @@ class ContainerImageManager {
         imageRef: asset.imageRef,
         ready: Boolean(child && child.status === 0 && child.stdout.trim() === receipt.imageId),
       };
+    });
+  }
+  async preflight(lock, images, options = {}) {
+    const assets = selectedAssets(lock, images);
+    if (!assets.length) return;
+    options.onProgress?.({ phase: 'checking', label: assets[0].entry.id });
+    await checkLinuxEngine({
+      docker: this.docker,
+      environment: this.environment,
+      command: this.command,
+      signal: options.signal,
     });
   }
   async ensure(lock, images, options = {}) {

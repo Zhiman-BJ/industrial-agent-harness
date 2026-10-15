@@ -5,6 +5,8 @@
 // Optional HARNESS_CONTAINER_INSTALL_EXECUTABLE exercises a packaged app.
 // Optional HARNESS_CONTAINER_INSTALL_IMAGE_CACHE copies prior verified receipts;
 // live Docker identity is still checked and the report labels this as warm reuse.
+// Optional HARNESS_CONTAINER_INSTALL_NATIVE_CACHE reuses vendor archive bytes;
+// the normal native installer still verifies their full size/hash and installs them.
 const fs = require('node:fs');
 const path = require('node:path');
 const https = require('node:https');
@@ -37,6 +39,21 @@ fs.writeFileSync(cert, tls.cert);
 const store = path.join(output, 'store'),
   feed = path.join(output, 'feed');
 const reuse = process.env.HARNESS_CONTAINER_INSTALL_IMAGE_CACHE;
+const nativeCache = process.env.HARNESS_CONTAINER_INSTALL_NATIVE_CACHE;
+if (nativeCache) {
+  const destination = path.join(store, '.runtime-assets', 'cache');
+  fs.mkdirSync(destination, { recursive: true });
+  for (const name of fs.readdirSync(nativeCache)) {
+    if (!/^[a-f0-9]{64}\.(dmg|zip)$/.test(name)) continue;
+    const file = path.join(nativeCache, name);
+    if (!fs.lstatSync(file).isFile()) throw Error('Only regular native archives may be reused.');
+    fs.copyFileSync(
+      file,
+      path.join(destination, name),
+      fs.constants.COPYFILE_EXCL | fs.constants.COPYFILE_FICLONE,
+    );
+  }
+}
 if (reuse) {
   const destination = path.join(store, '.container-images');
   fs.mkdirSync(destination, { recursive: true });
@@ -202,6 +219,9 @@ async function main() {
       domain,
       images: receipts,
       cli: `${reuse ? 'verified image reuse' : 'cold install'}, repair and remove passed`,
+      nativeArchives: nativeCache
+        ? 'existing vendor archives reverified before installation'
+        : 'downloaded by native installer',
       desktop:
         'installation and repair buttons through renderer/preload/IPC passed; verified Docker images reused',
       packaged: Boolean(packaged),

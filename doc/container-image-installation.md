@@ -51,7 +51,7 @@ node scripts/acquire-container-image.cjs <owner-directory> <locked-image-id-or-r
 Docker 是外部前提，安装器不会自动安装或启动它。没有 `docker` 命令时，Desktop／CLI
 提示安装 Docker Desktop（macOS／Windows）或 Docker Engine（Linux）并确保命令可用；
 命令存在但引擎无法连接时，提示启动 Docker 或检查当前连接；非 Linux 引擎提示切换 Linux
-容器。三种情况都在镜像下载前失败，不激活新 Pack，更新时保留旧版本；已有镜像回执也
+容器。三种情况都在原生应用和镜像下载前失败，不激活新 Pack，更新时保留旧版本；已有镜像回执也
 必须重新检查实际 Docker 身份。不依赖容器的 Pack 仍走其原有安装流程。
 
 ## 验证
@@ -88,6 +88,9 @@ classic 存储仅有 fixture 覆盖；本记录不推导 Linux／Windows 的真�
 验证已打包应用时，可将 `HARNESS_CONTAINER_INSTALL_EXECUTABLE` 指向其实际可执行文件。
 `HARNESS_CONTAINER_INSTALL_IMAGE_CACHE` 可指向前次验证的 `.container-images` 目录，
 只复制普通回执文件；正式准备仍检查 Docker 中的当前身份，报告明确标为镜像复用。
+`HARNESS_CONTAINER_INSTALL_NATIVE_CACHE` 可指向已有原生安装包缓存，仅复制按 SHA-256
+命名的普通 DMG/ZIP 文件；正式安装仍完整校验大小与哈希，并实际安装、探测应用。
+这不会复用镜像回执，报告分别说明原生安装包缓存和镜像冷下载。
 
 命令缺失与引擎不可达也已在 CLI 和打包 Desktop 分别验证通过。在 macOS／Linux 可复现：
 

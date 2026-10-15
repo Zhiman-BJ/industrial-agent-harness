@@ -481,6 +481,7 @@ class PackManager {
     if (distribution === undefined && bundle.containerImages?.length)
       verifyInstalledFiles(bundle.location);
     const lock = distribution === undefined ? distributionForBundle(bundle) : distribution;
+    await this.containerImages.preflight(lock, bundle.containerImages, options);
     await this.runtimeAssets.ensure(bundle.runtimeAssets, options);
     return this.containerImages.ensure(lock, bundle.containerImages, options);
   }

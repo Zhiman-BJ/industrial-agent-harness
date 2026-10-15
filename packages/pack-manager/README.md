@@ -12,8 +12,8 @@ both the store and receipts; these checks detect damaged resources, not a malici
 
 `INDUSTRIAL_HARNESS_PACK_STORE` overrides `~/.industrial-agent-harness/packs`.
 `scripts/build-pack-distribution.cjs` assembles unchanged resources from the pinned owner release into public distribution bundles, including license
-materials. PCB's private source and complete Skill remain external; the public bridge records
-fixed resource provenance and loads authorized local resources only when selected.
+materials. PCB actor sources and Skills come from the pinned owner Pack; its host gateway
+Python environment remains a separately prepared prerequisite.
 Production catalogs require `HARNESS_PACK_SIGNING_KEY_FILE` and `HARNESS_PACK_SIGNING_KEY_ID`.
 
 Core-owned optional `.hpack` files may also ship inside the application resources; their catalog is protected by the Core application signature, and installation verifies the pinned archive hash. This source is supplied only by the desktop main process, never a renderer or project path. Signed HTTPS catalogs remain the update source.
@@ -25,6 +25,9 @@ Optional `containerImages` declarations select released image IDs from the owner
 install/update/repair call the same `PackManager.prepareRuntime` path before Pack activation.
 The primary image channel is an anonymous HTTPS release tarball; a running Linux Docker engine
 is an external prerequisite. Entries with no published release are not automatically selected.
+When a Pack also declares native applications, Docker availability is checked before either
+native or image downloads. Missing Docker and an unreachable engine produce distinct setup
+messages in both adapters and leave the Pack inactive.
 Installing images does not configure a project's execution profile or qualify an engineering task.
 
 Container preparation streams bytes to disk while checking the exact size and SHA-256. It reads

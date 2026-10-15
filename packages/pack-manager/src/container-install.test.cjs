@@ -189,6 +189,56 @@ test('missing Docker prevents first activation and preserves the installed versi
   );
 });
 
+test('mixed native and image installation checks Docker before any native download', async t => {
+  const f = await fixture(t);
+  f.bundle.runtimeAssets = [
+    {
+      id: 'modeler',
+      label: 'Modeler',
+      version: '1.2.3',
+      type: 'macos-app-dmg',
+      platform: 'darwin-arm64',
+      url: 'https://vendor.example/runtime.dmg',
+      sha256: digest(Buffer.from('vendor image')),
+      size: 12,
+      app: 'Modeler.app',
+      executable: 'Contents/bin/modeler',
+      environment: 'INDUSTRIAL_HARNESS_MODELER_CMD',
+      versionArgs: ['--version'],
+      versionText: '1.2.3',
+      profileEnvironment: {},
+    },
+  ];
+  f.update('1.1.0');
+  let nativePreparations = 0;
+  f.manager.runtimeAssets.ensure = async () => {
+    nativePreparations++;
+  };
+  f.manager.containerImages.command = require('./runtime-assets.cjs').run;
+  f.manager.containerImages.docker = path.join(f.root, 'missing-docker');
+  await assert.rejects(
+    f.manager.install(await f.selected(), { prepareRuntime: true }),
+    /Docker was not found/,
+  );
+  assert.equal(nativePreparations, 0);
+  assert.deepEqual(f.manager.list(), []);
+  assert.equal(fs.existsSync(f.manager.runtimeAssets.directory), false);
+  assert.equal(fs.existsSync(f.manager.containerImages.directory), false);
+
+  f.manager.containerImages.command = async () => {
+    throw Error('engine unavailable');
+  };
+  await assert.rejects(
+    f.manager.install(await f.selected(), { prepareRuntime: true }),
+    /Docker could not be reached/,
+  );
+  assert.equal(nativePreparations, 0);
+  f.manager.containerImages.command = f.docker.command;
+  await f.manager.install(await f.selected(), { prepareRuntime: true });
+  assert.equal(nativePreparations, 1);
+  assert.equal(f.manager.list()[0].version, '1.1.0');
+});
+
 test('CLI install and repair both execute shared image preparation, and errors reach the installation journal', async t => {
   const f = await fixture(t);
   // Inject only the external Docker command boundary. Feed verification, archive
