@@ -10,10 +10,16 @@ function boundedIdentity(value, name) {
 }
 
 // Credentials participate in isolation, but their plaintext never enters the store.
-function gatewayIdentity({ url, credential, serverId = null }) {
-  if (typeof credential !== 'string' || !credential || /[\r\n]/.test(credential))
+// Account-bound clients pass a stable credentialKey because their token rotates;
+// a static credential is hashed directly. Either way only digests are persisted.
+function gatewayIdentity({ url, credential, credentialKey, serverId = null }) {
+  const material =
+    typeof credential === 'string' && credential && !/[\r\n]/.test(credential)
+      ? hash(credential)
+      : credentialKey;
+  if (typeof material !== 'string' || !/^[a-f0-9]{64}$/.test(material))
     throw Error('Remote credentials are not configured.');
-  return hash(JSON.stringify([serviceUrl(url), serverId, hash(credential)]));
+  return hash(JSON.stringify([serviceUrl(url), serverId, material]));
 }
 
 class RemoteGatewaySessions {

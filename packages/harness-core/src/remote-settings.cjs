@@ -5,6 +5,7 @@ const { defaultResourceDirectory } = require('./resource-settings.cjs');
 const {
   RemoteGatewayClient,
   RemoteGatewaySessions,
+  REMOTE_PROTOCOL_VERSION,
   serviceUrl,
   hash,
   uuid,
@@ -86,7 +87,7 @@ function selectedSnapshot(directory, selected) {
 
 function validateServiceInfo(info) {
   if (
-    info.remoteProtocolVersion !== '1.1' ||
+    info.remoteProtocolVersion !== REMOTE_PROTOCOL_VERSION ||
     info.canonicalSchemaVersion !== '1' ||
     typeof info.serverId !== 'string' ||
     !info.serverId ||
@@ -165,20 +166,31 @@ class RemoteSettings {
       throw Error('Invalid remote credential reference.');
     return { url: url ? serviceUrl(url) : null, credentialEnv, serverId: saved.serverId || null };
   }
-  identity() {
-    const config = this.configuration();
+  identityFor(config) {
     const account = this.accountFor(config);
     return hash(
       JSON.stringify({
         ...config,
+        // Rotating the credential value invalidates existing bindings and
+        // sessions; only its hash is ever compared or persisted.
+        credential: hash(this.environment[config.credentialEnv] || ''),
         ...(account
           ? { account: account.identity, subject: account.view().user?.sub || null }
           : {}),
       }),
     );
   }
+  identity() {
+    return this.identityFor(this.configuration());
+  }
   accountFor(config = this.configuration()) {
     return this.account?.config.remoteOrigin === config.url ? this.account : null;
+  }
+  accountCredentialKey(config = this.configuration()) {
+    const account = this.accountFor(config);
+    if (!account) return undefined;
+    // A stable, digest-only stand-in for the rotating service token.
+    return hash(account.identity + ':' + (account.view().user?.sub || ''));
   }
   client(binding = {}) {
     const config = this.configuration();
@@ -195,6 +207,7 @@ class RemoteSettings {
             return account.serviceToken('remote', config.url, options);
           }
         : undefined,
+      credentialKey: account ? this.accountCredentialKey(config) : undefined,
       serverId: config.serverId || undefined,
       fetch: this.fetch,
       ...binding,
@@ -266,7 +279,10 @@ class RemoteSettings {
       throw Error('Remote service is unavailable for this domain.');
     let binding = this.project(directory, domain);
     if (binding.remoteProjectId) {
-      if (binding.protocol !== '1.1' || binding.serviceIdentity !== this.identity())
+      if (
+        binding.protocol !== REMOTE_PROTOCOL_VERSION ||
+        binding.serviceIdentity !== this.identity()
+      )
         throw Error(
           'The saved project belongs to another protocol, service or credential. Create an explicit new remote binding.',
         );
@@ -279,7 +295,7 @@ class RemoteSettings {
       if (project.domain !== domain || !/^[a-f0-9]{64}$/.test(project.canonicalProjectId))
         throw Error('Invalid remote project identity.');
       binding = this.update(directory, domain, {
-        protocol: '1.1',
+        protocol: REMOTE_PROTOCOL_VERSION,
         remoteProjectId: project.id,
         canonicalProjectId: project.canonicalProjectId,
         serviceIdentity: this.identity(),
@@ -380,12 +396,11 @@ class RemoteSettings {
       const info = validateServiceInfo(await client.info());
       if (!info.domains.includes(domain))
         throw Error('Remote service is unavailable for this domain.');
-      const serviceIdentity = hash(
-        JSON.stringify([
-          { url: config.url, credentialEnv: config.credentialEnv, serverId: info.serverId },
-          hash(this.environment[config.credentialEnv] || ''),
-        ]),
-      );
+      const serviceIdentity = this.identityFor({
+        url: config.url,
+        credentialEnv: config.credentialEnv,
+        serverId: info.serverId,
+      });
       if (serviceIdentity !== identity) this.assertServiceIdle();
       const project = await client.createProject({ domain });
       uuid(project.id);
@@ -408,7 +423,7 @@ class RemoteSettings {
       };
       const binding = {
         location: 'remote',
-        protocol: '1.1',
+        protocol: REMOTE_PROTOCOL_VERSION,
         remoteProjectId: project.id,
         canonicalProjectId: project.canonicalProjectId,
         serviceIdentity,
@@ -441,7 +456,7 @@ class RemoteSettings {
     const project = this.project(directory, domain),
       config = this.configuration();
     if (
-      project.protocol !== '1.1' ||
+      project.protocol !== REMOTE_PROTOCOL_VERSION ||
       !project.remoteProjectId ||
       project.serviceIdentity !== this.identity()
     )
@@ -450,6 +465,7 @@ class RemoteSettings {
       url: config.url,
       serverId: config.serverId,
       credential: this.environment[config.credentialEnv],
+      credentialKey: this.accountCredentialKey(config),
       remoteProjectId: project.remoteProjectId,
       domain,
       chatId,
@@ -582,7 +598,7 @@ class RemoteSettings {
   }
   async artifacts(directory, domain) {
     const binding = this.project(directory, domain);
-    if (binding.protocol !== '1.1' || binding.serviceIdentity !== this.identity())
+    if (binding.protocol !== REMOTE_PROTOCOL_VERSION || binding.serviceIdentity !== this.identity())
       throw Error('Remote project binding changed.');
     const client = this.client({ remoteProjectId: binding.remoteProjectId, domain });
     try {
@@ -687,7 +703,7 @@ class RemoteSettings {
   async ensureSynced(directory, domain) {
     const binding = this.project(directory, domain);
     if (
-      binding.protocol !== '1.1' ||
+      binding.protocol !== REMOTE_PROTOCOL_VERSION ||
       !binding.remoteProjectId ||
       !binding.snapshotId ||
       !binding.files?.length

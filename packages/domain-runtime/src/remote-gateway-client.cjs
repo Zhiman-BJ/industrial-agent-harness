@@ -161,6 +161,8 @@ class RemoteGatewayClient {
   constructor({
     url,
     credential,
+    credentialProvider,
+    credentialKey,
     remoteProjectId,
     clientSessionId,
     domain,
@@ -169,8 +171,9 @@ class RemoteGatewayClient {
     requestTimeoutMs = 120000,
   }) {
     this.url = serviceUrl(url);
-    this.serviceIdentity = gatewayIdentity({ url: this.url, credential, serverId });
+    this.serviceIdentity = gatewayIdentity({ url: this.url, credential, credentialKey, serverId });
     this.credential = credential;
+    this.credentialProvider = credentialProvider;
     this.fetch = fetch;
     if (
       !Number.isSafeInteger(requestTimeoutMs) ||
@@ -188,14 +191,37 @@ class RemoteGatewayClient {
         : {}),
       ...(domain ? { domain: boundedIdentity(domain, 'domain') } : {}),
     });
-    this.options = { url: this.url, credential, serverId, fetch, requestTimeoutMs };
+    this.options = {
+      url: this.url,
+      credential,
+      credentialProvider,
+      credentialKey,
+      serverId,
+      fetch,
+      requestTimeoutMs,
+    };
   }
   withBinding(binding) {
     return new RemoteGatewayClient({ ...this.options, ...binding });
   }
-  headers() {
+  // The token is resolved per request so an account-bound provider can rotate
+  // credentials; the token never lands in journals, manifests or bindings.
+  async token(options) {
+    const token = this.credentialProvider
+      ? await this.credentialProvider(options)
+      : this.credential;
+    if (typeof token !== 'string' || !token || /[\r\n]/.test(token))
+      throw Error('Remote credentials are not configured.');
+    return token;
+  }
+  async headers(options) {
     return {
-      Authorization: 'Bearer ' + this.credential,
+      Authorization: 'Bearer ' + (await this.token(options)),
+      ...this.bindingHeaders(),
+    };
+  }
+  bindingHeaders() {
+    return {
       ...(this.binding.remoteProjectId
         ? { 'X-Remote-Project-Id': this.binding.remoteProjectId }
         : {}),
@@ -216,17 +242,35 @@ class RemoteGatewayClient {
       (suffix ? '/' + suffix : '')
     );
   }
-  async checkedFetch(url, init) {
-    let response;
+  async send(url, init) {
     try {
       const timeout = AbortSignal.timeout(this.requestTimeoutMs);
-      response = await this.fetch(url, {
+      return await this.fetch(url, {
         ...init,
         redirect: 'error',
         signal: init?.signal ? AbortSignal.any([init.signal, timeout]) : timeout,
       });
     } catch (error) {
       throw normalizeError(error);
+    }
+  }
+  async checkedFetch(url, init, { rejectedToken } = {}) {
+    let response = await this.send(url, init);
+    // Only an explicit invalid_token challenge on a read is safe to retry once
+    // with a fresh credential. Mutations are never replayed here.
+    if (
+      rejectedToken &&
+      response.status === 401 &&
+      /Bearer\s+.*error="invalid_token"/i.test(response.headers.get('www-authenticate') || '')
+    ) {
+      await response.body?.cancel();
+      response = await this.send(url, {
+        ...init,
+        headers: {
+          ...init?.headers,
+          Authorization: 'Bearer ' + (await this.token({ rejectedToken })),
+        },
+      });
     }
     if (!response.ok) {
       let detail = {};
@@ -267,15 +311,22 @@ class RemoteGatewayClient {
     if (!route.startsWith('/v1/') || route.includes('://') || route.includes('#'))
       throw Error('Invalid remote request route.');
     const timeout = AbortSignal.timeout(this.requestTimeoutMs);
-    const response = await this.checkedFetch(this.url + route, {
-      method,
-      headers: {
-        ...this.headers(),
-        ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+    const token = await this.token();
+    const response = await this.checkedFetch(
+      this.url + route,
+      {
+        method,
+        headers: {
+          Authorization: 'Bearer ' + token,
+          ...this.bindingHeaders(),
+          ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+        },
+        body: body === undefined ? undefined : JSON.stringify(body),
+        signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
       },
-      body: body === undefined ? undefined : JSON.stringify(body),
-      signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
-    });
+      // Reads with an account-bound provider may retry once on invalid_token.
+      { rejectedToken: method === 'GET' && this.credentialProvider ? token : null },
+    );
     const maximum = binary ? MAX_ARTIFACT : MAX_JSON;
     const bytes = await readBoundedResponse(response, maximum);
     if (binary) return bytes;
@@ -415,7 +466,9 @@ class RemoteGatewayClient {
       const transport = new StreamableHTTPClientTransport(
         new URL(this.url + '/v1/mcp/' + encodeURIComponent(this.binding.domain)),
         {
-          requestInit: { headers: this.headers(), redirect: 'error' },
+          // Resolved per connect so a rotated account token is picked up on
+          // reconnect without persisting it anywhere.
+          requestInit: { headers: await this.headers(), redirect: 'error' },
           fetch: (url, init) => this.checkedFetch(url, init),
           reconnectionOptions: { maxRetries: 0 },
         },

@@ -123,6 +123,8 @@ class TaskService {
     const bundle = this.projects.get(project, this.registry());
     const runtime = bundle.runtime.diagnosticsRuntime || bundle.runtime;
     const state = await runtime.inspect(),
+      toolId = 'project.environment.inspect';
+    const result = await runtime.execute(
       { toolId, inputs: {}, expectedStateId: state.id },
       {
         scope: {

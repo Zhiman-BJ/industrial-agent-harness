@@ -12,6 +12,8 @@ const {
   RunRecordSchema,
   IndustrialVerificationResultSchema,
   ArtifactRefSchema,
+  // Single source of truth for the session gateway protocol version (#199 P0).
+  REMOTE_PROTOCOL_VERSION,
 } = require('@industrial-agent-harness/contracts');
 const { hash, writePrivateJson } = require('./remote-client.cjs');
 
@@ -25,7 +27,7 @@ class RemoteRuntime {
     this.binding = settings.project(projectDir, domain);
     this.configuration = settings.identity();
     if (
-      this.binding.protocol !== '1.1' ||
+      this.binding.protocol !== REMOTE_PROTOCOL_VERSION ||
       !this.binding.canonicalProjectId ||
       !this.binding.snapshotId ||
       this.binding.serviceIdentity !== this.configuration
@@ -587,7 +589,7 @@ function createRemoteRuntime(options) {
     },
     protectedPaths: [runtime.workspace.directory, options.settings.directory],
     packId: 'builtin-remote',
-    packVersion: '1.1',
+    packVersion: REMOTE_PROTOCOL_VERSION,
   };
 }
-module.exports = { RemoteRuntime, createRemoteRuntime };
+module.exports = { RemoteRuntime, createRemoteRuntime, REMOTE_PROTOCOL_VERSION };
