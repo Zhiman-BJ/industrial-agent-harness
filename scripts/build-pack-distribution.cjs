@@ -4,6 +4,13 @@ const path = require('node:path');
 const { createArchive, digest, signCatalog } = require('../packages/pack-manager/src/index.cjs');
 const owner = require('@zhiman-bj/industrial-domain-packs');
 const metadata = owner.consumerMetadata();
+const {
+  LOCK_PATH,
+  validateDistributionLock,
+  resolveImageAsset,
+} = require('../packages/pack-manager/src/container-images.cjs');
+const distributionBytes = fs.readFileSync(path.join(owner.root, LOCK_PATH));
+const distributionLock = validateDistributionLock(JSON.parse(distributionBytes));
 const capabilities = metadata.capabilities;
 const { loadDomainPacks } = require('../packages/domain-skills/src/packs.cjs');
 const { listSkills, skillPackaging } = require('../packages/domain-skills/src/consumer.cjs');
@@ -33,6 +40,17 @@ for (const declaration of metadata.domains) {
   const directory = path.join(output, domain);
   fs.mkdirSync(directory, { recursive: true });
   const providers = providerPacks.filter(pack => pack.domain === domain);
+  const containerImages = distributionLock.images
+    .filter(image => image.pack === domain && image.current != null)
+    .map(image => image.id);
+  const containerDownloadSize = containerImages.reduce(
+    (total, image) => total + resolveImageAsset({ lock: distributionLock }, image).bytes,
+    0,
+  );
+  // Preserve the immutable owner's lock verbatim inside the authenticated Pack.
+  // Unreleased entries remain discoverable but are not advertised as prepared.
+  fs.mkdirSync(path.join(directory, 'provenance'), { recursive: true });
+  fs.writeFileSync(path.join(directory, LOCK_PATH), distributionBytes);
   const skills = listSkills(domain)
     .filter(item => item.domain !== '*')
     .map(item => ({
@@ -97,6 +115,7 @@ for (const declaration of metadata.domains) {
     skills,
     providerPacks: providers,
     runtimeAssets: providers.flatMap(pack => pack.runtimeAssets || []),
+    containerImages,
   };
   fs.writeFileSync(path.join(directory, 'bundle.json'), JSON.stringify(bundle, null, 2) + '\n');
   const archive = createArchive(directory);
@@ -117,6 +136,7 @@ for (const declaration of metadata.domains) {
       0,
     ),
     runtimeAssets: bundle.runtimeAssets,
+    containerDownloadSize,
     url: file,
     platforms,
   });

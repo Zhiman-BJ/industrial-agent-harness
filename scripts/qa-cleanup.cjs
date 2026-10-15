@@ -36,6 +36,17 @@ function parseArgs(argv) {
   return options;
 }
 
+// plan() consumes short retention keys; keep this mapping explicit so CLI
+// options can never drift from the decision core's contract again.
+function retentionFromOptions(options) {
+  return {
+    builds: options.retentionBuilds,
+    evidence: options.retentionEvidence,
+    worktree: options.retentionWorktree,
+    lockTtlHours: options.lockTtlHours,
+  };
+}
+
 function git(args, cwd = root) {
   const result = spawnSync('git', args, { cwd, encoding: 'utf8' });
   if (result.error || result.status !== 0) return null;
@@ -125,6 +136,11 @@ function plan({
 }) {
   const selected = [];
   const skipped = [];
+  // A missing/undefined retention window must fail loudly here; comparing
+  // against NaN silently selects every target regardless of age.
+  for (const key of ['builds', 'evidence', 'worktree', 'lockTtlHours']) {
+    if (!Number.isFinite(retention[key])) throw Error(`retention.${key} must be a finite number`);
+  }
   const pushSkipped = (item, reason) => skipped.push({ path: item.path, kind: item.kind, reason });
   for (const item of builds) {
     if (!isIgnored(item.path)) {
@@ -260,7 +276,7 @@ function main() {
       locks,
       worktrees,
       now: Date.now(),
-      retention: options,
+      retention: retentionFromOptions(options),
       isIgnored: p => isIgnoredPath(path.relative(root, p)),
       isActive: p => active.some(line => line.includes(p)),
       dirtyWorktrees,
@@ -320,7 +336,14 @@ function main() {
   }
 }
 
-module.exports = { parseWorktreeList, isLockName, isEvidenceDirName, plan, newestMtime };
+module.exports = {
+  parseWorktreeList,
+  isLockName,
+  isEvidenceDirName,
+  plan,
+  newestMtime,
+  retentionFromOptions,
+};
 if (require.main === module) {
   try {
     main();

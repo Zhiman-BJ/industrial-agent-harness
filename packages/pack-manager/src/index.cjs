@@ -56,6 +56,7 @@ function safeRelative(value) {
 
 function validateBundle(bundle) {
   validateRuntimeAssets(bundle?.runtimeAssets);
+  containerImages.validateImageSelection(bundle?.containerImages);
   if (
     bundle?.schemaVersion !== 1 ||
     !ID.test(bundle.domain || '') ||
@@ -142,7 +143,12 @@ function validateBundle(bundle) {
 
 function validateFootprintMetadata(entry) {
   if (!entry || typeof entry !== 'object') throw Error('Invalid Pack installation footprint.');
-  for (const key of ['installedSize', 'runtimeDownloadSize', 'runtimeInstalledSize']) {
+  for (const key of [
+    'installedSize',
+    'runtimeDownloadSize',
+    'runtimeInstalledSize',
+    'containerDownloadSize',
+  ]) {
     if (
       entry[key] != null &&
       (!Number.isSafeInteger(entry[key]) || entry[key] < 0 || entry[key] > 256 * 1024 ** 3)
@@ -297,6 +303,7 @@ function decodeArchive(compressed) {
   const bundle = validateBundle(JSON.parse(manifest.bytes.toString('utf8')));
   if (bundle.domain !== archive.domain || bundle.version !== archive.version)
     throw Error('Domain Pack identity mismatch.');
+  distributionForBundle(bundle, files);
   for (const skill of bundle.skills) {
     if (!seen.has(skill.file)) throw Error(`Missing Domain Skill: ${skill.id}`);
     const resources = files.filter(file =>
@@ -319,6 +326,17 @@ function decodeArchive(compressed) {
     )
       throw Error(`Missing Domain runtime: ${pack.id}`);
   return { bundle, files };
+}
+
+function distributionForBundle(bundle, files) {
+  if (!bundle.containerImages?.length) return null;
+  const bytes = files
+    ? files.find(file => file.path === containerImages.LOCK_PATH)?.bytes
+    : fs.readFileSync(path.join(bundle.location, containerImages.LOCK_PATH));
+  if (!bytes) throw Error('Container images require the distribution lock inside the Pack.');
+  const lock = containerImages.validateDistributionLock(JSON.parse(bytes.toString('utf8')));
+  containerImages.selectedAssets(lock, bundle.containerImages, bundle.domain);
+  return lock;
 }
 
 function verifyInstalledFiles(directory) {
@@ -420,6 +438,7 @@ class PackManager {
     keys = {},
     channel = 'stable',
     space = availableSpace,
+    containerOptions = {},
   } = {}) {
     this.directory = path.resolve(directory);
     this.keys = keys;
@@ -428,17 +447,26 @@ class PackManager {
     this.verifiedEntries = new WeakSet();
     this.bundledEntries = new WeakMap();
     this.runtimeAssets = new RuntimeAssetManager({ directory: this.directory, space });
+    this.containerImages = new containerImages.ContainerImageManager({
+      ...containerOptions,
+      directory: this.directory,
+      space,
+    });
   }
   estimate(entry) {
     validateFootprintMetadata(entry);
     const runtime = this.runtimeAssets.estimate(entry.runtimeAssets || []);
     const packBytes = entry.installedSize || Math.min(MAX_EXPANDED, entry.size * 8);
-    const downloadBytes = (this.bundledEntries.has(entry) ? 0 : entry.size) + runtime.downloadBytes;
+    const containerBytes = entry.containerDownloadSize || 0;
+    const downloadBytes =
+      (this.bundledEntries.has(entry) ? 0 : entry.size) + runtime.downloadBytes + containerBytes;
     const installedBytes =
-      packBytes + (entry.runtimeAssets ? runtime.installedBytes : entry.runtimeInstalledSize || 0);
+      packBytes +
+      (entry.runtimeAssets ? runtime.installedBytes : entry.runtimeInstalledSize || 0) +
+      containerBytes * 4;
     return {
       ...footprint(downloadBytes, installedBytes, {
-        estimated: entry.installedSize == null || runtime.estimated,
+        estimated: entry.installedSize == null || runtime.estimated || containerBytes > 0,
         cacheReused: runtime.cacheReused,
       }),
       availableBytes: this.space(this.directory),
@@ -446,6 +474,22 @@ class PackManager {
   }
   stateFile() {
     return path.join(this.directory, 'installed.json');
+  }
+  async prepareRuntime(bundle, options = {}, distribution) {
+    // Repair reads only the installed, integrity-checked Pack; discovery overrides
+    // and unrelated parent-directory locks cannot redirect managed installation.
+    if (distribution === undefined && bundle.containerImages?.length)
+      verifyInstalledFiles(bundle.location);
+    const lock = distribution === undefined ? distributionForBundle(bundle) : distribution;
+    await this.containerImages.preflight(lock, bundle.containerImages, options);
+    await this.runtimeAssets.ensure(bundle.runtimeAssets, options);
+    return this.containerImages.ensure(lock, bundle.containerImages, options);
+  }
+  runtimeStatus(bundle) {
+    return [
+      ...this.runtimeAssets.status(bundle.runtimeAssets),
+      ...this.containerImages.status(distributionForBundle(bundle), bundle.containerImages),
+    ];
   }
   withLock(action) {
     fs.mkdirSync(this.directory, { recursive: true, mode: 0o700 });
@@ -679,7 +723,12 @@ class PackManager {
     fs.mkdirSync(this.directory, { recursive: true, mode: 0o700 });
     // Native dependencies perform their own preflight after cache verification.
     // A conservative UI estimate must not reject a retry that can reuse cache.
-    const estimated = this.estimate({ ...entry, runtimeAssets: [], runtimeInstalledSize: 0 });
+    const estimated = this.estimate({
+      ...entry,
+      runtimeAssets: [],
+      runtimeInstalledSize: 0,
+      containerDownloadSize: 0,
+    });
     if (this.bundledEntries.has(entry) || bytes) {
       estimated.requiredBytes -= estimated.downloadBytes;
       estimated.downloadBytes = 0;
@@ -709,7 +758,11 @@ class PackManager {
     checkSpace(this.directory, footprint(0, expandedBytes), this.space);
     // A failed toolchain preparation must not activate an unusable Pack update.
     if (prepareRuntime)
-      await this.runtimeAssets.ensure(bundle.runtimeAssets, { onProgress, signal });
+      await this.prepareRuntime(
+        bundle,
+        { onProgress, signal, stallMs, timeoutMs },
+        distributionForBundle(bundle, files),
+      );
     const parent = path.join(this.directory, bundle.domain);
     const target = path.join(parent, bundle.version);
     const staging = path.join(parent, `.staging-${crypto.randomUUID()}`);

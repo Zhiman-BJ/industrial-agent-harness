@@ -102,7 +102,7 @@ class PackCatalog {
 }
 
 function describeInstalled(manager, bundle) {
-  const assets = manager.runtimeAssets.status(bundle.runtimeAssets);
+  const assets = manager.runtimeStatus(bundle);
   return {
     domain: bundle.domain,
     version: bundle.version,

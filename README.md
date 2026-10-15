@@ -102,6 +102,12 @@ The 1.0.1-beta.1 local Apple Silicon desktop candidate lists all five domains. C
 
 ## Domain Packs
 
+Desktop and CLI share release-image installation and repair. Packs declaring published container
+images download their pinned release tarballs, verify the bytes and OCI identity, and load them
+into a running Linux Docker engine before activation. Docker remains an external prerequisite;
+project execution profiles and engineering qualification are separate. See the
+[container installation contract](doc/container-image-installation.md).
+
 Project details and Capability Center show **Tools & MCP**, including the current Runtime tool names, IDs, counts and provider versions. Global defaults and project overrides apply to the shared task service. Registration and access enablement are separate from dependency readiness. See [domain tool resources](doc/domain-tool-resources.md).
 
 | Domain                                                                                                                          | Available in this preview                                                                                                                                     | Dependencies and limits                                                                                                                                         |
@@ -196,4 +202,4 @@ Projects can choose this computer or Zhiman Remote, with explicit file upload re
 
 CLI and Desktop now share the Harness task application; domain metadata, Skills and implementations come from one immutable Domain Packs release. See [consumer migration and validation](doc/shared-task-and-pack-consumption.md).
 
-PCB and Godot professional Runtime Actions now have bounded macOS Apple Silicon native profiles, maintained in the pinned Domain Packs package. The current 1.0.1-beta.1 source pins Domain Packs 0.5.2 at `b9759342cace66df0be0c4559b7c24fb28ea07d9` and prepares the declared official native applications through the generic Pack Manager. See [profile, dependencies and acceptance](doc/pcb-godot-runtime.md); other platforms and remote execution remain unqualified.
+PCB and Godot professional Runtime Actions now have bounded macOS Apple Silicon native profiles, maintained in the pinned Domain Packs package. The current source pins Domain Packs 0.5.2 at `8ef1de607dad59088ee65f4298552aa719fcbff7` and prepares the declared official native applications through the generic Pack Manager. See [profile, dependencies and acceptance](doc/pcb-godot-runtime.md); other platforms and remote execution remain unqualified.
