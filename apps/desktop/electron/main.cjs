@@ -19,6 +19,8 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const os = require('node:os');
 const languageConfig = require('../i18n.config.json');
+const { packagedAppName } = require('./app-identity.cjs');
+if (app.isPackaged) app.setName(packagedAppName());
 const { guiPermissions, guiPermissionSettingsUrl } = require('./gui-permissions.cjs');
 const { PackManager, defaultPackDirectory } = require('@industrial-agent-harness/pack-manager');
 const {
