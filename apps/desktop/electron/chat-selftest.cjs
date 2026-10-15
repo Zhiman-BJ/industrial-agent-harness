@@ -45,6 +45,18 @@ function createSession(options) {
         result: Promise.resolve({ status: 'finished' }),
         async *[Symbol.asyncIterator]() {
           yield {
+            type: 'StatusUpdate',
+            payload: {
+              context_usage: 0.1,
+              token_usage: {
+                input_other: 12000,
+                input_cache_read: 12000,
+                input_cache_creation: 1600,
+                output: 500,
+              },
+            },
+          };
+          yield {
             type: 'ContentPart',
             payload: { type: 'text', text: `Remembered turn ${count + 1}.` },
           };
@@ -94,8 +106,25 @@ async function run(window, store) {
           `document.querySelector('.ia-chat-scroll').innerText.includes('Remembered turn 2')`,
         ),
       );
+      assert.ok(
+        await evaluate(`(() => {
+          const pill=document.querySelector('.ia-model-pill');
+          if(!pill) return false;
+          const name=pill.querySelector('.ia-model-pill-name')?.innerText;
+          const ctx=pill.querySelector('.ia-model-pill-ctx')?.innerText;
+          const bar=pill.querySelector('.ia-model-pill-bar > span');
+          return name==='kimi-k2-thinking-turbo'&&(ctx||'').includes('10%')&&bar?.style.width==='10%';
+        })()`),
+        'model pill shows the model name and live context usage',
+      );
       await window.webContents.reload();
       await wait(`document.querySelectorAll('.ia-chat-turn').length===2`);
+      assert.ok(
+        await evaluate(
+          `document.querySelector('.ia-model-pill .ia-model-pill-ctx')?.innerText.includes('10%')`,
+        ),
+        'model pill keeps the context usage after a reload from chat history',
+      );
       assert.equal(await evaluate(`document.querySelectorAll('.ia-approval button').length`), 0);
     } else if (stage === 'second') {
       await wait(`document.querySelectorAll('.ia-chat-turn').length===2`);
