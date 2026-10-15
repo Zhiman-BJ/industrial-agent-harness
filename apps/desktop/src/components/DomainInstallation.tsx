@@ -6,6 +6,7 @@ import type {
   DomainInstallProgress,
   InstalledDomainPack,
   InstallationFootprint,
+  RuntimeArchiveRequirement,
 } from '@industrial-agent-harness/viewer-builtin/api';
 
 export function formatBytes(bytes: number, locale: string) {
@@ -133,6 +134,63 @@ export function RuntimeReadiness({ item }: { item: InstalledDomainPack }) {
         </small>
       ) : null}
     </>
+  );
+}
+
+export function RuntimePreparation({
+  items,
+  importing,
+  onImport,
+  onOpen,
+}: {
+  items: RuntimeArchiveRequirement[];
+  importing: boolean;
+  onImport: (item: RuntimeArchiveRequirement) => void;
+  onOpen: (item: RuntimeArchiveRequirement) => void;
+}) {
+  const { t, locale } = useDisplayText();
+  return (
+    <div className="ia-runtime-preparation" role="status">
+      <h2>{t('Download runtime files from the official site')}</h2>
+      <p>
+        {t(
+          'These large files are published by their official projects. Download each file in your browser, then import it here. Every file is verified against the pinned official release before installation.',
+        )}
+      </p>
+      {items.map(item => (
+        <div
+          key={`${item.domain}:${item.id}`}
+          className="ia-runtime-archive"
+          data-domain={item.domain}
+          data-asset={item.id}
+          data-present={item.present ? 'true' : undefined}
+        >
+          <span className="ia-runtime-archive-title">
+            <b>{t(item.label)}</b>
+            <small>
+              v{item.version} · {formatBytes(item.size, locale)}
+            </small>
+          </span>
+          {item.present ? (
+            <b className="ia-runtime-archive-ready">{t('Ready')}</b>
+          ) : (
+            <span className="ia-runtime-archive-actions">
+              <button type="button" data-action="download" onClick={() => onOpen(item)}>
+                {t('Official download')}
+              </button>
+              <button
+                type="button"
+                data-action="import"
+                disabled={importing}
+                onClick={() => onImport(item)}
+              >
+                {t('Import downloaded file')}
+              </button>
+            </span>
+          )}
+        </div>
+      ))}
+    </div>
   );
 }
 

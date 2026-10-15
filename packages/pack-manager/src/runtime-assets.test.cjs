@@ -44,7 +44,7 @@ function fixture(t) {
   };
   const events = [],
     commands = [];
-  let downloads = 0,
+  let imports = 0,
     wrongVersion = false;
   const command = async (file, args) => {
     commands.push([file, args]);
@@ -59,23 +59,29 @@ function fixture(t) {
     else if (path.basename(file) === 'modeler') return wrongVersion ? '1.0.0' : 'Modeler 1.2.3';
     return '';
   };
+  // The official archive the user downloaded in their browser.
+  const download = path.join(directory, 'official-download.dmg');
+  fs.writeFileSync(download, bytes);
   const manager = new RuntimeAssetManager({
     directory,
     platform: 'darwin-arm64',
     command,
-    fetchArchive: async (_asset, target) => {
-      downloads++;
-      fs.writeFileSync(target, bytes);
-    },
   });
+  const importArchive = manager.importArchive.bind(manager);
+  manager.importArchive = async (item, file) => {
+    imports++;
+    return importArchive(item, file);
+  };
   return {
     directory,
     manager,
     asset,
     events,
     commands,
+    download,
+    import: (item = asset, file = download) => manager.importArchive(item, file),
     options: { onProgress: state => events.push(state) },
-    downloads: () => downloads,
+    downloads: () => imports,
     wrongVersion: () => {
       wrongVersion = true;
     },
@@ -84,6 +90,7 @@ function fixture(t) {
 test('managed vendor app is verified, probed, detached and reused; deleted executable can be repaired from verified cache', async t => {
   const f = fixture(t);
   assert.equal(f.manager.status([f.asset])[0].ready, false);
+  await f.import();
   await f.manager.ensure([f.asset], f.options);
   const status = f.manager.status([f.asset])[0];
   assert.equal(status.ready, true);
@@ -99,16 +106,52 @@ test('managed vendor app is verified, probed, detached and reused; deleted execu
   assert.equal(f.manager.status([f.asset])[0].ready, true);
   assert.equal(f.downloads(), 1);
 });
-test('corrupt downloads never mount or execute and cannot report readiness', async t => {
+test('corrupt or mismatched imports are rejected before anything mounts or executes', async t => {
   const f = fixture(t);
-  f.manager.fetchArchive = async (_asset, file) => fs.writeFileSync(file, 'wrong bytes');
-  await assert.rejects(f.manager.ensure([f.asset]), /verification failed/);
+  const corrupt = path.join(f.directory, 'corrupt.dmg');
+  fs.writeFileSync(corrupt, Buffer.alloc(f.asset.size, 1));
+  await assert.rejects(f.import(f.asset, corrupt), /does not match the pinned official release/);
+  const undersized = path.join(f.directory, 'undersized.dmg');
+  fs.writeFileSync(undersized, 'wrong bytes');
+  await assert.rejects(f.import(f.asset, undersized), /size differs/);
+  await assert.rejects(f.import(f.asset, f.directory), /Choose the downloaded/);
   assert.equal(f.commands.length, 0);
   assert.equal(f.manager.status([f.asset])[0].ready, false);
   assert.equal(fs.existsSync(path.join(f.manager.directory, 'prepare.lock')), false);
 });
+test('a missing archive stops installation with official-source guidance', async t => {
+  const f = fixture(t);
+  await assert.rejects(f.manager.ensure([f.asset]), error => {
+    assert.equal(error.code, 'RUNTIME_ARCHIVE_REQUIRED');
+    assert.equal(error.asset.id, f.asset.id);
+    assert.equal(error.asset.url, f.asset.url);
+    assert.match(error.message, /Download the official release/);
+    return true;
+  });
+  assert.equal(f.manager.status([f.asset])[0].ready, false);
+  assert.equal(fs.existsSync(path.join(f.manager.directory, 'prepare.lock')), false);
+  await f.import();
+  await f.manager.ensure([f.asset]);
+  assert.equal(f.manager.status([f.asset])[0].ready, true);
+});
+test('archive requirements report presence for the download picker', async t => {
+  const f = fixture(t);
+  assert.deepEqual(
+    f.manager.archives([f.asset]).map(({ id, present }) => ({ id, present })),
+    [{ id: f.asset.id, present: false }],
+  );
+  await f.import();
+  const [state] = f.manager.archives([f.asset]);
+  assert.equal(state.present, true);
+  assert.equal(state.size, f.asset.size);
+  assert.equal(state.url, f.asset.url);
+  // Importing the same verified bytes again is an idempotent reuse.
+  const again = await f.import();
+  assert.equal(again.reused, true);
+});
 test('failed native probe cleans staging and mount and preserves a previous usable version', async t => {
   const f = fixture(t);
+  await f.import();
   await f.manager.ensure([f.asset]);
   f.wrongVersion();
   const newer = { ...f.asset, version: '1.2.4' };
@@ -122,37 +165,22 @@ test('failed native probe cleans staging and mount and preserves a previous usab
       .some(name => name.startsWith('.staging')),
   );
 });
-test('real download path rejects HTTPS downgrade, oversized body and abort without partial files', async t => {
-  const f = fixture(t),
-    original = global.fetch;
-  t.after(() => {
-    global.fetch = original;
-  });
-  const manager = new RuntimeAssetManager({ directory: f.directory, platform: 'darwin-arm64' });
-  global.fetch = async () =>
-    new Response(null, { status: 302, headers: { location: 'http://vendor.example/file' } });
-  await assert.rejects(manager.ensure([f.asset]), /HTTPS/);
-  global.fetch = async () => new Response(Buffer.alloc(f.asset.size + 1));
-  await assert.rejects(manager.ensure([f.asset]), /size mismatch/);
-  const controller = new AbortController();
-  controller.abort();
-  await assert.rejects(manager.ensure([f.asset], { signal: controller.signal }), /abort/i);
-  assert.ok(
-    !fs.readdirSync(path.join(manager.directory, 'cache')).some(name => name.includes('.partial')),
-  );
-});
 test('asynchronous preparation keeps a cross-process lock until completion', async t => {
   const f = fixture(t);
+  await f.import();
   let resume, entered;
   const started = new Promise(resolve => {
     entered = resolve;
   });
-  f.manager.fetchArchive = async (_asset, file) => {
-    entered();
-    await new Promise(resolve => {
-      resume = resolve;
-    });
-    fs.writeFileSync(file, Buffer.from('pinned vendor disk image'));
+  const original = f.manager.command;
+  f.manager.command = async (file, args, options) => {
+    if (file.endsWith('/hdiutil') && args[0] === 'attach') {
+      entered();
+      await new Promise(resolve => {
+        resume = resolve;
+      });
+    }
+    return original(file, args, options);
   };
   const active = f.manager.ensure([f.asset]);
   await started;
@@ -212,6 +240,7 @@ test('Core bundled catalog is bounded and a failed toolchain update keeps active
   const manager = new PackManager({ directory: path.join(f.directory, 'packs') });
   const catalog = manager.bundledCatalog(resources);
   manager.runtimeAssets = f.manager;
+  await f.import();
   await manager.install(catalog.packs[0], { prepareRuntime: true });
   manager.runtimeAssets.ensure = async () => {
     throw Error('vendor offline');
@@ -247,6 +276,7 @@ test('declared nested vendor app and extra executable environment survive integr
     }
     return original(file, args, options);
   };
+  await f.import();
   await f.manager.ensure([f.asset], f.options);
   const environment = f.manager.environment([f.asset]);
   assert.match(
@@ -258,7 +288,6 @@ test('declared nested vendor app and extra executable environment survive integr
     [
       'verifying',
       'checking-space',
-      'downloading',
       'verifying',
       'mounting',
       'copying',
@@ -275,8 +304,9 @@ test('declared nested vendor app and extra executable environment survive integr
   assert.equal(f.manager.status([f.asset])[0].ready, true);
 });
 
-test('space preflight prevents downloads and preserves previous runtime on full disk', async t => {
+test('space preflight prevents installation and preserves previous runtime on full disk', async t => {
   const f = fixture(t);
+  await f.import();
   await f.manager.ensure([f.asset]);
   f.manager.space = () => 1;
   await assert.rejects(
@@ -290,6 +320,7 @@ test('space preflight prevents downloads and preserves previous runtime on full 
 
 test('cancel after copying cleans staging and keeps verified cache and previous version', async t => {
   const f = fixture(t);
+  await f.import();
   await f.manager.ensure([f.asset]);
   const controller = new AbortController();
   const newer = { ...f.asset, version: '1.2.4' };
@@ -317,6 +348,7 @@ test('escaping app links and wrong signatures are refused before native probe an
   for (const mode of ['link', 'signature']) {
     const f = fixture(t),
       original = f.manager.command;
+    await f.import();
     let probed = false;
     f.manager.command = async (file, args, options) => {
       if (path.basename(file) === 'modeler') probed = true;
@@ -349,6 +381,7 @@ test('runtime metadata rejects conflicting environments and invalid footprint or
 
 test('footprint-only recipe updates reuse legacy receipts and cannot invalidate the active runtime', async t => {
   const f = fixture(t);
+  await f.import();
   await f.manager.ensure([f.asset]);
   const original = f.manager.location(f.asset);
   const metadataUpdate = { ...f.asset, installedSize: 4096 };
@@ -363,6 +396,7 @@ test('footprint-only recipe updates reuse legacy receipts and cannot invalidate 
 
 test('changed execution recipes remain isolated if Pack activation is cancelled or fails', async t => {
   const f = fixture(t);
+  await f.import();
   await f.manager.ensure([f.asset]);
   const original = f.manager.location(f.asset);
   const changed = { ...f.asset, profileEnvironment: { XDG_CONFIG_HOME: 'home' } };
@@ -391,6 +425,7 @@ test('changed execution recipes remain isolated if Pack activation is cancelled 
 test('retry space checks subtract verified runtime archives before deciding disk is full', async t => {
   const f = fixture(t);
   f.asset.installedSize = 4096;
+  await f.import();
   await f.manager.ensure([f.asset]);
   const executable = f.manager.status([f.asset])[0].executable;
   fs.rmSync(executable);
@@ -410,6 +445,7 @@ test('retry space checks subtract verified runtime archives before deciding disk
 test('Pack retry does not reject a cached runtime based on the conservative display estimate', async t => {
   const f = fixture(t);
   f.asset.installedSize = 4096;
+  await f.import();
   await f.manager.ensure([f.asset]);
   fs.rmSync(f.manager.status([f.asset])[0].executable);
   const source = path.join(f.directory, 'source-for-retry');
@@ -531,6 +567,7 @@ test('failed native commands retain exit diagnostics and command identity', asyn
 test('an attach that partially mounts before rejecting is detached before cleanup', async t => {
   const f = fixture(t),
     original = f.manager.command;
+  await f.import();
   let source,
     detached = false;
   f.manager.command = async (file, args, options) => {
@@ -553,6 +590,7 @@ test('an attach that partially mounts before rejecting is detached before cleanu
 
 test('a malformed runtime receipt can be repaired from cache instead of blocking path resolution', async t => {
   const f = fixture(t);
+  await f.import();
   await f.manager.ensure([f.asset]);
   const location = f.manager.location(f.asset);
   fs.writeFileSync(path.join(location, 'receipt.json'), 'null');
@@ -564,6 +602,7 @@ test('a malformed runtime receipt can be repaired from cache instead of blocking
 
 test('disk-full lock writes close descriptors and release both preparation and Pack locks for retry', async t => {
   const f = fixture(t);
+  await f.import();
   const pack = new PackManager({ directory: path.join(f.directory, 'packs') });
   for (const [manager, attempt, lock] of [
     [f.manager, () => f.manager.ensure([f.asset]), path.join(f.manager.directory, 'prepare.lock')],

@@ -834,6 +834,50 @@ function registerHandlers() {
     const { packs, catalog } = await availablePacks();
     return catalog.summaries(packs);
   });
+  function runtimeArchiveAsset(packs, request) {
+    const pack = packs.find(item => item.domain === request?.domain);
+    const asset = pack?.runtimeAssets?.find(item => item.id === request?.asset);
+    if (!asset) throw Error('Runtime archive is not offered by the current catalog.');
+    return asset;
+  }
+  ipcMain.handle('domains:runtime-archives', async (_event, request) => {
+    if (!managedPacks || !Array.isArray(request?.domains))
+      throw Error('Invalid runtime archive request.');
+    const { manager, packs } = await availablePacks();
+    return request.domains.flatMap(id => {
+      const pack = packs.find(item => item.domain === id);
+      return pack ? manager.runtimeArchives(pack).map(item => ({ domain: id, ...item })) : [];
+    });
+  });
+  ipcMain.handle('domains:import-runtime-archive', async (_event, request) => {
+    if (!managedPacks || typeof request?.domain !== 'string' || typeof request?.asset !== 'string')
+      throw Error('Invalid runtime archive import.');
+    const { manager, packs } = await availablePacks();
+    const asset = runtimeArchiveAsset(packs, request);
+    const picked = await dialog.showOpenDialog({
+      title: `Import ${asset.label} ${asset.version}`,
+      properties: ['openFile'],
+      filters: [
+        {
+          name: `${asset.label} ${asset.version}`,
+          extensions: asset.type === 'macos-app-zip' ? ['zip'] : ['dmg'],
+        },
+      ],
+    });
+    if (picked.canceled || !picked.filePaths.length) return { imported: false };
+    const result = await manager.importRuntimeArchive(asset, picked.filePaths[0]);
+    return { imported: true, ...result };
+  });
+  ipcMain.handle('domains:open-runtime-archive', async (_event, request) => {
+    if (!managedPacks || typeof request?.domain !== 'string' || typeof request?.asset !== 'string')
+      throw Error('Invalid runtime archive download.');
+    const { packs } = await availablePacks();
+    const asset = runtimeArchiveAsset(packs, request);
+    // Only URLs pinned by the signed catalog may be opened, never renderer input.
+    if (!asset.url.startsWith('https://')) throw Error('Runtime archive URL is not trusted.');
+    await shell.openExternal(asset.url);
+    return { opened: true };
+  });
   ipcMain.handle('domains:cancel', async () => {
     const cancelled = Boolean(domainController);
     domainController?.abort(Error('Domain preparation cancelled.'));
