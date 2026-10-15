@@ -106,8 +106,20 @@ jobs:
             ./apps/desktop/node_modules/.bin/electron-builder --projectDir dist/desktop-stage-release --config "$GITHUB_WORKSPACE/electron-builder.config.cjs" --mac dir --arm64 --publish never
             codesign --force --deep --sign - "dist/desktop-release/mac-arm64/Industrial Agent Harness.app"
             codesign --verify --deep --strict "dist/desktop-release/mac-arm64/Industrial Agent Harness.app"
-            ./apps/desktop/node_modules/.bin/electron-builder --projectDir dist/desktop-stage-release --config "$GITHUB_WORKSPACE/electron-builder.config.cjs" --mac dmg zip --arm64 --prepackaged "$GITHUB_WORKSPACE/dist/desktop-release/mac-arm64" --publish never
+            ./apps/desktop/node_modules/.bin/electron-builder --projectDir dist/desktop-stage-release --config "$GITHUB_WORKSPACE/electron-builder.config.cjs" --mac dmg zip --arm64 --prepackaged "$GITHUB_WORKSPACE/dist/desktop-release/mac-arm64/Industrial Agent Harness.app" --publish never
           fi
+      - name: Verify macOS DMG structure and signature
+        if: matrix.platform == 'mac'
+        shell: bash
+        run: |
+          dmg=$(ls dist/desktop-release/*.dmg | head -1)
+          volume=$(hdiutil attach -nobrowse -readonly "$dmg" | sed -n 's/.*Apple_HFS[[:space:]]*//p')
+          test -n "$volume"
+          test -d "$volume/Industrial Agent Harness.app/Contents/MacOS"
+          codesign --verify --deep --strict "$volume/Industrial Agent Harness.app"
+          codesign -dv "$volume/Industrial Agent Harness.app" 2>&1 | grep -q 'Signature='
+          hdiutil detach "$volume" -quiet
+          echo "DMG structure and signature verified: $dmg"
       - name: Build Windows NSIS installer (signed when credentials exist)
         if: matrix.platform == 'windows'
         shell: pwsh
