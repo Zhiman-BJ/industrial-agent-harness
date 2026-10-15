@@ -60,9 +60,11 @@ class DesktopAccount {
     });
   }
   view() {
+    const config = { ...this.auth.config };
+    delete config.remoteAudience;
     return {
       ...this.auth.view(),
-      config: this.auth.config,
+      config,
       usePlatformModel: Boolean(this.modelEnabled),
     };
   }
@@ -81,7 +83,8 @@ class DesktopAccount {
     this.assertIdle();
     if (this.auth.view().user || this.auth.pending || this.auth.starting)
       throw Error('Sign out before changing the account platform.');
-    const config = validateConfig(value);
+    // The service audience is operator configuration, not another account UI field.
+    const config = validateConfig({ ...value, remoteAudience: this.auth.config.remoteAudience });
     // Environment overrides are controlled by the operator, never silently ignored.
     for (const [key, name] of Object.entries({
       issuer: 'ISSUER',

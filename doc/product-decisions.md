@@ -759,3 +759,13 @@ CSV/TSV 显示表格并提供表头开关、全文筛选与分页；普通 JSON 
 - 来源：用户确认 tarball 为主通道，要求直接修复 #172 的五项问题并补齐 Desktop／CLI 安装链路。
 - 决定：owner 维护镜像配方、锁与 release；Harness 的共享 Pack Manager 消费签名 Pack 内原样固定的锁，负责匿名下载、大小与 SHA-256 校验、OCI 身份及平台校验、Docker 加载与固定 tag、安装和修复回执。两个入口均在依赖准备完成后激活 Pack，失败保留旧版本并清理临时 tar。
 - 边界：Docker Linux engine 是外部前提；未发布镜像不伪装成可自动准备。Registry index、归档 manifest 与 config 摘要分别校验适用的身份，不混用。镜像准备成功不自动更改项目执行配置，也不扩大领域工程或跨平台资格。验证与复现入口见[容器镜像安装](container-image-installation.md)。
+
+## PD-079：一次账号登录，按服务获取 Token
+
+- 日期：2026-10-15。
+- 状态：用户已确认方向；客户端已实现，本地受控服务验证通过，生产模型与真实远程联通未验收。
+- 来源：用户要求参考 PR #180 独立实现并提交新 PR；不合并或修改该 PR，不修改 Obol；UI 不体现内部授权。
+- 决定：CLI/Desktop 复用现有 `harness-desktop-1` 登录一次，内部维护一份轮换 Refresh Token，通过 Obol 已有 RFC 8707 接口分别获取模型和远程服务 Token。每个 Token 只面向一个服务；请求、缓存、校验由共享账号模块处理，Desktop/CLI 不各自实现刷新逻辑。
+- 可观察行为：账号入口、登录、退出仍各一处；没有远程权限时依然可以登录和使用已授权的模型。退出等待在途刷新/换码，撤销最新会话并清理全部缓存；撤销失败如实提示。只有明确的模型 `invalid_token` 拒绝才刷新并重试一次，网络结果不明时不重放生成。
+- Key 边界：直接 API 使用者自行创建 Key；官方 CLI/Desktop 的账号模式用登录 Token，无需另建 Key，应用不代建用户 API Key。Obol 内部计费会话不含可用 Key 秘密。
+- 替代范围：替代 PD-074 中“一个应用 audience 同时用于模型和远程”的限制，以及此前尚未合并的双授权方案。采用一个刷新家族加独立服务 Token，不是万能 Token 或 RFC 8693 Token Exchange。服务端仍独立检查权限、项目归属和计费。真实远程联通继续延期；见[平台账号](platform-account.md)。
