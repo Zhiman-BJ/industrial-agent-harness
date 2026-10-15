@@ -214,9 +214,12 @@ function sourceIsMounted(directory) {
     info && (info.isSymbolicLink() || info.dev !== fs.statSync(path.dirname(directory)).dev),
   );
 }
-async function download(asset, target, { signal, onProgress }) {
+async function download(asset, target, { signal, onProgress, stallMs, timeoutMs }) {
   const temporary = target + '.' + crypto.randomUUID() + '.partial';
-  const transfer = new Transfer({ signal });
+  // Multi-GB vendor runtimes on slow links need the same headroom as container
+  // images: bound idle time (stallMs), not total transfer time, so a steady but
+  // slow download is never aborted mid-way.
+  const transfer = new Transfer({ signal, stallMs, timeoutMs: timeoutMs ?? 2 * 60 * 60 * 1000 });
   return transfer.run(async () => {
     try {
       const response = await transfer.response(asset.url);
@@ -403,7 +406,10 @@ class RuntimeAssetManager {
       fs.rmSync(profile, { recursive: true, force: true });
     }
   }
-  async ensure(assets = [], { onProgress = () => {}, signal, recheck = false } = {}) {
+  async ensure(
+    assets = [],
+    { onProgress = () => {}, signal, recheck = false, stallMs, timeoutMs } = {},
+  ) {
     validateRuntimeAssets(assets);
     if (!assets.length) return [];
     fs.mkdirSync(this.directory, { recursive: true, mode: 0o700 });
@@ -421,7 +427,7 @@ class RuntimeAssetManager {
       } catch (probe) {
         if (probe.code === 'ESRCH') {
           fs.rmSync(lock);
-          return this.ensure(assets, { onProgress, signal, recheck });
+          return this.ensure(assets, { onProgress, signal, recheck, stallMs, timeoutMs });
         }
         throw probe;
       }
@@ -482,7 +488,12 @@ class RuntimeAssetManager {
         signal?.throwIfAborted();
         if (!cacheReused) {
           report({ phase: 'downloading', received: 0, total: asset.size });
-          await this.fetchArchive(asset, archive, { signal, onProgress: report });
+          await this.fetchArchive(asset, archive, {
+            signal,
+            onProgress: report,
+            stallMs,
+            timeoutMs,
+          });
         }
         report({ phase: 'verifying', cacheReused });
         // Always verify even cached input before mounting or executing anything.

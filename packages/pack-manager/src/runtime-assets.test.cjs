@@ -107,6 +107,18 @@ test('corrupt downloads never mount or execute and cannot report readiness', asy
   assert.equal(f.manager.status([f.asset])[0].ready, false);
   assert.equal(fs.existsSync(path.join(f.manager.directory, 'prepare.lock')), false);
 });
+test('stall and timeout budgets reach the archive transfer so slow links stay alive', async t => {
+  const f = fixture(t);
+  let transfer;
+  f.manager.fetchArchive = async (_asset, file, options) => {
+    transfer = options;
+    fs.writeFileSync(file, Buffer.from('pinned vendor disk image'));
+  };
+  await f.manager.ensure([f.asset], { ...f.options, stallMs: 1234, timeoutMs: 5678 });
+  assert.equal(transfer.stallMs, 1234);
+  assert.equal(transfer.timeoutMs, 5678);
+  assert.equal(typeof transfer.onProgress, 'function');
+});
 test('failed native probe cleans staging and mount and preserves a previous usable version', async t => {
   const f = fixture(t);
   await f.manager.ensure([f.asset]);
