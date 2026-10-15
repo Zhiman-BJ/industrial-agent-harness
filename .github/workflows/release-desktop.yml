@@ -72,6 +72,9 @@ jobs:
             platform: windows
             name: windows-x64
     runs-on: ${{ matrix.runner }}
+    outputs:
+      macSigning: ${{ steps.signing.outputs.mac }}
+      winSigning: ${{ steps.signing.outputs.win }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -82,6 +85,12 @@ jobs:
           HARNESS_PACK_PUBLIC_KEYS_JSON_B64: ${{ secrets.HARNESS_PACK_PUBLIC_KEYS_JSON_B64 }}
           APPLE_API_KEY_P8_B64: ${{ secrets.APPLE_API_KEY_P8_B64 }}
         run: node scripts/desktop-release-env.cjs
+      - name: Record installer signing mode
+        id: signing
+        shell: bash
+        run: |
+          key="$(printf '%s' "${{ matrix.platform }}" | cut -c1-3)"
+          echo "$key=$HARNESS_DESKTOP_SIGNING" >> "$GITHUB_OUTPUT"
       - name: Install dependencies and test
         shell: bash
         run: |
@@ -92,7 +101,7 @@ jobs:
           pnpm --filter @industrial-agent-harness/desktop build
       - name: Stage packaged app
         run: node scripts/stage-desktop.cjs dist/desktop-stage-release
-      - name: Build signed, notarized macOS DMG and ZIP
+      - name: Build macOS DMG and ZIP (signed and notarized when credentials exist)
         if: matrix.platform == 'mac'
         shell: bash
         env:
@@ -101,24 +110,34 @@ jobs:
           APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
           APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
         run: |
-          test -n "$CSC_LINK" && test -n "$CSC_KEY_PASSWORD" && test -n "$APPLE_API_KEY" && test -n "$APPLE_API_KEY_ID" && test -n "$APPLE_API_ISSUER"
-          ./apps/desktop/node_modules/.bin/electron-builder --projectDir dist/desktop-stage-release --config "$GITHUB_WORKSPACE/electron-builder.config.cjs" --mac dmg zip --arm64 --publish never
-      - name: Build signed Windows NSIS installer
+          if test "$HARNESS_DESKTOP_SIGNING" = signed; then
+            test -n "$CSC_LINK" && test -n "$CSC_KEY_PASSWORD" && test -n "$APPLE_API_KEY" && test -n "$APPLE_API_KEY_ID" && test -n "$APPLE_API_ISSUER"
+            ./apps/desktop/node_modules/.bin/electron-builder --projectDir dist/desktop-stage-release --config "$GITHUB_WORKSPACE/electron-builder.config.cjs" --mac dmg zip --arm64 --publish never
+          else
+            echo "::warning::Apple signing credentials are not configured; building an unsigned internal installer."
+            CSC_IDENTITY_AUTO_DISCOVERY=false ./apps/desktop/node_modules/.bin/electron-builder --projectDir dist/desktop-stage-release --config "$GITHUB_WORKSPACE/electron-builder.config.cjs" --mac dmg zip --arm64 --publish never
+          fi
+      - name: Build Windows NSIS installer (signed when credentials exist)
         if: matrix.platform == 'windows'
         shell: pwsh
         env:
           WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
           WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
         run: |
-          & .\apps\desktop\node_modules\.bin\electron-builder.cmd --projectDir dist/desktop-stage-release --config "$env:GITHUB_WORKSPACE\electron-builder.config.cjs" --win nsis --publish never
-      - name: Verify signed packaged application first run
+          if ($env:HARNESS_DESKTOP_SIGNING -eq 'signed') {
+            & .\apps\desktop\node_modules\.bin\electron-builder.cmd --projectDir dist/desktop-stage-release --config "$env:GITHUB_WORKSPACE\electron-builder.config.cjs" --win nsis --publish never
+          } else {
+            Write-Host "::warning::Windows signing credentials are not configured; building an unsigned internal installer."
+            & .\apps\desktop\node_modules\.bin\electron-builder.cmd --projectDir dist/desktop-stage-release --config "$env:GITHUB_WORKSPACE\electron-builder.config.cjs" --win nsis --publish never
+          }
+      - name: Verify packaged application first run
         run: |
           node scripts/smoke-packaged-desktop.cjs
           node scripts/smoke-packaged-desktop.cjs --domains
           node scripts/smoke-packaged-kimi.cjs
-      - name: Verify signed Apple Silicon CAD installer
+      - name: Verify Apple Silicon CAD installer
         if: matrix.platform == 'mac'
-        run: node scripts/smoke-packaged-cad.cjs dist/ci-reports/cad-signed-install --dmg
+        run: node scripts/smoke-packaged-cad.cjs dist/ci-reports/cad-release-install --dmg
       - name: Upload install and OTA assets
         uses: actions/upload-artifact@v4
         with:
@@ -153,18 +172,36 @@ jobs:
       - name: Publish versioned assets and update metadata
         env:
           GH_TOKEN: ${{ github.token }}
+          MAC_SIGNING: ${{ needs.installers.outputs.macSigning }}
+          WIN_SIGNING: ${{ needs.installers.outputs.winSigning }}
         shell: bash
         run: |
           set -euo pipefail
           version="${GITHUB_REF_NAME#desktop-v}"
+          title="Industrial Agent Harness $version"
+          signed=true
+          if test "$MAC_SIGNING" != signed || test "$WIN_SIGNING" != signed; then
+            signed=false
+            title="$title (unsigned internal build)"
+          fi
+          notes="doc/releases/$version.md"
+          if ! test -f "$notes"; then notes=""; fi
           if ! gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
-            if test -f "doc/releases/$version.md"; then
-              gh release create "$GITHUB_REF_NAME" --target "$GITHUB_SHA" --title "Industrial Agent Harness $version" --notes-file "doc/releases/$version.md"
+            if test -n "$notes"; then
+              gh release create "$GITHUB_REF_NAME" --target "$GITHUB_SHA" --prerelease="$signed" --title "$title" --notes-file "$notes"
             else
-              gh release create "$GITHUB_REF_NAME" --target "$GITHUB_SHA" --title "Industrial Agent Harness $version" --generate-notes
+              gh release create "$GITHUB_REF_NAME" --target "$GITHUB_SHA" --prerelease="$signed" --title "$title" --generate-notes
             fi
           fi
+          if test "$signed" = false && test -f "$notes"; then
+            printf '\n> ⚠️ 未签名内测构建：签名凭据未配置。macOS 首次打开需在「系统设置 → 隐私与安全性」选择「仍要打开」；本版无应用内自动更新。\n' >> "$notes"
+            gh release edit "$GITHUB_REF_NAME" --notes-file "$notes"
+          fi
           find release-assets -maxdepth 1 -type f -print0 | xargs -0 -r gh release upload "$GITHUB_REF_NAME" --clobber
+          if test "$signed" = false; then
+            echo "Skipping the update feed for an unsigned build; Core OTA requires signed installers."
+            exit 0
+          fi
           tag="desktop-${HARNESS_RELEASE_CHANNEL}-feed"
           if ! gh release view "$tag" >/dev/null 2>&1; then
             gh release create "$tag" --target "$GITHUB_SHA" --prerelease --title "Desktop ${HARNESS_RELEASE_CHANNEL} update feed" --notes "Signed Desktop and Domain Pack update assets."
