@@ -1,5 +1,12 @@
 # Installation experience
 
+The current source also prepares released container images through the shared Desktop/CLI
+installer. The immutable owner's lock travels inside the authenticated Pack; anonymous release
+tarballs are streamed, verified and loaded into an external Linux Docker engine before Pack
+activation. Repair and readiness check the installed lock and live Docker identity. See
+[container installation](container-image-installation.md) for the contract and separate real-release
+acceptance. The historical native candidate results below retain their original identities.
+
 The 1.0.1-beta.1 local desktop candidate addresses issue #60 on macOS Apple Silicon. It consumes Domain Packs 0.5.1 at immutable commit `09c39193e199de61941882f0e92f10ed7789dbd2`; the lockfile binds the archive integrity. Domain dependencies remain maintained by the Pack owner. The Core contains the generic installer, catalog, readiness descriptions and a small durable installation status record shared by CLI and Desktop.
 
 ## User flow
@@ -39,15 +46,15 @@ node scripts/smoke-install-upgrade.cjs \
 
 `--prepare` and `--upgrade` run those stages separately. `--capture-existing` can inspect and preserve a completed old-app engineering baseline after a later legacy selftest failure; it does not turn that failure into a full acceptance pass. `--recheck-final` replaces a previously upgraded application with a final candidate and checks restart/data preservation. It retains the original migration identity and does not claim a second Pack upgrade. Adding `--update-pack` explicitly tests the subsequent CAD `.6` → `.7` transition in separate reports without replacing the original migration/restart evidence.
 
-The installation UI test uses a signed local fixture feed, real IPC/Pack installation and a tiny locally signed app to exercise states, cancellation, retry and repair. It is transport and UI evidence, not domain qualification. The packaged domain smoke prepares the actual owner-declared native tools on macOS. The existing installed PCB/Godot tests require independent production CLI/Desktop payloads, real native reports and independent verification; they do not fall back to development sources. CAD's DMG gate verifies real build/edit, independent geometry checks, viewer, repair and restart.
+The installation UI test uses a signed local fixture feed, real IPC/Pack installation and a tiny locally signed app to exercise states, cancellation, retry and repair. It is transport and UI evidence, not domain qualification. The packaged domain smoke prepares the actual owner-declared native tools on macOS. For released container Packs, a runner without a Linux Docker engine must demonstrate a visible installation failure, a failed journal and no Pack activation or temporary tar; the report lists these prerequisite failures separately. It does not count registration alone as a successful image installation. The existing installed PCB/Godot tests require independent production CLI/Desktop payloads, real native reports and independent verification; they do not fall back to development sources. CAD's DMG gate verifies real build/edit, independent geometry checks, viewer, repair and restart.
 
 Optional `HARNESS_RUNTIME_ARCHIVES` maps runtime asset IDs to exact official archives for qualification. The helper only populates the archive cache; production hash, archive, signature and version checks still execute. No runtime path or receipt override is used. Cached tests do not establish network download throughput.
 
 CAD qualification can additionally set `HARNESS_CAD_INSTALL_RUNTIME_CACHE` to a previously production-verified runtime asset store. The selftest creates an independent copy in its empty isolated store, validates ordinary production readiness and asserts no Pack is preinstalled. Installation UI, both native tasks, Viewer, executable corruption, real repair and restart remain required. The report labels this `warm-runtime-reuse`; it is not a second cold native installation. Repair diagnostics retain recent UI state and window lifecycle events on failure.
 
-## Current source reconciliation, 2026-10-10
+## Source reconciliation recorded on 2026-10-10
 
-The current source merges the latest main-branch model/project synchronization and capability resource refresh, while retaining the installation flows and navigation alignment above. It pins Domain Packs 0.5.2 at `b9759342cace66df0be0c4559b7c24fb28ea07d9` (Godot `0.2.2`, CAD `1.1.4-pack.7`). This reconciliation preserves the complete Godot Runtime validation from main together with the owner-maintained native preparation declarations.
+That source revision merged the main-branch model/project synchronization and capability resource refresh, while retaining the installation flows and navigation alignment above. It pinned Domain Packs 0.5.2 at `b9759342cace66df0be0c4559b7c24fb28ea07d9` (Godot `0.2.2`, CAD `1.1.4-pack.7`). This reconciliation preserved the complete Godot Runtime validation from main together with the owner-maintained native preparation declarations. The current tarball installer consumes the later immutable owner commit recorded in the root README.
 
 The source and CI reconciliation is distinct from the already qualified local DMG below. Its owner 0.5.1 identity, source commit, hashes and acceptance results remain historical facts. The new source requires its own CI result and any applicable native acceptance; those results are recorded separately when complete. No new installer qualification follows merely from updating the pin.
 

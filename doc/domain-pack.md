@@ -12,6 +12,7 @@ pack-source/
 ├── bundle.json
 ├── LICENSE
 ├── THIRD_PARTY_NOTICES.md
+├── provenance/runtime-distribution.json  # 声明容器镜像时必需，保持 owner 原文
 ├── skills/<skill-id>/
 │   ├── SKILL.md
 │   ├── references/...
@@ -30,6 +31,13 @@ Skill 相对路径与 Provider 目录必须安全；资源不得使用 symlink �
 使用租约阻止任务运行中更换或删除 Pack。新安装保存资源校验回执，Registry 扫描隔离改动、缺失、
 越界或 symlink 的 Domain。旧 v1 安装无回执时继续检查文件边界，重装同一归档后生成回执。
 本机拥有者能够改写安装库及回执；回执是完整性检查，不是防御本机恶意管理员的信任边界。
+
+`bundle.json` 可选的 `containerImages` 是镜像 ID／引用数组，最多 8 项且不可重复。每项必须
+在包内的 `provenance/runtime-distribution.json` 中属于该 Domain，并具有已发布的固定身份。
+目录的 `containerDownloadSize` 记录所选镜像 tar 下载字节总数，供两端展示空间估算。
+正式安装、更新与修复共用 Pack Manager：从 release tarball 准备镜像后再激活 Pack，
+校验失败或取消保留旧版本；没有发布版本的镜像不会被构建器自动选入。
+本地运行中的 Linux Docker engine 是外部前提。详见[容器镜像安装链路](container-image-installation.md)。
 
 安装不执行归档中的脚本。已信任、注册的 Runtime 在任务创建时加载；`runtime.entry` 是 Provider
 目录内 `.cjs` 相对入口，必须在归档库存中存在。公开源码登记及受信任签名安装都是代码信任边界；
