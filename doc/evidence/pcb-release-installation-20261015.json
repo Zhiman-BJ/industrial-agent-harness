@@ -1,0 +1,147 @@
+{
+  "date": "2026-10-15",
+  "scope": "PCB release artifact installation and bounded native/runtime smoke",
+  "sourceCommit": "e18c212ca5317f4a18216b7fc326527ad462c0b0",
+  "ownerCommit": "f91a8ab3c071e4500fd4097bb3123a7fbb0ca635",
+  "owner": {
+    "packageVersion": "0.5.3",
+    "contentSha256": "cc1ebd7ebcefd49fa2a4bde4cc21b4870200239fefe1e1efb65c005f40f7780b"
+  },
+  "release": {
+    "tag": "pcb-v0.1.0",
+    "sourceCommit": "f55fa00ddefffdbe534f29a726fa8b845cd3788c",
+    "url": "https://github.com/Zhiman-BJ/industrial-domain-packs/releases/tag/pcb-v0.1.0",
+    "workflow": "https://github.com/Zhiman-BJ/industrial-domain-packs/actions/runs/38660948688",
+    "anonymousArtifactVerification": "passed"
+  },
+  "host": "darwin-arm64",
+  "engine": {
+    "version": "29.5.2",
+    "os": "linux",
+    "arch": "arm64",
+    "context": "desktop-linux",
+    "storage": "containerd"
+  },
+  "images": [
+    {
+      "imageRef": "industrial-pcb-runtime:pcb-v0.1.0",
+      "tag": "pcb-v0.1.0",
+      "sha256": "d2ce08e13e12407162e17f7c92c7285e3349062183b83abb58ac5b7c608d612c",
+      "bytes": 1232038400,
+      "imageId": "sha256:dfdb6385095e437cd156f2f1de087aa0cadc962991366b036fdca421b7b1a1d3",
+      "manifestDigest": "sha256:dfdb6385095e437cd156f2f1de087aa0cadc962991366b036fdca421b7b1a1d3",
+      "configDigest": "sha256:1ceac40dcb7ed1c8eae093f26d311636539e16aee0dcb1e359d53ea3e83aa0ea",
+      "platform": "linux/amd64"
+    }
+  ],
+  "cli": {
+    "result": "cold install, repair and remove passed",
+    "downloadedImageBytes": 1232038400,
+    "temporaryArchivesAfterSuccess": 0
+  },
+  "nativeArchives": "existing vendor archives reverified before installation",
+  "desktop": {
+    "result": "installation and repair buttons through renderer/preload/IPC passed; verified Docker images reused",
+    "packaged": true,
+    "signed": false,
+    "asarSha256": "a548e2060ac7aaf0cc92af16aaf5c4fb1eb76ff9ed02a1fc4596ca93304a9296",
+    "asarBytes": 203551542
+  },
+  "finished": "2026-10-15T01:03:29.210Z",
+  "dockerPrerequisites": [
+    {
+      "mode": "missing",
+      "adapter": "cli",
+      "passed": true,
+      "outcome": "failed",
+      "message": "Docker was not found. Install Docker Desktop (macOS/Windows) or Docker Engine (Linux), make sure the docker command is available, then retry.",
+      "activatedPacks": 0,
+      "imageDownloads": 0,
+      "nativeDownloads": 0
+    },
+    {
+      "mode": "missing",
+      "adapter": "desktop",
+      "passed": true,
+      "outcome": "failed",
+      "message": "Docker was not found. Install Docker Desktop (macOS/Windows) or Docker Engine (Linux), make sure the docker command is available, then retry.",
+      "activatedPacks": 0,
+      "imageDownloads": 0,
+      "nativeDownloads": 0
+    },
+    {
+      "mode": "unreachable",
+      "adapter": "cli",
+      "passed": true,
+      "outcome": "failed",
+      "message": "Docker could not be reached. Start Docker Desktop or your Linux Docker engine, then retry. If it is already running, check the active Docker connection.",
+      "activatedPacks": 0,
+      "imageDownloads": 0,
+      "nativeDownloads": 0
+    },
+    {
+      "mode": "unreachable",
+      "adapter": "desktop",
+      "passed": true,
+      "outcome": "failed",
+      "message": "Docker could not be reached. Start Docker Desktop or your Linux Docker engine, then retry. If it is already running, check the active Docker connection.",
+      "activatedPacks": 0,
+      "imageDownloads": 0,
+      "nativeDownloads": 0
+    }
+  ],
+  "publishedImageValidation": {
+    "imageId": "sha256:dfdb6385095e437cd156f2f1de087aa0cadc962991366b036fdca421b7b1a1d3",
+    "cases": [
+      "help",
+      "short help",
+      "missing arguments",
+      "unknown option",
+      "missing input",
+      "unsupported input",
+      "refuse occupied output",
+      "default output",
+      "explicit output",
+      "real invalid board",
+      "concurrent A",
+      "concurrent B"
+    ],
+    "freshContainers": 5,
+    "isolation": "passed",
+    "sourceUnchanged": true,
+    "board": {
+      "version": "10.0.6",
+      "footprints": 2,
+      "width_mm": 40.05,
+      "height_mm": 30.05,
+      "errors": 0,
+      "warnings": 2,
+      "unconnected": 0
+    },
+    "gatewayTests": {
+      "passed": 7,
+      "skipped": 0,
+      "realMcpDispatch": true
+    }
+  },
+  "gates": {
+    "portable": {
+      "passed": 583,
+      "permittedSkips": 1
+    },
+    "imageRegressions": 21,
+    "architecture": 48,
+    "releaseContent": 17,
+    "packagedCliDomains": [
+      "chip",
+      "pcb",
+      "godot",
+      "cad"
+    ]
+  },
+  "limits": [
+    "Only macOS arm64 with Docker Desktop Linux AMD64 execution was exercised for this artifact.",
+    "The host gateway uses the separately prepared locked Python environment and explicit image binding.",
+    "Board smoke and MCP dispatch do not establish arbitrary PCB engineering acceptance."
+  ]
+}

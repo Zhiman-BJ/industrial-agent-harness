@@ -99,3 +99,22 @@ node scripts/verify-docker-prerequisites.cjs <新输出目录> <已有真实-rel
 ```
 
 前者仅清空子进程 PATH，后者仅指定不存在的本地 socket；不会卸载、停止或修改本机 Docker。
+
+### PCB 正式 release（2026-10-15）
+
+Owner 已发布 [pcb-v0.1.0](https://github.com/Zhiman-BJ/industrial-domain-packs/releases/tag/pcb-v0.1.0)，
+Harness 的根包、CLI 和 Desktop 统一固定到 `f91a8ab3c071e4500fd4097bb3123a7fbb0ca635`。
+三项已声明容器镜像现在都有正式 tarball 和发行锁。
+
+- CLI 从匿名 release URL 冷下载 PCB tarball（1,232,038,400 字节），完成大小/SHA-256、
+  OCI 身份、Docker load/tag 校验，以及安装、修复和卸载；临时 tar 已清理。
+- 原生 KiCad 使用现有官方 DMG 缓存，重新完整校验并实际安装、探测；镜像没有复用下载缓存。
+  新打包的 macOS arm64 桌面应用通过安装及修复按钮验证，复用 CLI 验证过的镜像。
+- CLI 和打包桌面的命令缺失、引擎不可达四条路径均在原生应用/镜像下载前失败，未激活 Pack。
+- 下载后的正式镜像再次通过 12 项隔离验证（5 个独立且已清理的容器），包含真实板文件
+  保存/独立读回/DRC、损坏输入和并发任务。样例为 0 个 DRC 错误、0 个未连接项，保留 2 个库警告。
+  另以固定宿主 Python 环境和明确的镜像绑定通过真实 PCB MCP 网关调用（7 项测试全通过）。
+
+见[实测记录](evidence/pcb-release-installation-20261015.json)及[打包桌面截图](evidence/pcb-release-installation-20261015.png)。
+正式镜像在 Docker Desktop 的 Images → Local 中显示为 `industrial-pcb-runtime:pcb-v0.1.0`。
+宿主网关 Python 与项目执行配置仍按 Pack 声明单独准备；以上不扩大工程验收或其他操作系统的资格范围。
