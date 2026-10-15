@@ -7,7 +7,18 @@ async function createIssuer() {
   const jwk = { ...(await exportJWK(publicKey)), kid: 'test-key', alg: 'RS256', use: 'sig' };
   const codes = new Map(),
     refreshTokens = new Set();
-  const calls = { refresh: 0, token: 0, revoke: 0, model: 0, headers: [], revokedTokens: [] };
+  const calls = {
+    refresh: 0,
+    token: 0,
+    revoke: 0,
+    model: 0,
+    headers: [],
+    revokedTokens: [],
+    authorizations: [],
+    resources: [],
+    refreshInputs: [],
+    bodies: [],
+  };
   const behavior = {
     invalidGrant: false,
     badNonce: false,
@@ -15,16 +26,20 @@ async function createIssuer() {
     badSignature: false,
     lostRefresh: false,
     tokenDelay: 0,
+    deniedResources: new Set(),
+    resourceAudience: {},
+    modelResponses: [],
   };
   let origin;
-  const sign = (payload, audience, typ = 'JWT') =>
+  const sign = (payload, audience, typ = 'JWT', { subject = 'user-123', expiry = '15m' } = {}) =>
     new SignJWT(payload)
       .setProtectedHeader({ alg: 'RS256', kid: 'test-key', typ })
-      .setSubject('user-123')
+      .setSubject(subject)
       .setIssuer(origin)
       .setAudience(audience)
       .setIssuedAt()
-      .setExpirationTime('15m')
+      .setJti(crypto.randomUUID())
+      .setExpirationTime(expiry)
       .sign(behavior.badSignature ? otherKey : privateKey);
   const server = createServer(async (req, res) => {
     const url = new URL(req.url, origin);
@@ -48,6 +63,7 @@ async function createIssuer() {
       });
     if (url.pathname === '/keys') return json({ keys: [jwk] });
     if (url.pathname === '/authorize') {
+      calls.authorizations.push(Object.fromEntries(url.searchParams));
       if (
         url.searchParams.get('code_challenge_method') !== 'S256' ||
         !url.searchParams.get('nonce') ||
@@ -76,6 +92,7 @@ async function createIssuer() {
       if (url.pathname === '/revoke') {
         calls.revoke++;
         calls.revokedTokens.push(form.get('token'));
+        if (behavior.revokeFailure) return json({ error: 'unavailable' }, 503);
         refreshTokens.delete(form.get('token'));
         return json({});
       }
@@ -98,14 +115,26 @@ async function createIssuer() {
           await new Promise(resolve => setTimeout(resolve, behavior.tokenDelay));
       } else {
         calls.refresh++;
-        if (behavior.invalidGrant || !refreshTokens.delete(form.get('refresh_token')))
+        const resource = form.get('resource');
+        calls.resources.push(resource);
+        calls.refreshInputs.push(form.get('refresh_token'));
+        if (behavior.invalidGrant || !refreshTokens.has(form.get('refresh_token')))
           return json({ error: 'invalid_grant' }, 400);
+        if (
+          resource &&
+          (behavior.deniedResources.has(resource) || ![origin, origin + '/v1'].includes(resource))
+        ) {
+          await behavior.beforeDeniedResponse?.();
+          return json({ error: 'invalid_target' }, 400);
+        }
+        refreshTokens.delete(form.get('refresh_token'));
         if (behavior.lostRefresh) return req.socket.destroy();
         await behavior.beforeRefreshResponse?.();
       }
       const refresh = 'refresh-' + crypto.randomUUID();
       refreshTokens.add(refresh);
-      return json({
+      const resource = form.get('resource');
+      const result = {
         access_token: await sign(
           {
             scope: 'openid profile offline_access',
@@ -113,7 +142,10 @@ async function createIssuer() {
             roles: ['user'],
             permissions: ['task:read'],
           },
-          'harness',
+          resource
+            ? behavior.resourceAudience[resource] ||
+                (resource === origin + '/v1' ? 'obol-api' : 'industrial-mcp-remote')
+            : 'harness',
           'at+jwt',
         ),
         refresh_token: refresh,
@@ -127,11 +159,23 @@ async function createIssuer() {
               ),
             }
           : {}),
-      });
+      };
+      if (resource && behavior.transformServiceResponse)
+        await behavior.transformServiceResponse(result);
+      return json(result);
     }
-    if (url.pathname === '/v1/chat/completions') {
+    if (['/v1/chat/completions', '/v1/messages', '/v1/models'].includes(url.pathname)) {
       calls.model++;
       calls.headers.push(req.headers.authorization);
+      let body = '';
+      for await (const chunk of req) body += chunk;
+      calls.bodies.push(body);
+      const reply = behavior.modelResponses.shift();
+      if (reply) {
+        if (reply.disconnect) return req.socket.destroy();
+        res.writeHead(reply.status, reply.headers || {});
+        return res.end(reply.body || 'private upstream detail');
+      }
       res.writeHead(200, { 'Content-Type': 'text/event-stream' });
       res.write('data: {"text":"hello"}\n\n');
       return res.end('data: [DONE]\n\n');

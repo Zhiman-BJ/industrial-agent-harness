@@ -163,7 +163,7 @@ test('revoked refresh token clears credentials and requires a new login', async 
 test('access token for a different application is not forwarded', async t => {
   const { issuer, auth, login } = await setup(t);
   await login();
-  auth.config.audience = 'different-application';
+  issuer.behavior.resourceAudience[issuer.config.modelBaseUrl] = 'harness';
   await assert.rejects(auth.serviceToken('model', issuer.config.modelBaseUrl), /verified/);
   assert.equal(issuer.calls.model, 0);
 });

@@ -40,9 +40,17 @@ function validateConfig(value) {
   if (remoteOrigin && new URL(remoteOrigin).pathname !== '/')
     throw Error('Remote service must be an origin.');
   const modelBaseUrl = value.modelBaseUrl ? trustedUrl(value.modelBaseUrl) : '';
+  const remoteAudience = value.remoteAudience || 'industrial-mcp-remote';
+  if (
+    typeof remoteAudience !== 'string' ||
+    remoteAudience.length > 128 ||
+    /[^a-zA-Z0-9._-]/.test(remoteAudience) ||
+    remoteAudience === clientId
+  )
+    throw Error('Invalid remote service application audience.');
   if ((remoteOrigin || modelBaseUrl) && !audience)
     throw Error('Configure the platform application audience before connecting a service.');
-  return { issuer, clientId, audience, remoteOrigin, modelBaseUrl };
+  return { issuer, clientId, audience, remoteOrigin, modelBaseUrl, remoteAudience };
 }
 
 function readConfig(directory, environment = process.env) {
@@ -57,6 +65,7 @@ function readConfig(directory, environment = process.env) {
     clientId: 'CLIENT_ID',
     audience: 'AUDIENCE',
     remoteOrigin: 'REMOTE_ORIGIN',
+    remoteAudience: 'REMOTE_AUDIENCE',
     modelBaseUrl: 'MODEL_BASE_URL',
   };
   for (const [key, name] of Object.entries(names))

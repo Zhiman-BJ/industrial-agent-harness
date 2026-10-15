@@ -91,12 +91,24 @@ test('desktop main-window IPC completes manual login with encrypted storage and 
   await login;
   assert.equal(view.status, 'signed_in');
   assert.equal(view.persistent, true);
+  await call('use-model', true);
+  const model = account.store.read().services[issuer.config.modelBaseUrl].accessToken;
+  const remote = await account.auth.serviceToken('remote', issuer.config.remoteOrigin);
+  assert.equal(issuer.calls.authorizations.length, 1);
+  assert.equal(JSON.parse(Buffer.from(model.split('.')[1], 'base64url')).aud, 'obol-api');
+  assert.equal(
+    JSON.parse(Buffer.from(remote.split('.')[1], 'base64url')).aud,
+    'industrial-mcp-remote',
+  );
+  assert.equal(call('get').config.remoteAudience, undefined);
+  assert.ok(views.every(v => !('services' in v)));
   const saved = account.store.read();
-  for (const secret of [code, saved.accessToken, saved.refreshToken]) {
+  for (const secret of [code, saved.accessToken, saved.refreshToken, model, remote]) {
     assert.ok(!JSON.stringify(views).includes(secret));
     assert.ok(!fs.readFileSync(account.store.file).includes(Buffer.from(secret)));
   }
-  await call('logout');
+  assert.equal((await call('logout')).revoked, true);
+  assert.deepEqual(issuer.calls.revokedTokens, [saved.refreshToken]);
   assert.equal(call('get').user, null);
   assert.equal(account.store.read(), null);
 });

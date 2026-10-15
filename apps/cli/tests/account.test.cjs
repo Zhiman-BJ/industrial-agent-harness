@@ -139,3 +139,51 @@ test('CLI manual login cancels cleanly when stdin closes', async t => {
   );
   assert.equal(auth.view().user, null);
 });
+
+test('CLI restores one login and obtains model and remote tokens without a key or another browser', async t => {
+  const issuer = await createIssuer();
+  t.after(issuer.close);
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'cli-service-account-'));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const environment = {
+    INDUSTRIAL_HARNESS_CONFIG_DIR: directory,
+    INDUSTRIAL_AUTH_ISSUER: issuer.origin,
+    INDUSTRIAL_AUTH_CLIENT_ID: issuer.config.clientId,
+    INDUSTRIAL_AUTH_AUDIENCE: issuer.config.audience,
+    INDUSTRIAL_AUTH_MODEL_BASE_URL: issuer.config.modelBaseUrl,
+    INDUSTRIAL_AUTH_REMOTE_ORIGIN: issuer.origin,
+  };
+  const first = createCliAccount(environment, true);
+  first.fetch = fetch;
+  first.createServer = createServer;
+  const input = new PassThrough();
+  t.after(() => input.destroy());
+  const ready = require('node:events').once(first, 'manual-authorization');
+  const events = [];
+  const login = runAccount(
+    ['login', '--no-browser', '--allow-file-store'],
+    { write: value => events.push(JSON.parse(value)) },
+    environment,
+    { auth: first, input },
+  );
+  const callback = new URL(await issuer.authorize((await ready)[0]));
+  input.write(callback.searchParams.get('code') + '#' + callback.searchParams.get('state') + '\n');
+  await login;
+  const next = createCliAccount(environment, true);
+  next.fetch = fetch;
+  next.createServer = createServer;
+  t.after(() => next.close());
+  assert.equal((await next.restore()).status, 'signed_in');
+  const model = await next.serviceToken('model', issuer.config.modelBaseUrl);
+  const remote = await next.serviceToken('remote', issuer.origin);
+  assert.equal(JSON.parse(Buffer.from(model.split('.')[1], 'base64url')).aud, 'obol-api');
+  assert.equal(
+    JSON.parse(Buffer.from(remote.split('.')[1], 'base64url')).aud,
+    'industrial-mcp-remote',
+  );
+  assert.equal(issuer.calls.authorizations.length, 1);
+  assert.ok(!JSON.stringify(events).includes(model));
+  const latest = next.store.read().refreshToken;
+  assert.equal((await next.logout()).revoked, true);
+  assert.deepEqual(issuer.calls.revokedTokens, [latest]);
+});
