@@ -1,4 +1,9 @@
-const { ChatStore, defaultChatDirectory, deriveChatTitle } = require('./chat-store.cjs');
+const {
+  ChatStore,
+  defaultChatDirectory,
+  deriveChatTitle,
+  sanitizeGeneratedTitle,
+} = require('./chat-store.cjs');
 const { createProjectRuntime, readProjectRecords } = require('./project-runtime.cjs');
 const sessionResources = require('./session-resources.cjs');
 const { availableMemoryBytes } = require('./available-memory.cjs');
@@ -139,6 +144,7 @@ module.exports = {
   ChatStore,
   defaultChatDirectory,
   deriveChatTitle,
+  sanitizeGeneratedTitle,
   resolveProjectTask,
   resourceCatalog,
   effectiveCapabilities,

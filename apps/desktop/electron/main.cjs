@@ -96,7 +96,7 @@ const {
   ResourceSettings,
   RemoteSettings,
   defaultChatDirectory,
-  deriveChatTitle,
+  sanitizeGeneratedTitle,
   ExternalMcpRegistry,
 } = require('@industrial-agent-harness/harness-core');
 const { loadRegistry } = require('@industrial-agent-harness/domain-skills');
@@ -260,13 +260,7 @@ async function generateChatTitle(task) {
   }
   if (!response.ok) return null;
   const data = await response.json().catch(() => null);
-  const text = data?.choices?.[0]?.message?.content;
-  if (typeof text !== 'string') return null;
-  const cleaned = deriveChatTitle(text.replace(/<think>[\s\S]*?(<\/think>|$)/g, ''))
-    .replace(/^["'`「『【]+|["'`」』】]+$/g, '')
-    .replace(/(?:会话|session|chat)$/i, '')
-    .trim();
-  return cleaned || null;
+  return sanitizeGeneratedTitle(data?.choices?.[0]?.message?.content);
 }
 async function refineChatTitle(chatId) {
   if (!chatId || titleRefinements.has(chatId)) return;

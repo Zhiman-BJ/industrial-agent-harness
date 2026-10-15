@@ -27,6 +27,7 @@ import {
   Pencil,
   Play,
   Plus,
+  RefreshCw,
   Settings2,
   Square,
   Sun,
@@ -87,6 +88,9 @@ type ProjectFile = { path: string; name: string; depth: number; directory: boole
 export function App() {
   const { t, locale } = useDisplayText();
   const { preference, setPreference } = useLanguage();
+  // Untitled chats keep the English sentinel in the store (rename/refine logic
+  // depends on it); translate it only at display time.
+  const chatDisplayTitle = (title: string) => (title === 'New chat' ? t('New chat') : title);
   const [projectFiles, setProjectFiles] = useState<ProjectFile[]>([]);
   const [collapsedDirs, setCollapsedDirs] = useState<Set<string>>(() => new Set());
   const [projects, setProjects] = useState<ProjectBinding[]>([]);
@@ -201,6 +205,9 @@ export function App() {
   const [agentOwned, setAgentOwned] = useState(false);
   const [chatList, setChatList] = useState<ChatSummary[]>([]);
   const [chatMenuId, setChatMenuId] = useState<string | null>(null);
+  // Pop the menu upward when the wrap sits too close to the list's visible
+  // bottom edge; the scroll container clips anything overflowing downward.
+  const [chatMenuUp, setChatMenuUp] = useState(false);
   const [chatRename, setChatRename] = useState<{ id: string; value: string } | null>(null);
   // Synchronous mirror: Enter and blur can both fire for one edit, and only the
   // first may commit.
@@ -839,6 +846,15 @@ export function App() {
       setProjectError(String(reason));
     }
   }
+  // Manual refresh for the file tree: agent-driven events already trigger a
+  // reload, but edits made outside the app never reach the renderer (#165).
+  async function refreshFileTree() {
+    try {
+      setProjectFiles(await window.viewerHost!.projectFiles());
+    } catch (reason) {
+      setError(String(reason));
+    }
+  }
   // Full renderer-side adoption of new project bindings: refresh the file
   // list and clear the workspace so no trace of the previous project remains.
   // Shared by the UI switch flows and the external-change sync paths.
@@ -1233,7 +1249,7 @@ export function App() {
                             ) : (
                               <button
                                 className="ia-sidebar-chat"
-                                title={chat.title}
+                                title={chatDisplayTitle(chat.title)}
                                 disabled={navigating || submitting.current}
                                 aria-current={
                                   page === 'chat' && activeChatId === chat.id ? 'page' : undefined
@@ -1241,7 +1257,7 @@ export function App() {
                                 onClick={() => void openChat(chat.id)}
                               >
                                 <Activity size={14} />
-                                <span>{chat.title}</span>
+                                <span>{chatDisplayTitle(chat.title)}</span>
                                 {chat.running && (
                                   <small
                                     className={`ia-session-running ${chat.awaitingApproval || chat.awaitingQuestion ? 'awaiting-approval' : ''}`}
@@ -1269,19 +1285,36 @@ export function App() {
                             >
                               <button
                                 className="ia-chat-menu-button"
-                                aria-label={t('Chat actions for {0}', { '0': chat.title })}
+                                aria-label={t('Chat actions for {0}', {
+                                  '0': chatDisplayTitle(chat.title),
+                                })}
                                 aria-haspopup="menu"
                                 aria-expanded={chatMenuId === chat.id}
                                 title={t('Chat actions')}
                                 disabled={navigating || submitting.current}
-                                onClick={() =>
-                                  setChatMenuId(current => (current === chat.id ? null : chat.id))
-                                }
+                                onClick={event => {
+                                  const opening = chatMenuId !== chat.id;
+                                  setChatMenuId(opening ? chat.id : null);
+                                  if (opening) {
+                                    const wrap = event.currentTarget.closest('.ia-chat-menu-wrap');
+                                    const list = event.currentTarget.closest('.ia-project-list');
+                                    if (wrap && list)
+                                      // Menu is ~88px tall; flip upward without enough room.
+                                      setChatMenuUp(
+                                        list.getBoundingClientRect().bottom -
+                                          wrap.getBoundingClientRect().bottom <
+                                          96,
+                                      );
+                                  }
+                                }}
                               >
                                 <MoreHorizontal size={14} />
                               </button>
                               {chatMenuId === chat.id && (
-                                <div className="ia-chat-menu" role="menu">
+                                <div
+                                  className={`ia-chat-menu ${chatMenuUp ? 'up' : ''}`}
+                                  role="menu"
+                                >
                                   <button
                                     role="menuitem"
                                     onClick={() => {
@@ -1295,7 +1328,9 @@ export function App() {
                                   <button
                                     role="menuitem"
                                     className="ia-chat-menu-danger"
-                                    aria-label={t('Delete chat {0}', { '0': chat.title })}
+                                    aria-label={t('Delete chat {0}', {
+                                      '0': chatDisplayTitle(chat.title),
+                                    })}
                                     disabled={chat.running || navigating || submitting.current}
                                     onClick={() => {
                                       setChatMenuId(null);
@@ -1470,7 +1505,9 @@ export function App() {
                         ? t('Capability center')
                         : page === 'project'
                           ? projectName
-                          : chatList.find(chat => chat.id === activeChatId)?.title || t('Chat'),
+                          : chatDisplayTitle(
+                              chatList.find(chat => chat.id === activeChatId)?.title || '',
+                            ) || t('Chat'),
                     status: chatList.find(chat => chat.id === activeChatId)?.awaitingQuestion
                       ? t('Awaiting answer')
                       : chatList.find(chat => chat.id === activeChatId)?.awaitingApproval
@@ -2133,7 +2170,17 @@ export function App() {
                   </div>
                   {fileTreeOpen && (
                     <aside className="ia-workspace-tree">
-                      <div className="ia-file-search">{t('FILES')}</div>
+                      <div className="ia-file-search">
+                        {t('FILES')}
+                        <button
+                          className="ia-file-refresh"
+                          onClick={() => void refreshFileTree()}
+                          title={t('Refresh file list')}
+                          aria-label={t('Refresh file list')}
+                        >
+                          <RefreshCw size={11} />
+                        </button>
+                      </div>
                       <button className="ia-file-root" onClick={() => setPage('project')}>
                         <ChevronDown size={13} />
                         <FolderOpen size={14} />
