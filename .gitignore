@@ -15,3 +15,6 @@ __pycache__/
 .venv-kimi/
 
 .harness-runs/
+
+# Development desktop profiles are scoped per checkout.
+apps/desktop/.user-data/

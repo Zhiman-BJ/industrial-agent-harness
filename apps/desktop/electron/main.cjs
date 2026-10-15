@@ -11,6 +11,7 @@ const {
   systemPreferences,
 } = require('electron');
 const { DesktopAccount, registerAccountHandlers } = require('./account.cjs');
+const { devUserDataDirectory } = require('./dev-data.cjs');
 const { authDirectory } = require('@industrial-agent-harness/harness-auth');
 let account;
 let accountModelIdentity = null;
@@ -177,6 +178,13 @@ if (process.argv.includes('--chat-selftest') && process.env.INDUSTRIAL_CHAT_SELF
   app.setPath('userData', process.env.INDUSTRIAL_CHAT_SELFTEST_USER_DATA);
 
 const desktopRoot = path.resolve(__dirname, '..');
+if (!app.isPackaged) {
+  const devDirectory = devUserDataDirectory(desktopRoot);
+  if (devDirectory) {
+    fs.mkdirSync(devDirectory, { recursive: true });
+    app.setPath('userData', devDirectory);
+  }
+}
 const packManager = new PackManager();
 const managedPacks = Boolean(process.env.INDUSTRIAL_HARNESS_PACK_STORE);
 let domainMutationActive = false;
