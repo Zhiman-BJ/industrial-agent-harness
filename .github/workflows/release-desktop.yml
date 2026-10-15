@@ -100,9 +100,13 @@ jobs:
             test -n "$CSC_LINK" && test -n "$CSC_KEY_PASSWORD" && test -n "$APPLE_API_KEY" && test -n "$APPLE_API_KEY_ID" && test -n "$APPLE_API_ISSUER"
             ./apps/desktop/node_modules/.bin/electron-builder --projectDir dist/desktop-stage-release --config "$GITHUB_WORKSPACE/electron-builder.config.cjs" --mac dmg zip --arm64 --publish never
           else
-            echo "::warning::Apple signing credentials are not configured; building an unsigned internal installer."
+            echo "::warning::Apple signing credentials are not configured; building an ad-hoc signed internal installer."
             unset CSC_LINK CSC_KEY_PASSWORD
-            CSC_IDENTITY_AUTO_DISCOVERY=false ./apps/desktop/node_modules/.bin/electron-builder --projectDir dist/desktop-stage-release --config "$GITHUB_WORKSPACE/electron-builder.config.cjs" --mac dmg zip --arm64 --publish never
+            export CSC_IDENTITY_AUTO_DISCOVERY=false
+            ./apps/desktop/node_modules/.bin/electron-builder --projectDir dist/desktop-stage-release --config "$GITHUB_WORKSPACE/electron-builder.config.cjs" --mac dir --arm64 --publish never
+            codesign --force --deep --sign - "dist/desktop-release/mac-arm64/Industrial Agent Harness.app"
+            codesign --verify --deep --strict "dist/desktop-release/mac-arm64/Industrial Agent Harness.app"
+            ./apps/desktop/node_modules/.bin/electron-builder --projectDir dist/desktop-stage-release --config "$GITHUB_WORKSPACE/electron-builder.config.cjs" --mac dmg zip --arm64 --prepackaged "$GITHUB_WORKSPACE/dist/desktop-release/mac-arm64" --publish never
           fi
       - name: Build Windows NSIS installer (signed when credentials exist)
         if: matrix.platform == 'windows'
