@@ -113,11 +113,21 @@ jobs:
         shell: bash
         run: |
           dmg=$(ls dist/desktop-release/*.dmg | head -1)
-          volume=$(hdiutil attach -nobrowse -readonly "$dmg" | sed -n 's/.*Apple_HFS[[:space:]]*//p')
-          test -n "$volume"
-          test -d "$volume/Industrial Agent Harness.app/Contents/MacOS"
+          echo "Verifying $dmg"
+          volume=$(hdiutil attach -nobrowse -readonly "$dmg" | sed -n 's/.*Apple_HFS[[:space:]]*//p' | tail -1)
+          if test -z "$volume" || ! test -d "$volume"; then
+            echo "::error::Could not locate the mounted volume for $dmg"
+            hdiutil attach -nobrowse -readonly "$dmg" 2>&1 || true
+            ls -la /Volumes/ || true
+            exit 1
+          fi
+          if ! test -d "$volume/Industrial Agent Harness.app/Contents/MacOS"; then
+            echo "::error::DMG bundle layout is broken under $volume"
+            find "$volume" -maxdepth 3 -print | head -20
+            exit 1
+          fi
           codesign --verify --deep --strict "$volume/Industrial Agent Harness.app"
-          codesign -dv "$volume/Industrial Agent Harness.app" 2>&1 | grep -q 'Signature='
+          codesign -dv "$volume/Industrial Agent Harness.app" 2>&1 | grep 'Signature='
           hdiutil detach "$volume" -quiet
           echo "DMG structure and signature verified: $dmg"
       - name: Build Windows NSIS installer (signed when credentials exist)
