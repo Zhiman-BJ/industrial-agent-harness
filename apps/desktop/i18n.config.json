@@ -1990,7 +1990,7 @@
     },
     "Back": {
       "en": "Back",
-      "zh-CN": "后退"
+      "zh-CN": "返回"
     },
     "Forward": {
       "en": "Forward",
@@ -2095,10 +2095,6 @@
     "Scene:": {
       "en": "Scene:",
       "zh-CN": "场景："
-    },
-    "Stop": {
-      "en": "Stop",
-      "zh-CN": "停止"
     },
     "Step frame": {
       "en": "Step frame",
@@ -2919,10 +2915,6 @@
     "Syncing…": {
       "en": "Syncing…",
       "zh-CN": "正在同步…"
-    },
-    "Back": {
-      "en": "Back",
-      "zh-CN": "返回"
     },
     "Self-hosted services and other MCP servers": {
       "en": "Self-hosted services and other MCP servers",
@@ -3859,6 +3851,26 @@
     "Could not load this tool provider. Check Runtime diagnostics.": {
       "en": "Could not load this tool provider. Check Runtime diagnostics.",
       "zh-CN": "无法加载此工具提供方，请查看运行诊断。"
+    },
+    "Download runtime files from the official site": {
+      "en": "Download runtime files from the official site",
+      "zh-CN": "从官网下载运行时文件"
+    },
+    "These large files are published by their official projects. Download each file in your browser, then import it here. Every file is verified against the pinned official release before installation.": {
+      "en": "These large files are published by their official projects. Download each file in your browser, then import it here. Every file is verified against the pinned official release before installation.",
+      "zh-CN": "这些大文件由官方项目发布。请在浏览器中下载对应文件，然后在这里导入。每个文件都会按锁定的官方发布校验后才会用于安装。"
+    },
+    "Official download": {
+      "en": "Official download",
+      "zh-CN": "前往官网下载"
+    },
+    "Import downloaded file": {
+      "en": "Import downloaded file",
+      "zh-CN": "导入已下载的文件"
+    },
+    "Continue installation": {
+      "en": "Continue installation",
+      "zh-CN": "继续安装"
     }
   }
 }

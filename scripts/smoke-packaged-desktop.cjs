@@ -96,10 +96,16 @@ if (process.argv.includes('--domains')) {
     planned.filter(item => !failures.includes(item)).map(({ id, label }) => ({ id, label })),
   );
   environment.HARNESS_PACKAGED_SMOKE_STORE = path.join(fixture, 'store');
-  require('./runtime-archive-cache.cjs').stageRuntimeArchiveCache(
+  const runtimeAssets = catalog.packs.flatMap(item => item.runtimeAssets || []);
+  const staged = require('./runtime-archive-cache.cjs').stageRuntimeArchiveCache(
     environment.HARNESS_PACKAGED_SMOKE_STORE,
-    catalog.packs.flatMap(item => item.runtimeAssets || []),
+    runtimeAssets,
   );
+  const unstaged = runtimeAssets.filter(asset => !staged.some(item => item.id === asset.id));
+  if (unstaged.length)
+    throw Error(
+      `Runtime archives are imported from official releases, never downloaded by the installer. Stage them first (node scripts/prepare-ci-runtime-archives.cjs --download, or set HARNESS_RUNTIME_ARCHIVES). Missing: ${unstaged.map(item => item.id).join(', ')}`,
+    );
   const config = path.join(fixture, 'pack-feed.json');
   fs.writeFileSync(
     config,

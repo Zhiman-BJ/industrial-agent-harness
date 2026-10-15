@@ -4353,6 +4353,65 @@ body {
   gap: 3px 12px;
   font-size: var(--ia-font-xs);
 }
+.ia-runtime-preparation {
+  display: grid;
+  gap: 10px;
+  font-size: var(--ia-font-sm);
+}
+.ia-runtime-preparation h2 {
+  margin: 0;
+  font-size: var(--ia-font-md);
+  font-weight: 500;
+}
+.ia-runtime-preparation > p {
+  margin: 0;
+  color: var(--ia-muted);
+}
+.ia-runtime-archive {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px;
+  border: 1px solid var(--ia-border);
+  border-radius: 6px;
+}
+.ia-runtime-archive[data-present] {
+  border-color: var(--ia-border);
+  background: var(--ia-hover);
+}
+.ia-runtime-archive-title {
+  display: grid;
+  gap: 2px;
+}
+.ia-runtime-archive-title b,
+.ia-runtime-archive-ready {
+  font-weight: 500;
+}
+.ia-runtime-archive-title small {
+  color: var(--ia-muted);
+  font-size: var(--ia-font-xs);
+}
+.ia-runtime-archive-actions {
+  display: flex;
+  gap: 8px;
+}
+.ia-runtime-archive-actions button {
+  border: 1px solid var(--ia-border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  background: transparent;
+  color: var(--ia-text);
+  font-size: var(--ia-font-xs);
+  cursor: pointer;
+}
+.ia-runtime-archive-actions button:hover:not(:disabled) {
+  background: var(--ia-hover);
+}
+.ia-runtime-archive-actions button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
 .ia-domain-progress {
   display: grid;
   gap: 6px;

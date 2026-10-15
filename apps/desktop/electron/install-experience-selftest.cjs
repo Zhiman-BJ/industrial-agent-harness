@@ -353,7 +353,7 @@ async function run(window, { manager }) {
       new ReadableStream({
         async pull(controller) {
           await new Promise(resolve =>
-            setTimeout(resolve, quitMode && parsed.pathname === '/native.zip' ? 1500 : delay),
+            setTimeout(resolve, quitMode && parsed.pathname === '/sample-a.hpack' ? 1500 : delay),
           );
           if (options.signal?.aborted) {
             controller.error(options.signal.reason);
@@ -422,14 +422,18 @@ async function run(window, { manager }) {
     if (quitMode) {
       assert.ok(asset, 'Native runtime quit regression requires macOS.');
       delay = 3;
+      // Runtime archives are imported locally now and never downloaded by the
+      // app, so the slow-transfer quit window is the Pack download itself.
+      await manager.runtimeAssets.importArchive(asset, path.join(root, 'native.zip'));
       await select('sample-a');
       await evaluate(`document.querySelector('.ia-domains-primary').click()`);
-      await wait(
-        `document.querySelector('.ia-domain-progress')?.textContent.includes('Fixture Runtime') && document.querySelector('.ia-domain-progress')?.dataset.phase==='downloading'`,
-      );
+      await wait(`document.querySelector('.ia-domain-progress')?.dataset.phase==='downloading'`);
       const beforeQuit = await evaluate('window.viewerHost.domainStatus()');
       assert.equal(beforeQuit.operation.active, true);
-      assert.equal(fs.existsSync(path.join(manager.runtimeAssets.directory, 'prepare.lock')), true);
+      assert.equal(
+        fs.existsSync(path.join(manager.directory, '.installation-operation.json')),
+        true,
+      );
       const { app } = require('electron');
       app.once('will-quit', () => {
         try {
@@ -454,7 +458,7 @@ async function run(window, { manager }) {
             JSON.stringify(
               {
                 passed: true,
-                check: 'normal-quit-awaits-active-native-runtime-download-cleanup',
+                check: 'normal-quit-awaits-active-download-cleanup',
                 outcome: last.outcome,
                 phaseAtQuit: beforeQuit.operation.progress.phase,
               },
@@ -534,6 +538,54 @@ async function run(window, { manager }) {
     await evaluate(
       `window.__installEvents=[];window.viewerHost.onDomainProgress(value=>window.__installEvents.push(value));document.querySelector('.ia-domains-primary').click()`,
     );
+    if (asset) {
+      // sample-a pins a native runtime: installation pauses on the guided
+      // checklist until the official archive is imported from local disk.
+      await wait(
+        `Boolean(document.querySelector('.ia-runtime-preparation .ia-runtime-archive[data-domain="sample-a"][data-asset="fixture"]:not([data-present])'))`,
+      );
+      assert.equal(
+        await evaluate(
+          `document.querySelector('.ia-domains-actions .ia-domains-primary').disabled`,
+        ),
+        true,
+        'Continue installation stays disabled until every archive is imported.',
+      );
+      await screenshot('04a-runtime-preparation');
+      const { dialog, shell } = require('electron');
+      const opened = [];
+      const originalOpenExternal = shell.openExternal;
+      shell.openExternal = async url => {
+        opened.push(url);
+      };
+      try {
+        await evaluate(
+          `document.querySelector('.ia-runtime-archive[data-asset="fixture"] [data-action="download"]').click()`,
+        );
+        for (const end = Date.now() + 10000; Date.now() < end && !opened.length; )
+          await new Promise(resolve => setTimeout(resolve, 50));
+        assert.deepEqual(opened, ['https://install.example/native.zip']);
+      } finally {
+        shell.openExternal = originalOpenExternal;
+      }
+      const originalShowOpenDialog = dialog.showOpenDialog;
+      dialog.showOpenDialog = async () => ({
+        canceled: false,
+        filePaths: [path.join(root, 'native.zip')],
+      });
+      try {
+        await evaluate(
+          `document.querySelector('.ia-runtime-archive[data-asset="fixture"] [data-action="import"]').click()`,
+        );
+        await wait(
+          `document.querySelector('.ia-runtime-archive[data-asset="fixture"]')?.dataset.present==='true'`,
+        );
+      } finally {
+        dialog.showOpenDialog = originalShowOpenDialog;
+      }
+      await screenshot('04b-runtime-archive-imported');
+      await evaluate(`document.querySelector('.ia-domains-actions .ia-domains-primary').click()`);
+    }
     await wait(
       `document.querySelector('.ia-install-transfer')?.textContent.includes('/s') && document.querySelector('.ia-install-transfer')?.textContent.includes('remaining')`,
     );
@@ -781,6 +833,7 @@ async function run(window, { manager }) {
             'catalog-unconfigured-unavailable-connected',
             'all-declared-domains-visible-with-unavailable-reasons',
             'multi-select-space',
+            'runtime-archive-official-download-and-import',
             'download-speed-eta',
             'cancel-retry',
             'native-fixture-check-repair',

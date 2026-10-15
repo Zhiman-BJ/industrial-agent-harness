@@ -1,4 +1,3 @@
-const { Transfer, TransferProgress } = require('./transfer.cjs');
 const { availableSpace, footprint, checkSpace } = require('./install-space.cjs');
 const { inspectRuntimeZip } = require('./runtime-zip.cjs');
 const fs = require('node:fs');
@@ -214,57 +213,95 @@ function sourceIsMounted(directory) {
     info && (info.isSymbolicLink() || info.dev !== fs.statSync(path.dirname(directory)).dev),
   );
 }
-async function download(asset, target, { signal, onProgress }) {
-  const temporary = target + '.' + crypto.randomUUID() + '.partial';
-  const transfer = new Transfer({ signal });
-  return transfer.run(async () => {
-    try {
-      const response = await transfer.response(asset.url);
-      const fd = fs.openSync(temporary, 'wx', 0o600),
-        digest = crypto.createHash('sha256'),
-        progress = new TransferProgress(asset.size);
-      let received = 0,
-        reported = 0;
-      try {
-        for await (const chunk of response.body) {
-          transfer.signal.throwIfAborted();
-          transfer.touch();
-          received += chunk.length;
-          if (received > asset.size) {
-            throw Error('Runtime download size mismatch.');
-          }
-          digest.update(chunk);
-          fs.writeFileSync(fd, chunk);
-          if (received - reported >= 1024 * 1024 || received === asset.size) {
-            onProgress(progress.update(received));
-            reported = received;
-          }
-        }
-      } finally {
-        fs.closeSync(fd);
-      }
-      if (received !== asset.size || digest.digest('hex') !== asset.sha256)
-        throw Error('Runtime download hash or size mismatch.');
-      fs.renameSync(temporary, target);
-    } finally {
-      fs.rmSync(temporary, { force: true });
-    }
-  });
+// Runtime archives (KiCad, FreeCAD, Godot, …) are never fetched by this
+// process: users download the pinned official release in their own browser —
+// where resumable, accelerated connections live — and import the file. The
+// signed Pack declaration pins size and sha256, so any source is acceptable
+// as long as the bytes match; a mismatch is rejected before anything runs.
+function archiveRequiredError(asset) {
+  const error = Error(
+    `${asset.label} ${asset.version} is not imported yet. Download the official release (${asset.url}) and import the file to continue.`,
+  );
+  error.code = 'RUNTIME_ARCHIVE_REQUIRED';
+  error.asset = {
+    id: asset.id,
+    label: asset.label,
+    version: asset.version,
+    url: asset.url,
+    size: asset.size,
+    sha256: asset.sha256,
+  };
+  return error;
 }
 class RuntimeAssetManager {
   constructor({
     directory,
     platform = `${process.platform}-${process.arch}`,
     command = run,
-    fetchArchive = download,
     space = availableSpace,
   } = {}) {
     if (!directory) throw Error('Runtime asset store is required.');
     this.directory = path.join(path.resolve(directory), '.runtime-assets');
     this.platform = platform;
     this.command = command;
-    this.fetchArchive = fetchArchive;
     this.space = space;
+  }
+  archiveLocation(asset) {
+    validateRuntimeAssets([asset]);
+    return path.join(
+      this.directory,
+      'cache',
+      asset.sha256 + (asset.type === 'macos-app-zip' ? '.zip' : '.dmg'),
+    );
+  }
+  archives(assets = []) {
+    validateRuntimeAssets(assets);
+    return assets.map(asset => {
+      const archive = this.archiveLocation(asset);
+      const stat = fs.statSync(archive, { throwIfNoEntry: false });
+      return {
+        id: asset.id,
+        label: asset.label,
+        version: asset.version,
+        url: asset.url,
+        size: asset.size,
+        sha256: asset.sha256,
+        // Cheap presence signal for pickers; import and installation always
+        // re-verify the full sha256 before the bytes are used.
+        present: Boolean(stat?.isFile() && stat.size === asset.size),
+      };
+    });
+  }
+  async importArchive(asset, source) {
+    validateRuntimeAssets([asset]);
+    if (asset.platform !== this.platform) throw Error('Runtime does not support this platform.');
+    const stat = fs.statSync(source, { throwIfNoEntry: false });
+    if (!stat?.isFile()) throw Error('Choose the downloaded runtime archive file.');
+    if (stat.size !== asset.size)
+      throw Error(
+        `${asset.label} archive size differs from the pinned official release; download ${asset.url} again.`,
+      );
+    if ((await fileHash(source)) !== asset.sha256)
+      throw Error(
+        `${asset.label} archive does not match the pinned official release; download ${asset.url} again.`,
+      );
+    const destination = this.archiveLocation(asset);
+    if (fs.existsSync(destination)) {
+      const cached = fs.statSync(destination);
+      if (cached.size === asset.size && (await fileHash(destination)) === asset.sha256)
+        return { id: asset.id, label: asset.label, archive: destination, reused: true };
+      fs.rmSync(destination, { force: true });
+    }
+    fs.mkdirSync(path.dirname(destination), { recursive: true, mode: 0o700 });
+    const staging = destination + '.' + crypto.randomUUID() + '.staging';
+    try {
+      fs.copyFileSync(source, staging, fs.constants.COPYFILE_EXCL | fs.constants.COPYFILE_FICLONE);
+      fs.chmodSync(staging, 0o600);
+      fs.renameSync(staging, destination);
+    } finally {
+      fs.rmSync(staging, { force: true });
+    }
+    return { id: asset.id, label: asset.label, archive: destination, reused: false };
   }
   location(asset) {
     validateRuntimeAssets([asset]);
@@ -459,12 +496,7 @@ class RuntimeAssetManager {
             });
           }
         }
-        const cache = path.join(this.directory, 'cache');
-        fs.mkdirSync(cache, { recursive: true });
-        const archive = path.join(
-          cache,
-          asset.sha256 + (asset.type === 'macos-app-zip' ? '.zip' : '.dmg'),
-        );
+        const archive = this.archiveLocation(asset);
         report({ phase: 'verifying' });
         if (
           fs.existsSync(archive) &&
@@ -472,18 +504,15 @@ class RuntimeAssetManager {
         )
           fs.rmSync(archive);
         const cacheReused = fs.existsSync(archive);
+        if (!cacheReused) throw archiveRequiredError(asset);
         const installedBytes = asset.installedSize || Math.min(32 * 1024 ** 3, asset.size * 8);
-        const estimate = footprint(cacheReused ? 0 : asset.size, installedBytes, {
+        const estimate = footprint(0, installedBytes, {
           cacheReused,
           estimated: asset.installedSize == null,
         });
         const space = checkSpace(this.directory, estimate, this.space);
         report({ phase: 'checking-space', ...space });
         signal?.throwIfAborted();
-        if (!cacheReused) {
-          report({ phase: 'downloading', received: 0, total: asset.size });
-          await this.fetchArchive(asset, archive, { signal, onProgress: report });
-        }
         report({ phase: 'verifying', cacheReused });
         // Always verify even cached input before mounting or executing anything.
         if (fs.statSync(archive).size !== asset.size || (await fileHash(archive)) !== asset.sha256)
@@ -611,4 +640,10 @@ class RuntimeAssetManager {
     }
   }
 }
-module.exports = { RuntimeAssetManager, validateRuntimeAssets, fileHash, run };
+module.exports = {
+  RuntimeAssetManager,
+  validateRuntimeAssets,
+  fileHash,
+  run,
+  archiveRequiredError,
+};

@@ -216,6 +216,15 @@ export interface ViewerHostApi {
   domainAvailable(): Promise<AvailableDomainPack[]>;
   domainCancel(): Promise<{ cancelled: boolean }>;
   domainInstall(domains: string[]): Promise<{ installed: DomainOption[] }>;
+  domainRuntimeArchives(domains: string[]): Promise<RuntimeArchiveRequirement[]>;
+  domainImportRuntimeArchive(request: {
+    domain: string;
+    asset: string;
+  }): Promise<{ imported: boolean; id?: string; label?: string; reused?: boolean }>;
+  domainOpenRuntimeArchive(request: {
+    domain: string;
+    asset: string;
+  }): Promise<{ opened: boolean }>;
   domainRemove(domain: string): Promise<{ installed: DomainOption[] }>;
   domainRepair(domain: string): Promise<{ installed: DomainOption[] }>;
   onDomainProgress(callback: (progress: DomainInstallProgress) => void): () => void;
@@ -444,6 +453,16 @@ export interface InstalledDomainPack {
   summary?: string;
   prerequisites?: string[];
   runtimeState?: 'ready' | 'needs-preparation' | 'external-dependencies' | 'installed' | null;
+}
+export interface RuntimeArchiveRequirement {
+  domain: string;
+  id: string;
+  label: string;
+  version: string;
+  url: string;
+  size: number;
+  sha256: string;
+  present: boolean;
 }
 export interface AvailableDomainPack {
   domain: string;

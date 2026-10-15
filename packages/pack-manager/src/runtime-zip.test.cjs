@@ -96,14 +96,9 @@ test('ZIP installation extracts app, verifies signature/version and reuses cache
     versionText: '1.2.3',
     profileEnvironment: {},
   };
-  let downloads = 0;
   const manager = new RuntimeAssetManager({
     directory: root,
     platform: 'darwin-arm64',
-    fetchArchive: async (_asset, file) => {
-      downloads++;
-      fs.writeFileSync(file, bytes);
-    },
     command: async (file, args) => {
       commands.push([file, args]);
       if (file === '/usr/bin/ditto') {
@@ -117,6 +112,9 @@ test('ZIP installation extracts app, verifies signature/version and reuses cache
       return path.basename(file) === 'Renderer' ? '1.2.3' : '';
     },
   });
+  const download = path.join(root, 'official-download.zip');
+  fs.writeFileSync(download, bytes);
+  await manager.importArchive(asset, download);
   await manager.ensure([asset], { onProgress: event => events.push(event) });
   assert.equal(manager.status([asset])[0].ready, true);
   assert.ok(events.some(event => event.phase === 'extracting'));
@@ -124,6 +122,5 @@ test('ZIP installation extracts app, verifies signature/version and reuses cache
   assert.ok(!commands.some(([file]) => file.endsWith('/hdiutil')));
   fs.rmSync(manager.status([asset])[0].executable);
   await manager.ensure([asset]);
-  assert.equal(downloads, 1);
   assert.equal(manager.status([asset])[0].ready, true);
 });
