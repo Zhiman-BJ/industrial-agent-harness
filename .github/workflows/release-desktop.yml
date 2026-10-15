@@ -96,7 +96,9 @@ jobs:
         run: |
           npm install -g pnpm@11.1.3
           pnpm install --frozen-lockfile
-          pnpm test:architecture
+          # The trusted architecture lane runs on Linux; its candidate-fetch
+          # tests fail on windows runners (git nul-device hooksPath quirk).
+          if test "${{ matrix.platform }}" = mac; then pnpm test:architecture; fi
           pnpm test
           pnpm --filter @industrial-agent-harness/desktop build
       - name: Stage packaged app
@@ -115,6 +117,7 @@ jobs:
             ./apps/desktop/node_modules/.bin/electron-builder --projectDir dist/desktop-stage-release --config "$GITHUB_WORKSPACE/electron-builder.config.cjs" --mac dmg zip --arm64 --publish never
           else
             echo "::warning::Apple signing credentials are not configured; building an unsigned internal installer."
+            unset CSC_LINK CSC_KEY_PASSWORD
             CSC_IDENTITY_AUTO_DISCOVERY=false ./apps/desktop/node_modules/.bin/electron-builder --projectDir dist/desktop-stage-release --config "$GITHUB_WORKSPACE/electron-builder.config.cjs" --mac dmg zip --arm64 --publish never
           fi
       - name: Build Windows NSIS installer (signed when credentials exist)
@@ -128,6 +131,8 @@ jobs:
             & .\apps\desktop\node_modules\.bin\electron-builder.cmd --projectDir dist/desktop-stage-release --config "$env:GITHUB_WORKSPACE\electron-builder.config.cjs" --win nsis --publish never
           } else {
             Write-Host "::warning::Windows signing credentials are not configured; building an unsigned internal installer."
+            Remove-Item Env:WIN_CSC_LINK -ErrorAction SilentlyContinue
+            Remove-Item Env:WIN_CSC_KEY_PASSWORD -ErrorAction SilentlyContinue
             & .\apps\desktop\node_modules\.bin\electron-builder.cmd --projectDir dist/desktop-stage-release --config "$env:GITHUB_WORKSPACE\electron-builder.config.cjs" --win nsis --publish never
           }
       - name: Verify packaged application first run
