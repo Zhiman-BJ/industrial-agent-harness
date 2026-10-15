@@ -12,7 +12,7 @@ const { validateProfile, writeCliConfig, sessionEnv } = require('../src/model-co
 for (const provider of ['openai_legacy', 'kimi'])
   test(
     `real Kimi CLI delivers inline images through ${provider} and retains them in native history`,
-    { skip: false, timeout: 45000 },
+    { skip: !['darwin', 'linux'].includes(process.platform), timeout: 45000 },
     async t => {
       const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kimi-vision-wire-'));
       const requests = [];
