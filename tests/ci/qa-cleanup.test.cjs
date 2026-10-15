@@ -5,6 +5,7 @@ const {
   isLockName,
   isEvidenceDirName,
   plan,
+  retentionFromOptions,
 } = require('../../scripts/qa-cleanup.cjs');
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -120,4 +121,38 @@ test('name classifiers separate locks, cleanup logs and evidence directories', (
   assert.equal(isEvidenceDirName('.lock.portable'), false);
   assert.equal(isEvidenceDirName('qa-cleanup-2026-10-10.json'), false);
   assert.equal(isEvidenceDirName('20261009T123108Z-72e0954'), true);
+});
+
+test('CLI options map onto the plan retention contract without drift', () => {
+  // Regression: main() once passed raw options (retentionBuilds et al.) where
+  // plan() reads builds/evidence/worktree, silently disabling every retention
+  // window via NaN comparisons and selecting fresh artifacts for deletion.
+  assert.deepEqual(
+    retentionFromOptions({
+      retentionBuilds: 7,
+      retentionEvidence: 14,
+      retentionWorktree: 3,
+      lockTtlHours: 12,
+    }),
+    { builds: 7, evidence: 14, worktree: 3, lockTtlHours: 12 },
+  );
+});
+
+test('plan refuses a retention window that is not a finite number', () => {
+  assert.throws(
+    () =>
+      plan({
+        builds: [{ path: '/w/dist/fresh', kind: 'build-output' }],
+        evidences: [],
+        locks: [],
+        worktrees: [],
+        now,
+        retention: { builds: undefined, evidence: 14, worktree: 7, lockTtlHours: 6 },
+        isIgnored: () => true,
+        isActive: () => false,
+        dirtyWorktrees: new Set(),
+        newestOf: () => now,
+      }),
+    /retention\.builds must be a finite number/,
+  );
 });
