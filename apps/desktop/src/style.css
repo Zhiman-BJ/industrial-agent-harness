@@ -271,7 +271,7 @@ body,
   box-shadow: 0 12px 32px #00000026;
   border-radius: 12px;
   padding: 14px;
-  max-height: calc(100dvh - 88px);
+  max-height: calc(100% - 88px);
   overflow: auto;
 }
 .ia-settings-title {

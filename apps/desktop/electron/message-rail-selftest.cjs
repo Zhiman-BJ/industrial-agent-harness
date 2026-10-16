@@ -4,7 +4,13 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 async function run(window, store, project) {
-  const evaluate = script => window.webContents.executeJavaScript(script, true);
+  const evaluate = async script => {
+    try {
+      return await window.webContents.executeJavaScript(script, true);
+    } catch (error) {
+      throw Error(`Message rail selftest renderer script failed:\n${script}`, { cause: error });
+    }
+  };
   async function wait(script) {
     const deadline = Date.now() + 15000;
     while (Date.now() < deadline) {
@@ -197,10 +203,13 @@ async function run(window, store, project) {
   );
   window.setContentSize(1280, 720);
   await wait(`innerWidth === 1280`);
+  await wait(`document.querySelector('.ia-settings-button')?.getClientRects().length > 0 &&
+    document.querySelector('.ia-chat-scroll')?.clientHeight > 0 &&
+    document.querySelectorAll('.ia-rail-tick').length === 6`);
   await evaluate(
     `document.querySelectorAll('.ia-chat-turn')[3].scrollIntoView({block:'start',behavior:'instant'}); document.querySelector('.ia-chat-scroll').scrollTop += 180`,
   );
-  await evaluate(`document.querySelectorAll('.ia-rail-tick')[4].focus()`);
+  await evaluate(`document.querySelector('.ia-rail-tick[aria-label="Jump to message 5"]').focus()`);
   await wait(
     `document.querySelector('.ia-rail-preview b')?.textContent === 'Rail long transcript 5'`,
   );

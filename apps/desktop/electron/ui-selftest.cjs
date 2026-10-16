@@ -185,6 +185,28 @@ async function run(window, dialog) {
       return rect.width > 0 && (rect.left < -1 || rect.right > innerWidth + 1 || rect.bottom > innerHeight + 1);
     }).map(node => node.getAttribute('aria-label') || node.title || node.textContent)`);
     assert.deepEqual(clipped, [], `${name}: essential controls must remain visible`);
+    const settings = await evaluate(`(() => {
+      const popup = document.querySelector('.ia-settings-popover');
+      if (!popup) return null;
+      const bounds = document.querySelector('.ia-columns').getBoundingClientRect();
+      const rect = popup.getBoundingClientRect();
+      const title = popup.querySelector('.ia-settings-title').getBoundingClientRect();
+      const close = popup.querySelector('.ia-settings-title button');
+      const button = close.getBoundingClientRect();
+      const target = document.elementFromPoint(button.left + button.width / 2, button.top + button.height / 2);
+      return {
+        inside: rect.top >= bounds.top && rect.bottom <= bounds.bottom &&
+          rect.left >= bounds.left && rect.right <= bounds.right,
+        titleVisible: title.top >= rect.top && title.bottom <= rect.bottom,
+        closeReachable: close === target || close.contains(target),
+        top: rect.top, availableTop: bounds.top, bottom: rect.bottom, availableBottom: bounds.bottom,
+      };
+    })()`);
+    if (settings)
+      assert.ok(
+        settings.inside && settings.titleVisible && settings.closeReachable,
+        `${name}: settings must fit below the header with an accessible close button: ${JSON.stringify(settings)}`,
+      );
   }
   async function capture(name) {
     const directory = process.env.INDUSTRIAL_UI_SCREENSHOTS;
@@ -523,7 +545,23 @@ async function run(window, dialog) {
   await click('.ia-settings-button');
   await quality('tabs-settings-minimum');
   await capture('tabs-settings-minimum');
-  await click('.ia-settings-title button');
+  const settingsClose = await evaluate(`(() => {
+    const rect = document.querySelector('.ia-settings-title button').getBoundingClientRect();
+    return {x: Math.round(rect.left + rect.width / 2), y: Math.round(rect.top + rect.height / 2)};
+  })()`);
+  window.webContents.sendInputEvent({
+    type: 'mouseDown',
+    button: 'left',
+    clickCount: 1,
+    ...settingsClose,
+  });
+  window.webContents.sendInputEvent({
+    type: 'mouseUp',
+    button: 'left',
+    clickCount: 1,
+    ...settingsClose,
+  });
+  await wait(`!document.querySelector('.ia-settings-popover')`);
   await click('.ia-sidebar-backdrop');
   await wait(`!document.querySelector('.ia-sidebar')`);
   await capture('tabs-minimum');

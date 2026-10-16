@@ -220,3 +220,11 @@ macOS 验收必须包含原生红黄绿的窗口截图；`webContents.capturePag
 | `--viewer-selftest` 旧聚合入口 | **fail**：在到达本次迁移选择器之前，旧断言把资源列表首项当作 `chip.netlist.inspect`，但当前首项为 `project.work`。对应 catalog 与断言在锚定提交中已存在，本次未修改；资源单独回归包含在已通过的 `test:logs` 中。保留该失败，未放宽断言；`viewer.log` |
 
 完整验收未完成：上述旧聚合入口仍失败，Godot 与工业内核缺少本机前置，原生鼠标窗控／拖动待复核。本轮未执行新安装包的 CAD 安装冒烟、Windows 或 Linux 验收，也不据此扩大平台支持声明。
+
+### 设置面板裁切回归修复（2026-10-16）
+
+对 `38a3eaa` 的复查确认：640×480 窗口中，设置面板仍按整个窗口计算最大高度，顶部为 30px，而新增顶栏下方的内容区从 58px 开始，造成顶部裁切。现改为按侧栏可用高度限制面板；保留内部滚动和原有外壳裁切边界。
+
+`test:ui` 新增面板完整位于内容区、标题可见、关闭按钮命中检查，并用原生鼠标事件关闭最小窗口中的设置面板。该断言在旧样式上准确失败；修复后构建、UI 自测及截图复核通过。消息导航测试在恢复窗口尺寸后等待实际侧栏与刻度就绪，并记录失败脚本，便于定位 CI 异常；这不代表已确认此前 macOS CI 的具体失败原因。
+
+本次证据目录为 `dist/ci-reports/20261016T092818Z-38a3eaa-settings/`：`ui-red.log` 保留旧样式失败，`ui-final.log` 与 `ui-final/tabs-settings-minimum.png` 保留修复后验证；`architecture-contract.log`、`architecture.log`、`format.log` 和 `lint.log` 通过，lint 仍为 0 errors、94 warnings。此前未完成的验收项保持原状态。
