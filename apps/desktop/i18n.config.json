@@ -3942,6 +3942,55 @@
     },
     "Game/simulation engineering with the Godot engine.": {
       "en": "Game/simulation engineering with the Godot engine.",
-      "zh-CN": "基于 Godot 引擎的游戏/仿真工程。"    }
+      "zh-CN": "基于 Godot 引擎的游戏/仿真工程。"
+    },
+    "General": {
+      "en": "General",
+      "zh-CN": "通用"
+    },
+    "Built in · No installation required": {
+      "en": "Built in · No installation required",
+      "zh-CN": "内置 · 无需安装"
+    },
+    "General projects support everyday coding and file tasks. No domain pack is required.": {
+      "en": "General projects support everyday coding and file tasks. No domain pack is required.",
+      "zh-CN": "通用项目支持日常编程和文件任务，无需安装领域包。"
+    },
+    "Need another domain?": {
+      "en": "Need another domain?",
+      "zh-CN": "需要其他领域？"
+    },
+    "Start with General, or add a specialized domain": {
+      "en": "Start with General, or add a specialized domain",
+      "zh-CN": "直接开始通用项目，或添加专业领域"
+    },
+    "Domain packs add specialized tools and skills. You can change the domain later in project details.": {
+      "en": "Domain packs add specialized tools and skills. You can change the domain later in project details.",
+      "zh-CN": "领域包提供专业工具和技能。之后也可以在项目详情中切换领域。"
+    },
+    "Install domain packs": {
+      "en": "Install domain packs",
+      "zh-CN": "安装领域包"
+    },
+    "Install a project domain": {
+      "en": "Install a project domain",
+      "zh-CN": "安装项目领域"
+    },
+    "Your project details are saved. After installation, return to finish creating your project.": {
+      "en": "Your project details are saved. After installation, return to finish creating your project.",
+      "zh-CN": "已保留填写的项目信息。安装完成后将返回并继续创建项目。"
+    },
+    "General projects are ready to use without installing a domain pack.": {
+      "en": "General projects are ready to use without installing a domain pack.",
+      "zh-CN": "无需安装领域包，也可以直接创建通用项目。"
+    },
+    "Continue with General": {
+      "en": "Continue with General",
+      "zh-CN": "使用通用领域继续"
+    },
+    "Back to project": {
+      "en": "Back to project",
+      "zh-CN": "返回创建项目"
+    }
   }
 }

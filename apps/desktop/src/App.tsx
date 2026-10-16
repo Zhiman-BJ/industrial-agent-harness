@@ -589,7 +589,14 @@ export function App() {
       .catch(reason => setError(String(reason)));
     void window.viewerHost
       .domains()
-      .then(setDomains)
+      .then(items => {
+        setDomains(items);
+        setProjectDraft(current =>
+          current && !current.domain
+            ? { ...current, domain: items.find(item => item.builtin)?.id || '' }
+            : current,
+        );
+      })
       .catch(reason => setError(String(reason)));
     void window.viewerHost
       .domainStatus()
@@ -899,7 +906,11 @@ export function App() {
   }
   function chooseProject() {
     setProjectError('');
-    setProjectDraft({ directory: '', name: '', domain: '' });
+    setProjectDraft({
+      directory: '',
+      name: '',
+      domain: domains.find(item => item.builtin)?.id || '',
+    });
   }
   async function chooseProjectDirectory() {
     setProjectError('');
@@ -2360,13 +2371,17 @@ export function App() {
           </div>
         </div>
       </div>
-      {projectDraft && (
+      {projectDraft && !domainManagerOpen && (
         <CreateProjectModal
           draft={projectDraft}
           domains={domains}
           error={projectError}
           onChange={setProjectDraft}
           onChooseDirectory={chooseProjectDirectory}
+          onManageDomains={() => {
+            setDomainFirstRun(false);
+            setDomainManagerOpen(true);
+          }}
           onClose={() => setProjectDraft(null)}
           onCreate={createProject}
         />
@@ -2385,16 +2400,40 @@ export function App() {
       {domainManagerOpen && (
         <DomainManager
           firstRun={domainFirstRun}
+          projectSetup={Boolean(projectDraft)}
+          onInstalled={
+            projectDraft
+              ? installed => {
+                  setProjectDraft(current =>
+                    current ? { ...current, domain: installed[0]?.id || current.domain } : current,
+                  );
+                  setDomainManagerOpen(false);
+                }
+              : undefined
+          }
           onSetupNext={action => {
             localStorage.setItem('ia-domain-onboarding-skipped', 'true');
             setDomainManagerOpen(false);
             setDomainFirstRun(false);
             if (action === 'model') setModelSettingsOpen(true);
-            else setProjectDraft({ directory: '', name: '', domain: domains[0]?.id || '' });
+            else
+              setProjectDraft(
+                current =>
+                  current || {
+                    directory: '',
+                    name: '',
+                    domain: domains.find(item => item.builtin)?.id || '',
+                  },
+              );
           }}
           busy={runningSessions.some(session => session.running)}
           onChanged={items => {
             setDomains(items);
+            setProjectDraft(current =>
+              current && !items.some(item => item.id === current.domain)
+                ? { ...current, domain: items.find(item => item.builtin)?.id || '' }
+                : current,
+            );
             resourcesChanged();
           }}
           onClose={() => {

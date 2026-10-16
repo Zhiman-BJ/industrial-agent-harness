@@ -516,6 +516,7 @@ export interface DomainOption {
   id: string;
   label: string;
   emoji: string;
+  builtin?: boolean;
 }
 export interface CoreUpdateState {
   status:
