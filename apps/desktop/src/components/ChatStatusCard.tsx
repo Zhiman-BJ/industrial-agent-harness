@@ -56,8 +56,9 @@ export function ChatStatusCard({
 }) {
   const { t } = useDisplayText();
   const [open, setOpen] = useState(false);
-  const [remoteOpen, setRemoteOpen] = useState(false);
-  const [todoOpen, setTodoOpen] = useState(false);
+  // 手风琴：两个区块互斥展开，卡片始终只多一层内容，避免薄区块和长列表
+  // 同时摊开造成的密度失衡。
+  const [openBlock, setOpenBlock] = useState<'remote' | 'todo' | null>(null);
   const [project, setProject] = useState<RemoteProjectState>();
   const [task, setTask] = useState<RemoteTaskState | null>(null);
   const [session, setSession] = useState<RemoteSessionState | null>(null);
@@ -65,6 +66,8 @@ export function ChatStatusCard({
   const [ending, setEnding] = useState(false);
   const remoteBodyId = useId();
   const todoBodyId = useId();
+  const remoteOpen = openBlock === 'remote';
+  const todoOpen = openBlock === 'todo';
 
   useEffect(() => {
     if (!remote) return;
@@ -186,7 +189,7 @@ export function ChatStatusCard({
               aria-expanded={remoteOpen}
               aria-controls={remoteBodyId}
               aria-label={t(remoteOpen ? 'Collapse remote status' : 'Expand remote status')}
-              onClick={() => setRemoteOpen(value => !value)}
+              onClick={() => setOpenBlock(remoteOpen ? null : 'remote')}
             >
               <Cloud size={14} aria-hidden="true" />
               <span className="ia-status-title">{t('Remote environment')}</span>
@@ -196,10 +199,9 @@ export function ChatStatusCard({
             </button>
             {remoteOpen && (
               <div className="ia-status-body" id={remoteBodyId}>
-                <div className="ia-status-row">
-                  {remoteSummary}
-                  {project?.service.reason && ` · ${t(project.service.reason)}`}
-                </div>
+                {project?.service.reason && (
+                  <div className="ia-status-row">{t(project.service.reason)}</div>
+                )}
                 {session && !terminal && !session.callLocked && remote.chatId && (
                   <div className="ia-status-row">
                     <button
@@ -247,7 +249,7 @@ export function ChatStatusCard({
               aria-expanded={todoOpen}
               aria-controls={todoBodyId}
               aria-label={t(todoOpen ? 'Collapse task list' : 'Expand task list')}
-              onClick={() => setTodoOpen(value => !value)}
+              onClick={() => setOpenBlock(todoOpen ? null : 'todo')}
             >
               <ListChecks size={14} aria-hidden="true" />
               <span className="ia-status-title">{t('Tasks')}</span>

@@ -193,17 +193,18 @@ async function runInner(window) {
   await wait(`Boolean(document.querySelector('.ia-agent-tool .ia-remote-badge'))`);
   await capture('10-chat-remote-tool-badge');
 
-  // 9. The card on this chat carries both blocks (remote + tasks); open the
-  // dock if needed and expand them to review the divider and the task list.
-  // The card keeps its open/expand state across chats, so only toggle what is
-  // still collapsed.
+  // 9. The card on this chat carries both blocks (remote + tasks); blocks are
+  // mutually exclusive (accordion): expanding tasks collapses the remote body,
+  // keeping the card compact. The dock keeps its state across chats.
   await evaluate(`document.querySelector('.ia-status-pill')?.click()`);
   await wait(`document.querySelectorAll('.ia-status-dock .ia-status-head').length === 2`);
   await evaluate(
-    `document.querySelectorAll('.ia-status-dock .ia-status-head:not([aria-expanded="true"])').forEach(head => head.click())`,
+    `Array.from(document.querySelectorAll('.ia-status-dock .ia-status-head')).find(head => head.textContent.includes('任务')).click()`,
   );
-  await wait(`document.querySelectorAll('.ia-status-dock .ia-status-body').length === 2`);
-  await capture('10b-status-card-both-blocks');
+  await wait(
+    `Boolean(document.querySelector('.ia-status-dock .ia-status-todo')) && !document.querySelector('.ia-status-dock .ia-status-body:not(.ia-status-todo)')`,
+  );
+  await capture('10b-status-card-todo-expanded');
 
   console.log('[remote-ui-selftest] done');
 }
