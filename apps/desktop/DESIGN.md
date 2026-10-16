@@ -45,13 +45,13 @@ typography:
     letterSpacing: '-0.02em'
   project-title:
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'IBM Plex Sans', sans-serif"
-    fontSize: '30px'
+    fontSize: '24px'
     fontWeight: 500
     lineHeight: 1.3
     letterSpacing: '-0.03em'
   dialog-title:
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'IBM Plex Sans', sans-serif"
-    fontSize: '20px'
+    fontSize: '16px'
     fontWeight: 500
     lineHeight: 1.5
   body:
