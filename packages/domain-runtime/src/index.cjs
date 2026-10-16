@@ -284,5 +284,6 @@ module.exports = {
   ...require('./remote-runtime.cjs'),
   // Trusted Pack plugins share the protected backend and bounded file boundary.
   ...require('./task-process.cjs'),
+  dockerCli: require('./docker-cli.cjs'),
   runtimeFiles: require('./workspace-files.cjs'),
 };
