@@ -43,6 +43,13 @@ Action 缺失工具版本、输入哈希和证据时，不通过严格校验，�
 修改型工具验证声明及旧 Action 兼容。完整状态闭环与失效、失败、恢复在 Runtime 集成测试中验证；
 契约单测不能替代原生工程验收。
 
+## 远程沙箱同步契约
+
+`remote.cjs` 以独立的 `REMOTE_SCHEMA_VERSION = '1'` 冻结 issue #199 P0 阶段的远程执行
+契约：服务发现与 qualification、Pack 执行 profile 与策略、输入快照与上传会话、
+SourceChangeSet、ArtifactBundle、调用恢复身份、同步状态机及会话绑定。它是设计契约而非
+已部署能力的声明，详见[远程沙箱同步契约](remote-sync-contract.md)。
+
 ## 可选成果展示协议
 
 版本字符串 `1` 的 ToolPresentation／ActionPresentation／ResultGroup／ResultSelection 是独立应用展示协议，不扩充 Artifact 或 Verification 的工程语义。局部输出名先绑定本 Action 的真实产物，替代与检查关系再校验确切输入内容；宿主绑定项目、chat、请求身份。未知版本或不合法声明只禁用该组并保留诊断及事实记录。详见[任务成果契约](task-results.md)。
