@@ -1638,6 +1638,7 @@ export function App() {
                 </header>
               )}
               <ChatStatusCard
+                hidden={page === 'project' || page === 'capabilities'}
                 remote={
                   activeProject?.executionLocation === 'remote'
                     ? {

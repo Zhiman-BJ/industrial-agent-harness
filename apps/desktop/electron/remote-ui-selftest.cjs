@@ -6,6 +6,7 @@
 //   INDUSTRIAL_UI_SCREENSHOTS=<output directory>
 const fs = require('node:fs');
 const path = require('node:path');
+const assert = require('node:assert/strict');
 const { saveBindings } = require('./project-bindings.cjs');
 const { setLanguage } = require('./selftest-language.cjs');
 
@@ -176,14 +177,14 @@ async function runInner(window) {
   // 7. Chat page: status pill top-right (card collapsed, conversation centered)
   // with an enabled composer; opening the card shifts the conversation left.
   await click('.ia-new-chat');
-  await wait(`document.querySelector('.ia-status-dock')?.textContent.includes('远程软件与沙箱')`);
+  await wait(`document.querySelector('.ia-status-dock')?.textContent.includes('远程就绪')`);
   await wait(`document.querySelector('.ia-composer textarea')?.disabled === false`);
   await capture('09-chat-status-pill');
   await click('.ia-status-pill');
   await wait(`Boolean(document.querySelector('.ia-status-dock.open .ia-status-card'))`);
   await capture('09b-status-card-open-shifts-chat');
   await click('.ia-status-dock.open .ia-status-head');
-  await wait(`Boolean(document.querySelector('.ia-status-dock .ia-status-body'))`);
+  await wait(`Boolean(document.querySelector('.ia-status-dock .ia-status-body:not([hidden])'))`);
   await capture('09c-status-card-expanded');
 
   // 8. Open the seeded chat: the remote sandbox tool call carries a green
@@ -202,9 +203,76 @@ async function runInner(window) {
     `Array.from(document.querySelectorAll('.ia-status-dock .ia-status-head')).find(head => head.textContent.includes('任务')).click()`,
   );
   await wait(
-    `Boolean(document.querySelector('.ia-status-dock .ia-status-todo')) && !document.querySelector('.ia-status-dock .ia-status-body:not(.ia-status-todo)')`,
+    `Boolean(document.querySelector('.ia-status-dock .ia-status-todo:not([hidden])')) && !document.querySelector('.ia-status-dock .ia-status-body:not(.ia-status-todo):not([hidden])')`,
   );
   await capture('10b-status-card-todo-expanded');
+
+  // The real renderer must keep the composer clear at both sides of the
+  // chat-column breakpoint, including the minimum supported native window.
+  const originalBounds = window.getBounds();
+  async function layout(name, width, height) {
+    window.setSize(width, height);
+    await new Promise(resolve => setTimeout(resolve, 150));
+    const metrics = await evaluate(`(() => {
+      const card = document.querySelector('.ia-status-card');
+      const chat = document.querySelector('.ia-chat');
+      const composer = document.querySelector('.ia-composer');
+      const flow = document.querySelector('.ia-chat-scroll-area');
+      const rect = node => { const r = node.getBoundingClientRect(); return { left:r.left, right:r.right, top:r.top, bottom:r.bottom, width:r.width }; };
+      const close = card.querySelector('.ia-status-card-head button');
+      const c = close.getBoundingClientRect();
+      return { card:rect(card), chat:rect(chat), composer:rect(composer), flow:rect(flow), overflow:card.scrollWidth > card.clientWidth + 1,
+        clickable: close.contains(document.elementFromPoint(c.left + c.width / 2, c.top + c.height / 2)) };
+    })()`);
+    assert.equal(metrics.overflow, false, `${name}: no horizontal card overflow`);
+    assert.equal(metrics.clickable, true, `${name}: conversation cannot intercept card controls`);
+    assert.ok(
+      metrics.card.left >= metrics.chat.left && metrics.card.right <= metrics.chat.right,
+      `${name}: card stays inside the chat column`,
+    );
+    assert.ok(metrics.composer.width >= 240, `${name}: composer keeps a usable width`);
+    assert.ok(
+      metrics.card.right <= metrics.composer.left ||
+        metrics.card.left >= metrics.composer.right ||
+        metrics.card.bottom <= metrics.composer.top ||
+        metrics.card.top >= metrics.composer.bottom,
+      `${name}: card never covers the composer`,
+    );
+    if (metrics.chat.width < 960)
+      assert.ok(
+        metrics.card.bottom <= metrics.flow.top + 1,
+        `${name}: narrow card reserves space above conversation`,
+      );
+    else
+      assert.ok(
+        metrics.card.left >= metrics.composer.right,
+        `${name}: wide card has a separate column`,
+      );
+    await capture(name);
+  }
+  await layout('11-status-wide-light', 1440, 900);
+  await layout('12-status-medium-light', 1000, 700);
+  await layout('13-status-minimum-light', 640, 480);
+  await evaluate(`document.querySelector('.ia-app').classList.add('theme-dark')`);
+  await layout('14-status-minimum-dark', 640, 480);
+  await layout('15-status-wide-dark', 1440, 900);
+  await setLanguage(window, 'en');
+  await capture('16-status-wide-dark-en');
+
+  // Escape closes the nonmodal card and returns keyboard focus to its trigger.
+  await evaluate(`document.querySelector('.ia-status-card-head button').focus()`);
+  window.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'Escape' });
+  window.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'Escape' });
+  await wait(
+    `!document.querySelector('.ia-status-dock.open') && document.activeElement === document.querySelector('.ia-status-pill')`,
+  );
+  assert.equal(
+    await evaluate(`document.querySelector('.ia-status-pill').getAttribute('aria-expanded')`),
+    'false',
+  );
+  assert.equal(await evaluate(`document.querySelector('.ia-status-card').hidden`), true);
+  await capture('17-status-collapsed-dark-en');
+  window.setBounds(originalBounds);
 
   console.log('[remote-ui-selftest] done');
 }

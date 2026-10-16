@@ -170,9 +170,14 @@ async function run(window, dialog) {
   await click('.ia-status-pill');
   await wait(`Boolean(document.querySelector('.ia-status-dock.open .ia-status-card'))`);
   await click('.ia-status-dock .ia-status-head');
-  await wait(`Boolean(document.querySelector('.ia-status-dock .ia-status-body'))`);
+  await wait(`Boolean(document.querySelector('.ia-status-dock .ia-status-body:not([hidden])'))`);
   await click('.ia-status-dock .ia-status-body .ia-log-link');
   await wait(`Boolean(document.querySelector('.ia-project-page'))`);
+  assert.equal(
+    await evaluate(`document.querySelector('.ia-status-dock').hidden`),
+    true,
+    'Chat status stays mounted but does not cover project settings',
+  );
   await click('.ia-settings-button');
   await wait(
     `Array.from(document.querySelectorAll('.ia-settings-row')).some(row => row.textContent.includes('MCP & Skills'))`,

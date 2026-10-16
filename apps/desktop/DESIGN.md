@@ -185,6 +185,37 @@ components:
 
 # Design System: Industrial Harness desktop
 
+## Chat execution status
+
+The execution card extends the neutral workbench using Impeccable's Operate and
+polish guidance. Task and remote state stay together; conversation remains the
+primary work area.
+
+- The collapsed control reserves a row below the header, with a 32 px minimum
+  target, a single-line status and a tabular task count.
+- At a chat-column width of 960 px or more, opening the card reserves a 320 px
+  conversation/composer gutter for a 296 px side panel. This responds to the
+  actual chat column, including split workspace layouts.
+- In narrower columns the card stays in flow above messages, bounded to
+  36 vh / 320 px. Content scrolls independently; the header remains available.
+- Use a raised surface, one border and a 12 px radius. Headers have a 16 px icon
+  column, 8 px gaps and 16 px insets. State text gets its own line; chevrons share
+  a column. Task text aligns with section text; the active row uses panel fill.
+- Progress reflects completed/total tasks. Pending work never reads complete;
+  unfinished recorded work does not imply an actively running agent. Remote
+  failure/unknown states override healthy presentation. Ready requires the
+  existing domain qualification and file-sync prerequisites.
+- Sections remain mutually exclusive. Escape collapses and restores trigger
+  focus. A concise live region announces state, not the interactive card.
+  Reduced motion disables spinner/chevron motion.
+- Project/capability pages hide presentation while keeping polling mounted.
+  Both themes use existing semantic tokens and retain user preference.
+
+`chat-status.test.cjs` covers task states, remote failures, prerequisites and
+translations. `remote-ui-selftest` includes bounds, focus and capture checks at
+1440, 1000 and 640 px. Native checks require Electron and a local mock gateway;
+adding coverage alone is not evidence that it ran.
+
 ## Overview
 
 **Creative North Star: "Neutral desktop conversation workbench"**

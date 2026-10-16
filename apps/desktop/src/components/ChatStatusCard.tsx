@@ -1,5 +1,6 @@
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import {
+  ArrowUpRight,
   Check,
   ChevronDown,
   ChevronRight,
@@ -8,6 +9,7 @@ import {
   Cloud,
   ListChecks,
   LoaderCircle,
+  Square,
 } from 'lucide-react';
 import { useDisplayText } from '@industrial-agent-harness/viewer-builtin/text';
 import type {
@@ -16,20 +18,7 @@ import type {
   RemoteSessionState,
 } from '@industrial-agent-harness/viewer-builtin/api';
 
-const serviceLabels = {
-  not_configured: 'Not configured',
-  credentials_missing: 'Connection credentials needed',
-  unchecked: 'Not connected',
-  connected: 'Connected',
-  unavailable: 'Temporarily unavailable',
-};
-const taskLabels: Record<string, string> = {
-  submitting: 'Preparing remote task…',
-  running: 'Running remotely…',
-  completed: 'Remote task completed',
-  failed: 'Remote task failed',
-  unknown: 'Remote outcome unknown; checking without replaying…',
-};
+import { summarizeRemote, summarizeTodos, type TodoItem } from './chat-status';
 
 export type RemoteStatusProps = {
   projectId: string;
@@ -40,19 +29,19 @@ export type RemoteStatusProps = {
   onConfigure: () => void;
 };
 
-type TodoItem = { title: string; status: 'pending' | 'in_progress' | 'done' };
-
 // 合并状态卡：远程环境 + 任务。折叠时是右上角的一枚小药丸，对话流保持居中；
-// 展开时卡片占据右侧，对话与输入区经 CSS 让位整体居左，内容不被遮挡。
+// 宽聊天栏展开为侧栏，窄栏在消息上方占位；设置页隐藏呈现但保留轮询。
 // 远程轮询在折叠时也保持运行（composer 就绪门禁依赖它）。
 export function ChatStatusCard({
   remote,
   todo,
   running,
+  hidden = false,
 }: {
   remote: RemoteStatusProps | null;
   todo: TodoItem[] | null;
   running: boolean;
+  hidden?: boolean;
 }) {
   const { t } = useDisplayText();
   const [open, setOpen] = useState(false);
@@ -64,10 +53,22 @@ export function ChatStatusCard({
   const [session, setSession] = useState<RemoteSessionState | null>(null);
   const [error, setError] = useState('');
   const [ending, setEnding] = useState(false);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const closeButton = useRef<HTMLButtonElement>(null);
+  const cardId = useId();
   const remoteBodyId = useId();
   const todoBodyId = useId();
   const remoteOpen = openBlock === 'remote';
   const todoOpen = openBlock === 'todo';
+
+  useEffect(() => {
+    if (open && !hidden) closeButton.current?.focus({ preventScroll: true });
+  }, [open, hidden]);
+
+  function collapse() {
+    setOpen(false);
+    requestAnimationFrame(() => trigger.current?.focus({ preventScroll: true }));
+  }
 
   useEffect(() => {
     if (!remote) return;
@@ -75,6 +76,10 @@ export function ChatStatusCard({
     let alive = true,
       timer: ReturnType<typeof setTimeout>;
     onReady(false);
+    setProject(undefined);
+    setTask(null);
+    setSession(null);
+    setError('');
     async function poll() {
       try {
         const state = await window.viewerHost!.remoteProject({ projectId });
@@ -124,87 +129,125 @@ export function ChatStatusCard({
   }, [remote?.projectId, remote?.chatId, remote?.domain]);
 
   const terminal = session && ['stopped', 'expired', 'failed'].includes(session.status);
-  const serviceStatus = project?.service.status;
-  const dotClass =
-    serviceStatus === 'connected' ? 'ok' : serviceStatus === 'unavailable' ? 'bad' : 'idle';
-  const remoteSummary = !project
-    ? t('Loading…')
-    : serviceStatus !== 'connected'
-      ? t(serviceLabels[serviceStatus!])
-      : terminal
-        ? t('Remote session ended. Start a new chat.')
-        : task
-          ? t(taskLabels[task.status] || 'Remote outcome unknown')
-          : project.syncedAt
-            ? t('Remote software and sandbox')
-            : t('Choose files to sync');
-  const done = (todo || []).filter(item => item.status === 'done').length;
-  const current = (todo || []).find(item => item.status === 'in_progress');
+  const { label: remoteLabel, tone: dotClass } = summarizeRemote({
+    project,
+    task,
+    session,
+    error,
+    domain: remote?.domain || '',
+  });
+  const remoteSummary = t(remoteLabel);
+  const tasks = summarizeTodos(todo, running);
+  const { done } = tasks;
+  const taskSummary = tasks.title || t(tasks.summary);
+  const taskState = t(tasks.state);
+  const progressLabel = t('{0} of {1} tasks completed', {
+    '0': String(done),
+    '1': String(todo?.length || 0),
+  });
   if (!remote && !todo?.length) return null;
 
   return (
-    <aside className={`ia-status-dock ${open ? 'open' : ''}`} role="status">
+    <aside
+      className={`ia-status-dock ${open ? 'open' : ''}`}
+      hidden={hidden}
+      aria-label={t('Execution status')}
+      onKeyDown={event => {
+        if (event.key === 'Escape' && open) {
+          event.stopPropagation();
+          collapse();
+        }
+      }}
+    >
+      <span className="ia-sr-only" role="status" aria-live="polite" aria-atomic="true">
+        {[remote ? remoteSummary : '', todo?.length ? `${taskState}. ${progressLabel}` : '']
+          .filter(Boolean)
+          .join(' · ')}
+      </span>
       <button
+        ref={trigger}
         type="button"
         className="ia-status-pill"
         aria-expanded={open}
-        aria-label={t('Expand status card')}
+        aria-controls={cardId}
+        aria-label={`${t('Expand status card')}: ${remote ? remoteSummary : taskState}${todo?.length ? ` · ${progressLabel}` : ''}`}
+        title={remote ? remoteSummary : taskSummary}
         onClick={() => setOpen(true)}
       >
         {remote && (
           <>
-            <Cloud size={13} aria-hidden="true" />
+            <Cloud size={14} aria-hidden="true" />
             <span className={`ia-status-dot ${dotClass}`} aria-hidden="true" />
           </>
         )}
+        {!remote && <ListChecks size={14} aria-hidden="true" />}
+        <span className="ia-status-summary">{remote ? remoteSummary : taskState}</span>
         {todo?.length ? (
-          <>
-            <ListChecks size={13} aria-hidden="true" />
-            <span className="ia-status-count">
-              {done}/{todo.length}
-            </span>
-          </>
+          <span className="ia-status-count" aria-label={progressLabel}>
+            {done}/{todo.length}
+          </span>
         ) : null}
-        <span className="ia-status-summary">{remote ? remoteSummary : ''}</span>
         <ChevronDown size={13} aria-hidden="true" />
       </button>
-      <div className="ia-status-card" aria-label={t('Execution status')}>
+      <div className="ia-status-card" id={cardId} hidden={!open}>
         <div className="ia-status-card-head">
-          <b>{t('Execution status')}</b>
+          <h2>{t('Execution status')}</h2>
           <button
+            ref={closeButton}
             type="button"
-            className="ia-status-collapse"
-            onClick={() => setOpen(false)}
+            className="ia-icon"
+            onClick={collapse}
             aria-label={t('Collapse status card')}
             title={t('Collapse status card')}
           >
             <ChevronRight size={14} aria-hidden="true" />
           </button>
         </div>
-        {remote && (
-          <section className="ia-status-block">
-            <button
-              type="button"
-              className="ia-status-head"
-              aria-expanded={remoteOpen}
-              aria-controls={remoteBodyId}
-              aria-label={t(remoteOpen ? 'Collapse remote status' : 'Expand remote status')}
-              onClick={() => setOpenBlock(remoteOpen ? null : 'remote')}
-            >
-              <Cloud size={14} aria-hidden="true" />
-              <span className="ia-status-title">{t('Remote environment')}</span>
-              <span className={`ia-status-dot ${dotClass}`} aria-hidden="true" />
-              <span className="ia-status-summary">{remoteSummary}</span>
-              <ChevronDown size={14} className={remoteOpen ? 'expanded' : ''} aria-hidden="true" />
-            </button>
-            {remoteOpen && (
-              <div className="ia-status-body" id={remoteBodyId}>
-                {project?.service.reason && (
-                  <div className="ia-status-row">{t(project.service.reason)}</div>
+        <div className="ia-status-content">
+          {remote && (
+            <section className="ia-status-block">
+              <button
+                type="button"
+                className="ia-status-head"
+                aria-expanded={remoteOpen}
+                aria-controls={remoteBodyId}
+                aria-label={t(remoteOpen ? 'Collapse remote status' : 'Expand remote status')}
+                onClick={() => setOpenBlock(remoteOpen ? null : 'remote')}
+              >
+                <Cloud size={16} aria-hidden="true" />
+                <span className="ia-status-title">{t('Remote environment')}</span>
+                <span className={`ia-status-dot ${dotClass}`} aria-hidden="true" />
+                <ChevronDown
+                  size={14}
+                  className={remoteOpen ? 'expanded' : ''}
+                  aria-hidden="true"
+                />
+                <span className={`ia-status-summary ia-status-remote-summary ${dotClass}`}>
+                  {remoteSummary}
+                </span>
+              </button>
+              <div className="ia-status-body" id={remoteBodyId} hidden={!remoteOpen}>
+                {project?.syncedAt && (
+                  <p className="ia-status-detail">
+                    {t('{0} files synced', { '0': String(project.files.length) })}
+                  </p>
                 )}
+                {project?.service.reason && (
+                  <p className="ia-status-detail">{t(project.service.reason)}</p>
+                )}
+                <button
+                  type="button"
+                  className="ia-log-link ia-status-action"
+                  onClick={remote.onConfigure}
+                >
+                  <span>{t('Files and execution settings')}</span>
+                  <ArrowUpRight size={14} aria-hidden="true" />
+                </button>
                 {session && !terminal && !session.callLocked && remote.chatId && (
                   <div className="ia-status-row">
                     <button
+                      type="button"
+                      className="ia-status-action ia-status-end"
                       disabled={ending}
                       onClick={() => {
                         if (!remote.chatId || !session) return;
@@ -223,46 +266,44 @@ export function ChatStatusCard({
                           .finally(() => setEnding(false));
                       }}
                     >
-                      {t('End remote session')}
+                      <Square size={12} aria-hidden="true" />
+                      {t(ending ? 'Ending remote session…' : 'End remote session')}
                     </button>
                   </div>
                 )}
-                <div className="ia-status-row">
-                  <button className="ia-log-link" onClick={remote.onConfigure}>
-                    {t('Files and execution settings')}
-                  </button>
-                </div>
                 {error && (
-                  <div className="ia-status-row" role="alert">
+                  <div className="ia-status-error" role="alert">
                     {error}
                   </div>
                 )}
               </div>
-            )}
-          </section>
-        )}
-        {todo?.length ? (
-          <section className="ia-status-block">
-            <button
-              type="button"
-              className="ia-status-head"
-              aria-expanded={todoOpen}
-              aria-controls={todoBodyId}
-              aria-label={t(todoOpen ? 'Collapse task list' : 'Expand task list')}
-              onClick={() => setOpenBlock(todoOpen ? null : 'todo')}
-            >
-              <ListChecks size={14} aria-hidden="true" />
-              <span className="ia-status-title">{t('Tasks')}</span>
-              <span className="ia-status-count">
-                {done}/{todo.length}
-              </span>
-              <span className="ia-status-current" title={current?.title}>
-                {current?.title || t('All tasks completed')}
-              </span>
-              <ChevronDown size={14} className={todoOpen ? 'expanded' : ''} aria-hidden="true" />
-            </button>
-            {todoOpen && (
-              <ol className="ia-status-body ia-status-todo" id={todoBodyId}>
+            </section>
+          )}
+          {todo?.length ? (
+            <section className="ia-status-block">
+              <button
+                type="button"
+                className="ia-status-head"
+                aria-expanded={todoOpen}
+                aria-controls={todoBodyId}
+                aria-label={t(todoOpen ? 'Collapse task list' : 'Expand task list')}
+                onClick={() => setOpenBlock(todoOpen ? null : 'todo')}
+              >
+                <ListChecks size={16} aria-hidden="true" />
+                <span className="ia-status-title">{t('Tasks')}</span>
+                <span className="ia-status-count" aria-label={progressLabel}>
+                  {done}/{todo.length}
+                </span>
+                <ChevronDown size={14} className={todoOpen ? 'expanded' : ''} aria-hidden="true" />
+                <span className="ia-status-current" title={taskSummary} hidden={todoOpen}>
+                  {taskSummary}
+                </span>
+              </button>
+              <div className="ia-status-progress">
+                <progress value={done} max={todo.length} aria-label={progressLabel} />
+                <span>{taskState}</span>
+              </div>
+              <ol className="ia-status-body ia-status-todo" id={todoBodyId} hidden={!todoOpen}>
                 {todo.map((item, index) => (
                   <li key={`${item.title}:${index}`} data-status={item.status}>
                     <span
@@ -278,13 +319,27 @@ export function ChatStatusCard({
                         <Circle size={11} aria-hidden="true" />
                       )}
                     </span>
-                    <span>{item.title}</span>
+                    <span>
+                      <span className="ia-sr-only">
+                        {t(
+                          item.status === 'done'
+                            ? 'Completed'
+                            : item.status === 'in_progress'
+                              ? running
+                                ? 'In progress'
+                                : 'Not completed'
+                              : 'Pending',
+                        )}
+                        :{' '}
+                      </span>
+                      {item.title}
+                    </span>
                   </li>
                 ))}
               </ol>
-            )}
-          </section>
-        ) : null}
+            </section>
+          ) : null}
+        </div>
       </div>
     </aside>
   );

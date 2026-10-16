@@ -12,6 +12,34 @@
     }
   },
   "messages": {
+    "Remote ready": {
+      "en": "Remote ready",
+      "zh-CN": "远程就绪"
+    },
+    "Remote request failed": {
+      "en": "Remote request failed",
+      "zh-CN": "远程请求失败"
+    },
+    "In progress": {
+      "en": "In progress",
+      "zh-CN": "进行中"
+    },
+    "Not completed": {
+      "en": "Not completed",
+      "zh-CN": "未完成"
+    },
+    "{0} of {1} tasks completed": {
+      "en": "{0} of {1} tasks completed",
+      "zh-CN": "已完成 {0}/{1} 项任务"
+    },
+    "{0} files synced": {
+      "en": "{0} files synced",
+      "zh-CN": "已同步 {0} 个文件"
+    },
+    "Ending remote session…": {
+      "en": "Ending remote session…",
+      "zh-CN": "正在结束远程会话…"
+    },
     "Copy message": {
       "en": "Copy message",
       "zh-CN": "复制消息"
