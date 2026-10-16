@@ -3,6 +3,25 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const IS_WIN = process.platform === 'win32';
+const DOCKER = IS_WIN ? 'docker.exe' : 'docker';
+// The well-known per-user install location of the current platform.
+function userInstallRelative() {
+  return IS_WIN
+    ? path.join('home', 'Programs', 'Docker', 'Docker', 'resources', 'bin', DOCKER)
+    : path.join('home', '.docker', 'bin', DOCKER);
+}
+// A minimal environment whose well-known list points inside the fixture root.
+function fixtureEnvironment(root) {
+  return IS_WIN
+    ? {
+        PATH: path.join(root, 'absent'),
+        HOME: path.join(root, 'home'),
+        LOCALAPPDATA: path.join(root, 'home'),
+      }
+    : { PATH: path.join(root, 'absent'), HOME: path.join(root, 'home') };
+}
+
 const {
   SHELL_ENV_MARK,
   captureLoginShellPath,
@@ -31,11 +50,12 @@ function stubScript(t, root, relative, body) {
 
 test('PATH resolution precedes the well-known installs', t => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-docker-cli-'));
-  const onPath = stubDocker(t, root, 'path-bin/docker');
-  stubDocker(t, root, 'home/.docker/bin/docker');
+  const onPath = stubDocker(t, root, path.join('path-bin', DOCKER));
+  stubDocker(t, root, userInstallRelative());
   const resolved = resolveDockerCliSync({
     PATH: path.join(root, 'path-bin'),
     HOME: path.join(root, 'home'),
+    ...(IS_WIN ? { LOCALAPPDATA: path.join(root, 'home') } : {}),
   });
   assert.equal(resolved.via, 'PATH');
   assert.equal(resolved.docker, fs.realpathSync(onPath));
@@ -43,8 +63,8 @@ test('PATH resolution precedes the well-known installs', t => {
 
 test('a Docker Desktop user install is found when the PATH misses', t => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-docker-cli-'));
-  stubDocker(t, root, 'home/.docker/bin/docker');
-  const environment = { PATH: path.join(root, 'absent'), HOME: path.join(root, 'home') };
+  stubDocker(t, root, userInstallRelative());
+  const environment = fixtureEnvironment(root);
   const resolved = resolveDockerCliSync(environment);
   // Machines with a system Docker installed ahead of ~/.docker/bin resolve
   // their own copy; what matters is that a well-known install answered.
@@ -60,20 +80,21 @@ test('a complete miss returns null while the search list stays diagnostic', () =
   const environment = {
     PATH: [path.join(root, 'a'), path.join(root, 'b')].join(path.delimiter),
     HOME: root,
+    ...(IS_WIN ? { LOCALAPPDATA: root } : {}),
   };
   assert.equal(resolveDockerCliSync(environment, { wellKnown: () => [] }), null);
   const searched = dockerSearchLocations(environment);
   for (const expected of [
     path.join(root, 'a'),
     path.join(root, 'b'),
-    path.join(root, '.docker', 'bin'),
+    path.dirname(wellKnownDockerPaths(environment).at(-1)),
   ])
     assert.ok(searched.includes(expected), `${expected} missing from ${searched}`);
 });
 
 test('the login-shell PATH capture resolves and merges environments', async t => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-docker-cli-'));
-  const login = stubDocker(t, root, 'login-bin/docker');
+  const login = stubDocker(t, root, path.join('login-bin', DOCKER));
   const resolved = await resolveDockerCli(
     { PATH: '/nonexistent', HOME: root },
     { capture: async () => path.dirname(login), wellKnown: () => [] },

@@ -307,7 +307,7 @@ test('an unresolvable docker reports every searched location before any download
   };
   await assert.rejects(
     acquireImage({ ...f.options, command: enoent, resolveDocker: async () => null }),
-    /Docker was not found\. Install Docker Desktop[\s\S]*Searched the PATH and .*docker/,
+    /Docker was not found\. Install Docker Desktop[\s\S]*Searched the PATH and .+/,
   );
   assert.equal(downloads, 0);
 });

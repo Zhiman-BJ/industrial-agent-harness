@@ -154,7 +154,9 @@ function resolveDockerCli(environment = process.env, options = {}) {
   } = options;
   signal?.throwIfAborted();
   const found = resolveDockerCliSync(environment, { wellKnown });
-  if (found || process.platform === 'win32') return Promise.resolve(found);
+  if (found) return Promise.resolve(found);
+  // captureLoginShellPath itself resolves to null on win32, where GUI and
+  // terminal environments do not diverge the way launchd makes them on macOS.
   const run = async () => {
     signal?.throwIfAborted();
     const captured = await capture(environment, timeoutMs == null ? undefined : { timeoutMs });
