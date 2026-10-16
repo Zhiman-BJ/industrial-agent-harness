@@ -119,7 +119,7 @@ async function run(window) {
   });
   try {
     await wait(`document.querySelector('.ia-domain-pill')?.innerText.includes('Godot')`);
-    await evaluate(`document.querySelector('.ia-chat-actions button:last-child').click()`);
+    await evaluate(`document.querySelector('[data-testid="workspace-toggle"]').click()`);
     await wait(`Boolean(document.querySelector('.ia-file-tree-toggle'))`);
     await evaluate(`document.querySelector('.ia-file-tree-toggle').click()`);
     await open('playground.tscn', 'Godot scene');
@@ -184,7 +184,7 @@ async function run(window) {
     await wait(`document.querySelector('.ia-new-chat')?.disabled === false`);
     await evaluate(`document.querySelector('.ia-new-chat').click()`);
     await wait(`document.querySelector('.ia-domain-pill')?.innerText.includes('PCB')`);
-    await evaluate(`document.querySelector('.ia-chat-actions button:last-child').click()`);
+    await evaluate(`document.querySelector('[data-testid="workspace-toggle"]').click()`);
     await wait(`Boolean(document.querySelector('.ia-file-tree-toggle'))`);
     await evaluate(`document.querySelector('.ia-file-tree-toggle').click()`);
     for (const [name, format] of [

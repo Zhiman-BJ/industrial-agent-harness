@@ -66,6 +66,7 @@ Godot/PCB 的源工程文件另有[受限只读预览](engineering-file-viewers.
 | [双版本产品边界与公开清单](editions.md) | Internal/OSS edition 划分、机器清单校验、导出约定与发布门禁（#101/#100） |
 | [桌面 UI 优化](desktop-ui-refinement.md) | Impeccable 产品模式、设计系统、首次使用与项目导航、主题与窗口验收 |
 | [自适应窗口与标签页](desktop-layouts.md) | 两列／多标签切换、窄窗口、显示器边界、查看状态与回归 |
+| [桌面统一顶栏与输入区对齐实施方案](desktop-shell-layout-plan.md) | 已实现统一顶栏与输入区对齐；含真实截图、macOS 回归结果与未完成验收项 |
 | [桌面语言切换](desktop-languages.md) | 中英文与跟随系统、偏好保存、自有控件范围、状态保留与验证 |
 | [架构决策记录](decisions.md) | 已确定的决定、提案间的差异和需要验证的接口 |
 | [27B / 256k 上下文适配计划](27b-256k-context-plan.md) | Kimi 接入的输出边界、会话复用、观测与后续评测门禁 |

@@ -178,7 +178,9 @@ async function run(window) {
     await wait(`document.querySelector('.ia-approval')?.innerText.includes('${marker}')`);
   }
   try {
-    await wait(`document.querySelector('.ia-chat-header b')?.innerText==='Parallel project A'`);
+    await wait(
+      `document.querySelector('[data-testid="header-project"]')?.innerText==='Parallel project A'`,
+    );
     await submit('SESSION_ALPHA');
     const alphaId = await evaluate(`window.viewerHost.chats().then(list=>list.activeId)`);
     assert.equal(turns.get('SESSION_ALPHA').approvalMode, 'ask');

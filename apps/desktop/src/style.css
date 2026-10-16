@@ -45,6 +45,9 @@ body,
   --ia-font-sm: 12px;
   --ia-font-body: 13px;
   --ia-header-height: 48px;
+  --ia-desktop-header-height: 58px;
+  --ia-sidebar-width: 228px;
+  --ia-content-max-width: 640px;
   --ia-control-size: 32px;
   --rp-blue: var(--ia-accent) !important;
   background: var(--ia-bg);
@@ -268,7 +271,7 @@ body,
   box-shadow: 0 12px 32px #00000026;
   border-radius: 12px;
   padding: 14px;
-  max-height: calc(100dvh - 88px);
+  max-height: calc(100% - 88px);
   overflow: auto;
 }
 .ia-settings-title {
@@ -341,37 +344,12 @@ body,
   background: var(--ia-bg);
   container-type: inline-size;
 }
-.ia-chat-header {
-  height: var(--ia-header-height);
-  border-bottom: 1px solid var(--ia-border);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 20px;
-  flex-shrink: 0;
-  gap: 12px;
-}
-.ia-chat-header > div:first-child {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-  flex: 1;
-}
-.ia-chat-header b {
-  font-size: 13px;
-  font-weight: 500;
-}
-.ia-chat-header span {
-  color: var(--ia-muted);
-  font-size: 11px;
-}
-.ia-chat-actions {
+.ia-desktop-actions {
   display: flex;
   gap: 4px;
   flex-shrink: 0;
 }
-.ia-chat-actions button {
+.ia-desktop-actions button {
   color: var(--ia-muted);
   width: var(--ia-control-size);
   height: var(--ia-control-size);
@@ -379,12 +357,12 @@ body,
   display: grid;
   place-items: center;
 }
-.ia-chat-actions .ia-log-button {
+.ia-desktop-actions .ia-log-button {
   width: auto;
   min-width: 28px;
   white-space: nowrap;
 }
-.ia-chat-actions button.active {
+.ia-desktop-actions button.active {
   color: var(--ia-text);
   background: var(--ia-active);
 }
@@ -392,9 +370,9 @@ body,
   min-height: 0;
   flex: 1;
   overflow: auto;
-  padding: 32px max(24px, calc((100% - 680px) / 2));
+  padding: 32px 0;
   scrollbar-width: thin;
-  scrollbar-gutter: stable;
+  scrollbar-gutter: auto;
 }
 .ia-chat-welcome {
   margin-top: clamp(40px, 14vh, 140px);
@@ -656,7 +634,7 @@ body,
 }
 .ia-composer-wrap {
   flex-shrink: 0;
-  padding: 12px max(24px, calc((100% - 680px) / 2)) 18px;
+  padding: 12px var(--ia-content-inset) 18px;
   border-top: 0;
 }
 .ia-composer {
@@ -688,11 +666,14 @@ body,
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 12px;
 }
 .ia-chat-controls {
   display: flex;
   align-items: center;
+  flex: 1 1 120px;
+  min-width: 0;
   flex-wrap: wrap;
   gap: 8px;
 }
@@ -773,6 +754,7 @@ body,
 }
 .ia-send-actions {
   display: flex;
+  margin-left: auto;
   gap: 5px;
 }
 .ia-send-actions button {
@@ -1142,11 +1124,12 @@ body,
 }
 /* Project/chat sidebar and file workspace: the viewer occupies the file canvas only for registered formats. */
 .ia-columns {
-  height: 100%;
+  position: relative;
   width: 100%;
+  overflow: hidden;
 }
 .ia-sidebar {
-  flex: 0 0 256px;
+  flex: 0 0 var(--ia-sidebar-width);
   background: var(--ia-sidebar);
   border-right: 1px solid var(--ia-border);
 }
@@ -1165,9 +1148,6 @@ body,
   text-overflow: ellipsis;
   letter-spacing: -0.02em;
   font-weight: 500;
-}
-.ia-sidebar-brand .ia-icon {
-  margin-left: auto;
 }
 .ia-sidebar .ia-product-mark {
   background: transparent;
@@ -1217,17 +1197,9 @@ body,
   min-width: 280px;
   container-type: inline-size;
 }
-.ia-chat-header {
-  height: var(--ia-header-height);
-  padding: 0 20px;
-  gap: 12px;
-}
-.ia-chat-header b {
-  font-size: 13px;
-}
 .ia-chat-scroll {
-  padding: 32px max(24px, calc((100% - 680px) / 2));
-  scrollbar-gutter: stable;
+  padding: 32px 0;
+  scrollbar-gutter: auto;
 }
 .ia-chat-welcome {
   margin-top: clamp(40px, 14vh, 140px);
@@ -1265,7 +1237,7 @@ body,
 }
 .ia-composer-wrap {
   border-top: 0;
-  padding: 12px max(24px, calc((100% - 680px) / 2)) 18px;
+  padding: 12px var(--ia-content-inset) 18px;
 }
 .ia-composer {
   border-radius: 14px;
@@ -2806,7 +2778,7 @@ body,
 .ia-chat-menu-wrap.open .ia-chat-menu-button {
   opacity: 1;
 }
-.ia-chat-actions button[aria-pressed='true'] {
+.ia-desktop-actions button[aria-pressed='true'] {
   background: var(--ia-active);
   color: var(--ia-text);
 }
@@ -2915,9 +2887,6 @@ body,
   }
 }
 @media (max-width: 1250px) {
-  .ia-sidebar {
-    flex-basis: 220px;
-  }
   .ia-workspace {
     flex-basis: 48%;
     min-width: 340px;
@@ -2927,20 +2896,13 @@ body,
     flex-basis: 148px;
   }
   .ia-chat-scroll {
-    padding: 28px 20px;
+    padding-block: 28px;
   }
   .ia-composer-wrap {
-    padding: 12px 20px 16px;
-  }
-  .ia-chat-header {
-    padding: 0 14px;
-    gap: 8px;
+    padding-block: 12px 16px;
   }
 }
 @media (max-width: 1050px) {
-  .ia-sidebar {
-    flex-basis: 204px;
-  }
   /* Keep chat names readable with classic scrollbar gutters on small screens. */
   .ia-project-chats {
     margin-left: 12px;
@@ -3197,7 +3159,7 @@ body,
 .ia-todo-wrap {
   flex-shrink: 0;
   min-width: 0;
-  padding: 0 max(22px, calc((100% - 690px) / 2));
+  padding: 0 var(--ia-content-inset);
 }
 .ia-todo {
   padding: 0;
@@ -3309,16 +3271,13 @@ body,
   outline: 2px solid var(--ia-accent);
 }
 
-.ia-chat-header > div:first-child {
-  min-width: 0;
-}
 .ia-header-project b {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.ia-chat-actions {
+.ia-desktop-actions {
   flex-shrink: 0;
 }
 
@@ -3439,7 +3398,7 @@ body,
   .ia-sidebar {
     position: absolute;
     inset: 0 auto 0 0;
-    width: 248px;
+    width: var(--ia-sidebar-width);
     z-index: 26;
     box-shadow: 4px 0 24px #00000030;
   }
@@ -3450,20 +3409,14 @@ body,
     background: #00000030 !important;
     z-index: 25;
   }
-  .ia-chat-header {
-    padding: 6px 10px;
-    height: auto;
-    min-height: 48px;
-    flex-wrap: wrap;
-  }
-  .ia-chat-actions {
+  .ia-desktop-actions {
     margin-left: auto;
   }
   .ia-chat-scroll {
-    padding: 20px 16px;
+    padding-block: 20px;
   }
   .ia-composer-wrap {
-    padding: 8px 12px 12px;
+    padding-block: 8px 12px;
   }
   .ia-chat-welcome {
     margin-top: 24px;
@@ -3604,7 +3557,8 @@ body,
   gap: 8px;
   font-size: 12px;
   color: var(--ia-muted);
-  padding: 6px 20px;
+  padding: 6px 0;
+  margin-inline: var(--ia-content-inset);
   flex-wrap: wrap;
 }
 .ia-remote-task-status button {
@@ -3622,7 +3576,7 @@ body,
 
 /* Neutral desktop shell: the supplied reference owns type, density and surfaces. */
 .ia-app {
-  padding: 6px 6px 6px 0;
+  padding: 0;
   background: var(--ia-sidebar);
   font-weight: 400;
 }
@@ -3630,7 +3584,7 @@ body,
   stroke-width: 1.6;
 }
 .ia-sidebar {
-  border-right: 0;
+  border-right: 1px solid var(--ia-border);
 }
 .ia-sidebar-brand {
   gap: 8px;
@@ -3671,20 +3625,14 @@ body,
   border-top-color: transparent;
 }
 .ia-chat {
-  border: 1px solid var(--ia-border);
-  border-radius: 14px;
+  --ia-content-gutter: 40px;
+  --ia-content-inset: max(
+    var(--ia-content-gutter),
+    calc((100cqw - var(--ia-content-max-width)) / 2)
+  );
+  border: 0;
+  border-radius: 0;
   overflow: hidden;
-}
-.ia-app.layout-split:not(.right-collapsed) .ia-chat {
-  border-radius: 14px 0 0 14px;
-}
-.ia-chat-header {
-  border-bottom: 0;
-  padding-inline: 16px;
-}
-.ia-chat-header b {
-  font-size: 12px;
-  font-weight: 400;
 }
 .ia-chat-empty .ia-chat-scroll {
   flex: 0 1 auto;
@@ -3694,7 +3642,7 @@ body,
 }
 .ia-chat-empty .ia-chat-welcome {
   width: 100%;
-  max-width: 680px;
+  max-width: var(--ia-content-max-width);
   margin: 0 auto;
   text-align: center;
 }
@@ -4137,7 +4085,7 @@ body,
   display: flex;
   align-items: center;
   gap: 10px;
-  margin: 0 24px 10px;
+  margin: 0 var(--ia-content-inset) 10px;
   padding: 9px 14px;
   border: 1px solid var(--ia-border);
   border-left: 3px solid var(--ia-warning);
@@ -4162,33 +4110,85 @@ body,
   cursor: pointer;
 }
 
-/* Frameless window: body never scrolls (panels scroll internally); the top
-   bars act as drag regions. macOS traffic lights overlay the sidebar brand. */
+/* Only the global header owns native window dragging and traffic-light space. */
 html,
 body {
   overflow: hidden;
 }
-.ia-sidebar-brand,
-.ia-chat-header,
-.ia-capability-header {
+.ia-desktop-header {
+  display: flex;
+  align-items: center;
+  flex: 0 0 var(--ia-desktop-header-height);
+  height: var(--ia-desktop-header-height);
+  gap: 12px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--ia-border);
+  background: var(--ia-bg);
   -webkit-app-region: drag;
 }
-.ia-sidebar-brand :is(button, input, select),
-.ia-chat-header :is(button, input, select),
-.ia-capability-header :is(button, input, select) {
+[data-platform='darwin'] .ia-desktop-header {
+  padding-left: 96px;
+}
+.ia-desktop-header :is(button, input, select) {
   -webkit-app-region: no-drag;
 }
-[data-platform='darwin'] .ia-sidebar-brand {
-  padding-left: 92px;
+.ia-desktop-header > .ia-icon {
+  flex: none;
+}
+.ia-desktop-context {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  gap: 10px;
+  min-width: 0;
+}
+.ia-desktop-context .ia-header-project {
+  flex: 0 1 auto;
+  max-width: 50%;
+  margin: 0;
+  padding-inline: 0;
+  gap: 6px;
+}
+.ia-header-project b {
+  font-size: 12px;
+  font-weight: 500;
+}
+.ia-header-separator {
+  color: var(--ia-muted);
+}
+.ia-header-location {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ia-muted);
+  font-size: 12px;
+}
+.ia-chat-transcript {
+  width: calc(100cqw - 2 * var(--ia-content-inset));
+  margin-inline-start: var(--ia-content-inset);
+}
+.ia-chat > .ia-composer-hint {
+  margin-inline: var(--ia-content-inset);
+}
+@media (max-width: 759px) {
+  .ia-desktop-header {
+    gap: 8px;
+    padding-right: 8px;
+  }
+  .ia-desktop-context {
+    gap: 6px;
+  }
+  .ia-chat {
+    --ia-content-gutter: 32px;
+  }
 }
 .ia-window-controls {
   display: flex;
   align-self: stretch;
-  margin-left: auto;
-  -webkit-app-region: no-drag;
-}
-.ia-chat-header .ia-window-controls {
   margin-left: 0;
+  -webkit-app-region: no-drag;
 }
 .ia-window-control {
   width: 42px;
@@ -4209,18 +4209,6 @@ body {
   color: #ffffff;
 }
 
-/* With the sidebar collapsed the tab strip owns the top-left corner, so it
-   needs the same traffic-light reservation and doubles as a drag region. */
-.ia-workbench-tabbar {
-  -webkit-app-region: drag;
-}
-.ia-workbench-tabbar :is(button, [role='tab']) {
-  -webkit-app-region: no-drag;
-}
-.ia-workbench-tabbar.ia-lights-gap {
-  padding-inline-start: 92px;
-}
-
 /* Quick-jump message rail: per-turn ticks overlay the transcript gutter.
    Ticks stretch toward the hovered one; a preview card tracks the cursor. */
 .ia-chat-scroll-area {
@@ -4231,9 +4219,6 @@ body {
 }
 .ia-chat-scroll-area .ia-chat-scroll {
   flex: 1;
-}
-.ia-message-rail + .ia-chat-scroll {
-  padding-inline-start: max(48px, calc((100% - 680px) / 2));
 }
 .ia-message-rail {
   position: absolute;
@@ -4338,7 +4323,7 @@ body {
   }
 }
 
-/* The brand title truncates rather than wrapping inside the 48px row. */
+/* Keep the brand on one line below the global header. */
 .ia-sidebar-brand b {
   white-space: nowrap;
   overflow: hidden;

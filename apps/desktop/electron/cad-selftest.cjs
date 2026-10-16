@@ -118,7 +118,7 @@ async function run(window) {
   assert.equal(await evaluate(`document.querySelector('.ia-composer textarea').disabled`), false);
   assert.equal(await evaluate(`document.querySelectorAll('.ia-chat-turn').length`), 0);
 
-  await evaluate(`document.querySelector('.ia-chat-actions button:last-child').click()`);
+  await evaluate(`document.querySelector('[data-testid="workspace-toggle"]').click()`);
   await wait(`Boolean(document.querySelector('.ia-file-tree-toggle'))`);
   await evaluate(`document.querySelector('.ia-file-tree-toggle').click()`);
   async function open(name) {

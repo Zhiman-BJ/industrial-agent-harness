@@ -4,7 +4,13 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 async function run(window, store, project) {
-  const evaluate = script => window.webContents.executeJavaScript(script, true);
+  const evaluate = async script => {
+    try {
+      return await window.webContents.executeJavaScript(script, true);
+    } catch (error) {
+      throw Error(`Message rail selftest renderer script failed:\n${script}`, { cause: error });
+    }
+  };
   async function wait(script) {
     const deadline = Date.now() + 15000;
     while (Date.now() < deadline) {
@@ -37,8 +43,12 @@ async function run(window, store, project) {
         });
       store.finish(turn, 'completed');
     });
+    return chat.id;
   }
-  seed('Rail long transcript', [1, 18, 1, 35, 1, 70]);
+  const longTitle =
+    'Rail long transcript — preserve reading position, timing constraints and verification evidence';
+  const longChat = seed('Rail long transcript', [1, 18, 1, 35, 1, 70]);
+  store.rename(longChat, project, 'chip', longTitle);
   seed('Rail short transcript', [0, 0]);
   seed('Rail sampled history', Array(120).fill(1));
   window.setContentSize(1280, 720);
@@ -98,6 +108,18 @@ async function run(window, store, project) {
     return { x: Math.round(ticks[index].x), y: Math.round(ticks[index].y) };
   }
   await select('Rail long transcript', 6);
+  await wait(
+    `document.querySelector('[data-testid="header-location"]')?.title === ${JSON.stringify(longTitle)}`,
+  );
+  assert.equal(
+    await evaluate(`(() => {
+    const message=document.querySelector('.ia-chat-turn').getBoundingClientRect();
+    const composer=document.querySelector('.ia-composer').getBoundingClientRect();
+    return Math.abs(message.width-640)<=1 && Math.abs(message.left-composer.left)<=1 && Math.abs(message.right-composer.right)<=1;
+  })()`),
+    true,
+    'Real messages and composer must share the 640 px content boundaries',
+  );
   await evaluate(
     `(() => { const box=document.querySelector('.ia-chat-scroll'); box.scrollTo({top:box.scrollHeight,behavior:'instant'}); })()`,
   );
@@ -139,7 +161,55 @@ async function run(window, store, project) {
   await wait(
     `document.querySelectorAll('.ia-rail-tick')[3].getAttribute('aria-current') === 'true'`,
   );
-  await evaluate(`document.querySelectorAll('.ia-rail-tick')[4].focus()`);
+  await evaluate(`(() => {
+    window.__readingScroll=document.querySelector('.ia-chat-scroll');
+    window.__readingTurn=document.querySelectorAll('.ia-chat-turn')[3];
+    window.__readingOffset=window.__readingTurn.getBoundingClientRect().top-window.__readingScroll.getBoundingClientRect().top;
+    window.__readingTop=window.__readingScroll.scrollTop;
+  })()`);
+  for (const selector of [
+    '[data-testid="sidebar-toggle"]',
+    '[data-testid="sidebar-toggle"]',
+    '.ia-layout-toggle',
+    '.ia-layout-toggle',
+  ]) {
+    await click(selector);
+    await evaluate(
+      `new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))`,
+    );
+    assert.equal(
+      await evaluate(`(() => {
+      const scroll=document.querySelector('.ia-chat-scroll'), turn=document.querySelectorAll('.ia-chat-turn')[3];
+      return scroll===window.__readingScroll && turn===window.__readingTurn &&
+        Math.abs(scroll.scrollTop-window.__readingTop)<=1 &&
+        Math.abs(turn.getBoundingClientRect().top-scroll.getBoundingClientRect().top-window.__readingOffset)<=1;
+    })()`),
+      true,
+      'Shell navigation must retain the transcript nodes and reading anchor when content does not reflow',
+    );
+  }
+  window.setContentSize(640, 480);
+  await wait(`innerWidth === 640`);
+  await evaluate(`new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))`);
+  assert.equal(
+    await evaluate(`(() => {
+    const title=document.querySelector('[data-testid="header-location"]');
+    const actions=document.querySelector('.ia-desktop-actions').getBoundingClientRect();
+    const rect=title.getBoundingClientRect();
+    return title.title===${JSON.stringify(longTitle)} && rect.width>0 && rect.right<=actions.left+1;
+  })()`),
+    true,
+    'A long chat title must preserve its full accessible title without overlapping actions at minimum width',
+  );
+  window.setContentSize(1280, 720);
+  await wait(`innerWidth === 1280`);
+  await wait(`document.querySelector('.ia-settings-button')?.getClientRects().length > 0 &&
+    document.querySelector('.ia-chat-scroll')?.clientHeight > 0 &&
+    document.querySelectorAll('.ia-rail-tick').length === 6`);
+  await evaluate(
+    `document.querySelectorAll('.ia-chat-turn')[3].scrollIntoView({block:'start',behavior:'instant'}); document.querySelector('.ia-chat-scroll').scrollTop += 180`,
+  );
+  await evaluate(`document.querySelector('.ia-rail-tick[aria-label="Jump to message 5"]').focus()`);
   await wait(
     `document.querySelector('.ia-rail-preview b')?.textContent === 'Rail long transcript 5'`,
   );

@@ -97,7 +97,9 @@ async function run(window) {
     callback({ cancel: /^https?:/.test(details.url) });
   });
   try {
-    await wait(`document.querySelector('.ia-chat-header b')?.innerText==='Image input test'`);
+    await wait(
+      `document.querySelector('[data-testid="header-project"]')?.innerText==='Image input test'`,
+    );
     assert.equal(
       await evaluate(
         `window.viewerHost.validateImages({projectId:'other',images:[]}).then(()=>false,()=>true)`,

@@ -35,7 +35,7 @@ async function run(window) {
   });
   try {
     await waitFor(`document.querySelector('.ia-domain-pill')?.innerText.includes('Godot')`);
-    await evaluate(`document.querySelector('.ia-chat-actions button:last-child').click()`);
+    await evaluate(`document.querySelector('[data-testid="workspace-toggle"]').click()`);
     await waitFor(`Boolean(document.querySelector('.ia-file-tree-toggle'))`);
     await evaluate(`document.querySelector('.ia-file-tree-toggle').click()`);
     await waitFor(

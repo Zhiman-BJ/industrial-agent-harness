@@ -271,7 +271,9 @@ async function run(window) {
     callback({ cancel: /^https?:/.test(details.url) });
   });
   try {
-    await wait(`document.querySelector('.ia-chat-header b')?.innerText==='Agent log test'`);
+    await wait(
+      `document.querySelector('[data-testid="header-project"]')?.innerText==='Agent log test'`,
+    );
     await require('./resource-selftest.cjs').run(window, evidence);
     await evaluate(`document.querySelector('button[aria-label="View agent logs"]').click()`);
     await wait(`document.querySelector('.ia-log-run-info')?.innerText.includes('84%')`);
@@ -422,7 +424,7 @@ async function run(window) {
     window.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'Escape' });
     await wait(`!document.querySelector('.ia-agent-log')`);
     await evaluate(
-      `(() => {const area=document.querySelector('.ia-composer textarea');Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(area,'Inspect netlist signals');area.dispatchEvent(new Event('input',{bubbles:true}));document.querySelector('.ia-chat-actions button[aria-label="View agent logs"]').focus();document.querySelector('.ia-send').click();})()`,
+      `(() => {const area=document.querySelector('.ia-composer textarea');Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(area,'Inspect netlist signals');area.dispatchEvent(new Event('input',{bubbles:true}));document.querySelector('.ia-desktop-actions button[aria-label="View agent logs"]').focus();document.querySelector('.ia-send').click();})()`,
     );
     await wait(`Boolean(document.querySelector('.ia-approval button'))`);
     await require('./selftest-language.cjs').setLanguage(window, 'zh-CN');

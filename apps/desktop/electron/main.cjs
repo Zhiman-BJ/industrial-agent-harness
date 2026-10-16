@@ -2199,7 +2199,7 @@ async function createWindow() {
     await waitFor(`document.querySelector('.ia-domain-pill')?.innerText.includes('Chip')`);
     const screenshots = [projectScreenshot, createScreenshot, await shot('initial')];
     await window.webContents.executeJavaScript(
-      `document.querySelector('.ia-chat-actions button:last-child').click()`,
+      `document.querySelector('[data-testid="workspace-toggle"]').click()`,
     );
     await waitFor(
       `Boolean(document.querySelector('.ia-workspace')) && !document.querySelector('.ia-workspace-tree')`,
@@ -2246,7 +2246,7 @@ async function createWindow() {
     );
     screenshots.push(await shot('netlist'));
     await window.webContents.executeJavaScript(
-      `const area = document.querySelector('.ia-composer textarea'); Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(area, 'Inspect the netlist signals'); area.dispatchEvent(new Event('input', {bubbles:true})); document.querySelector('.ia-chat-actions button[title="Toggle debug logs"]').click()`,
+      `const area = document.querySelector('.ia-composer textarea'); Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(area, 'Inspect the netlist signals'); area.dispatchEvent(new Event('input', {bubbles:true})); document.querySelector('.ia-desktop-actions button[title="Toggle debug logs"]').click()`,
     );
     await new Promise(resolve => setTimeout(resolve, 100));
     await window.webContents.executeJavaScript(`document.querySelector('.ia-send').click()`);
@@ -2368,10 +2368,10 @@ async function createWindow() {
     await waitFor(`Boolean(document.querySelector('.ia-model-modal'))`);
     screenshots.push(await shot('settings'));
     await window.webContents.executeJavaScript(
-      `document.querySelector('.ia-model-modal header button').click(); document.querySelector('.ia-sidebar-brand .ia-icon').click(); document.querySelector('.ia-chat-actions button:last-child').click()`,
+      `document.querySelector('.ia-model-modal header button').click(); document.querySelector('[data-testid="sidebar-toggle"]').click(); document.querySelector('[data-testid="workspace-toggle"]').click()`,
     );
     await waitFor(
-      `!document.querySelector('.ia-sidebar') && !document.querySelector('.ia-workspace')`,
+      `!document.querySelector('.ia-sidebar') && document.querySelector('.ia-workspace')?.hidden`,
     );
     console.log(JSON.stringify({ ok: true, screenshots }));
     app.quit();

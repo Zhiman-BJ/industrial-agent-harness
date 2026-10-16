@@ -97,7 +97,9 @@ async function run(window, store) {
   }
   const stage = process.env.INDUSTRIAL_CHAT_SELFTEST_STAGE || 'first';
   try {
-    await wait(`document.querySelector('.ia-chat-header b')?.innerText==='Chat persistence test'`);
+    await wait(
+      `document.querySelector('[data-testid="header-project"]')?.innerText==='Chat persistence test'`,
+    );
     if (stage === 'first') {
       await send('Inspect netlist first turn', 1);
       await send('Inspect netlist second turn', 2);
