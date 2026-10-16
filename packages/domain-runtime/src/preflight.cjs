@@ -3,6 +3,7 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { executeTask } = require('./task-process.cjs');
 const { manifest, runDirectory } = require('./workspace-files.cjs');
+const { resolveDockerCli, dockerSearchLocations } = require('./docker-cli.cjs');
 
 function available(command, environment) {
   const candidates = command.includes(path.sep)
@@ -82,7 +83,8 @@ async function preflight({ projectDir, action, signal }, environment, protectedP
       tasks.filter(task => task.runtime.kind === 'docker').map(task => task.runtime.image),
     ),
   ];
-  if (available('docker', environment)) {
+  const docker = await resolveDockerCli(environment);
+  if (docker) {
     const deadline = Date.now() + 20000;
     const dockerEnv = Object.fromEntries(
       [
@@ -94,11 +96,11 @@ async function preflight({ projectDir, action, signal }, environment, protectedP
         'DOCKER_TLS_VERIFY',
         'DOCKER_CERT_PATH',
       ]
-        .filter(key => environment[key])
-        .map(key => [key, environment[key]]),
+        .filter(key => docker.environment[key])
+        .map(key => [key, docker.environment[key]]),
     );
     const inspect = args =>
-      spawnSync('docker', args, {
+      spawnSync(docker.docker, args, {
         env: dockerEnv,
         encoding: 'utf8',
         timeout: Math.max(1, Math.min(10000, deadline - Date.now())),
@@ -128,7 +130,13 @@ async function preflight({ projectDir, action, signal }, environment, protectedP
                 : 'missing',
         detail: image,
       });
-  } else checks.push({ name: 'host Docker', required: images.length > 0, status: 'missing' });
+  } else
+    checks.push({
+      name: 'host Docker',
+      required: images.length > 0,
+      status: 'missing',
+      detail: `docker CLI not found. Searched PATH and ${dockerSearchLocations(environment).join(', ')}`,
+    });
   const report = {
     schemaVersion: '1',
     ready: checks.every(check => !check.required || check.status === 'ready'),
