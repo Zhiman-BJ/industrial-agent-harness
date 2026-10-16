@@ -33,10 +33,19 @@ function prepare(configDir, chats) {
     ],
   });
   // A finished chat mixing one local and one remote tool call, so the remote
-  // badge can be reviewed next to an unbadged local call.
+  // badge can be reviewed next to an unbadged local call, plus a todo event so
+  // the merged status card shows both blocks with a divider.
   const chat = chatStore.create(fs.realpathSync(projectDir), 'chip');
   const turn = chatStore.beginTurn(chat.id, '跑一次远程冒烟检查');
   chatStore.append(turn, { type: 'text', text: '好的，我先看本机环境，再调用远程沙箱。\n' });
+  chatStore.append(turn, {
+    type: 'todo',
+    items: [
+      { title: '读取布局与网表', status: 'done' },
+      { title: '远程沙箱冒烟检查', status: 'in_progress' },
+      { title: '汇总检查结论', status: 'pending' },
+    ],
+  });
   chatStore.append(turn, {
     type: 'tool',
     id: 'local-inspect',
@@ -164,13 +173,18 @@ async function runInner(window) {
   );
   await capture('08-artifact-downloaded');
 
-  // 7. Chat page: remote task status bar with an enabled composer.
+  // 7. Chat page: status pill top-right (card collapsed, conversation centered)
+  // with an enabled composer; opening the card shifts the conversation left.
   await click('.ia-new-chat');
-  await wait(
-    `document.querySelector('.ia-remote-task-status')?.textContent.includes('远程软件与沙箱')`,
-  );
+  await wait(`document.querySelector('.ia-status-dock')?.textContent.includes('远程软件与沙箱')`);
   await wait(`document.querySelector('.ia-composer textarea')?.disabled === false`);
-  await capture('09-chat-remote-ready');
+  await capture('09-chat-status-pill');
+  await click('.ia-status-pill');
+  await wait(`Boolean(document.querySelector('.ia-status-dock.open .ia-status-card'))`);
+  await capture('09b-status-card-open-shifts-chat');
+  await click('.ia-status-dock.open .ia-status-head');
+  await wait(`Boolean(document.querySelector('.ia-status-dock .ia-status-body'))`);
+  await capture('09c-status-card-expanded');
 
   // 8. Open the seeded chat: the remote sandbox tool call carries a green
   // badge while the local call does not. Tool identities arrive through the
@@ -178,6 +192,18 @@ async function runInner(window) {
   await clickText('.ia-sidebar-chat', '跑一次远程冒烟检查');
   await wait(`Boolean(document.querySelector('.ia-agent-tool .ia-remote-badge'))`);
   await capture('10-chat-remote-tool-badge');
+
+  // 9. The card on this chat carries both blocks (remote + tasks); open the
+  // dock if needed and expand them to review the divider and the task list.
+  // The card keeps its open/expand state across chats, so only toggle what is
+  // still collapsed.
+  await evaluate(`document.querySelector('.ia-status-pill')?.click()`);
+  await wait(`document.querySelectorAll('.ia-status-dock .ia-status-head').length === 2`);
+  await evaluate(
+    `document.querySelectorAll('.ia-status-dock .ia-status-head:not([aria-expanded="true"])').forEach(head => head.click())`,
+  );
+  await wait(`document.querySelectorAll('.ia-status-dock .ia-status-body').length === 2`);
+  await capture('10b-status-card-both-blocks');
 
   console.log('[remote-ui-selftest] done');
 }

@@ -55,7 +55,7 @@ import {
 import { AgentLogPanel } from './components/AgentLogPanel';
 import { AgentFlow } from './components/AgentFlow';
 import { BrokerCall } from './components/BrokerCall';
-import { TodoList } from './components/TodoList';
+import { ChatStatusCard } from './components/ChatStatusCard';
 import { DomainManager } from './components/DomainManager';
 import { CapabilityCenter, type CapabilitySection } from './components/CapabilityCenter';
 import { MessageRail } from './components/MessageRail';
@@ -64,7 +64,6 @@ import { CoreUpdatePanel } from './components/CoreUpdatePanel';
 import { ComputerUseSettings } from './components/ComputerUseSettings';
 import { AccountSettings } from './components/AccountSettings';
 import { ModelSettings } from './components/ModelSettings';
-import { RemoteTaskStatus } from './components/RemoteExecution';
 import { ProjectDetails } from './components/ProjectDetails';
 import { CreateProjectModal } from './components/CreateProjectModal';
 import { WorkspaceDivider } from './components/WorkspaceDivider';
@@ -1638,6 +1637,27 @@ export function App() {
                   </div>
                 </header>
               )}
+              <ChatStatusCard
+                remote={
+                  activeProject?.executionLocation === 'remote'
+                    ? {
+                        projectId: activeProject.id,
+                        domain: activeProject.domain || '',
+                        chatId: activeChatId,
+                        onReady: ready =>
+                          setRemoteExecution({
+                            projectId: activeProject.id,
+                            chatId: activeChatId,
+                            ready,
+                          }),
+                        onTools: setRemoteToolIds,
+                        onConfigure: () => showPage('project'),
+                      }
+                    : null
+                }
+                todo={todo?.type === 'todo' ? todo.items : null}
+                running={agentBusy}
+              />
               {page === 'capabilities' ? (
                 <CapabilityCenter
                   project={activeProject || undefined}
@@ -1774,30 +1794,12 @@ export function App() {
                       </button>
                     </div>
                   )}
-                  {todo?.type === 'todo' && <TodoList items={todo.items} running={agentBusy} />}
                   {agentBusy && !agentOwned && (
                     <p role="status" className="ia-composer-hint">
                       {t(
                         'This chat is running in another window. Open a new chat to work in parallel.',
                       )}
                     </p>
-                  )}
-                  {activeProject?.executionLocation === 'remote' && (
-                    <RemoteTaskStatus
-                      key={`${activeProject.id}:${activeChatId}`}
-                      projectId={activeProject.id}
-                      domain={activeProject.domain || ''}
-                      chatId={activeChatId}
-                      onReady={ready =>
-                        setRemoteExecution({
-                          projectId: activeProject.id,
-                          chatId: activeChatId,
-                          ready,
-                        })
-                      }
-                      onTools={setRemoteToolIds}
-                      onConfigure={() => showPage('project')}
-                    />
                   )}
                   <div className="ia-composer-wrap">
                     <div

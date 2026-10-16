@@ -6,8 +6,6 @@ import type {
   RemoteProjectState,
   RemoteServiceState,
   RemoteSyncReview,
-  RemoteTaskState,
-  RemoteSessionState,
   RemoteArtifact,
 } from '@industrial-agent-harness/viewer-builtin/api';
 
@@ -17,13 +15,6 @@ const serviceLabels = {
   unchecked: 'Not connected',
   connected: 'Connected',
   unavailable: 'Temporarily unavailable',
-};
-const taskLabels: Record<string, string> = {
-  submitting: 'Preparing remote task…',
-  running: 'Running remotely…',
-  completed: 'Remote task completed',
-  failed: 'Remote task failed',
-  unknown: 'Remote outcome unknown; checking without replaying…',
 };
 
 export function RemoteServiceSettings() {
@@ -427,118 +418,5 @@ function RemoteDownloads({ projectId, busy }: { projectId: string; busy: boolean
       })}
       {message && <p role="status">{message}</p>}
     </section>
-  );
-}
-
-export function RemoteTaskStatus({
-  projectId,
-  domain,
-  chatId,
-  onReady,
-  onConfigure,
-  onTools,
-}: {
-  projectId: string;
-  domain: string;
-  chatId: string | null;
-  onReady: (ready: boolean) => void;
-  onConfigure: () => void;
-  onTools?: (tools: string[]) => void;
-}) {
-  const { t } = useDisplayText();
-  const [project, setProject] = useState<RemoteProjectState>();
-  const [task, setTask] = useState<RemoteTaskState | null>(null);
-  const [session, setSession] = useState<RemoteSessionState | null>(null);
-  const [error, setError] = useState('');
-  const [ending, setEnding] = useState(false);
-  useEffect(() => {
-    let alive = true,
-      timer: ReturnType<typeof setTimeout>;
-    onReady(false);
-    async function poll() {
-      try {
-        const state = await window.viewerHost!.remoteProject({ projectId });
-        // Remote tool identities come from the service capability catalog; the
-        // chat flow uses them to badge sandbox-executed tool calls.
-        if (state.syncedAt && state.service.status === 'connected' && onTools)
-          void window
-            .viewerHost!.remoteTools({ projectId })
-            .then(tools => {
-              if (alive) onTools(tools);
-            })
-            .catch(() => {});
-        let remoteSession: RemoteSessionState | null = null,
-          value: RemoteTaskState | null = null;
-        if (chatId && state.syncedAt && state.service.status === 'connected') {
-          [remoteSession, value] = await Promise.all([
-            window.viewerHost!.remoteSession({ projectId, chatId }),
-            window.viewerHost!.remoteTask({ projectId, chatId }),
-          ]);
-        }
-        if (alive) {
-          setProject(state);
-          setSession(remoteSession);
-          setTask(value);
-          setError('');
-          onReady(
-            state.service.status === 'connected' &&
-              Boolean(state.syncedAt) &&
-              state.service.executableDomains?.includes(domain) === true &&
-              !['stopped', 'expired', 'failed'].includes(remoteSession?.status || '') &&
-              !['submitting', 'running', 'unknown'].includes(value?.status || ''),
-          );
-        }
-      } catch (reason) {
-        if (alive) {
-          setError(String(reason));
-          onReady(false);
-        }
-      }
-      if (alive) timer = setTimeout(() => void poll(), 5000);
-    }
-    void poll();
-    return () => {
-      alive = false;
-      clearTimeout(timer);
-    };
-  }, [projectId, chatId, domain]);
-  const terminal = session && ['stopped', 'expired', 'failed'].includes(session.status);
-  return (
-    <div className="ia-remote-task-status" role="status">
-      <Cloud size={14} />
-      <span>
-        {project && project.service.status !== 'connected'
-          ? t(serviceLabels[project.service.status])
-          : terminal
-            ? t('Remote session ended. Start a new chat.')
-            : task
-              ? t(taskLabels[task.status] || 'Remote outcome unknown')
-              : project?.syncedAt
-                ? t('Remote software and sandbox')
-                : t('Choose files to sync')}
-      </span>
-      <span className="ia-remote-actions">
-        {session && !terminal && !session.callLocked && chatId && (
-          <button
-            disabled={ending}
-            onClick={() => {
-              setEnding(true);
-              void window
-                .viewerHost!.remoteTerminate({ projectId, chatId, applicationSessionId: session.id })
-                .then(value => {
-                  setSession(value);
-                  onReady(false);
-                })
-                .catch(reason => setError(String(reason)))
-                .finally(() => setEnding(false));
-            }}
-          >
-            {t('End remote session')}
-          </button>
-        )}
-        <button onClick={onConfigure}>{t('Files and execution settings')}</button>
-      </span>
-      {error && <span role="alert">{error}</span>}
-    </div>
   );
 }

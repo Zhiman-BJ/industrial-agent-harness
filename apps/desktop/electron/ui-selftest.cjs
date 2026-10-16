@@ -142,12 +142,13 @@ async function run(window, dialog) {
   await capture('remote-unconfigured-zh');
   await setLanguage(window, 'en');
   await click('.ia-new-chat');
-  await wait(
-    `document.querySelector('.ia-remote-task-status')?.textContent.includes('Not configured')`,
-  );
+  await wait(`document.querySelector('.ia-status-dock')?.textContent.includes('Not configured')`);
+  // The pill summary can settle before the chat page finishes mounting its
+  // composer; wait for the textarea before asserting its disabled state.
+  await wait(`Boolean(document.querySelector('.ia-composer textarea'))`);
   assert.equal(await evaluate(`document.querySelector('.ia-composer textarea').disabled`), true);
   assert.equal(await evaluate(`document.querySelector('.ia-send').disabled`), true);
-  await evaluate(`window.__remoteStatus = document.querySelector('.ia-remote-task-status')`);
+  await evaluate(`window.__remoteStatus = document.querySelector('.ia-status-dock')`);
   await click('.ia-layout-toggle');
   await wait(`Boolean(document.querySelector('.layout-tabs'))`);
   await click('.ia-tab-add');
@@ -155,7 +156,7 @@ async function run(window, dialog) {
   await click('#tab-chat');
   await wait(`!document.querySelector('.ia-chat').hidden`);
   assert.equal(
-    await evaluate(`document.querySelector('.ia-remote-task-status') === window.__remoteStatus`),
+    await evaluate(`document.querySelector('.ia-status-dock') === window.__remoteStatus`),
     true,
     'Remote task status must stay mounted when browsing another tab',
   );
@@ -164,7 +165,13 @@ async function run(window, dialog) {
   await click('.ia-chat-actions button[title="Hide workspace"]');
   await click('.ia-layout-toggle');
   await wait(`Boolean(document.querySelector('.layout-split'))`);
-  await click('.ia-remote-task-status button');
+  // Open the collapsed pill into the card, expand its remote block, then open
+  // execution settings.
+  await click('.ia-status-pill');
+  await wait(`Boolean(document.querySelector('.ia-status-dock.open .ia-status-card'))`);
+  await click('.ia-status-dock .ia-status-head');
+  await wait(`Boolean(document.querySelector('.ia-status-dock .ia-status-body'))`);
+  await click('.ia-status-dock .ia-status-body .ia-log-link');
   await wait(`Boolean(document.querySelector('.ia-project-page'))`);
   await click('.ia-settings-button');
   await wait(

@@ -2652,6 +2652,30 @@
       "en": "Expand task list",
       "zh-CN": "展开任务列表"
     },
+    "Remote environment": {
+      "en": "Remote environment",
+      "zh-CN": "远程环境"
+    },
+    "Execution status": {
+      "en": "Execution status",
+      "zh-CN": "执行状态"
+    },
+    "Collapse remote status": {
+      "en": "Collapse remote status",
+      "zh-CN": "收起远程状态"
+    },
+    "Expand remote status": {
+      "en": "Expand remote status",
+      "zh-CN": "展开远程状态"
+    },
+    "Expand status card": {
+      "en": "Expand status card",
+      "zh-CN": "展开状态卡"
+    },
+    "Collapse status card": {
+      "en": "Collapse status card",
+      "zh-CN": "收起状态卡"
+    },
     "Tasks": {
       "en": "Tasks",
       "zh-CN": "任务"
