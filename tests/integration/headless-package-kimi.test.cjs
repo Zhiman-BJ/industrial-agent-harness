@@ -96,3 +96,59 @@ test('packaged headless Agent completes a real protected Kimi Code turn outside 
     '2.1.1',
   );
 });
+
+test('packaged native Agent accepts long deadlines without immediate timer overflow', async t => {
+  const { directory, target } = buildHeadlessPackage(t);
+  for (const timeoutMs of ['7200001', '2592000000', '9007199254740993']) {
+    const project = path.join(directory, 'project-' + timeoutMs);
+    fs.mkdirSync(project);
+    const model = await startModel({ calls: [], success: 'LONG_TIMEOUT_OK' });
+    try {
+      const { stdout, stderr } = await execute(
+        process.execPath,
+        [
+          path.join(target, 'industrial-harness.cjs'),
+          'run',
+          '--project-dir',
+          project,
+          '--domain',
+          'chip',
+          '--task',
+          'Report the marker.',
+          '--provider',
+          'openai_legacy',
+          '--endpoint',
+          model.endpoint,
+          '--model',
+          'controlled',
+          '--no-thinking',
+          '--timeout-ms',
+          timeoutMs,
+          '--chat-dir',
+          path.join(directory, 'chats-' + timeoutMs),
+          '--state-dir',
+          path.join(directory, 'state-' + timeoutMs),
+          '--log-dir',
+          path.join(directory, 'logs-' + timeoutMs),
+        ],
+        {
+          cwd: os.tmpdir(),
+          timeout: 30000,
+          env: {
+            ...process.env,
+            KIMI_EXECUTABLE: '',
+            OPENAI_API_KEY: 'package-local-fixture',
+            INDUSTRIAL_HARNESS_CONFIG_DIR: path.join(directory, 'settings-' + timeoutMs),
+          },
+        },
+      );
+      const rows = stdout.trim().split('\n').map(JSON.parse);
+      assert.equal(rows.at(-1).status, 'finished');
+      assert.ok(rows.some(row => row.event?.text === 'LONG_TIMEOUT_OK'));
+      assert.ok(!rows.some(row => row.type === 'timeout'));
+      assert.doesNotMatch(stderr, /TimeoutOverflowWarning/);
+    } finally {
+      await model.close();
+    }
+  }
+});
