@@ -2,6 +2,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { spawn, spawnSync } = require('node:child_process');
 const { hash } = require('./workspace-files.cjs');
+const { resolveDockerCli } = require('./docker-cli.cjs');
 const os = require('node:os');
 
 function executable(command, environment, preservePath = false) {
@@ -299,8 +300,10 @@ async function executeTask(task, { directory, input, work, actionId, environment
   if (container) {
     if ([input, work].some(file => file.includes(',')))
       throw Error('Docker bind paths cannot contain commas.');
-    const docker = executable('docker', environment);
-    const dockerHost = resolveDockerHost(docker, environment);
+    const resolved = await resolveDockerCli(environment);
+    if (!resolved) throw Error('Task executable is unavailable: docker');
+    const docker = resolved.docker;
+    const dockerHost = resolveDockerHost(docker, resolved.environment);
     const dockerEnv = {
       ...env,
       ...(dockerHost ? { DOCKER_HOST: dockerHost } : {}),

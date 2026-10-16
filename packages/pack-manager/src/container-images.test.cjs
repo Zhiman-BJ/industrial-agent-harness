@@ -270,3 +270,44 @@ test('real HTTPS transport verifies the release bytes with a portable Docker fix
   assert.equal(done.code, 0, done.stderr);
   assert.equal(JSON.parse(done.stdout).manifestDigest, f.manifestDigest);
 });
+
+test('a bare docker command resolves through the shared discovery ladder before spawning', async t => {
+  const f = await fixture(t);
+  const inner = dockerFixture(f).command;
+  let seen;
+  const command = (docker, args, options) => {
+    seen = docker;
+    return inner(docker, args, options);
+  };
+  const result = await acquireImage({
+    ...f.options,
+    command,
+    resolveDocker: async () => ({ docker: '/resolved/docker', environment: process.env }),
+  });
+  assert.equal(result.imageId, f.manifestDigest);
+  assert.equal(seen, '/resolved/docker');
+  const manager = new ContainerImageManager({
+    directory: f.root,
+    command,
+    resolveDocker: async () => ({ docker: '/resolved/docker', environment: process.env }),
+  });
+  await manager.ensure(f.lock, ['review-image']);
+  assert.equal(seen, '/resolved/docker');
+});
+
+test('an unresolvable docker reports every searched location before any download', async t => {
+  const f = await fixture(t);
+  let downloads = 0;
+  global.fetch = async () => {
+    downloads++;
+    throw Error('No download should start.');
+  };
+  const enoent = async () => {
+    throw Object.assign(Error('spawn docker ENOENT'), { code: 'ENOENT' });
+  };
+  await assert.rejects(
+    acquireImage({ ...f.options, command: enoent, resolveDocker: async () => null }),
+    /Docker was not found\. Install Docker Desktop[\s\S]*Searched the PATH and .*docker/,
+  );
+  assert.equal(downloads, 0);
+});
