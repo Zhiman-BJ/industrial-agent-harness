@@ -5,7 +5,7 @@
 - 来源：[#101](https://github.com/Zhiman-BJ/industrial-agent-harness/issues/101)、[#100](https://github.com/Zhiman-BJ/industrial-agent-harness/issues/100) 双仓库 Epic、2026-10-10 用户产品决定
 - 机器清单：[architecture/editions.json](../architecture/editions.json)（本文档的人类可读配套；冲突时以清单与校验器为准）
 
-本文档定义 industrial-agent-harness 内部开发仓库与外部开源版本（下称 OSS edition）的产品边界、公开清单、机器校验规则和导出约定。内部仓库保留现有名称、完整代码与开发历史；外部仓库只接收经清单批准的版本快照。外部仓库名称、地址、默认分支与许可证待用户定案前，一切真实发布被发布门禁显式阻断。
+本文档定义 industrial-agent-harness 内部开发仓库与外部开源版本（下称 OSS edition）的产品边界、公开清单、机器校验规则和导出约定。内部仓库保留现有名称、完整代码与开发历史；外部仓库只接收经清单批准的版本快照。外部仓库与许可证已于 2026-10-16 定案（`Zhiman-BJ/micius-harness`，默认分支 `main`，MIT，首版 `v0.0.1`）；真实发布仍由发布门禁阻断，直至 #102 隔离完成（planned 条目活引用清零）。
 
 ## 1. Edition 定义与默认公开面
 
@@ -117,7 +117,9 @@ release 门禁（`--gate release`，#106 导出与真实发布必跑）：dev �
 
 以下事项登记为 pending，在清单与发布门禁中显式阻断真实发布，不由实现 agent 代为定案：
 
-1. OSS 仓库名称、URL、默认分支（当前为空 → release 门禁阻断）；
-2. 许可证选择（当前 `pending` → release 门禁阻断；仓库现有 LICENSE 为 MIT，公开版是否沿用需用户确认）；
+1. ~~OSS 仓库名称、URL、默认分支~~ **已于 2026-10-16 定案**：`Zhiman-BJ/micius-harness`（默认分支 `main`），已填入清单 release 块；
+2. ~~许可证选择~~ **已于 2026-10-16 定案**：沿用 MIT（仓库现有 LICENSE 与第三方清单即按 MIT 编制），已填入清单 release 块；OSS 首版版本号同日定为 `v0.0.1`；
 3. 公开发布节奏（#100 建议双周检查发布资格、紧急修复加急，仅流程建议，待确认）；
 4. Core Vertical Slice 之外是否有新增公开候选面（如 BenchTop/PCB 相关能力是否入公开清单，另行立项）。
+
+定案后剩余的门禁阻断只有 #102 隔离（planned internal 条目活引用清零）；仓库本体按第 4 节导出约定以空仓创建（无 auto-init），首推为导出器生成的独立 root 提交。

@@ -688,6 +688,8 @@ CSV/TSV 显示表格并提供表头开关、全文筛选与分页；普通 JSON 
 
 2026-10-12 修订：根 `AGENTS.md` 与 `AGENT.md`（agent 指令入口）改为随公开面发布——与 #119 分层 AGENTS.md 已位于公共包路径的现状保持一致，也为开源仓库的 agent 辅助贡献者提供同等指令。`CLAUDE.md`、`PRODUCT.md` 与其余治理机械（policy.json、架构契约脚本与测试、CODEOWNERS、architecture workflow）仍属内部。根 AGENTS.md 以反引号提及若干内部 doc 路径，属已知文字性引用：#106 导出器在生成公开树时按既定的版本化转换处理，不视为引用违规。
 
+2026-10-16 修订：外部仓库与许可证定案——OSS 仓库为 `Zhiman-BJ/micius-harness`（默认分支 `main`，以空仓创建、无 auto-init），许可证沿用 MIT，OSS 首版版本号 `v0.0.1`。已填入 `architecture/editions.json` release 块；发布节奏与新增公开候选面仍待定。发布门禁剩余阻断仅为 #102 隔离（planned internal 条目活引用清零）。
+
 ## PD-070：内部 Demo 重放许可（取代绝对禁止条款）
 
 - 日期：2026-10-10。
