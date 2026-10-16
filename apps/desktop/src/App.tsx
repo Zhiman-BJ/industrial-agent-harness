@@ -7,6 +7,7 @@ import {
   ArrowUp,
   Bug,
   ChevronDown,
+  Cpu,
   ChevronRight,
   File,
   FilePlus2,
@@ -84,6 +85,52 @@ import { languageOptions, normalizePreference } from './i18n/core';
 
 type Theme = 'light' | 'dark';
 type ProjectFile = { path: string; name: string; depth: number; directory: boolean };
+type ModelSummary = { model: string; contextSize: number };
+type ContextUsageInfo = { fraction: number; usedTokens: number | null };
+
+// Kimi-style token counts: 25k means 25 × 1024 tokens.
+function formatContextTokens(value: number) {
+  if (value >= 10240) return `${Math.round(value / 1024)}k`;
+  if (value >= 1024) return `${(value / 1024).toFixed(1).replace(/\.0$/, '')}k`;
+  return String(value);
+}
+
+function contextUsageTitle(
+  t: ReturnType<typeof useDisplayText>['t'],
+  modelProfile: ModelSummary | null,
+  usage: ContextUsageInfo | null,
+) {
+  const name = modelProfile?.model || '';
+  if (!usage) return name;
+  const percent = Math.min(100, Math.round(usage.fraction * 100));
+  const used = usage.usedTokens != null ? formatContextTokens(usage.usedTokens) : '—';
+  const total = modelProfile ? formatContextTokens(modelProfile.contextSize) : '—';
+  const detail = t('Context {percent}% used ({used} / {total})', { percent, used, total });
+  return name ? `${name} · ${detail}` : detail;
+}
+
+function latestContextUsage(
+  turns: ChatTurn[],
+  contextSize: number | undefined,
+): ContextUsageInfo | null {
+  for (let turn = turns.length - 1; turn >= 0; turn--) {
+    const events = turns[turn].events;
+    for (let index = events.length - 1; index >= 0; index--) {
+      const event = events[index];
+      if (event.type !== 'status') continue;
+      const tokenUsage = event.tokenUsage;
+      const usedTokens = tokenUsage
+        ? tokenUsage.input_other + tokenUsage.input_cache_read + tokenUsage.input_cache_creation
+        : null;
+      const fraction =
+        event.contextUsage ??
+        (usedTokens != null && usedTokens > 0 && contextSize ? usedTokens / contextSize : null);
+      if (fraction != null && Number.isFinite(fraction) && fraction > 0)
+        return { fraction, usedTokens };
+    }
+  }
+  return null;
+}
 
 export function App() {
   const { t, locale } = useDisplayText();
@@ -98,6 +145,7 @@ export function App() {
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const attachments = useImageAttachments(activeProjectId);
   const [modelImageInput, setModelImageInput] = useState(false);
+  const [modelProfile, setModelProfile] = useState<ModelSummary | null>(null);
   const sentImages = useRef(new Map<string, PromptImage[]>());
   const sentTasks = useRef(new Map<string, string>());
   const [page, setPage] = useState<'chat' | 'project' | 'capabilities'>('chat');
@@ -509,7 +557,10 @@ export function App() {
     }
     void window.viewerHost
       .modelGet()
-      .then(profile => setModelImageInput(profile.imageInput))
+      .then(profile => {
+        setModelImageInput(profile.imageInput);
+        setModelProfile({ model: profile.model, contextSize: profile.contextSize });
+      })
       .catch(reason => setError(String(reason)));
     void window.viewerHost
       .domains()
@@ -666,7 +717,9 @@ export function App() {
       void window
         .viewerHost!.modelGet()
         .then(profile => {
-          if (!disposed) setModelImageInput(profile.imageInput);
+          if (disposed) return;
+          setModelImageInput(profile.imageInput);
+          setModelProfile({ model: profile.model, contextSize: profile.contextSize });
         })
         .catch(reason => setError(String(reason)));
     };
@@ -723,6 +776,7 @@ export function App() {
   const projectName = activeProject?.name || t('No project selected');
   const fixedDomain = activeProject?.domain || null;
   const selectedDomain = fixedDomain;
+  const contextUsage = latestContextUsage(turns, modelProfile?.contextSize);
   const domainFor = (id?: string | null) => domains.find(item => item.id === id);
   const activeFileName = activeFile?.name;
   const todo = latestEvent(agentEvents, 'todo');
@@ -1886,6 +1940,35 @@ export function App() {
                               <option value="ask">{t('Request approval')}</option>
                               <option value="auto">{t('Auto approve')}</option>
                             </select>
+                            <button
+                              type="button"
+                              className="ia-model-pill"
+                              onClick={() => setModelSettingsOpen(true)}
+                              title={contextUsageTitle(t, modelProfile, contextUsage)}
+                              aria-label={contextUsageTitle(t, modelProfile, contextUsage)}
+                            >
+                              <Cpu size={13} />
+                              <span className="ia-model-pill-name">
+                                {modelProfile?.model || t('Model')}
+                              </span>
+                              {contextUsage && (
+                                <span
+                                  className={`ia-model-pill-ctx${
+                                    contextUsage.fraction >= 0.8 ? ' high' : ''
+                                  }`}
+                                  aria-hidden="true"
+                                >
+                                  <span className="ia-model-pill-bar">
+                                    <span
+                                      style={{
+                                        width: `${Math.min(100, Math.round(contextUsage.fraction * 100))}%`,
+                                      }}
+                                    />
+                                  </span>
+                                  {Math.min(100, Math.round(contextUsage.fraction * 100))}%
+                                </span>
+                              )}
+                            </button>
                           </div>
                           <div className="ia-send-actions">
                             <ImageAttachButton

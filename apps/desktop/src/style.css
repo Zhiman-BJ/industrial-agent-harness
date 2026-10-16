@@ -651,6 +651,53 @@ body,
   font: inherit;
   font-size: 11px;
 }
+.ia-app button.ia-model-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 250px;
+  padding: 5px 9px;
+  border: 1px solid var(--ia-border);
+  border-radius: 999px;
+  background: var(--ia-raised);
+  color: var(--ia-text);
+  font-size: 11px;
+  line-height: 16px;
+}
+.ia-model-pill .ia-model-pill-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ia-model-pill .ia-model-pill-ctx {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: none;
+  color: var(--ia-muted);
+  border-left: 1px solid var(--ia-border);
+  padding-left: 8px;
+}
+.ia-model-pill .ia-model-pill-bar {
+  width: 34px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--ia-border);
+  overflow: hidden;
+}
+.ia-model-pill .ia-model-pill-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--ia-accent);
+}
+.ia-model-pill .ia-model-pill-ctx.high {
+  color: var(--ia-warning);
+}
+.ia-model-pill .ia-model-pill-ctx.high .ia-model-pill-bar > span {
+  background: var(--ia-warning);
+}
 .ia-context-select {
   display: flex;
   gap: 4px;

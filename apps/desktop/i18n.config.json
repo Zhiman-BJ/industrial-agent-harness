@@ -1036,6 +1036,10 @@
       "en": "Context size",
       "zh-CN": "上下文长度"
     },
+    "Context {percent}% used ({used} / {total})": {
+      "en": "Context {percent}% used ({used} / {total})",
+      "zh-CN": "已用上下文 {percent}%（{used} / {total}）"
+    },
     "Thinking": {
       "en": "Thinking",
       "zh-CN": "思考"
