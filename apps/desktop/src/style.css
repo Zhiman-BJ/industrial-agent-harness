@@ -698,6 +698,9 @@ body,
 }
 .ia-app .ia-chat-approval-mode {
   max-width: 150px;
+  /* A native select cannot ellipsize; flex shrink would clip it mid-word.
+     Keep it at content width and let the controls row wrap instead. */
+  flex: none;
   color: var(--ia-muted);
   background: var(--ia-panel);
   border: 1px solid var(--ia-border);
@@ -711,6 +714,9 @@ body,
   align-items: center;
   gap: 6px;
   max-width: 250px;
+  /* Shrink this pill (its name ellipsizes) before the row wraps. */
+  min-width: 0;
+  flex: 0 1 auto;
   padding: 5px 9px;
   border: 1px solid var(--ia-border);
   border-radius: 999px;
