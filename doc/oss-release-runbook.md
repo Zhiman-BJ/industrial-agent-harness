@@ -14,15 +14,15 @@
 
 ## 2. 首发前置：待用户定案清单（阻断项）
 
-下表任一项未定案，发布门禁即阻断。定案后以 PR 更新 `architecture/editions.json` 的 `release` 块（该文件是 public 条目，改动不触治理哈希，无需架构修订流程）。
+下表中**门禁四项已于 2026-10-16 定案**（用户拍板；许可证为授权决定）并填入 `architecture/editions.json` release 块（PR #208）：真实发布的门禁阻断只剩 §3-b 的 #102 隔离。其余三项（应用身份细节、节奏、贡献者归属）不阻断门禁，但须在 T7 发行前定。
 
 | 事项 | 当前值 | 建议（仅供拍板参考） | 拍板后落在哪 |
 | --- | --- | --- | --- |
-| 外部仓库名称 | 空 | 产品名已定 Micius Harness；repo slug 建议 `micius-harness` | `release.externalRepoName` |
-| 外部仓库 URL | 空 | 建议 GitHub 上新建独立公开仓库（org 待定：Zhiman-BJ 现有 org 或新 org） | `release.externalRepoUrl` |
-| 外部默认分支 | 空 | `main` | `release.externalDefaultBranch` |
-| 许可证 | `pending` | 本仓库现为 MIT；沿用需用户确认 | `release.license` |
-| OSS 版本号 | 无 | 首版 `v1.0.0`，与内部首个正式 desktop 版共用同一 source SHA（"正式版交 Micius"即双轨同源） | 公开仓 tag 命名约定（#107 映射表） |
+| 外部仓库名称 | **已定案：`Zhiman-BJ/micius-harness`** | — | `release.externalRepoName` ✅ |
+| 外部仓库 URL | **已定案：`https://github.com/Zhiman-BJ/micius-harness`** | — | `release.externalRepoUrl` ✅ |
+| 外部默认分支 | **已定案：`main`** | — | `release.externalDefaultBranch` ✅ |
+| 许可证 | **已定案：MIT**（沿用；仓库 LICENSE 与第三方清单即按 MIT 编制） | — | `release.license` ✅ |
+| OSS 版本号 | **已定案：首版 `v0.0.1`** | 与内部正式版共用同一 source SHA（"正式版交 Micius"即双轨同源） | 公开仓 tag 命名约定（#107 映射表）✅ |
 | OSS 应用身份 | 无 | productName「Micius Harness」+ 独立 appId + 独立数据目录 + 独立更新源；与内部版同机共存互不读写（editions.md §6） | #108 的身份配置接口 |
 | 发布节奏 | 无 | 双周检查发布资格、紧急修复加急（#100 建议） | 本手册 §5 执行频率 |
 | 贡献者归属方式 | 无（#107 协议：公开发布提交采用已配置身份，不复制内部消息/PR 链接，不伪造贡献归属，git 历史不带入个人作者） | 三选一或组合：①每版公开 release notes 附经审核的贡献者名单；②公开树维护一份人工筛选的 AUTHORS/CREDITS 文件；③仅在 GitHub 侧授予协作者/维护者权限，不涉 git 归属。任何公开名单须本人同意后才进入导出面 | #107 发布提交协议、#108 公开发行说明 |
