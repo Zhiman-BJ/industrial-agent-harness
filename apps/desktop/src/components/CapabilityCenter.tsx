@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react';
 import { ArrowLeft, Blocks, CircuitBoard, Stethoscope, Wrench } from 'lucide-react';
 import type { DomainOption, ProjectBinding } from '@industrial-agent-harness/viewer-builtin/api';
 import { PacksSection, type DomainStatus, type DomainProgress } from './CapabilityPacks';
-import { WindowControls } from './WindowControls';
 import { McpSection, SkillsSection } from './CapabilityResources';
 import { DiagnosticsSection } from './CapabilityDiagnostics';
 
@@ -126,7 +125,6 @@ export function CapabilityCenter({
           <ArrowLeft size={16} />
         </button>
         <h1>{t('Capability center')}</h1>
-        <WindowControls />
       </header>
       <div className="ia-capability-body">
         <nav className="ia-capability-nav" aria-label={t('Capability sections')}>

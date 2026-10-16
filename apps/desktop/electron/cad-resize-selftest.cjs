@@ -3,6 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { transitionFullscreen } = require('./navigation-selftest.cjs');
 const { viewportRect, captureSettled } = require('./cad-render-selftest.cjs');
+const { setLanguage } = require('./selftest-language.cjs');
 
 async function verifyResize(window, project) {
   const evaluate = code => window.webContents.executeJavaScript(code, true);
@@ -110,6 +111,38 @@ async function verifyResize(window, project) {
   await pause();
   const expanded = await layout();
   assert.ok(Math.abs(expanded.chat - 280) < 2, JSON.stringify(expanded));
+  try {
+    for (const locale of ['en', 'zh-CN']) {
+      await setLanguage(window, locale);
+      await pause();
+      const composer = await evaluate(`(() => {
+        const body=document.querySelector('.ia-composer-body').getBoundingClientRect();
+        const controls=['.ia-chat-approval-mode','.ia-model-pill','.ia-image-file-input + button','.ia-send'].map(selector => {
+          const node=document.querySelector(selector), rect=node?.getBoundingClientRect();
+          if (!node) return {selector,visible:false,contained:false};
+          const style=getComputedStyle(node);
+          return {selector,visible:rect.width>0 && rect.height>0 && style.visibility!=='hidden' && style.display!=='none',
+            contained:rect.left>=body.left-1 && rect.right<=body.right+1 && rect.top>=body.top-1 && rect.bottom<=Math.min(body.bottom,innerHeight)+1,
+            left:rect.left,right:rect.right};
+        });
+        const overflow=['.ia-composer','.ia-composer-body','.ia-composer-footer','.ia-chat-controls','.ia-send-actions','.ia-composer textarea'].map(selector => {
+          const node=document.querySelector(selector);
+          return {selector,extraWidth:node.scrollWidth-node.clientWidth};
+        });
+        return {body:{left:body.left,right:body.right},controls,overflow};
+      })()`);
+      assert.ok(
+        composer.controls.every(control => control.visible && control.contained),
+        `${locale}: approval, model, attachment and send controls must remain visible inside the 280 px chat composer: ${JSON.stringify(composer)}`,
+      );
+      assert.ok(
+        composer.overflow.every(node => node.extraWidth <= 1),
+        `${locale}: the narrow composer must not overflow horizontally: ${JSON.stringify(composer.overflow)}`,
+      );
+    }
+  } finally {
+    await setLanguage(window, 'en');
+  }
   const originalSize = window.getContentSize();
   try {
     window.setContentSize(1000, 800);
@@ -152,11 +185,47 @@ async function verifyResize(window, project) {
   const fitted = await capture(),
     fittedRatio = modelRatio(fitted),
     restoredWidth = (await layout()).workspace;
+  await evaluate(`(() => {
+    const view=document.querySelector('.ia-file-view:not([hidden])');
+    window.__cadCanvas=view.querySelector('.rp-cad canvas');
+    window.__cadPose={yaw:view.querySelector('.rp-cad').dataset.yaw,zoom:view.querySelector('.rp-cad').dataset.zoom};
+    window.__cadFile=document.querySelector('.ia-viewer-header b').textContent;
+  })()`);
+  async function retained(context) {
+    assert.equal(
+      await evaluate(`(() => {
+      const view=document.querySelector('.ia-file-view:not([hidden])');
+      return view.querySelector('.rp-cad canvas')===window.__cadCanvas &&
+        document.querySelector('.ia-viewer-header b').textContent===window.__cadFile;
+    })()`),
+      true,
+      `${context}: preserve the current file and OCCT WebGL canvas`,
+    );
+    assert.deepEqual(
+      await evaluate(`(() => {
+      const cad=document.querySelector('.ia-file-view:not([hidden]) .rp-cad');
+      return {yaw:cad.dataset.yaw,zoom:cad.dataset.zoom};
+    })()`),
+      await evaluate(`window.__cadPose`),
+      `${context}: preserve camera and zoom`,
+    );
+  }
+  for (const context of ['Collapsing the sidebar', 'Restoring the sidebar']) {
+    await evaluate(`document.querySelector('[data-testid="sidebar-toggle"]').click()`);
+    await pause();
+    await retained(context);
+    sameShape(await capture(), fittedRatio, context);
+  }
   await transitionFullscreen(window, true, () =>
     evaluate(`document.querySelector('button[aria-label="Fullscreen viewer"]').click()`),
   );
   await pause();
-  assert.equal(await evaluate(`Boolean(document.fullscreenElement)`), true);
+  assert.equal(
+    await evaluate(`document.fullscreenElement === document.querySelector('.ia-workspace')`),
+    true,
+    'The existing workspace remains the fullscreen root',
+  );
+  await retained('Entering fullscreen');
   const fullscreen = await capture();
   sameShape(fullscreen, fittedRatio, 'Entering fullscreen');
   fs.writeFileSync(path.join(project, 'cad-resize-before.png'), fitted.toPNG());
@@ -165,11 +234,24 @@ async function verifyResize(window, project) {
     evaluate(`document.querySelector('button[aria-label="Exit viewer fullscreen"]').click()`),
   );
   await pause(1000);
+  await retained('Exiting fullscreen');
   sameShape(await capture(), fittedRatio, 'Exiting fullscreen');
   assert.ok(
     Math.abs((await layout()).workspace - restoredWidth) < 2,
     'Fullscreen must retain the split width.',
   );
+  await transitionFullscreen(window, true, () =>
+    evaluate(`document.querySelector('button[aria-label="Fullscreen viewer"]').click()`),
+  );
+  await transitionFullscreen(window, false, async () => {
+    window.focus();
+    window.webContents.focus();
+    window.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'Escape' });
+    window.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'Escape' });
+  });
+  await pause(1000);
+  await retained('Leaving fullscreen with Esc');
+  sameShape(await capture(), fittedRatio, 'Leaving fullscreen with Esc');
   await evaluate(
     `window.__cadCanvas = document.querySelector('.ia-file-view:not([hidden])')?.querySelector('.rp-cad canvas'); window.__cadPose = {yaw: document.querySelector('.ia-file-view:not([hidden])')?.querySelector('.rp-cad').dataset.yaw, zoom: document.querySelector('.ia-file-view:not([hidden])')?.querySelector('.rp-cad').dataset.zoom}; document.querySelector('.ia-layout-toggle').click();`,
   );
@@ -206,7 +288,7 @@ async function verifyResize(window, project) {
   );
   sameShape(await capture(), fittedRatio, 'Returning to split layout');
   console.log(
-    'CAD pixel proportions survive divider drag and fullscreen; 280 px chat, window shrink, keyboard limits and split reset passed',
+    'CAD pixel proportions survive sidebar changes, divider drag, fullscreen and Esc; current file, canvas, camera, 280 px chat, window shrink, keyboard limits and split reset passed',
   );
 }
 module.exports = { verifyResize };

@@ -341,7 +341,7 @@ async function run(window, { manager, runtime }) {
   );
   // Companion hash keys contain original basenames. Open the original artifact
   // from the file tree, preserving its provenance and verification association.
-  await evaluate(`document.querySelector('.ia-chat-actions button:last-child').click()`);
+  await evaluate(`document.querySelector('[data-testid="workspace-toggle"]').click()`);
   await wait(`Boolean(document.querySelector('.ia-file-tree-toggle'))`);
   await evaluate(`document.querySelector('.ia-file-tree-toggle').click()`);
   const relative = edited.relativePath;

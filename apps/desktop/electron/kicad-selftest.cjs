@@ -46,7 +46,7 @@ async function run(window) {
     await waitFor(() =>
       evaluate(`document.querySelector('.ia-domain-pill')?.innerText.includes('PCB')`),
     );
-    await evaluate(`document.querySelector('.ia-chat-actions button:last-child').click()`);
+    await evaluate(`document.querySelector('[data-testid="workspace-toggle"]').click()`);
     await waitFor(() =>
       evaluate(`Boolean(document.querySelector('.ia-workspace-actions button'))`),
     );

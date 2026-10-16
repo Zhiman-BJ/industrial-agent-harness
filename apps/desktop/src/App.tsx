@@ -15,14 +15,10 @@ import {
   FolderOpen,
   Globe,
   Maximize,
-  PanelsTopLeft,
   Pin,
-  Columns2,
   Minimize,
   Moon,
   MoreHorizontal,
-  PanelLeftClose,
-  PanelLeftOpen,
   PanelRightClose,
   PanelRightOpen,
   Pencil,
@@ -60,7 +56,7 @@ import { TodoList } from './components/TodoList';
 import { DomainManager } from './components/DomainManager';
 import { CapabilityCenter, type CapabilitySection } from './components/CapabilityCenter';
 import { MessageRail } from './components/MessageRail';
-import { WindowControls } from './components/WindowControls';
+import { DesktopHeader } from './components/DesktopHeader';
 import { CoreUpdatePanel } from './components/CoreUpdatePanel';
 import { ComputerUseSettings } from './components/ComputerUseSettings';
 import { AccountSettings } from './components/AccountSettings';
@@ -175,7 +171,10 @@ export function App() {
   const [workbenchFocus, setWorkbenchFocus] = useState<'chat' | 'workspace'>('chat');
   const tabbed = layout === 'tabs' || windowWidth < 900;
   useEffect(() => {
-    const resize = () => setWindowWidth(window.innerWidth);
+    const resize = () => {
+      setWindowWidth(window.innerWidth);
+      if (window.innerWidth >= 760) setCompactSidebarOpen(false);
+    };
     window.addEventListener('resize', resize);
     return () => window.removeEventListener('resize', resize);
   }, []);
@@ -1227,25 +1226,51 @@ export function App() {
       className={`rp-shell ia-app theme-${theme} ${sidebarVisible ? '' : 'left-collapsed'} ${rightOpen ? '' : 'right-collapsed'} ${tabbed ? 'layout-tabs' : 'layout-split'}`}
       data-platform={window.viewerHost?.platform}
     >
+      <DesktopHeader
+        projectName={projectName}
+        location={
+          tabbed && workbenchFocus === 'workspace'
+            ? activeFileName || t('Workspace')
+            : page === 'capabilities'
+              ? t('Capability center')
+              : page === 'project'
+                ? t('Project details')
+                : chatDisplayTitle(
+                    chatList.find(chat => chat.id === activeChatId)?.title || 'New chat',
+                  )
+        }
+        hasProject={Boolean(activeProject)}
+        sidebarVisible={sidebarVisible}
+        workspaceVisible={rightOpen && (!tabbed || workbenchFocus === 'workspace')}
+        tabbed={tabbed}
+        canSplit={windowWidth >= 900}
+        debug={debug}
+        onProject={() => showPage('project')}
+        onSidebar={() => {
+          setLeftOpen(!sidebarVisible);
+          setCompactSidebarOpen(windowWidth < 760 && !sidebarVisible);
+        }}
+        onWorkspace={() => {
+          const visible = rightOpen && (!tabbed || workbenchFocus === 'workspace');
+          setRightOpen(!visible);
+          setWorkbenchFocus(visible ? 'chat' : 'workspace');
+        }}
+        onLayout={toggleLayout}
+        onLogs={() => showAgentLog()}
+        onDebug={() => setDebug(value => !value)}
+      />
       <div className="ia-columns">
         {sidebarVisible && (
-          <aside className="ia-tree ia-sidebar" aria-label={t('Project navigation')}>
+          <aside
+            id="ia-project-sidebar"
+            className="ia-tree ia-sidebar"
+            aria-label={t('Project navigation')}
+          >
             <div className="ia-sidebar-brand">
               <span className="ia-product-mark">
                 <img src="./product-mark.png" width={28} height={28} alt="" />
               </span>
               <b title="Industrial Harness">Industrial Harness</b>
-              <button
-                className="ia-icon"
-                onClick={() => {
-                  setLeftOpen(false);
-                  setCompactSidebarOpen(false);
-                }}
-                title={t('Hide sidebar')}
-                aria-label={t('Hide sidebar')}
-              >
-                <PanelLeftClose size={16} />
-              </button>
             </div>
             <div className="ia-projects-heading">
               <span>{t('PROJECTS')}</span>
@@ -1566,22 +1591,7 @@ export function App() {
         )}
         <div className="ia-workbench">
           {tabbed && (
-            <div
-              className={`ia-workbench-tabbar ${!sidebarVisible && window.viewerHost?.platform === 'darwin' ? 'ia-lights-gap' : ''}`}
-            >
-              {!sidebarVisible && (
-                <button
-                  className="ia-icon"
-                  title={t('Show sidebar')}
-                  aria-label={t('Show sidebar')}
-                  onClick={() => {
-                    setLeftOpen(true);
-                    setCompactSidebarOpen(true);
-                  }}
-                >
-                  <PanelLeftOpen size={16} />
-                </button>
-              )}
+            <div className="ia-workbench-tabbar">
               <WorkspaceTabs
                 tabs={[
                   {
@@ -1618,19 +1628,6 @@ export function App() {
                 onPin={pinFile}
                 onAdd={browseFiles}
               />
-              <button
-                className="ia-layout-toggle ia-icon"
-                aria-label={t('Use split layout')}
-                title={
-                  windowWidth < 900
-                    ? t('Split layout is available in a wider window')
-                    : t('Use split layout')
-                }
-                disabled={windowWidth < 900}
-                onClick={toggleLayout}
-              >
-                <Columns2 size={17} />
-              </button>
             </div>
           )}
           <div className="ia-workbench-content">
@@ -1641,78 +1638,6 @@ export function App() {
               role={tabbed ? 'tabpanel' : undefined}
               aria-labelledby={tabbed ? 'tab-chat' : undefined}
             >
-              {page !== 'capabilities' && (
-                <header className="ia-chat-header">
-                  <div>
-                    {!sidebarVisible && (
-                      <button
-                        className="ia-icon"
-                        onClick={() => {
-                          setLeftOpen(true);
-                          setCompactSidebarOpen(true);
-                        }}
-                        title={t('Show sidebar')}
-                        aria-label={t('Show sidebar')}
-                      >
-                        <PanelLeftOpen size={16} />
-                      </button>
-                    )}
-                    <button
-                      className="ia-header-project"
-                      onClick={() => setPage('project')}
-                      disabled={!activeProject}
-                      title={activeProject?.path}
-                      aria-label={t('Project details: {0}', { '0': projectName })}
-                    >
-                      <Folder size={16} />
-                      <b>{projectName}</b>
-                      {activeProject && <ChevronDown size={13} />}
-                    </button>
-                  </div>
-                  <div className="ia-chat-actions">
-                    <WindowControls />
-                    {!tabbed && (
-                      <button
-                        className="ia-layout-toggle"
-                        onClick={toggleLayout}
-                        title={t('Use tab layout')}
-                        aria-label={t('Use tab layout')}
-                      >
-                        <PanelsTopLeft size={16} />
-                      </button>
-                    )}
-                    <button
-                      className="ia-log-button"
-                      aria-label={t('View agent logs')}
-                      title={t('View detailed agent logs')}
-                      disabled={!activeProjectId}
-                      onClick={() => showAgentLog()}
-                    >
-                      {t('Logs')}
-                    </button>
-                    <button
-                      className={debug ? 'active' : ''}
-                      onClick={() => setDebug(value => !value)}
-                      title={t('Toggle debug logs')}
-                      aria-label={t('Toggle debug logs')}
-                      aria-pressed={debug}
-                    >
-                      <Bug size={15} />
-                    </button>
-                    <button
-                      onClick={() => {
-                        setRightOpen(value => !value);
-                        setWorkbenchFocus('workspace');
-                      }}
-                      title={rightOpen ? t('Hide workspace') : t('Show workspace')}
-                      aria-label={rightOpen ? t('Hide workspace') : t('Show workspace')}
-                      aria-pressed={rightOpen}
-                    >
-                      {rightOpen ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />}
-                    </button>
-                  </div>
-                </header>
-              )}
               {page === 'capabilities' ? (
                 <CapabilityCenter
                   project={activeProject || undefined}
@@ -1756,84 +1681,86 @@ export function App() {
                           element.scrollHeight - element.scrollTop - element.clientHeight < 80;
                       }}
                     >
-                      {hasEarlier && (
-                        <button
-                          className="ia-history-more"
-                          disabled={historyLoading}
-                          onClick={() => void loadEarlier()}
-                        >
-                          {historyLoading ? t('Loading…') : t('Load earlier messages')}
-                        </button>
-                      )}
-                      {!turns.length && (
-                        <div className="ia-chat-welcome">
-                          <h1>
-                            {activeProject
-                              ? t('What are you working on?')
-                              : t('Start with your project.')}
-                          </h1>
-                          <p>
-                            {activeProject
-                              ? t(
-                                  'Describe a task in your project. Relevant capabilities and tools will appear as the work progresses.',
-                                )
-                              : t(
-                                  'Choose a local folder and a domain, then describe what you want to work on.',
-                                )}
-                          </p>
-                        </div>
-                      )}
-                      {turns.map((turn, index) => (
-                        <div
-                          className="ia-chat-turn"
-                          key={turn.id}
-                          data-turn-id={turn.id}
-                          data-turn-index={index}
-                        >
-                          <div className="ia-user-entry ia-message">
-                            <div className="ia-user-message">
-                              {turn.task}
-                              {turn.events.map(event =>
-                                event.type === 'user-images' || event.type === 'input-images' ? (
-                                  <ImageThumbnails key="input-images" images={event.images} />
-                                ) : null,
-                              )}
-                            </div>
-                            <MessageActions text={turn.task} recordedAt={turn.createdAt} />
+                      <div className="ia-chat-transcript">
+                        {hasEarlier && (
+                          <button
+                            className="ia-history-more"
+                            disabled={historyLoading}
+                            onClick={() => void loadEarlier()}
+                          >
+                            {historyLoading ? t('Loading…') : t('Load earlier messages')}
+                          </button>
+                        )}
+                        {!turns.length && (
+                          <div className="ia-chat-welcome">
+                            <h1>
+                              {activeProject
+                                ? t('What are you working on?')
+                                : t('Start with your project.')}
+                            </h1>
+                            <p>
+                              {activeProject
+                                ? t(
+                                    'Describe a task in your project. Relevant capabilities and tools will appear as the work progresses.',
+                                  )
+                                : t(
+                                    'Choose a local folder and a domain, then describe what you want to work on.',
+                                  )}
+                            </p>
                           </div>
-                          {turn.broker && (
-                            <BrokerCall
-                              broker={turn.broker}
-                              detail={index === turns.length - 1 ? capabilityDetail : undefined}
-                              debug={debug}
-                              selectedDomain={selectedDomain}
-                              readOnly={index !== turns.length - 1 || agentBusy}
-                              onContext={context => void resolveTask(context, turn.task)}
-                              onDetail={id => void showDetail(id)}
-                            />
-                          )}
-                          {turn.events.length > 0 && (
-                            <AgentFlow
-                              onLog={showAgentLog}
-                              onOpenResult={openTaskResult}
-                              turnId={turn.id}
-                              chatId={activeChatId || undefined}
-                              events={turn.events}
-                              running={agentOwned && agentBusy && index === turns.length - 1}
-                              debug={debug}
-                              approve={approveAgent}
-                              answer={answerAgent}
-                              onRetry={
-                                turn.events.some(event => event.type === 'error')
-                                  ? () => retryTurn(turn.task)
-                                  : undefined
-                              }
-                              onOpenModelSettings={openModelSettings}
-                            />
-                          )}
-                        </div>
-                      ))}
-                      {brokerError && <div className="ia-flow-error">{t(brokerError)}</div>}
+                        )}
+                        {turns.map((turn, index) => (
+                          <div
+                            className="ia-chat-turn"
+                            key={turn.id}
+                            data-turn-id={turn.id}
+                            data-turn-index={index}
+                          >
+                            <div className="ia-user-entry ia-message">
+                              <div className="ia-user-message">
+                                {turn.task}
+                                {turn.events.map(event =>
+                                  event.type === 'user-images' || event.type === 'input-images' ? (
+                                    <ImageThumbnails key="input-images" images={event.images} />
+                                  ) : null,
+                                )}
+                              </div>
+                              <MessageActions text={turn.task} recordedAt={turn.createdAt} />
+                            </div>
+                            {turn.broker && (
+                              <BrokerCall
+                                broker={turn.broker}
+                                detail={index === turns.length - 1 ? capabilityDetail : undefined}
+                                debug={debug}
+                                selectedDomain={selectedDomain}
+                                readOnly={index !== turns.length - 1 || agentBusy}
+                                onContext={context => void resolveTask(context, turn.task)}
+                                onDetail={id => void showDetail(id)}
+                              />
+                            )}
+                            {turn.events.length > 0 && (
+                              <AgentFlow
+                                onLog={showAgentLog}
+                                onOpenResult={openTaskResult}
+                                turnId={turn.id}
+                                chatId={activeChatId || undefined}
+                                events={turn.events}
+                                running={agentOwned && agentBusy && index === turns.length - 1}
+                                debug={debug}
+                                approve={approveAgent}
+                                answer={answerAgent}
+                                onRetry={
+                                  turn.events.some(event => event.type === 'error')
+                                    ? () => retryTurn(turn.task)
+                                    : undefined
+                                }
+                                onOpenModelSettings={openModelSettings}
+                              />
+                            )}
+                          </div>
+                        ))}
+                        {brokerError && <div className="ia-flow-error">{t(brokerError)}</div>}
+                      </div>
                     </div>
                   </div>
                   {setupNotice && agentStatus && !agentStatus.configured && (

@@ -294,7 +294,7 @@ async function run(window) {
       times,
     );
     window.setSize(1000, 650);
-    await click('.ia-chat-actions button:last-child');
+    await click('[data-testid="workspace-toggle"]');
     await move(`${user} .ia-user-message`);
     assert.equal(await opacity(userActions), '1');
     const clipped = await evaluate(

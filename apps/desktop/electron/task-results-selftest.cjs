@@ -154,8 +154,8 @@ async function run(window) {
       `(()=>{const result=[...document.querySelectorAll('.ia-task-results')].at(-1);const scroller=result.closest('.ia-chat-scroll');scroller.scrollTop+=result.getBoundingClientRect().top-scroller.getBoundingClientRect().top-Math.max(0,(scroller.clientHeight-result.getBoundingClientRect().height)/2);})()`,
     );
     assert.ok(
-      await evaluate(`document.querySelector('.ia-chat-header').getBoundingClientRect().top>=0`),
-      'capturing results must not scroll the chat header out of view',
+      await evaluate(`document.querySelector('.ia-desktop-header').getBoundingClientRect().top>=0`),
+      'capturing results must not scroll the desktop header out of view',
     );
     for (let attempt = 0; attempt < 3; attempt++) {
       try {

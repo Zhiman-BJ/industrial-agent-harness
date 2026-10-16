@@ -24,7 +24,13 @@ function prepare(config, chats) {
 }
 
 async function run(window, dialog) {
-  const evaluate = script => window.webContents.executeJavaScript(script, true);
+  const evaluate = async script => {
+    try {
+      return await window.webContents.executeJavaScript(script, true);
+    } catch (error) {
+      throw Error(`UI selftest renderer script failed:\n${script}`, { cause: error });
+    }
+  };
   async function wait(script) {
     const deadline = Date.now() + 15000;
     while (Date.now() < deadline) {
@@ -41,8 +47,107 @@ async function run(window, dialog) {
       Object.getOwnPropertyDescriptor(prototype, 'value').set.call(node, ${JSON.stringify(value)});
       node.dispatchEvent(new Event('input', { bubbles: true }));
     })()`);
+  const settle = () =>
+    evaluate(
+      `document.fonts.ready.then(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))`,
+    );
+  async function shell(name) {
+    await settle();
+    const geometry = await evaluate(`(() => {
+      const header = document.querySelector('.ia-desktop-header');
+      const toggle = header.querySelector('[data-testid="sidebar-toggle"]');
+      const rect = header.getBoundingClientRect(), button = toggle.getBoundingClientRect();
+      const sidebar = document.querySelector('.ia-sidebar')?.getBoundingClientRect();
+      const backdrop = document.querySelector('.ia-sidebar-backdrop')?.getBoundingClientRect();
+      return {height:rect.height, bottom:rect.bottom, toggleLeft:button.left,
+        toggles:document.querySelectorAll('[data-testid="sidebar-toggle"]').length,
+        controls:document.querySelectorAll('.ia-window-controls').length,
+        sidebar:sidebar && {top:sidebar.top,width:sidebar.width}, backdropTop:backdrop?.top,
+        contentTop:document.querySelector('.ia-columns').getBoundingClientRect().top,
+        documentWidth:document.documentElement.scrollWidth, documentHeight:document.documentElement.scrollHeight,
+        width:innerWidth,heightAvailable:innerHeight};
+    })()`);
+    assert.equal(geometry.toggles, 1, `${name}: one primary sidebar toggle`);
+    assert.ok(Math.abs(geometry.height - 58) <= 1, `${name}: 58 px global header`);
+    assert.equal(
+      geometry.controls,
+      process.platform === 'darwin' ? 0 : 1,
+      `${name}: one platform window-control owner`,
+    );
+    if (process.platform === 'darwin')
+      assert.ok(geometry.toggleLeft >= 86, `${name}: native traffic-light space`);
+    assert.ok(
+      geometry.contentTop >= geometry.bottom - 1,
+      `${name}: content starts below the header`,
+    );
+    if (geometry.sidebar) {
+      assert.ok(Math.abs(geometry.sidebar.width - 228) <= 1, `${name}: 228 px sidebar`);
+      assert.ok(
+        geometry.sidebar.top >= geometry.bottom - 1,
+        `${name}: sidebar starts below the header`,
+      );
+    }
+    if (geometry.backdropTop !== undefined)
+      assert.ok(
+        geometry.backdropTop >= geometry.bottom - 1,
+        `${name}: drawer backdrop leaves header accessible`,
+      );
+    assert.ok(
+      geometry.documentWidth <= geometry.width + 1 &&
+        geometry.documentHeight <= geometry.heightAvailable + 1,
+      `${name}: shell must not scroll the whole window: ${JSON.stringify(geometry)}`,
+    );
+  }
+  async function sidebarCycle(name) {
+    const position = () =>
+      evaluate(`(() => {
+      const rect=document.querySelector('[data-testid="sidebar-toggle"]').getBoundingClientRect();
+      return {left:rect.left,top:rect.top};
+    })()`);
+    const before = await position();
+    const visible = await evaluate(`Boolean(document.querySelector('.ia-sidebar'))`);
+    for (const expected of [!visible, visible]) {
+      await click('[data-testid="sidebar-toggle"]');
+      await wait(`Boolean(document.querySelector('.ia-sidebar')) === ${expected}`);
+      await shell(name);
+      const after = await position();
+      assert.ok(
+        Math.abs(before.left - after.left) <= 1 && Math.abs(before.top - after.top) <= 1,
+        `${name}: sidebar toggle position must not move`,
+      );
+    }
+  }
+  async function context(location) {
+    await wait(
+      `document.querySelector('[data-testid="header-location"]')?.textContent === ${JSON.stringify(location)}`,
+    );
+    assert.equal(
+      await evaluate(`document.querySelector('[data-testid="header-project"]').title`),
+      'Sobel edge detector',
+    );
+    assert.equal(
+      await evaluate(`document.querySelector('[data-testid="header-location"]').title`),
+      location,
+    );
+  }
+  async function aligned(name) {
+    const rectangles =
+      await evaluate(`['.ia-composer','.ia-composer-hint','.ia-remote-task-status'].map(selector => {
+      const rect=document.querySelector(selector).getBoundingClientRect();
+      return {selector,left:rect.left,right:rect.right,width:rect.width};
+    })`);
+    assert.ok(Math.abs(rectangles[0].width - 640) <= 1, `${name}: 640 px content width`);
+    assert.ok(
+      rectangles.every(
+        rect =>
+          Math.abs(rect.left - rectangles[0].left) <= 1 &&
+          Math.abs(rect.right - rectangles[0].right) <= 1,
+      ),
+      `${name}: remote state, input and hint must align: ${JSON.stringify(rectangles)}`,
+    );
+  }
   async function quality(name) {
-    await evaluate(`document.fonts.ready`);
+    await shell(name);
     const failures = await evaluate(`(() => {
       const samples = ['.ia-chat-welcome p', '.ia-composer textarea', '.ia-project-row.selected',
         '.ia-sidebar-chat[aria-current="page"]', '.ia-file-list button.selected', '.ia-source-panel pre', '.ia-chat-approval-mode', '.ia-setup-banner'];
@@ -75,7 +180,7 @@ async function run(window, dialog) {
       `${name}: panels must fit the window`,
     );
     const clipped =
-      await evaluate(`Array.from(document.querySelectorAll('.ia-chat-actions button, .ia-workspace-actions button, .ia-settings-button, .ia-send')).filter(node => {
+      await evaluate(`Array.from(document.querySelectorAll('.ia-desktop-header button, .ia-workspace-actions button, .ia-settings-button, .ia-send')).filter(node => {
       const rect = node.getBoundingClientRect();
       return rect.width > 0 && (rect.left < -1 || rect.right > innerWidth + 1 || rect.bottom > innerHeight + 1);
     }).map(node => node.getAttribute('aria-label') || node.title || node.textContent)`);
@@ -116,6 +221,8 @@ async function run(window, dialog) {
   );
   await click('.ia-create-project .primary');
   await wait(`Boolean(document.querySelector('.ia-project-page'))`);
+  await context('Project details');
+  await shell('project-details');
   assert.equal(
     await evaluate(
       `document.querySelector('.ia-project-start').getBoundingClientRect().bottom < innerHeight`,
@@ -145,9 +252,18 @@ async function run(window, dialog) {
   await wait(
     `document.querySelector('.ia-remote-task-status')?.textContent.includes('Not configured')`,
   );
+  await context('New chat');
+  await aligned('remote-chat-expanded');
+  await evaluate(`window.__remoteStatus = document.querySelector('.ia-remote-task-status')`);
+  await sidebarCycle('remote-chat');
+  await aligned('remote-chat-restored');
+  assert.equal(
+    await evaluate(`document.querySelector('.ia-remote-task-status') === window.__remoteStatus`),
+    true,
+    'Sidebar changes must retain the remote task status node',
+  );
   assert.equal(await evaluate(`document.querySelector('.ia-composer textarea').disabled`), true);
   assert.equal(await evaluate(`document.querySelector('.ia-send').disabled`), true);
-  await evaluate(`window.__remoteStatus = document.querySelector('.ia-remote-task-status')`);
   await click('.ia-layout-toggle');
   await wait(`Boolean(document.querySelector('.layout-tabs'))`);
   await click('.ia-tab-add');
@@ -161,7 +277,12 @@ async function run(window, dialog) {
   );
   assert.equal(await evaluate(`document.querySelector('.ia-composer textarea').disabled`), true);
   assert.equal(await evaluate(`document.querySelector('.ia-send').disabled`), true);
-  await click('.ia-chat-actions button[title="Hide workspace"]');
+  await click('[data-testid="workspace-toggle"]');
+  await wait(`!document.querySelector('.ia-workspace').hidden`);
+  await click('[data-testid="workspace-toggle"]');
+  await wait(
+    `!document.querySelector('.ia-workspace') || document.querySelector('.ia-workspace').hidden`,
+  );
   await click('.ia-layout-toggle');
   await wait(`Boolean(document.querySelector('.layout-split'))`);
   await click('.ia-remote-task-status button');
@@ -174,6 +295,8 @@ async function run(window, dialog) {
     `Array.from(document.querySelectorAll('.ia-settings-row')).find(row => row.textContent.includes('MCP & Skills')).querySelector('button').click()`,
   );
   await wait(`Boolean(document.querySelector('.ia-capability'))`);
+  await context('Capability center');
+  await shell('capability-center');
   await wait(
     `document.querySelector('.ia-remote-service')?.textContent.includes('Not configured')`,
   );
@@ -198,14 +321,45 @@ async function run(window, dialog) {
   await wait(`Boolean(document.querySelector('.ia-chat-welcome'))`);
   const draft = 'Inspect the RTL and explain the timing constraints.\n检查 RTL 并解释时序约束。';
   await input('.ia-composer textarea', draft);
+  const attachment = require('electron')
+    .nativeImage.createFromBitmap(Buffer.alloc(16 * 16 * 4, 255), { width: 16, height: 16 })
+    .toPNG()
+    .toString('base64');
+  await evaluate(`(() => {
+    const file = new File([Uint8Array.from(atob(${JSON.stringify(attachment)}), c => c.charCodeAt(0))], 'layout.png', {type:'image/png'});
+    const data = new DataTransfer(); data.items.add(file);
+    const input = document.querySelector('input[aria-label="Image attachment files"]');
+    input.files=data.files; input.dispatchEvent(new Event('change',{bubbles:true}));
+  })()`);
+  await wait(
+    `Boolean(document.querySelector('.ia-composer .ia-image-attachments img')) && !document.querySelector('.ia-composer p[role="status"]')`,
+  );
+  await evaluate(
+    `window.__shellDraft=document.querySelector('.ia-composer textarea'); window.__shellImage=document.querySelector('.ia-composer .ia-image-attachments img')`,
+  );
+  await sidebarCycle('draft-and-attachment');
+  await click('.ia-layout-toggle');
+  await wait(`Boolean(document.querySelector('.layout-tabs'))`);
+  await click('.ia-layout-toggle');
+  await wait(`Boolean(document.querySelector('.layout-split'))`);
+  assert.equal(
+    await evaluate(
+      `document.querySelector('.ia-composer textarea') === window.__shellDraft && document.querySelector('.ia-composer .ia-image-attachments img') === window.__shellImage`,
+    ),
+    true,
+    'Sidebar and layout changes must retain the draft and attachment nodes',
+  );
+  assert.equal(await evaluate(`document.querySelector('.ia-composer textarea').value`), draft);
+  await click('.ia-composer .ia-image-attachments figure button');
+  await wait(`!document.querySelector('.ia-composer .ia-image-attachments img')`);
   await quality('chat-light');
   await capture('chat-light');
   await click('.ia-welcome-actions button:last-child');
   await wait(`Boolean(document.querySelector('.ia-workspace-tree'))`);
   assert.equal(await evaluate(`document.querySelector('.ia-composer textarea').value`), draft);
   await click('.ia-file-tree-toggle');
-  await click('.ia-chat-actions button[title="Hide workspace"]');
-  await click('.ia-chat-actions button[title="Show workspace"]');
+  await click('[data-testid="workspace-toggle"]');
+  await click('[data-testid="workspace-toggle"]');
   await wait(`Boolean(document.querySelector('.ia-workspace'))`);
   assert.equal(await evaluate(`Boolean(document.querySelector('.ia-workspace-tree'))`), false);
   await click('.ia-file-tree-toggle');
@@ -247,7 +401,7 @@ async function run(window, dialog) {
   await quality('workspace-medium');
   window.setSize(1440, 900);
   await setLanguage(window, 'en');
-  await click('.ia-chat-actions button[title="Hide workspace"]');
+  await click('[data-testid="workspace-toggle"]');
   await wait(`document.querySelector('.ia-workspace').hidden`);
   window.focus();
   window.webContents.focus();
@@ -290,6 +444,7 @@ async function run(window, dialog) {
   await wait(
     `document.querySelector('.ia-file-view:not([hidden])')?.querySelector('.rp-document-markdown h1')?.textContent === 'Acceptance checklist'`,
   );
+  await context('acceptance.md');
   await evaluate(
     `document.querySelector('.ia-workbench-tabbar [aria-selected="true"]').dispatchEvent(new MouseEvent('dblclick', {bubbles:true}))`,
   );
@@ -328,10 +483,13 @@ async function run(window, dialog) {
     `document.querySelector('.ia-workbench-tabbar [aria-selected="true"]').dispatchEvent(new KeyboardEvent('keydown', {key:'Home', bubbles:true}))`,
   );
   await wait(`!document.querySelector('.ia-chat').hidden`);
+  await context('New chat');
   assert.equal(await evaluate(`document.activeElement.id`), 'tab-chat');
   assert.equal(await evaluate(`document.querySelector('.ia-composer textarea').value`), draft);
   await evaluate(`document.getElementById(${JSON.stringify(selected)}).click()`);
   await wait(`!document.querySelector('.ia-workspace').hidden`);
+  await context('installation.txt');
+  await sidebarCycle('mounted-document');
   assert.equal(
     await evaluate(
       `document.querySelector('.ia-file-view:not([hidden])') === window.__retainedDocument`,
@@ -360,7 +518,7 @@ async function run(window, dialog) {
   window.setSize(640, 480);
   await wait(`!document.querySelector('.ia-sidebar')`);
   await quality('tabs-minimum');
-  await click('.ia-workbench-tabbar .ia-icon[aria-label="Show sidebar"]');
+  await click('[data-testid="sidebar-toggle"]');
   await wait(`Boolean(document.querySelector('.ia-sidebar'))`);
   await click('.ia-settings-button');
   await quality('tabs-settings-minimum');
@@ -418,7 +576,7 @@ async function run(window, dialog) {
   assert.equal(fs.readFileSync(path.join(project, 'sobel_filter.v'), 'utf8'), source);
   await require('./message-rail-selftest.cjs').run(window, chatStore, project);
   console.log(
-    'UI selftest passed: builtin remote configuration states, project execution location, onboarding, source preview, themes, contrast, languages, compact layout, tabs, layout persistence, minimum-window navigation, keyboard focus, mounted documents, and draft retention.',
+    'UI selftest passed: global header, fixed sidebar toggle, platform controls, page context, aligned remote state/input, builtin remote configuration states, onboarding, source preview, themes, contrast, languages, responsive tabs, minimum-window navigation, keyboard focus, retained documents, drafts and attachments.',
   );
 }
 

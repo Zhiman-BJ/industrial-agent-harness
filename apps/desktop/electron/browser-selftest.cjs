@@ -41,7 +41,7 @@ async function run(window) {
   }
   try {
     await wait(`document.querySelector('.ia-domain-pill')?.innerText.includes('Chip')`);
-    await evaluate(`document.querySelector('.ia-chat-actions button:last-child').click()`);
+    await evaluate(`document.querySelector('[data-testid="workspace-toggle"]').click()`);
     await wait(`Boolean(document.querySelector('.ia-workspace-actions button'))`);
     await evaluate(
       `document.querySelector('button[aria-label="Open browser"], button[aria-label="打开浏览器"]').click()`,
