@@ -932,7 +932,12 @@ export interface RemoteServiceState {
   executableDomains?: string[];
   protocol?: string;
   reason?: string;
-  capabilities?: { snapshots?: boolean; artifacts?: boolean; protectedExecution?: boolean };
+  capabilities?: {
+    snapshots?: boolean;
+    artifacts?: boolean;
+    protectedExecution?: boolean;
+    runtimeDiscovery?: boolean;
+  };
   profiles?: Array<{
     domain: string;
     qualification: string;

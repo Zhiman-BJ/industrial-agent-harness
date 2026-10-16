@@ -579,7 +579,10 @@ class RemoteRuntime {
   }
 }
 function createRemoteRuntime(options) {
-  const runtime = new RemoteRuntime(options);
+  const runtime =
+    options.settings.project(options.projectDir, options.domain).gatewayContract === 'mcp-v1'
+      ? require('./current-remote-runtime.cjs').createCurrentRemoteRuntime(options, RemoteRuntime)
+      : new RemoteRuntime(options);
   return {
     runtime,
     configurationCurrent: () => runtime.current(),

@@ -10,6 +10,7 @@ const {
   hash,
   uuid,
   writePrivateJson,
+  safeDownload,
 } = require('@industrial-agent-harness/domain-runtime');
 const defaults = require('./remote-defaults.json');
 const keyFor = (directory, domain) => hash(`${fs.realpathSync(directory)}\0${domain}`);
@@ -86,6 +87,24 @@ function selectedSnapshot(directory, selected) {
 }
 
 function validateServiceInfo(info) {
+  if (
+    info.version === '1.1.0' &&
+    info.remoteProtocolVersion === undefined &&
+    info.sessionModel === 'application-session' &&
+    Array.isArray(info.domains) &&
+    info.domains.every(id => typeof id === 'string') &&
+    Array.isArray(info.domainCatalog) &&
+    /^[a-f0-9]{64}$/.test(info.capabilitySnapshotHash || '')
+  ) {
+    return {
+      ...info,
+      gatewayContract: 'mcp-v1',
+      remoteProtocolVersion: REMOTE_PROTOCOL_VERSION,
+      serverId: 'mcp-v1-origin',
+      canonicalSchemaVersion: '1',
+      capabilities: { snapshots: true, runtimeDiscovery: true },
+    };
+  }
   if (
     info.remoteProtocolVersion !== REMOTE_PROTOCOL_VERSION ||
     info.canonicalSchemaVersion !== '1' ||
@@ -204,7 +223,10 @@ class RemoteSettings {
         ? async options => {
             if (!subject || account.view().user?.sub !== subject)
               throw Error('Sign in to the project account again.');
-            return account.serviceToken('remote', config.url, options);
+            const token = await account.serviceToken('remote', config.url, options);
+            if (account.view().user?.sub !== subject)
+              throw Error('Sign in to the project account again.');
+            return token;
           }
         : undefined,
       credentialKey: account ? this.accountCredentialKey(config) : undefined,
@@ -240,6 +262,7 @@ class RemoteSettings {
         serviceUrl: config.url,
         credentialEnv: config.credentialEnv,
         serverId: info.serverId,
+        gatewayContract: info.gatewayContract || null,
       };
       this.write(saved);
       this.connection = serviceConnection(info);
@@ -292,12 +315,17 @@ class RemoteSettings {
     try {
       const project = await client.createProject({ domain });
       uuid(project.id);
-      if (project.domain !== domain || !/^[a-f0-9]{64}$/.test(project.canonicalProjectId))
+      const current = this.read().service?.gatewayContract === 'mcp-v1';
+      if (
+        project.domain !== domain ||
+        (!current && !/^[a-f0-9]{64}$/.test(project.canonicalProjectId))
+      )
         throw Error('Invalid remote project identity.');
       binding = this.update(directory, domain, {
         protocol: REMOTE_PROTOCOL_VERSION,
         remoteProjectId: project.id,
-        canonicalProjectId: project.canonicalProjectId,
+        canonicalProjectId: project.canonicalProjectId || hash(this.identity() + ':' + project.id),
+        gatewayContract: current ? 'mcp-v1' : null,
         serviceIdentity: this.identity(),
       });
       return binding;
@@ -404,7 +432,10 @@ class RemoteSettings {
       if (serviceIdentity !== identity) this.assertServiceIdle();
       const project = await client.createProject({ domain });
       uuid(project.id);
-      if (project.domain !== domain || !/^[a-f0-9]{64}$/.test(project.canonicalProjectId))
+      if (
+        project.domain !== domain ||
+        (info.gatewayContract !== 'mcp-v1' && !/^[a-f0-9]{64}$/.test(project.canonicalProjectId))
+      )
         throw Error('Invalid remote project identity.');
       if (this.identity() !== identity)
         throw Error('Remote configuration changed during rebinding.');
@@ -420,12 +451,14 @@ class RemoteSettings {
         serviceUrl: config.url,
         credentialEnv: config.credentialEnv,
         serverId: info.serverId,
+        gatewayContract: info.gatewayContract || null,
       };
       const binding = {
         location: 'remote',
         protocol: REMOTE_PROTOCOL_VERSION,
         remoteProjectId: project.id,
-        canonicalProjectId: project.canonicalProjectId,
+        canonicalProjectId: project.canonicalProjectId || hash(serviceIdentity + ':' + project.id),
+        gatewayContract: info.gatewayContract || null,
         serviceIdentity,
         bindingHistory: [
           ...bindingHistory,
@@ -524,6 +557,9 @@ class RemoteSettings {
     const pending = this.task(directory, domain, chatId);
     if (!pending) return null;
     if (!['submitting', 'running', 'unknown'].includes(pending.status)) return pending;
+    // The current service has no read-only invocation lookup. Never replay an
+    // unknown mutation to discover its status.
+    if (this.project(directory, domain).gatewayContract === 'mcp-v1') return pending;
     const client = this.sessionClient(directory, domain, chatId);
     try {
       const received = await client.invocation(pending.invocationId);
@@ -600,6 +636,20 @@ class RemoteSettings {
     const binding = this.project(directory, domain);
     if (binding.protocol !== REMOTE_PROTOCOL_VERSION || binding.serviceIdentity !== this.identity())
       throw Error('Remote project binding changed.');
+    if (binding.gatewayContract === 'mcp-v1') {
+      const root = path.join(this.directory, 'remote-invocations');
+      const byId = new Map();
+      for (const name of fs.existsSync(root) ? fs.readdirSync(root) : []) {
+        const item = JSON.parse(fs.readFileSync(path.join(root, name), 'utf8'));
+        if (
+          item.serviceIdentity !== this.identity() ||
+          item.remoteProjectId !== binding.remoteProjectId
+        )
+          continue;
+        for (const ref of item.producedArtifacts || []) byId.set(ref.id, ref);
+      }
+      return [...byId.values()];
+    }
     const client = this.client({ remoteProjectId: binding.remoteProjectId, domain });
     try {
       const response = await client.artifacts();
@@ -613,6 +663,12 @@ class RemoteSettings {
     if (binding.serviceIdentity !== this.identity()) throw Error('Remote project binding changed.');
     const client = this.client({ remoteProjectId: binding.remoteProjectId, domain });
     try {
+      if (binding.gatewayContract === 'mcp-v1') {
+        const ref = (await this.artifacts(directory, domain)).find(item => item.id === artifactId);
+        if (!ref) throw Error('Artifact is not recorded for this remote project.');
+        const { content } = await client.downloadProducedArtifact(ref);
+        return { ...ref, path: safeDownload(directory, relativePath, content, ref) };
+      }
       return await client.downloadArtifact(artifactId, { directory, relativePath });
     } finally {
       await client.close();
@@ -684,13 +740,17 @@ class RemoteSettings {
       const binding = await this.bind(directory, domain);
       const client = this.client({ remoteProjectId: binding.remoteProjectId, domain });
       try {
-        const uploaded = await client.sync(snapshot, binding.snapshotId || null);
-        uuid(uploaded.id);
+        const uploaded =
+          binding.gatewayContract === 'mcp-v1'
+            ? await client.uploadSnapshot(snapshot, binding.snapshotId || null)
+            : await client.sync(snapshot, binding.snapshotId || null);
+        const snapshotId = uploaded.snapshotId || uploaded.id;
+        uuid(snapshotId);
         return this.update(directory, domain, {
           location: 'remote',
           files: review.files,
           manifestDigest: snapshot.digest,
-          snapshotId: uploaded.id,
+          snapshotId,
           syncedAt: new Date().toISOString(),
         });
       } finally {

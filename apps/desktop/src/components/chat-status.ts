@@ -62,7 +62,7 @@ export function summarizeRemote({
     };
   if (!service.domains.includes(domain))
     return { label: 'This domain is not available remotely yet.', tone: 'idle' };
-  if (!service.executableDomains?.includes(domain))
+  if (!service.executableDomains?.includes(domain) && !service.capabilities?.runtimeDiscovery)
     return { label: 'This remote domain is available for testing only.', tone: 'idle' };
   if (task) {
     const labels: Record<string, string> = {

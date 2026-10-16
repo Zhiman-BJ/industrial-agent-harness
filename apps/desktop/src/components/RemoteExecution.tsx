@@ -109,7 +109,8 @@ export function ProjectExecution({
             value.location === 'local' ||
               (Boolean(value.syncedAt) &&
                 value.service.status === 'connected' &&
-                value.service.executableDomains?.includes(project.domain || '') === true),
+                (value.service.executableDomains?.includes(project.domain || '') === true ||
+                  value.service.capabilities?.runtimeDiscovery === true)),
           );
         }
       })
@@ -133,7 +134,8 @@ export function ProjectExecution({
         next.location === 'local' ||
           (Boolean(next.syncedAt) &&
             next.service.status === 'connected' &&
-            next.service.executableDomains?.includes(project.domain || '') === true),
+            (next.service.executableDomains?.includes(project.domain || '') === true ||
+              next.service.capabilities?.runtimeDiscovery === true)),
       );
       if (changed) onChanged();
     } catch (reason) {
@@ -324,7 +326,8 @@ export function ProjectExecution({
       )}
       {state?.location === 'remote' &&
         state.service.status === 'connected' &&
-        !state.service.executableDomains?.includes(project.domain || '') && (
+        !state.service.executableDomains?.includes(project.domain || '') &&
+        !state.service.capabilities?.runtimeDiscovery && (
           <p>{t('This remote domain is available for testing only.')}</p>
         )}
       {state?.location === 'remote' && state.syncedAt && (

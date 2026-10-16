@@ -1,5 +1,10 @@
 # 远程软件、MCP 与沙箱：v1.1 重构
 
+2026-10-16 更新：已接通当前部署的 `mcp-v1` 契约，并通过真实 Chip 沙箱调用。
+该契约的本地规范记录、发现方式和恢复限制见文末；下列历史 canonical gateway
+描述中的 grant、服务端 Run/Action/Checkpoint 和 invocation 查询不适用于它。
+真实运行证据见 [本轮验收记录](evidence/remote-gateway-20261016/README.md)。
+
 2026-10-13：当前源码将远程执行重构为会话式 Gateway v1.1。**Kimi/Agent 留在本地，专业软件、领域 MCP 和执行沙箱在远端；工程文件显式上传，生成文件显式下载。** 这是本地/远程执行边界的重构，替代原服务 0.2 的 snapshot/job/poll/cancel 客户端链路。
 
 共享客户端、配置、聊天绑定与 Runtime 接入已实现；正式可执行性还取决于服务端安装的 canonical Runtime、固定 Pack、原生软件与隔离平台的实际资格。当前代码和受控驱动测试不构成 KiCad、其他工业软件或生产 Linux worker 的验收。旧 H200 RTL 验证属于旧协议的历史证据，不能沿用为本次 v1.1 资格。
@@ -105,3 +110,35 @@ industrial-harness remote terminate --project-dir /path/to/project --domain DOMA
 Desktop TypeScript 检查、构建及真实 Electron UI 自测通过，覆盖未配置状态、页面切换和无自动上传。客户端远程、Runtime 与共享应用测试通过；全套源码测试中，既有 CLI `stable portable Pack registration` 测试因缺少 `HARNESS_PLATFORM_PROBE_INDEX` 失败，另有 3 项平台相关测试跳过。因此不将本轮描述为全部仓库/平台测试通过，后续新增测试的计数以最终测试输出为准。
 
 仍需分别验收目标部署的 KiCad/Verilator/其他 Pack、实际隔离后端、原生软件依赖与 Linux worker、生产环境持久化/恢复、真实 Desktop/CLI 到服务的专业软件闭环，以及公网认证/登录。本地 PG/S3 集成、新源码测试与历史旧协议 RTL 记录均不代替这些资格。
+
+
+## Current MCP gateway adapter (2026-10-16)
+
+The `mcp-v1` service-info contract is selected separately from the historical canonical
+gateway protocol. Project IDs are bound to the service/account; Harness derives a local
+canonical project ID when the service does not return one. Each chat retains its own
+client session key. Execution goes through the shared factory and existing Broker and
+approval gate. Inputs are uploaded only after review. Local records wrap the actual
+remote receipt rather than pretending that the server supplied Run/Action/Checkpoint.
+
+A matching login access-token audience uses normal refresh; a different service audience
+still requires resource exchange. All requests resolve credentials at dispatch and check
+the bound subject again after token acquisition. Tokens never enter model arguments.
+
+Current-service execution availability is checked by protected tool discovery when a
+chat connects. A metadata-only discovery response binds the catalog hash, Pack and active
+profile to its descriptor; the live runtime must also describe that exact tool. A static
+catalog entry alone does not establish executable/native support. The UI permits this
+discovery after sync and displays service failures when discovery rejects.
+
+The 2026-10-16 real run used desktop Obol login and the shared settings/Broker/Runtime,
+created an application session and Tencent sandbox, and executed `chip.rtl.verify`.
+The source `chip.rtl.assertions` verifier passed; three downloaded artifacts matched
+their recorded hashes. Local Run/Action/State/Checkpoint records reopened unchanged,
+and the Desktop project page listed the outputs and downloaded the VCD successfully.
+This was an explicitly approved diagnostic with no model inference, not a completed
+Kimi conversation or qualification of other domains.
+
+Known limits: no current-service invocation status endpoint, no automatic unknown-outcome
+replay, no automatic incomplete-import repair, and remote artifact listing covers only
+locally recorded results. The live verification helper has no model inference.
