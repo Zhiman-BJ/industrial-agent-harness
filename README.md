@@ -76,6 +76,8 @@ Select the server's **API format** independently of the Kimi agent kernel. Offic
 
 **Settings → Language** switches between English, 简体中文 and Follow system immediately. The app remembers your preference; switching preserves drafts, running tasks and viewer state. Harness controls and dialogs are localized; project files, conversations, tool output and embedded third-party interfaces retain their original content. See [desktop languages](doc/desktop-languages.md).
 
+The sidebar shows the green Core mark and Micius Harness on a separate row above Projects, aligned with the project section. Project navigation places each project name above its domain metadata. Settings groups appearance, agent configuration and application options without changing their existing actions. Escape or Close returns focus to Settings; clicking outside dismisses the popover without taking focus from the chosen control.
+
 The setup command verifies the bundled **Kimi Code 2.1.1** runtime; Desktop and CLI share the authenticated Server API integration. No separate Python Kimi installation is needed. See the [migration record](doc/kimi-code-migration.md) for history, diagnostics and compatibility. Layout viewing additionally needs KLayout Python: run `pnpm --filter @industrial-agent-harness/desktop setup:layout` or set `KLAYOUT_PYTHON`.
 
 ### 3. Maintainer native regression on macOS with Apple Silicon
@@ -189,6 +191,18 @@ Workspace approvals show file diffs, declared commands and external arguments. `
 ### Built-in remote execution (internal trial)
 
 Remote execution now uses the session-based Gateway v1.1: Kimi/Agent stays local, while the remote service supplies domain MCP, professional software and sandbox execution. Desktop and CLI share persistent chat bindings, explicit immutable file uploads, canonical evidence import and verified artifact downloads that never overwrite existing files. Changed local files require another upload review; stopping the local wait does not cancel remote computation. Connection readiness and qualified software/worker execution remain separate. Explicit rebind creates a new remote project while retaining the old binding history; it does not migrate old 0.2 jobs or engineering facts. Public endpoint/sign-in defaults remain unset, and this refactor does not qualify KiCad or a production Linux worker. Historical H200 RTL checks apply to the previous protocol. See [remote execution and CLI commands](doc/remote-execution.md).
+
+The desktop chat combines remote and task state in a collapsible execution card. Chat columns at least 960 px wide reserve a side gutter; narrower columns keep the card above messages with bounded scrolling. Task progress, pending work and remote failures have distinct summaries; project/settings pages retain background polling without showing the card. When remote readiness blocks input, the composer explains the blocker and links to project execution settings; a missing Kimi runtime keeps its higher-priority hint. These presentation changes preserve upload confirmation, task approvals and the existing readiness gate.
+
+Local Computer Use acceptance on 2026-10-16 exercised the sidebar and Settings interactions, upload review, readiness gating, HTTP 503 recovery, session termination, source-file preview and narrow split-view controls. Remote checks used a loopback UI fixture with `engineeringExecution: false`; they did not run a real model, EDA tool or the automated native UI selftest suite. See [PD-081](doc/product-decisions.md#pd-081聊天执行状态卡的层级与窄栏适配) for the verified scope and test limitations.
+
+To start the controlled fixture from the repository root:
+
+```sh
+MOCK_REMOTE_TOKEN=mock-token node scripts/remote-ui-fixture.cjs
+```
+
+Launch the test client with `INDUSTRIAL_REMOTE_SERVICE_URL=http://127.0.0.1:8787`, `INDUSTRIAL_REMOTE_CREDENTIAL_ENV=MOCK_REMOTE_TOKEN` and the same `MOCK_REMOTE_TOKEN`. File upload still requires explicit review and confirmation. This fixture establishes UI protocol behavior only, not production remote execution or engineering qualification.
 
 CLI and Desktop now share the Harness task application; domain metadata, Skills and implementations come from one immutable Domain Packs release. See [consumer migration and validation](doc/shared-task-and-pack-consumption.md).
 

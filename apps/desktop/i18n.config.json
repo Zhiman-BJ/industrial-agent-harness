@@ -12,6 +12,54 @@
     }
   },
   "messages": {
+    "Agent settings": {
+      "en": "Agent settings",
+      "zh-CN": "Agent 设置"
+    },
+    "Remote environment is not ready. Check project execution settings.": {
+      "en": "Remote environment is not ready. Check project execution settings.",
+      "zh-CN": "远程环境尚未就绪，请检查项目执行设置。"
+    },
+    "Execution settings": {
+      "en": "Execution settings",
+      "zh-CN": "执行设置"
+    },
+    "Remote ready": {
+      "en": "Remote ready",
+      "zh-CN": "远程就绪"
+    },
+    "Remote request failed": {
+      "en": "Remote request failed",
+      "zh-CN": "远程请求失败"
+    },
+    "Could not update the remote status. Try again shortly.": {
+      "en": "Could not update the remote status. Try again shortly.",
+      "zh-CN": "暂时无法更新远程状态，请稍后重试。"
+    },
+    "Error details": {
+      "en": "Error details",
+      "zh-CN": "错误详情"
+    },
+    "In progress": {
+      "en": "In progress",
+      "zh-CN": "进行中"
+    },
+    "Not completed": {
+      "en": "Not completed",
+      "zh-CN": "未完成"
+    },
+    "{0} of {1} tasks completed": {
+      "en": "{0} of {1} tasks completed",
+      "zh-CN": "已完成 {0}/{1} 项任务"
+    },
+    "{0} files synced": {
+      "en": "{0} files synced",
+      "zh-CN": "已同步 {0} 个文件"
+    },
+    "Ending remote session…": {
+      "en": "Ending remote session…",
+      "zh-CN": "正在结束远程会话…"
+    },
     "Copy message": {
       "en": "Copy message",
       "zh-CN": "复制消息"
@@ -2651,6 +2699,30 @@
     "Expand task list": {
       "en": "Expand task list",
       "zh-CN": "展开任务列表"
+    },
+    "Remote environment": {
+      "en": "Remote environment",
+      "zh-CN": "远程环境"
+    },
+    "Execution status": {
+      "en": "Execution status",
+      "zh-CN": "执行状态"
+    },
+    "Collapse remote status": {
+      "en": "Collapse remote status",
+      "zh-CN": "收起远程状态"
+    },
+    "Expand remote status": {
+      "en": "Expand remote status",
+      "zh-CN": "展开远程状态"
+    },
+    "Expand status card": {
+      "en": "Expand status card",
+      "zh-CN": "展开状态卡"
+    },
+    "Collapse status card": {
+      "en": "Collapse status card",
+      "zh-CN": "收起状态卡"
     },
     "Tasks": {
       "en": "Tasks",

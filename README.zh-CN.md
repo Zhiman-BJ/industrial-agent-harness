@@ -72,6 +72,8 @@ pnpm dev
 
 **设置 → 语言** 可选择简体中文、English 或跟随系统，即时生效并记住选择。切换保留草稿、运行中的任务和查看器状态。Harness 自有控件与弹窗提供中英文；项目文件、聊天原文、工具返回和嵌入的第三方界面保留原内容。见[桌面语言切换](doc/desktop-languages.md)。
 
+侧栏将绿色 Core 标记与 Micius Harness 放在项目区上方的独立行，并与项目区左对齐。项目导航将项目名与领域元数据分为两行。设置按外观、Agent 配置与应用选项分组，保留原有操作；Escape 或关闭按钮将焦点返回设置入口，点击外部则关闭弹层并保留目标控件的焦点。
+
 在 **Settings → Model API** 配置模型，再添加本地工程并选择领域。打开右侧工作区即可浏览文件；查看文件不需要模型 API Key。
 
 **API 格式**按模型服务选择，与 Kimi Agent 内核分开。官方 MiniMax Chat Completions 使用兼容 OpenAI 配置；思考开关和档位因模型、协议而异，当前实测与缺口见[模型 API 兼容说明](doc/model-api-compatibility.md)。
@@ -189,6 +191,18 @@ pnpm run format:check
 ### 内置远程运行（内部体验）
 
 远程执行重构为会话式 Gateway v1.1：Kimi/Agent 留在本地，远端提供领域 MCP、专业软件和执行沙箱。Desktop/CLI 共用持久聊天绑定、显式不可变文件上传、规范工程证据导入与核验后的产物下载，下载不覆盖既有文件。本地输入变化须再次审核上传；停止本地等待不表示远端计算已取消。服务连接可用与软件/worker 已获资格分别显示。显式重绑创建新远端项目并保留旧绑定历史，不迁移旧 0.2 job 或工程事实。公网与登录配置仍留空；此次重构不构成 KiCad 或生产 Linux worker 资格，历史 H200 RTL 记录仅属于旧协议。见[远程执行与 CLI 命令](doc/remote-execution.md)。
+
+桌面聊天将远程与任务状态合并为可折叠执行卡。聊天栏至少 960 px 宽时为展开卡预留侧边空间，更窄时在消息上方占位并限制滚动高度。任务进度、未完成工作与远程失败分别呈现；项目/设置页隐藏卡片但保留后台轮询。远程未就绪阻塞输入时，输入区显示原因并提供项目执行设置入口；Kimi 运行时缺失仍保留更高优先级提示。展示调整不改变上传确认、任务审批或既有就绪门禁。
+
+2026-10-16 已通过本地 Computer Use 验收侧栏与设置交互、上传审核、就绪门禁、HTTP 503 故障恢复、结束会话、源文件预览及窄分屏控件。远程检查使用回环地址上的受控 UI fixture，明确记录 `engineeringExecution: false`；未运行真实模型、EDA 工具或自动原生 UI selftest 套件。已验范围与测试限制见 [PD-081](doc/product-decisions.md#pd-081聊天执行状态卡的层级与窄栏适配)。
+
+从仓库根目录启动受控 fixture：
+
+```sh
+MOCK_REMOTE_TOKEN=mock-token node scripts/remote-ui-fixture.cjs
+```
+
+启动测试客户端时设置 `INDUSTRIAL_REMOTE_SERVICE_URL=http://127.0.0.1:8787`、`INDUSTRIAL_REMOTE_CREDENTIAL_ENV=MOCK_REMOTE_TOKEN` 和相同的 `MOCK_REMOTE_TOKEN`。文件上传仍需明确审核与确认。该 fixture 只验证 UI 协议行为，不构成生产远程执行或工程验收。
 
 CLI 和 Desktop 现共用 Harness 任务服务；领域声明、Skill 和实现来自一个固定版本的 Domain Packs。见[消费迁移与验收](doc/shared-task-and-pack-consumption.md)。
 

@@ -261,13 +261,13 @@ body,
   position: absolute;
   bottom: 58px;
   left: 12px;
-  width: 300px;
+  width: min(324px, calc(100vw - 24px));
   z-index: 30;
   background: var(--ia-raised);
   border: 0;
   box-shadow: 0 12px 32px #00000026;
   border-radius: 12px;
-  padding: 14px;
+  padding: 12px 16px;
   max-height: calc(100dvh - 88px);
   overflow: auto;
 }
@@ -278,28 +278,35 @@ body,
   padding: 1px 3px 9px;
 }
 .ia-settings-title b {
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 500;
+}
+.ia-settings-group {
+  padding-block: 8px;
+  border-top: 1px solid var(--ia-border);
 }
 .ia-settings-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  padding: 8px 3px;
-  border-top: 1px solid var(--ia-border);
+  min-height: 44px;
+  padding: 6px 0;
 }
 .ia-settings-row > span,
 .ia-settings-row > label {
-  font-size: 11px;
-  color: var(--ia-muted);
+  font-size: 12px;
+  color: var(--ia-text);
 }
 .ia-settings-row button {
   display: flex;
   gap: 6px;
   align-items: center;
   border: 1px solid var(--ia-border);
-  padding: 5px 7px;
-  font-size: 10px;
+  min-height: 32px;
+  padding: 6px 10px;
+  font-size: 12px;
+  flex-shrink: 0;
 }
 .ia-settings-note {
   border-top: 1px solid var(--ia-border);
@@ -334,6 +341,7 @@ body,
   white-space: nowrap;
 }
 .ia-chat {
+  position: relative;
   min-width: 280px;
   flex: 1;
   display: flex;
@@ -368,7 +376,7 @@ body,
 }
 .ia-chat-actions {
   display: flex;
-  gap: 4px;
+  gap: 8px;
   flex-shrink: 0;
 }
 .ia-chat-actions button {
@@ -392,7 +400,10 @@ body,
   min-height: 0;
   flex: 1;
   overflow: auto;
-  padding: 32px max(24px, calc((100% - 680px) / 2));
+  padding: 32px max(24px, calc((100% - var(--ia-status-w) - 680px) / 2));
+  padding-right: calc(
+    max(24px, calc((100% - var(--ia-status-w) - 680px) / 2)) + var(--ia-status-w)
+  );
   scrollbar-width: thin;
   scrollbar-gutter: stable;
 }
@@ -601,7 +612,10 @@ body,
 }
 .ia-composer-wrap {
   flex-shrink: 0;
-  padding: 12px max(24px, calc((100% - 680px) / 2)) 18px;
+  padding: 12px max(24px, calc((100% - var(--ia-status-w) - 680px) / 2)) 18px;
+  padding-right: calc(
+    max(24px, calc((100% - var(--ia-status-w) - 680px) / 2)) + var(--ia-status-w)
+  );
   border-top: 0;
 }
 .ia-composer {
@@ -634,12 +648,15 @@ body,
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  flex-wrap: wrap;
 }
 .ia-chat-controls {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
+  min-width: 0;
+  flex: 1;
 }
 .ia-app .ia-chat-approval-mode {
   max-width: 150px;
@@ -666,6 +683,8 @@ body,
 .ia-send-actions {
   display: flex;
   gap: 5px;
+  flex-shrink: 0;
+  margin-left: auto;
 }
 .ia-send-actions button {
   width: var(--ia-control-size);
@@ -696,6 +715,24 @@ body,
   justify-content: space-between;
   gap: 16px;
   flex-wrap: wrap;
+}
+.ia-composer-status {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 4px 10px;
+  flex-wrap: wrap;
+  overflow-wrap: anywhere;
+}
+.ia-app .ia-composer-status-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 0;
+  color: var(--ia-text);
+  font-size: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 .ia-viewer {
   flex: 0 0 47%;
@@ -866,56 +903,9 @@ body,
   color: var(--ia-muted);
   padding: 5px 0 5px 12px;
 }
-.ia-todo {
-  flex-shrink: 0;
-  max-height: 31%;
-  overflow: auto;
-  border-top: 1px solid var(--ia-border);
-  padding: 9px 22px;
-  background: var(--ia-panel);
-}
-.ia-todo-title {
-  width: 100%;
-  display: flex !important;
-  justify-content: flex-start !important;
-  gap: 6px !important;
-  padding: 10px 12px !important;
-  font-size: 11px !important;
-}
-.ia-todo-title small {
-  margin-left: auto;
-  color: var(--ia-muted);
-}
-.ia-todo ol {
-  list-style: none;
-  padding: 0;
-  margin: 5px 0;
-}
-.ia-todo li {
-  display: flex;
-  align-items: flex-start;
-  gap: 7px;
-  padding: 5px 0;
-  font-size: 11px;
-  color: var(--ia-muted);
-}
-.ia-todo li[data-status='done'] {
-  color: var(--ia-success);
-}
-.ia-todo li[data-status='in_progress'] {
-  color: var(--ia-text);
-}
-.ia-todo-spin {
-  animation: ia-spin 1.4s linear infinite;
-}
 @keyframes ia-spin {
   to {
     transform: rotate(360deg);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .ia-todo-spin {
-    animation: none;
   }
 }
 .ia-modal-backdrop {
@@ -930,7 +920,9 @@ body,
 .ia-model-modal {
   width: min(520px, 100%);
   max-height: 90vh;
-  overflow: auto;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
   background: var(--ia-raised);
   border: 0;
   border-radius: 14px;
@@ -943,32 +935,40 @@ body,
   align-items: flex-start;
   padding: 20px 22px;
   border-bottom: 1px solid var(--ia-border);
+  flex-shrink: 0;
 }
 .ia-model-modal h2 {
-  font-size: 20px;
+  font-size: 16px;
   margin: 0 0 5px;
   font-weight: 500;
 }
 .ia-model-modal header p {
   margin: 0;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--ia-muted);
 }
 .ia-model-modal header button {
-  padding: 4px;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  padding: 7px;
   color: var(--ia-muted);
 }
 .ia-model-fields {
   padding: 18px 22px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
+  min-height: 0;
+  overflow: auto;
 }
 .ia-model-fields label {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
 }
 .ia-model-fields input,
@@ -978,7 +978,13 @@ body,
   background: var(--ia-bg);
   border-radius: 6px;
   padding: 9px 10px;
-  font-size: 11px;
+  min-height: 36px;
+  font-size: 12px;
+  color: var(--ia-text);
+}
+.ia-model-fields input[type='checkbox'] {
+  min-height: 0;
+  accent-color: var(--ia-accent);
 }
 .ia-model-row {
   display: flex;
@@ -1000,7 +1006,7 @@ body,
 }
 .ia-model-fields > small {
   color: var(--ia-muted);
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.5;
 }
 .ia-model-error {
@@ -1019,6 +1025,8 @@ body,
   gap: 7px;
   padding: 13px 22px 18px;
   border-top: 1px solid var(--ia-border);
+  flex-shrink: 0;
+  flex-wrap: wrap;
 }
 .ia-model-modal > footer span {
   flex: 1;
@@ -1026,7 +1034,8 @@ body,
 .ia-model-modal > footer button {
   border: 1px solid var(--ia-border);
   padding: 8px 12px;
-  font-size: 11px;
+  min-height: 34px;
+  font-size: 12px;
 }
 .ia-model-modal > footer button.primary {
   background: var(--ia-accent);
@@ -1042,12 +1051,20 @@ body,
   background: var(--ia-sidebar);
   border-right: 1px solid var(--ia-border);
 }
-.ia-sidebar-brand {
+.ia-sidebar-chrome {
   height: var(--ia-header-height);
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 0 14px;
+  flex-shrink: 0;
+}
+.ia-sidebar-brand {
+  height: 52px;
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 0 16px;
+  padding: 0 20px;
   flex-shrink: 0;
 }
 .ia-sidebar-brand b {
@@ -1057,9 +1074,6 @@ body,
   text-overflow: ellipsis;
   letter-spacing: -0.02em;
   font-weight: 500;
-}
-.ia-sidebar-brand .ia-icon {
-  margin-left: auto;
 }
 .ia-sidebar .ia-product-mark {
   background: transparent;
@@ -1118,7 +1132,10 @@ body,
   font-size: 13px;
 }
 .ia-chat-scroll {
-  padding: 32px max(24px, calc((100% - 680px) / 2));
+  padding: 32px max(24px, calc((100% - var(--ia-status-w) - 680px) / 2));
+  padding-right: calc(
+    max(24px, calc((100% - var(--ia-status-w) - 680px) / 2)) + var(--ia-status-w)
+  );
   scrollbar-gutter: stable;
 }
 .ia-chat-welcome {
@@ -1157,7 +1174,10 @@ body,
 }
 .ia-composer-wrap {
   border-top: 0;
-  padding: 12px max(24px, calc((100% - 680px) / 2)) 18px;
+  padding: 12px max(24px, calc((100% - var(--ia-status-w) - 680px) / 2)) 18px;
+  padding-right: calc(
+    max(24px, calc((100% - var(--ia-status-w) - 680px) / 2)) + var(--ia-status-w)
+  );
 }
 .ia-composer {
   border-radius: 14px;
@@ -1447,7 +1467,7 @@ body,
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 24px 14px 8px 20px;
+  padding: 8px 14px 8px 20px;
   color: var(--ia-muted);
   font-size: var(--ia-font-xs);
   font-weight: 500;
@@ -1511,17 +1531,17 @@ body,
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: clamp(40px, 9vh, 90px) 32px 32px;
+  padding: 32px 32px 48px;
 }
 .ia-project-page-inner {
-  max-width: 620px;
+  max-width: 720px;
   margin: 0 auto;
 }
 .ia-project-page h1 {
-  font-size: 30px;
+  font-size: 24px;
   line-height: 1.3;
   margin: 0 0 6px;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.02em;
   font-weight: 500;
   overflow-wrap: anywhere;
 }
@@ -1535,9 +1555,9 @@ body,
 }
 .ia-project-property {
   display: grid;
-  grid-template-columns: 145px minmax(0, 1fr);
-  gap: 14px;
-  padding: 20px 0;
+  grid-template-columns: 128px minmax(0, 1fr);
+  gap: 16px;
+  padding: 16px 0;
   border-bottom: 1px solid var(--ia-border);
   align-items: center;
   font-size: 13px;
@@ -1555,6 +1575,8 @@ body,
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+  flex-wrap: wrap;
 }
 .ia-domain-select {
   position: relative;
@@ -1572,18 +1594,20 @@ body,
   padding-left: 32px;
 }
 .ia-project-domain-edit select {
-  min-width: 150px;
+  min-width: 0;
+  width: 180px;
   max-width: 220px;
   border: 1px solid var(--ia-border);
   border-radius: 7px;
   background: var(--ia-raised);
   padding: 8px 10px;
-  font-size: 11px;
+  font-size: 12px;
 }
 .ia-app .ia-project-domain-edit button {
   border: 1px solid var(--ia-border);
   padding: 8px 12px;
-  font-size: 11px;
+  min-height: 34px;
+  font-size: 12px;
 }
 .ia-app .ia-project-start {
   display: flex;
@@ -1703,21 +1727,23 @@ body,
   line-height: 1.5;
 }
 .ia-project-resources {
-  margin-top: 30px;
+  margin-top: 28px;
   border-top: 1px solid var(--ia-border);
-  padding-top: 21px;
+  padding-top: 24px;
 }
 .ia-project-resources h2 {
-  font-size: 14px;
+  font-size: 16px;
+  font-weight: 500;
   margin: 0 0 8px;
 }
 .ia-project-resources h3 {
-  font-size: 11px;
+  font-size: 12px;
+  font-weight: 500;
   color: var(--ia-muted);
   margin: 20px 0 7px;
 }
 .ia-project-resources p {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--ia-muted);
   line-height: 1.6;
   margin: 0 0 8px;
@@ -1729,7 +1755,7 @@ body,
   gap: 12px;
   padding: 10px 0;
   border-bottom: 1px solid var(--ia-border);
-  font-size: 11px;
+  font-size: 12px;
 }
 .ia-project-resources label span {
   display: flex;
@@ -2488,9 +2514,9 @@ body,
   flex: 1;
 }
 .ia-project-list .ia-project-chats .ia-chat-menu-button {
-  flex: 0 0 24px;
-  width: 24px;
-  min-height: 24px;
+  flex: 0 0 32px;
+  width: 32px;
+  min-height: 32px;
   padding: 5px !important;
   color: var(--ia-muted);
   opacity: 0.55;
@@ -2595,8 +2621,9 @@ body,
   background: var(--ia-panel);
   color: var(--ia-text);
   border-radius: 5px;
-  padding: 5px;
-  font-size: 10px;
+  min-height: 32px;
+  padding: 6px 8px;
+  font-size: 12px;
 }
 .ia-question {
   border: 1px solid var(--ia-border);
@@ -2658,7 +2685,7 @@ body,
 /* Navigation hierarchy: the project owns a folder, the current chat owns a selection. */
 .ia-app .ia-project-row {
   display: grid !important;
-  grid-template-columns: 16px minmax(0, 1fr) auto auto;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
   gap: 4px 8px !important;
   align-items: center;
 }
@@ -2675,8 +2702,12 @@ body,
   grid-row: 1;
 }
 .ia-project-list .ia-project-domain-badge {
-  grid-column: 4;
-  grid-row: 1;
+  grid-column: 2 / -1;
+  grid-row: 2;
+  justify-self: start;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
   padding: 0;
   border: 0;
   background: transparent;
@@ -2804,6 +2835,41 @@ body,
 @container (max-width: 560px) {
   .ia-composer-shortcuts {
     display: none;
+  }
+  .ia-project-page {
+    padding: 24px 20px 32px;
+  }
+  .ia-project-page h1 {
+    font-size: 22px;
+  }
+  .ia-project-property {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+  .ia-project-domain-edit .ia-domain-select {
+    flex: 1;
+  }
+  .ia-project-domain-edit select {
+    width: 100%;
+    max-width: none;
+  }
+  .ia-project-page .ia-project-execution {
+    padding: 16px;
+  }
+  .ia-project-page .ia-remote-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .ia-project-page .ia-remote-heading > span {
+    margin-left: 0;
+  }
+  .ia-project-page .ia-resource-row {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .ia-project-page .ia-resource-info {
+    flex: 1 1 100%;
   }
 }
 @media (max-width: 1250px) {
@@ -3086,100 +3152,6 @@ body,
   display: block;
   margin-top: 6px;
 }
-.ia-todo-wrap {
-  flex-shrink: 0;
-  min-width: 0;
-  padding: 0 max(22px, calc((100% - 690px) / 2));
-}
-.ia-todo {
-  padding: 0;
-  max-height: none;
-  border: 1px solid var(--ia-border);
-  border-radius: 10px;
-  background: var(--ia-raised);
-  overflow: hidden;
-}
-.ia-todo-title > svg,
-.ia-todo-label,
-.ia-todo-count {
-  flex-shrink: 0;
-}
-.ia-todo-title > svg {
-  color: var(--ia-muted);
-}
-.ia-todo-label {
-  font-weight: 500;
-}
-.ia-todo-count {
-  color: var(--ia-muted);
-  font-variant-numeric: tabular-nums;
-}
-.ia-todo-current {
-  flex: 1;
-  min-width: 0;
-  padding-left: 6px;
-  color: var(--ia-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.ia-todo-progress {
-  flex: 0 0 42px;
-  height: 3px;
-  overflow: hidden;
-  border-radius: 3px;
-  background: var(--ia-border);
-}
-.ia-todo-progress > span {
-  display: block;
-  height: 100%;
-  background: var(--rp-blue);
-}
-.ia-todo-title > svg:last-child {
-  transition: transform 150ms ease;
-}
-.ia-todo-title > svg.expanded {
-  transform: rotate(180deg);
-}
-.ia-todo ol {
-  list-style: none;
-  padding: 8px 12px;
-  margin: 0;
-  border-top: 1px solid var(--ia-border);
-  max-height: min(25vh, 220px);
-  overflow: auto;
-}
-.ia-todo li {
-  display: flex;
-  align-items: flex-start;
-  gap: 9px;
-  padding: 7px 0;
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--ia-muted);
-}
-.ia-todo-status {
-  display: inline-flex;
-  flex: 0 0 16px;
-  justify-content: center;
-  margin-top: 2px;
-}
-.ia-todo li > span:last-child {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-.ia-todo li[data-status='done'] .ia-todo-status {
-  color: var(--ia-success);
-}
-.ia-todo li[data-status='in_progress'] {
-  color: var(--ia-text);
-}
-.ia-todo li[data-status='in_progress'] .ia-todo-status {
-  color: var(--rp-blue);
-}
-.ia-todo-spin {
-  animation: ia-spin 1.4s linear infinite;
-}
 .ia-workspace-divider {
   flex: 0 0 6px;
   position: relative;
@@ -3439,11 +3411,29 @@ body,
   color: var(--ia-muted);
   font-size: 12px;
 }
+.ia-app :is(.ia-remote-service, .ia-remote-project-body) button {
+  min-height: 34px;
+  margin: 8px 8px 0 0;
+  padding: 6px 12px;
+  border: 1px solid var(--ia-control-border);
+  border-radius: 7px;
+  font-size: 12px;
+}
+.ia-app :is(.ia-remote-service, .ia-remote-project-body) .ia-remote-primary {
+  color: var(--ia-bg);
+  background: var(--ia-accent);
+  border-color: var(--ia-accent);
+}
+.ia-app :is(.ia-remote-service, .ia-remote-project-body) .ia-remote-primary:hover:not(:disabled) {
+  opacity: 0.85;
+}
 .ia-remote-service p,
 .ia-remote-project-body p {
   font-size: 13px;
   line-height: 1.6;
   color: var(--ia-muted);
+  /* Chromium 的默认 p 外距（1em ≈ 13px）与卡片内 6px 的行节奏冲突，压齐到统一节奏。 */
+  margin: 6px 0;
 }
 .ia-execution-options {
   display: flex;
@@ -3490,32 +3480,329 @@ body,
   white-space: nowrap;
   color: var(--ia-muted);
 }
-.ia-remote-task-status {
+/* Chat status follows the conversation column, not the window. The default
+   layout reserves space; only a wide chat column can afford a side dock. */
+.ia-chat {
+  --ia-status-w: 0px;
+}
+.ia-status-dock {
+  flex: 0 0 auto;
+  min-width: 0;
+  display: flex;
+  justify-content: flex-end;
+  padding: 16px 16px 12px;
+}
+.ia-status-dock[hidden],
+.ia-status-dock [hidden] {
+  display: none !important;
+}
+.ia-app .ia-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+  max-width: min(100%, 360px);
+  padding: 7px 14px;
+  border: 1px solid var(--ia-border);
+  border-radius: 999px;
+  background: var(--ia-raised);
+  color: var(--ia-muted);
+  font-size: 11px;
+  line-height: 16px;
+}
+.ia-status-pill > svg {
+  flex-shrink: 0;
+}
+.ia-app .ia-status-pill:hover {
+  background: var(--ia-hover);
+  color: var(--ia-text);
+}
+.ia-status-dock.open .ia-status-pill {
+  display: none;
+}
+.ia-status-card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  max-height: min(36vh, 320px);
+  background: var(--ia-raised);
+  border: 1px solid var(--ia-border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.ia-status-card-head {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
-  color: var(--ia-muted);
-  flex-wrap: wrap;
-  /* Align with the composer column; never span the full chat width. */
-  margin: 0 max(24px, calc((100% - 680px) / 2));
-  padding: 6px 12px;
-  background: var(--ia-raised);
-  border: 1px solid var(--ia-border);
-  border-radius: 10px;
-}
-.ia-remote-task-status > svg {
-  color: var(--ia-success);
   flex-shrink: 0;
+  padding: 8px 8px 8px 16px;
+  border-bottom: 1px solid var(--ia-border);
 }
-.ia-remote-task-status .ia-remote-actions {
-  margin-left: auto;
-  display: inline-flex;
+.ia-status-card-head h2 {
+  flex: 1;
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 500;
+}
+.ia-status-content {
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--ia-control-border) transparent;
+}
+.ia-status-block + .ia-status-block {
+  border-top: 1px solid var(--ia-border);
+}
+.ia-app .ia-status-head {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto 14px;
   align-items: center;
   gap: 8px;
-}
-.ia-remote-task-status button {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 0;
+  text-align: left;
   font-size: 12px;
+  line-height: 18px;
+  color: var(--ia-text);
+}
+.ia-status-head > svg {
+  color: var(--ia-muted);
+}
+.ia-status-title {
+  font-weight: 500;
+}
+.ia-status-dot {
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ia-muted);
+}
+.ia-status-dot.ok {
+  background: var(--ia-success);
+}
+.ia-status-dot.bad {
+  background: var(--ia-danger);
+}
+.ia-status-summary {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ia-muted);
+  font-size: 11px;
+  line-height: 16px;
+}
+.ia-status-head .ia-status-summary,
+.ia-status-current {
+  grid-column: 2 / -1;
+  min-width: 0;
+  color: var(--ia-muted);
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 400;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.ia-status-remote-summary.bad {
+  color: var(--ia-danger);
+}
+.ia-status-current {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.ia-status-count {
+  flex-shrink: 0;
+  color: var(--ia-muted);
+  font-size: 11px;
+  line-height: 16px;
+  font-variant-numeric: tabular-nums;
+}
+.ia-status-head > svg:last-of-type {
+  transition: transform 150ms ease-out;
+}
+.ia-status-head > svg.expanded {
+  transform: rotate(180deg);
+}
+.ia-status-body {
+  padding: 0 16px 12px;
+  color: var(--ia-muted);
+  font-size: 12px;
+  line-height: 18px;
+}
+.ia-status-detail {
+  margin: 0 0 8px;
+  overflow-wrap: anywhere;
+}
+.ia-status-row {
+  margin-top: 4px;
+}
+.ia-app .ia-status-action {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  width: 100%;
+  padding: 8px;
+  color: var(--ia-text);
+  font-size: 12px;
+  line-height: 18px;
+  text-align: left;
+}
+.ia-status-action span {
+  min-width: 0;
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+.ia-status-action svg {
+  flex-shrink: 0;
+}
+.ia-app .ia-status-end {
+  color: var(--ia-muted);
+}
+.ia-app .ia-status-end:hover:not(:disabled) {
+  color: var(--ia-danger);
+}
+.ia-status-error {
+  margin-top: 8px;
+  color: var(--ia-danger);
+  overflow-wrap: anywhere;
+}
+.ia-status-error-message {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.ia-status-error-details {
+  margin-top: 4px;
+  color: var(--ia-muted);
+}
+.ia-status-error-details summary {
+  min-height: 32px;
+  align-content: center;
+  cursor: pointer;
+  font-size: 11px;
+}
+.ia-status-error-reason {
+  max-height: 120px;
+  margin: 4px 0 0;
+  padding: 8px 10px;
+  overflow: auto;
+  border: 1px solid var(--ia-border);
+  border-radius: 6px;
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.ia-status-progress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px 12px 40px;
+  color: var(--ia-muted);
+  font-size: 11px;
+  line-height: 16px;
+}
+.ia-status-progress progress {
+  appearance: none;
+  flex: 1;
+  width: 0;
+  height: 3px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ia-border);
+}
+.ia-status-progress progress::-webkit-progress-bar {
+  background: var(--ia-border);
+}
+.ia-status-progress progress::-webkit-progress-value {
+  background: var(--ia-success);
+  border-radius: 999px;
+}
+.ia-status-progress progress::-moz-progress-bar {
+  background: var(--ia-success);
+}
+.ia-status-progress > span {
+  flex-shrink: 0;
+}
+.ia-status-todo {
+  list-style: none;
+  margin: 0;
+  padding: 0 8px 8px;
+}
+.ia-status-todo li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 20px;
+  color: var(--ia-muted);
+}
+.ia-status-todo li > span:last-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.ia-status-icon {
+  display: inline-flex;
+  flex: 0 0 16px;
+  justify-content: center;
+  align-items: center;
+  height: 20px;
+  color: var(--ia-muted);
+}
+.ia-status-todo li[data-status='done'] .ia-status-icon {
+  color: var(--ia-success);
+}
+.ia-status-todo li[data-status='in_progress'] {
+  color: var(--ia-text);
+  background: var(--ia-panel);
+}
+.ia-status-todo li[data-status='in_progress'] .ia-status-icon {
+  color: var(--ia-accent);
+}
+.ia-status-spin {
+  animation: ia-spin 1.4s linear infinite;
+}
+.ia-status-dock button:focus-visible {
+  outline: 2px solid var(--ia-accent);
+  outline-offset: -3px;
+}
+@container (min-width: 960px) {
+  .ia-status-dock.open {
+    position: absolute;
+    z-index: 4;
+    top: calc(var(--ia-header-height, 48px) + 16px);
+    right: 16px;
+    bottom: 16px;
+    width: 296px;
+    padding: 0;
+    align-items: flex-start;
+  }
+  .ia-status-card {
+    max-height: 100%;
+  }
+  .ia-chat:has(.ia-status-dock.open:not([hidden])) .ia-chat-scroll,
+  .ia-chat:has(.ia-status-dock.open:not([hidden])) .ia-composer-wrap {
+    --ia-status-w: 320px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ia-status-spin {
+    animation: none;
+  }
+  .ia-status-head > svg:last-of-type {
+    transition: none;
+  }
 }
 .ia-remote-badge {
   display: inline-flex;
@@ -3555,7 +3842,7 @@ body,
 }
 .ia-sidebar-brand {
   gap: 8px;
-  padding-inline: 14px;
+  padding-inline: 20px;
 }
 .ia-sidebar-brand b {
   font-size: 13px;
@@ -3573,8 +3860,8 @@ body,
   letter-spacing: 0;
 }
 .ia-project-list .ia-project-row {
-  padding-block: 8px !important;
-  gap: 2px 8px !important;
+  padding-block: 10px !important;
+  gap: 4px 8px !important;
 }
 .ia-project-list .ia-project-row-name {
   font-weight: 500;
@@ -3600,16 +3887,19 @@ body,
   border-radius: 14px 0 0 14px;
 }
 .ia-chat-header {
-  border-bottom: 0;
+  border-bottom: 1px solid var(--ia-border);
   padding-inline: 16px;
 }
 .ia-chat-header b {
   font-size: 12px;
-  font-weight: 400;
+  font-weight: 500;
 }
-.ia-chat-empty .ia-chat-scroll {
+.ia-chat-empty .ia-chat-scroll-area {
   flex: 0 1 auto;
   margin-top: auto;
+}
+.ia-chat-empty .ia-chat-scroll {
+  margin-top: 0;
   padding-top: 24px;
   padding-bottom: 0;
 }
@@ -3725,12 +4015,30 @@ body,
   .ia-chat-empty .ia-welcome-actions {
     margin-top: 12px;
   }
+  .ia-chat-controls {
+    flex-basis: 100%;
+  }
+  .ia-chat-approval-mode {
+    flex: 1;
+  }
 }
 
 @media (max-height: 600px) {
+  .ia-status-card {
+    max-height: min(28vh, 180px);
+  }
+  .ia-chat-scroll {
+    padding-block: 12px;
+  }
+  .ia-app .ia-composer textarea {
+    height: 50px;
+  }
   .ia-chat-empty .ia-chat-scroll {
     flex-shrink: 0;
     padding-top: 12px;
+  }
+  .ia-chat-empty:has(.ia-status-dock.open:not([hidden])) .ia-chat-welcome {
+    display: none;
   }
   .ia-chat-empty .ia-chat-welcome h1 {
     font-size: 22px;
@@ -4084,22 +4392,22 @@ body,
 }
 
 /* Frameless window: body never scrolls (panels scroll internally); the top
-   bars act as drag regions. macOS traffic lights overlay the sidebar brand. */
+   bars act as drag regions. Branding sits below the native window controls. */
 html,
 body {
   overflow: hidden;
 }
-.ia-sidebar-brand,
+.ia-sidebar-chrome,
 .ia-chat-header,
 .ia-capability-header {
   -webkit-app-region: drag;
 }
-.ia-sidebar-brand :is(button, input, select),
+.ia-sidebar-chrome :is(button, input, select),
 .ia-chat-header :is(button, input, select),
 .ia-capability-header :is(button, input, select) {
   -webkit-app-region: no-drag;
 }
-[data-platform='darwin'] .ia-sidebar-brand {
+[data-platform='darwin'] .ia-sidebar-chrome {
   padding-left: 92px;
 }
 .ia-window-controls {
@@ -4148,13 +4456,14 @@ body {
   position: relative;
   flex: 1;
   min-height: 0;
+  overflow: hidden;
   display: flex;
 }
 .ia-chat-scroll-area .ia-chat-scroll {
   flex: 1;
 }
 .ia-message-rail + .ia-chat-scroll {
-  padding-inline-start: max(48px, calc((100% - 680px) / 2));
+  padding-inline-start: max(48px, calc((100% - var(--ia-status-w) - 680px) / 2));
 }
 .ia-message-rail {
   position: absolute;
@@ -4214,7 +4523,7 @@ body {
   position: absolute;
   left: 30px;
   width: max-content;
-  max-width: 340px;
+  max-width: min(340px, calc(100cqw - 48px));
   padding: 10px 14px;
   border: 1px solid var(--ia-border);
   border-radius: 10px;
@@ -4259,7 +4568,7 @@ body {
   }
 }
 
-/* The brand title truncates rather than wrapping inside the 48px row. */
+/* Keep the product name on one line in the dedicated brand row. */
 .ia-sidebar-brand b {
   white-space: nowrap;
   overflow: hidden;
