@@ -2,12 +2,12 @@ import { useEffect, useId, useState } from 'react';
 import {
   Check,
   ChevronDown,
+  ChevronRight,
   Circle,
   CircleDot,
   Cloud,
   ListChecks,
   LoaderCircle,
-  PanelRightClose,
 } from 'lucide-react';
 import { useDisplayText } from '@industrial-agent-harness/viewer-builtin/text';
 import type {
@@ -173,12 +173,12 @@ export function ChatStatusCard({
           <b>{t('Execution status')}</b>
           <button
             type="button"
-            className="ia-icon"
+            className="ia-status-collapse"
             onClick={() => setOpen(false)}
             aria-label={t('Collapse status card')}
             title={t('Collapse status card')}
           >
-            <PanelRightClose size={14} aria-hidden="true" />
+            <ChevronRight size={14} aria-hidden="true" />
           </button>
         </div>
         {remote && (

@@ -3418,13 +3418,22 @@ body,
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 8px 8px 12px;
+  padding: 8px 12px 8px 12px;
   border-bottom: 1px solid var(--ia-border);
 }
 .ia-status-card-head b {
   flex: 1;
   font-size: 12px;
   font-weight: 500;
+}
+/* 右缘图标列统一：收起/展开箭头字形都落在距右缘 12px 的同一竖列。 */
+.ia-app button.ia-status-collapse {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 0;
+  background: none;
+  border: 0;
+  color: var(--ia-muted);
 }
 .ia-status-block + .ia-status-block {
   border-top: 1px solid var(--ia-border);
@@ -3441,6 +3450,8 @@ body,
 .ia-status-head > svg:first-child {
   color: var(--ia-muted);
   flex-shrink: 0;
+  /* 与列表项的 16px 图标槽同宽：标题文字与列表文字落在同一竖列。 */
+  flex-basis: 16px;
 }
 .ia-status-title {
   font-weight: 400;
@@ -3477,8 +3488,8 @@ body,
   font-size: 11px;
 }
 .ia-status-current {
+  flex: 1;
   min-width: 0;
-  max-width: 40%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
