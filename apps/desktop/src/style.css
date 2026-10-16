@@ -3366,7 +3366,8 @@ body,
 }
 /* 合并状态卡：折叠为右上角小药丸（对话流居中），展开时占据右侧并把
    对话与输入区的居中基准往左让位（--ia-status-w），内容不被遮挡。
-   区块行距与圆角沿用 ia-subagent-card 的 10px/12px 卡片约束。 */
+   全部走 DESIGN.md 令牌：间距 4/8/12/14，浮层=无边框+0 12px 32px
+   #00000026+圆角 12（同设置弹出层），状态文字=metadata 11px。 */
 .ia-chat {
   --ia-status-w: 0px;
 }
@@ -3375,22 +3376,22 @@ body,
 }
 .ia-status-dock {
   position: absolute;
-  top: calc(var(--ia-header-height, 44px) + 10px);
+  top: calc(var(--ia-header-height, 44px) + 8px);
   right: 14px;
   z-index: 30;
-  font-size: var(--ia-font-sm);
 }
 .ia-app .ia-status-pill {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  gap: 8px;
   max-width: min(300px, calc(100vw - 56px));
-  padding: 6px 12px;
+  padding: 5px 9px;
+  border: 0;
   border-radius: 999px;
   background: var(--ia-raised);
-  border: 1px solid var(--ia-border);
   color: var(--ia-muted);
-  box-shadow: 0 4px 14px rgb(0 0 0 / 12%);
+  font-size: 11px;
+  line-height: 16px;
 }
 .ia-status-pill .ia-status-summary {
   white-space: nowrap;
@@ -3408,22 +3409,22 @@ body,
   right: 0;
   width: min(320px, calc(100vw - 28px));
   background: var(--ia-raised);
-  border: 1px solid var(--ia-border);
-  border-radius: 8px;
-  box-shadow: 0 10px 28px rgb(0 0 0 / 16%);
+  border: 0;
+  border-radius: 12px;
+  box-shadow: 0 12px 32px #00000026;
   overflow: hidden;
 }
 .ia-status-card-head {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 8px 8px 14px;
+  padding: 8px 8px 8px 12px;
   border-bottom: 1px solid var(--ia-border);
 }
 .ia-status-card-head b {
-  font-size: var(--ia-font-sm);
-  font-weight: 600;
   flex: 1;
+  font-size: 12px;
+  font-weight: 500;
 }
 .ia-status-block + .ia-status-block {
   border-top: 1px solid var(--ia-border);
@@ -3431,10 +3432,10 @@ body,
 .ia-app .ia-status-head {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   width: 100%;
-  padding: 10px 12px;
-  font-size: var(--ia-font-sm);
+  padding: 8px 12px;
+  font-size: 12px;
   color: var(--ia-text);
 }
 .ia-status-head > svg:first-child {
@@ -3442,7 +3443,7 @@ body,
   flex-shrink: 0;
 }
 .ia-status-title {
-  font-weight: 500;
+  font-weight: 400;
   flex-shrink: 0;
 }
 .ia-status-dot {
@@ -3464,7 +3465,8 @@ body,
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--ia-muted);
-  font-size: 12px;
+  font-size: 11px;
+  line-height: 1.5;
 }
 .ia-status-head .ia-status-summary {
   flex: 1;
@@ -3472,6 +3474,7 @@ body,
 .ia-status-count {
   font-variant-numeric: tabular-nums;
   flex-shrink: 0;
+  font-size: 11px;
 }
 .ia-status-current {
   min-width: 0;
@@ -3480,7 +3483,7 @@ body,
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--ia-muted);
-  font-size: 12px;
+  font-size: 11px;
 }
 .ia-status-head > svg:last-child {
   flex-shrink: 0;
@@ -3491,7 +3494,7 @@ body,
   transform: rotate(180deg);
 }
 .ia-status-body {
-  padding: 6px 12px 10px;
+  padding: 4px 12px 12px;
   color: var(--ia-muted);
 }
 .ia-status-row {
@@ -3504,16 +3507,16 @@ body,
 }
 .ia-status-todo {
   list-style: none;
-  margin: 2px 0 0;
-  padding: 2px 0 0;
+  margin: 0;
+  padding: 0;
   max-height: min(25vh, 220px);
   overflow: auto;
 }
 .ia-status-todo li {
   display: flex;
   align-items: flex-start;
-  gap: 9px;
-  padding: 7px 0;
+  gap: 8px;
+  padding: 8px 0;
   font-size: 12px;
   line-height: 1.5;
   color: var(--ia-muted);
@@ -3524,9 +3527,9 @@ body,
 }
 .ia-status-icon {
   display: inline-flex;
-  flex: 0 0 15px;
+  flex: 0 0 16px;
   justify-content: center;
-  margin-top: 2px;
+  margin-top: 1px;
   color: var(--ia-muted);
 }
 .ia-status-todo li[data-status='done'] .ia-status-icon {
