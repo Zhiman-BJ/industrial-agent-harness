@@ -3496,12 +3496,41 @@ body,
   gap: 8px;
   font-size: 12px;
   color: var(--ia-muted);
-  padding: 6px 20px;
   flex-wrap: wrap;
+  /* Align with the composer column; never span the full chat width. */
+  margin: 0 max(24px, calc((100% - 680px) / 2));
+  padding: 6px 12px;
+  background: var(--ia-raised);
+  border: 1px solid var(--ia-border);
+  border-radius: 10px;
+}
+.ia-remote-task-status > svg {
+  color: var(--ia-success);
+  flex-shrink: 0;
+}
+.ia-remote-task-status .ia-remote-actions {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 .ia-remote-task-status button {
-  margin-left: auto;
   font-size: 12px;
+}
+.ia-remote-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--ia-success);
+  border: 1px solid color-mix(in srgb, var(--ia-success) 40%, transparent);
+  background: color-mix(in srgb, var(--ia-success) 10%, transparent);
+  vertical-align: 1px;
 }
 .ia-advanced-mcp {
   margin-top: 20px;

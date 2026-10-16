@@ -244,6 +244,7 @@ export interface ViewerHostApi {
   remoteCheck(): Promise<RemoteServiceState>;
   remoteProject(request: { projectId: string }): Promise<RemoteProjectState>;
   remoteFiles(request: { projectId: string }): Promise<string[]>;
+  remoteTools(request: { projectId: string }): Promise<string[]>;
   remoteRebind(request: { projectId: string }): ReturnType<ViewerHostApi['projectBindings']>;
   remoteSetLocation(request: {
     projectId: string;

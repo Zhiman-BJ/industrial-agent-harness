@@ -139,6 +139,7 @@ protocol.registerSchemesAsPrivileged([
 if (
   [
     '--account-selftest',
+    '--remote-ui-selftest',
     '--task-results-selftest',
     '--viewer-selftest',
     '--kicad-selftest',
@@ -1212,6 +1213,31 @@ function registerHandlers() {
     const project = executionProject(event, request);
     return remoteSettings.candidates(project.path);
   });
+  ipcMain.handle('remote:tools', async (event, request) => {
+    const project = executionProject(event, request);
+    const binding = remoteSettings.project(project.path, project.domain);
+    if (
+      binding.location !== 'remote' ||
+      !binding.remoteProjectId ||
+      remoteSettings.view().status !== 'connected'
+    )
+      return [];
+    const client = remoteSettings.client({
+      remoteProjectId: binding.remoteProjectId,
+      domain: project.domain,
+    });
+    try {
+      const inventory = await client.capabilities();
+      const tools = Array.isArray(inventory?.tools) ? inventory.tools : [];
+      return tools
+        .map(tool => (tool?.descriptor || tool)?.id)
+        .filter(id => typeof id === 'string');
+    } catch {
+      return [];
+    } finally {
+      await client.close();
+    }
+  });
   async function executionChange(event, request, operation) {
     const project = executionProject(event, request);
     if (changingResources) throw Error('Settings are being saved.');
@@ -1648,6 +1674,8 @@ async function createWindow() {
     require('./gui-settings-selftest.cjs').prepare();
   if (process.argv.includes('--ui-selftest'))
     require('./ui-selftest.cjs').prepare(projectConfigDir(), chats);
+  if (process.argv.includes('--remote-ui-selftest'))
+    require('./remote-ui-selftest.cjs').prepare(projectConfigDir(), chats);
   if (process.argv.includes('--replay-selftest')) {
     const config = projectConfigDir();
     const project = path.join(config, 'sobel-project');
@@ -2026,6 +2054,11 @@ async function createWindow() {
   }
   if (process.argv.includes('--ui-selftest')) {
     await require('./ui-selftest.cjs').run(window, dialog);
+    app.quit();
+    return;
+  }
+  if (process.argv.includes('--remote-ui-selftest')) {
+    await require('./remote-ui-selftest.cjs').run(window);
     app.quit();
     return;
   }

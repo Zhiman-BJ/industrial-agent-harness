@@ -3939,6 +3939,10 @@
     "Create new remote project": {
       "en": "Create new remote project",
       "zh-CN": "创建新的远程项目"
+    },
+    "Remote sandbox": {
+      "en": "Remote sandbox",
+      "zh-CN": "远程沙箱"
     }
   }
 }

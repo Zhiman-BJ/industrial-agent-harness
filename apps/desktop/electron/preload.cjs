@@ -37,6 +37,7 @@ const api = {
   remoteCheck: () => ipcRenderer.invoke('remote:check'),
   remoteProject: request => ipcRenderer.invoke('remote:project', request),
   remoteFiles: request => ipcRenderer.invoke('remote:files', request),
+  remoteTools: request => ipcRenderer.invoke('remote:tools', request),
   remoteSetLocation: request => ipcRenderer.invoke('remote:set-location', request),
   remoteReview: request => ipcRenderer.invoke('remote:review', request),
   remoteSync: request => ipcRenderer.invoke('remote:sync', request),

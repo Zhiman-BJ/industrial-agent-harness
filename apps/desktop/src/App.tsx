@@ -202,6 +202,10 @@ export function App() {
     chatId: string | null;
     ready: boolean;
   }>();
+  // Tool ids the bound remote service executes in its sandbox; used to badge
+  // tool calls in the chat flow so remote work is visually distinct.
+  const [remoteToolIds, setRemoteToolIds] = useState<string[]>([]);
+  const remoteToolSet = useMemo(() => new Set(remoteToolIds), [remoteToolIds]);
   const [approvalMode, setApprovalMode] = useState<'ask' | 'auto'>('ask');
   const [approvalModeBusy, setApprovalModeBusy] = useState(false);
   const [agentOwned, setAgentOwned] = useState(false);
@@ -240,6 +244,8 @@ export function App() {
     remoteExecution?.projectId === activeProjectId &&
     remoteExecution?.chatId === activeChatId &&
     remoteExecution.ready;
+  // Tool identities belong to the bound service; drop them with the project.
+  useEffect(() => setRemoteToolIds([]), [activeProjectId]);
   const chatIdRef = useRef<string | null>(null);
   const [turns, setTurns] = useState<ChatTurn[]>([]);
   const [historyBefore, setHistoryBefore] = useState<string | null>(null);
@@ -1742,6 +1748,11 @@ export function App() {
                               debug={debug}
                               approve={approveAgent}
                               answer={answerAgent}
+                              remoteTools={
+                                activeProject?.executionLocation === 'remote'
+                                  ? remoteToolSet
+                                  : undefined
+                              }
                             />
                           )}
                         </div>
@@ -1784,6 +1795,7 @@ export function App() {
                           ready,
                         })
                       }
+                      onTools={setRemoteToolIds}
                       onConfigure={() => showPage('project')}
                     />
                   )}

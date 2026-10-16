@@ -436,12 +436,14 @@ export function RemoteTaskStatus({
   chatId,
   onReady,
   onConfigure,
+  onTools,
 }: {
   projectId: string;
   domain: string;
   chatId: string | null;
   onReady: (ready: boolean) => void;
   onConfigure: () => void;
+  onTools?: (tools: string[]) => void;
 }) {
   const { t } = useDisplayText();
   const [project, setProject] = useState<RemoteProjectState>();
@@ -456,6 +458,15 @@ export function RemoteTaskStatus({
     async function poll() {
       try {
         const state = await window.viewerHost!.remoteProject({ projectId });
+        // Remote tool identities come from the service capability catalog; the
+        // chat flow uses them to badge sandbox-executed tool calls.
+        if (state.syncedAt && state.service.status === 'connected' && onTools)
+          void window
+            .viewerHost!.remoteTools({ projectId })
+            .then(tools => {
+              if (alive) onTools(tools);
+            })
+            .catch(() => {});
         let remoteSession: RemoteSessionState | null = null,
           value: RemoteTaskState | null = null;
         if (chatId && state.syncedAt && state.service.status === 'connected') {
@@ -506,25 +517,27 @@ export function RemoteTaskStatus({
                 ? t('Remote software and sandbox')
                 : t('Choose files to sync')}
       </span>
-      {session && !terminal && !session.callLocked && chatId && (
-        <button
-          disabled={ending}
-          onClick={() => {
-            setEnding(true);
-            void window
-              .viewerHost!.remoteTerminate({ projectId, chatId, applicationSessionId: session.id })
-              .then(value => {
-                setSession(value);
-                onReady(false);
-              })
-              .catch(reason => setError(String(reason)))
-              .finally(() => setEnding(false));
-          }}
-        >
-          {t('End remote session')}
-        </button>
-      )}
-      <button onClick={onConfigure}>{t('Files and execution settings')}</button>
+      <span className="ia-remote-actions">
+        {session && !terminal && !session.callLocked && chatId && (
+          <button
+            disabled={ending}
+            onClick={() => {
+              setEnding(true);
+              void window
+                .viewerHost!.remoteTerminate({ projectId, chatId, applicationSessionId: session.id })
+                .then(value => {
+                  setSession(value);
+                  onReady(false);
+                })
+                .catch(reason => setError(String(reason)))
+                .finally(() => setEnding(false));
+            }}
+          >
+            {t('End remote session')}
+          </button>
+        )}
+        <button onClick={onConfigure}>{t('Files and execution settings')}</button>
+      </span>
       {error && <span role="alert">{error}</span>}
     </div>
   );
