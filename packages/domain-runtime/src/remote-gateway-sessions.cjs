@@ -9,6 +9,17 @@ function boundedIdentity(value, name) {
   return value;
 }
 
+function bindingFileStat(file) {
+  const stat = fs.lstatSync(file, { bigint: true });
+  if (stat.isSymbolicLink())
+    throw Object.assign(Error('ELOOP: Remote session binding cannot be a symlink.'), {
+      code: 'ELOOP',
+    });
+  if (!stat.isFile() || stat.nlink !== 1n || stat.size > 16384n)
+    throw Error('Invalid remote session binding file.');
+  return stat;
+}
+
 // Credentials participate in isolation, but their plaintext never enters the store.
 // Account-bound clients pass a stable credentialKey because their token rotates;
 // a static credential is hashed directly. Either way only digests are persisted.
@@ -74,10 +85,22 @@ class RemoteGatewaySessions {
   }
   read(key) {
     const file = this.file(key);
-    const fd = fs.openSync(file, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
+    // Windows does not expose O_NOFOLLOW. Check the path explicitly and bind
+    // the opened descriptor to the same file before reading any session data.
+    const before = bindingFileStat(file);
+    let fd;
     try {
-      const stat = fs.fstatSync(fd);
-      if (!stat.isFile() || stat.nlink !== 1 || stat.size > 16384)
+      fd = fs.openSync(file, fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW || 0));
+      const stat = fs.fstatSync(fd, { bigint: true });
+      const after = bindingFileStat(file);
+      if (
+        stat.dev !== before.dev ||
+        stat.ino !== before.ino ||
+        stat.dev !== after.dev ||
+        stat.ino !== after.ino
+      )
+        throw Error('Remote session binding file changed during read.');
+      if (!stat.isFile() || stat.nlink !== 1n || stat.size > 16384n)
         throw Error('Invalid remote session binding file.');
       const value = JSON.parse(fs.readFileSync(fd, 'utf8'));
       if (
@@ -87,8 +110,13 @@ class RemoteGatewaySessions {
       )
         throw Error('Invalid remote session binding.');
       return value;
+    } catch (error) {
+      // Once observed, a disappearing binding is a race, not a new session.
+      if (error.code === 'ENOENT')
+        throw Error('Remote session binding file changed during read.', { cause: error });
+      throw error;
     } finally {
-      fs.closeSync(fd);
+      if (fd !== undefined) fs.closeSync(fd);
     }
   }
   update(binding, changes) {

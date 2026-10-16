@@ -65,3 +65,41 @@ test('corrupt or symlink binding files fail closed', t => {
   fs.writeFileSync(file, JSON.stringify({ ...binding, remoteProjectId: 'switched' }));
   assert.throws(() => f.store.binding(f.input), /changed/);
 });
+
+for (const replacement of [
+  'file before open',
+  'file after open',
+  'symlink before open',
+  'removal after open',
+]) {
+  test(`binding reads reject ${replacement} replacement and close the descriptor`, t => {
+    const f = fixture(t);
+    const binding = f.store.binding(f.input);
+    const file = f.store.file(binding.key);
+    const original = path.join(f.directory, 'original');
+    const contents = fs.readFileSync(file, 'utf8');
+    const open = fs.openSync;
+    let swapped = false;
+    let descriptor;
+    t.mock.method(fs, 'openSync', (candidate, flags, ...args) => {
+      if (candidate !== file || swapped) return open(candidate, flags, ...args);
+      swapped = true;
+      if (replacement.endsWith('after open')) descriptor = open(candidate, flags, ...args);
+      fs.renameSync(file, original);
+      if (replacement === 'symlink before open') fs.symlinkSync(original, file);
+      else if (replacement !== 'removal after open') fs.writeFileSync(file, contents);
+      // Exercise Windows open semantics on every host, including a symlink
+      // targeting the original inode that a descriptor-only check would miss.
+      descriptor ??= open(candidate, flags & ~(fs.constants.O_NOFOLLOW || 0), ...args);
+      return descriptor;
+    });
+    assert.throws(
+      () => f.store.binding(f.input),
+      replacement === 'symlink before open' ? /ELOOP/ : /changed during read/,
+    );
+    assert.equal(swapped, true);
+    assert.throws(() => fs.fstatSync(descriptor), { code: 'EBADF' });
+    if (replacement === 'removal after open')
+      assert.equal(fs.existsSync(file), false, 'A disappearing binding must not create a session');
+  });
+}
