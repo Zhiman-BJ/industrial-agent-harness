@@ -29,12 +29,16 @@ export function DomainManager({
   onSetupNext,
   firstRun,
   busy,
+  projectSetup = false,
+  onInstalled,
 }: {
   onClose: () => void;
   onChanged: (domains: DomainOption[]) => void;
   onSetupNext?: (action: 'model' | 'project') => void;
   firstRun: boolean;
   busy: boolean;
+  projectSetup?: boolean;
+  onInstalled?: (domains: DomainOption[]) => void;
 }) {
   const { t, locale } = useDisplayText();
   const dialog = useRef<HTMLDialogElement>(null);
@@ -127,6 +131,7 @@ export function DomainManager({
     setSelected([]);
     await refresh();
     if (firstRun) setComplete(true);
+    onInstalled?.(result.installed.filter(item => selected.includes(item.id)));
   }
   async function install() {
     if (!selected.length || disabled || loading) return;
@@ -261,12 +266,25 @@ export function DomainManager({
     >
       <header>
         <div>
-          <h2 tabIndex={-1}>{firstRun ? t('Choose your domains') : t('Domains')}</h2>
+          <h2 tabIndex={-1}>
+            {projectSetup
+              ? t('Install a project domain')
+              : firstRun
+                ? t('Choose your domains')
+                : t('Domains')}
+          </h2>
           <p>
-            {firstRun
-              ? t('Select one or more domains to prepare the workspace.')
-              : t('Add missing domains and install available updates.')}
+            {projectSetup
+              ? t(
+                  'Your project details are saved. After installation, return to finish creating your project.',
+                )
+              : firstRun
+                ? t('Select one or more domains to prepare the workspace.')
+                : t('Add missing domains and install available updates.')}
           </p>
+          {firstRun && (
+            <p>{t('General projects are ready to use without installing a domain pack.')}</p>
+          )}
         </div>
         <button
           className="ia-icon"
@@ -450,13 +468,21 @@ export function DomainManager({
         {preparation ? (
           <button onClick={() => setPreparation(null)}>{t('Back')}</button>
         ) : (
-          <button disabled={cancelling} onClick={close}>
+          <button
+            disabled={cancelling}
+            onClick={() => {
+              if (firstRun && !complete && !installing && onSetupNext) onSetupNext('project');
+              else close();
+            }}
+          >
             {t(
               installing && status?.operation?.cancellable !== false
                 ? 'Cancel installation and close'
                 : firstRun && !complete
-                  ? 'Skip for now'
-                  : 'Close',
+                  ? 'Continue with General'
+                  : projectSetup
+                    ? 'Back to project'
+                    : 'Close',
             )}
           </button>
         )}

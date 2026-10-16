@@ -18,6 +18,7 @@ Industrial Agent Harness connects local projects, Kimi Code, professional softwa
 ## What you can do
 
 - **Work from a real project.** Bind a local directory to a domain, keep multiple chats, resume sessions and inspect execution logs.
+- **Start without a Domain Pack.** New projects default to the built-in General domain. Install specialized packs from the project dialog while keeping your folder and name; successful installation returns to the draft with the new domain selected. See [project onboarding](doc/project-onboarding.md).
 - **Load relevant knowledge and tools.** The Capability Broker progressively discloses Skills and tool schemas, then enforces the selected scope at execution.
 - **Use project guidance.** Discover `.skill/`, `.skills/` and standard project Skill directories, and load project `AGENTS.md` through Kimi's native mechanism. See the [compatibility audit](doc/kimi-native-compatibility-audit.md) for remaining limitations.
 - **Keep engineering evidence.** The RTL runtime records inputs, actions, artifacts, verification and checkpoints. Input changes invalidate current evidence; interrupted work remains visible after restart.

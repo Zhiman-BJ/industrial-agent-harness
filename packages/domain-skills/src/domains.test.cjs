@@ -5,6 +5,7 @@ const { listDomains } = require('./domains.cjs');
 
 test('domain options include registered Viewer-only domains', () => {
   assert.deepEqual(listDomains(capabilities), [
+    { id: 'general', label: 'General', emoji: '⚙️', builtin: true },
     { id: 'cad', label: 'CAD', emoji: '📐' },
     { id: 'chip', label: 'Chip', emoji: '💠' },
     { id: 'cuda', label: 'CUDA', emoji: '⚡' },

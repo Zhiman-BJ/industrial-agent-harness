@@ -1,5 +1,7 @@
 # 所有领域共用的工程底座
 
+内置 `general`（通用）领域无需安装 Domain Pack。Desktop 创建项目默认选择通用，通用 CLI 可显式传 `--domain general`。它使用本文的共享工作区 Runtime，不产生任何专业领域工具授权或工程验收结论；固定领域 CLI 分包仍受原有领域绑定限制。安装专业领域包后可在项目详情中切换，见[项目创建与领域引导](project-onboarding.md)。
+
 空目录、没有专业 Runtime 的领域和已有专业工程都使用同一组共享 Tools。
 Core 不内置综合、SPICE、特定 ISA、SRAM/MPW 生成器或供应商签核流程；这些软件、
 模型、参考资料与配方由环境、工程和领域 Skill 提供。基础执行不再依赖先有 eda.yaml。

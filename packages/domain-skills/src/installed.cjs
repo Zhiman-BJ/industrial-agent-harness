@@ -6,7 +6,7 @@ const staticCapabilities = require('@zhiman-bj/industrial-domain-packs').consume
   .capabilities;
 const { loadDomainPacks } = require('./packs.cjs');
 const staticSkills = require('./consumer.cjs');
-const { listDomains } = require('./domains.cjs');
+const { listDomains, builtInDomains } = require('./domains.cjs');
 
 function builtInPackDirectory(provider) {
   // Resolve deployed pnpm resources from the owning module's ancestors. A
@@ -59,9 +59,10 @@ function loadRegistry() {
   const bundles = manager
     .list()
     .filter(bundle => !distributionDomain || bundle.domain === distributionDomain);
-  const domains = bundles
+  const packDomains = bundles
     .map(bundle => ({ id: bundle.domain, label: bundle.label, emoji: bundle.emoji }))
     .sort((a, b) => a.id.localeCompare(b.id));
+  const domains = [...builtInDomains(), ...packDomains];
   const capabilities = bundles.flatMap(bundle => bundle.capabilities);
   const skills = [
     ...staticSkills

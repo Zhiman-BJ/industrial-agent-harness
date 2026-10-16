@@ -53,6 +53,13 @@ jobs:
         run: |
           pnpm --filter @industrial-agent-harness/desktop build
           node scripts/stage-desktop.cjs dist/desktop-stage-ci
+      - name: Verify project creation and domain onboarding
+        timeout-minutes: 5
+        shell: bash
+        run: |
+          mkdir -p dist/ci-reports
+          export INDUSTRIAL_UI_SCREENSHOTS="$GITHUB_WORKSPACE/dist/ci-reports/ui/onboarding"
+          pnpm --filter @industrial-agent-harness/desktop test:project-onboarding 2>&1 | tee dist/ci-reports/project-onboarding.log
       - name: Verify guided installation experience
         if: matrix.platform == 'mac'
         shell: bash

@@ -111,6 +111,22 @@ async function run(window, dialog) {
     dialog.showOpenDialog = original;
   }
   await input('.ia-create-project input', 'Sobel edge detector');
+  assert.equal(
+    await evaluate(
+      `document.querySelector('.ia-domain-choice[aria-pressed="true"]').dataset.domain`,
+    ),
+    'general',
+  );
+  await click('.ia-create-install');
+  await wait(`Boolean(document.querySelector('.ia-domains-modal'))`);
+  assert.equal(await evaluate(`Boolean(document.querySelector('.ia-create-project'))`), false);
+  await click('.ia-domains-modal header button');
+  await wait(`document.querySelector('.ia-create-project input')?.value === 'Sobel edge detector'`);
+  assert.ok(
+    await evaluate(
+      `document.querySelector('.ia-folder-picker').textContent.includes('sobel-project')`,
+    ),
+  );
   await evaluate(
     `Array.from(document.querySelectorAll('.ia-domain-choice')).find(node => node.textContent.includes('Chip')).click()`,
   );

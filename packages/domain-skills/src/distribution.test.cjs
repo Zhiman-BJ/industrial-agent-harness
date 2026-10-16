@@ -63,7 +63,7 @@ test('external author Pack survives build, installation, Broker disclosure and s
   const registry = loadRegistry();
   assert.deepEqual(
     registry.domains.map(domain => domain.id),
-    ['review-fixture'],
+    ['general', 'review-fixture'],
   );
   const project = path.join(directory, 'project');
   fs.mkdirSync(project);
