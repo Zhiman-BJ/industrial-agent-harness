@@ -307,7 +307,7 @@ class RemoteGatewayClient {
     }
     return response;
   }
-  async request(route, { method = 'GET', body, binary = false, signal } = {}) {
+  async request(route, { method = 'GET', body, binary = false, rawBody = false, signal } = {}) {
     if (!route.startsWith('/v1/') || route.includes('://') || route.includes('#'))
       throw Error('Invalid remote request route.');
     const timeout = AbortSignal.timeout(this.requestTimeoutMs);
@@ -319,9 +319,11 @@ class RemoteGatewayClient {
         headers: {
           Authorization: 'Bearer ' + token,
           ...this.bindingHeaders(),
-          ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+          ...(body !== undefined
+            ? { 'Content-Type': rawBody ? 'application/octet-stream' : 'application/json' }
+            : {}),
         },
-        body: body === undefined ? undefined : JSON.stringify(body),
+        body: body === undefined ? undefined : rawBody ? body : JSON.stringify(body),
         signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
       },
       // Reads with an account-bound provider may retry once on invalid_token.
@@ -388,6 +390,129 @@ class RemoteGatewayClient {
       method: 'POST',
       body: { manifest, files, baseSnapshotId },
     });
+  }
+  // Current production contract. Kept explicit until the canonical Runtime
+  // consumer migrates; the historical sync/grant path is not silently changed.
+  async uploadSnapshot(snapshot, baseSnapshotId = null, options = {}) {
+    const manifest = snapshot?.manifest;
+    if (
+      manifest?.schemaVersion !== '0.1' ||
+      !Array.isArray(manifest.files) ||
+      !manifest.files.length ||
+      manifest.files.length > 256 ||
+      !(snapshot.blobs instanceof Map)
+    )
+      throw Error('Invalid bounded snapshot upload.');
+    const approved = new Map();
+    let total = 0;
+    for (const file of manifest.files) {
+      relativeFile(file.path);
+      if (
+        approved.has(file.path) ||
+        !/^[a-f0-9]{64}$/.test(file.sha256 || '') ||
+        !Number.isSafeInteger(file.sizeBytes) ||
+        !snapshot.blobs.has(file.sha256)
+      )
+        throw Error('Invalid snapshot file identity.');
+      const bytes = verifyBytes(snapshot.blobs.get(file.sha256), file);
+      total += bytes.length;
+      if (total > 8 * 1048576) throw Error('Selected files exceed 8 MiB.');
+      approved.set(file.path, { ...file, bytes });
+    }
+    if (baseSnapshotId !== null) boundedIdentity(baseSnapshotId, 'base snapshot identity');
+    const upload = await this.request(this.projectRoute('snapshots'), {
+      ...options,
+      method: 'POST',
+      body: { manifest, baseSnapshotId },
+    });
+    const id = boundedIdentity(upload.snapshotId, 'snapshot identity');
+    if (
+      upload.projectId !== this.binding.remoteProjectId ||
+      upload.status !== 'uploading' ||
+      !Array.isArray(upload.files) ||
+      upload.files.length !== approved.size
+    )
+      throw Error('Invalid snapshot upload response.');
+    const targets = [];
+    for (const entry of upload.files) {
+      const file = approved.get(entry.path);
+      if (!file || entry.sha256 !== file.sha256 || entry.sizeBytes !== file.sizeBytes)
+        throw Error('Upload target differs from approved input.');
+      approved.delete(entry.path);
+      const key = `snapshots/${file.sha256.slice(0, 2)}/${file.sha256}`;
+      const route = this.projectRoute(`snapshots/${encodeURIComponent(id)}/objects/${key}`);
+      const target = new URL(entry.upload?.url, this.url);
+      if (
+        entry.upload?.method !== 'PUT' ||
+        entry.upload?.objectKey !== key ||
+        target.origin !== new URL(this.url).origin ||
+        target.search ||
+        target.hash ||
+        target.username ||
+        target.password ||
+        decodeURIComponent(target.pathname) !== route
+      )
+        throw Error('Untrusted snapshot upload target.');
+      targets.push({ route: target.pathname, bytes: file.bytes });
+    }
+    // Validate every server target before sending any input bytes or credentials.
+    for (const target of targets)
+      await this.request(target.route, {
+        ...options,
+        method: 'PUT',
+        body: target.bytes,
+        rawBody: true,
+      });
+    const completed = await this.request(
+      this.projectRoute(`snapshots/${encodeURIComponent(id)}/complete`),
+      {
+        ...options,
+        method: 'POST',
+      },
+    );
+    if (
+      completed.snapshotId !== id ||
+      completed.projectId !== this.binding.remoteProjectId ||
+      completed.status !== 'ready'
+    )
+      throw Error('Snapshot completion identity mismatch.');
+    return completed;
+  }
+  async callProtectedTool(
+    toolId,
+    args,
+    { requestId, snapshotId, expectedStateId = null, ...options },
+  ) {
+    for (const value of [requestId, snapshotId])
+      if (
+        typeof value !== 'string' ||
+        !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(value)
+      )
+        throw Error('A UUID request and snapshot identity are required.');
+    if (expectedStateId !== null) boundedIdentity(expectedStateId, 'state identity');
+    return (
+      await this.rawMcpCall(
+        'domain_tool_call',
+        {
+          requestId,
+          snapshotId,
+          expectedStateId,
+          toolId,
+          arguments: args,
+        },
+        options,
+      )
+    ).payload;
+  }
+  async downloadProducedArtifact(ref, options = {}) {
+    boundedIdentity(ref?.id, 'artifact identity');
+    if (!/^[a-f0-9]{64}$/.test(ref.sha256 || '') || !Number.isSafeInteger(ref.sizeBytes))
+      throw Error('Remote artifact metadata is unavailable.');
+    const content = await this.request(`/v1/artifacts/${encodeURIComponent(ref.id)}/download`, {
+      ...options,
+      binary: true,
+    });
+    return { ref, content: verifyBytes(content, ref) };
   }
   snapshotFile(id, relativePath, options = {}) {
     relativeFile(relativePath);
@@ -466,10 +591,13 @@ class RemoteGatewayClient {
       const transport = new StreamableHTTPClientTransport(
         new URL(this.url + '/v1/mcp/' + encodeURIComponent(this.binding.domain)),
         {
-          // Resolved per connect so a rotated account token is picked up on
-          // reconnect without persisting it anywhere.
-          requestInit: { headers: await this.headers(), redirect: 'error' },
-          fetch: (url, init) => this.checkedFetch(url, init),
+          requestInit: { redirect: 'error' },
+          fetch: async (url, init) => {
+            const headers = new Headers(init?.headers);
+            for (const [key, value] of Object.entries(await this.headers()))
+              headers.set(key, value);
+            return this.checkedFetch(url, { ...init, headers });
+          },
           reconnectionOptions: { maxRetries: 0 },
         },
       );

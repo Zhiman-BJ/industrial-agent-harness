@@ -1,5 +1,20 @@
 # Domain runtime
 
+2026-10-16 gateway compatibility work (not yet a Desktop/CLI integration):
+`RemoteGatewayClient.uploadSnapshot` implements manifest → per-object PUT → complete;
+`callProtectedTool` uses the shipped `requestId/snapshotId/expectedStateId` envelope;
+`downloadProducedArtifact` reads the current download route and validates recorded hashes.
+MCP resolves the account-bound credential provider on every HTTP request, including an
+existing transport. Unknown mutations are not automatically replayed. Upload targets
+must belong to the bound gateway/project/snapshot and match approved content hashes.
+
+The existing canonical `RemoteRuntime` still consumes the historical state/capabilities/
+grant/result contract. The production response observed in the 2026-10-16 live test
+contains verification/artifacts but `state: null` and no run/action/checkpoint. These
+client methods deliberately do not manufacture those facts or claim a successful
+Workbench task. Shared Runtime integration and a real authenticated desktop run remain
+required. Contract tests use an in-memory HTTP fixture, not a real remote sandbox.
+
 Owns deterministic domain execution, run state, evidence, and artifact provenance. It must not depend on Electron, Kimi, or the MCP transport.
 
 当前已实现 `ObservedContextStore`：CLI 与桌面端按 Project/Domain 在用户数据目录保存 SQLite 工件文件观察与最小 Checkpoint。每次提供给模型前重新核对文件路径与 SHA-256；历史 Checkpoint 仍可分页读取。记录明确标为 `verificationStatus: not_run`，不能代表工程通过。
