@@ -4,6 +4,12 @@
 //   INDUSTRIAL_REMOTE_CREDENTIAL_ENV=MOCK_REMOTE_TOKEN
 //   MOCK_REMOTE_TOKEN=mock-token
 //   INDUSTRIAL_UI_SCREENSHOTS=<output directory>
+// With scripts/remote-ui-fixture.cjs, REMOTE_UI_FIXTURE_CONTROL=1 additionally
+// checks controlled query failures and the error-details disclosure.
+// The complete run still requires a remote artifact for the same bound project
+// before step 6. Uploading to remote-ui-fixture.cjs does not create artifacts,
+// and its control endpoint does not seed them; prepare that prerequisite
+// separately. The control flag alone does not make this a standalone fixture run.
 const fs = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');
@@ -136,6 +142,47 @@ async function runInner(window) {
   await wait(`Boolean(document.querySelector('.ia-remote-project-body'))`);
   await capture('03-project-remote-toggle');
 
+  // Before upload, the actual remote readiness gate blocks input. The composer
+  // explains that state and takes the user back to project execution settings.
+  await click('.ia-new-chat');
+  await wait(`document.querySelector('.ia-composer textarea')?.disabled === true`);
+  const remoteAgentAvailable = await evaluate(
+    `window.viewerHost.agentStatus().then(s => s.available)`,
+  );
+  const blockedHint = remoteAgentAvailable
+    ? '远程环境尚未就绪，请检查项目执行设置。'
+    : '运行 Agent 任务需要 Kimi CLI';
+  await wait(
+    `document.querySelector('#ia-composer-status')?.textContent === ${JSON.stringify(blockedHint)}`,
+  );
+  assert.equal(await evaluate(`document.querySelector('.ia-send').disabled`), true);
+  if (remoteAgentAvailable) {
+    assert.equal(
+      await evaluate(`document.querySelector('.ia-composer-status-action').textContent.trim()`),
+      '执行设置',
+    );
+    await capture('03b-chat-remote-not-ready');
+    await click('.ia-composer-status-action');
+  } else {
+    // UI-only runs need not have Kimi installed. Preserve that higher-priority
+    // blocker rather than claiming the runtime is available for this fixture.
+    assert.equal(
+      await evaluate(`Boolean(document.querySelector('.ia-composer-status-action'))`),
+      false,
+    );
+    await click('.ia-composer-project');
+  }
+  await wait(`Boolean(document.querySelector('.ia-project-execution'))`);
+  assert.equal(
+    await evaluate(`(() => {
+      const dock = document.querySelector('.ia-status-dock');
+      return Boolean(dock?.hidden) && dock.getClientRects().length === 0;
+    })()`),
+    true,
+    'Returning from the blocked composer hides the status card on project settings',
+  );
+  await wait(`Boolean(document.querySelector('.ia-remote-project-body'))`);
+
   // 3. Connect from the project panel if needed, then open the file picker.
   if (
     await evaluate(
@@ -179,6 +226,11 @@ async function runInner(window) {
   await click('.ia-new-chat');
   await wait(`document.querySelector('.ia-status-dock')?.textContent.includes('远程就绪')`);
   await wait(`document.querySelector('.ia-composer textarea')?.disabled === false`);
+  assert.equal(
+    await evaluate(`Boolean(document.querySelector('.ia-composer-status-action'))`),
+    false,
+    'The remote setup prompt disappears only after the actual readiness gate clears',
+  );
   await capture('09-chat-status-pill');
   await click('.ia-status-pill');
   await wait(`Boolean(document.querySelector('.ia-status-dock.open .ia-status-card'))`);
@@ -186,6 +238,68 @@ async function runInner(window) {
   await click('.ia-status-dock.open .ia-status-head');
   await wait(`Boolean(document.querySelector('.ia-status-dock .ia-status-body:not([hidden])'))`);
   await capture('09c-status-card-expanded');
+
+  if (process.env.REMOTE_UI_FIXTURE_CONTROL === '1') {
+    const fixtureUrl = new URL(process.env.INDUSTRIAL_REMOTE_SERVICE_URL);
+    assert.equal(fixtureUrl.protocol, 'http:');
+    assert.equal(fixtureUrl.hostname, '127.0.0.1');
+    const credential = process.env[process.env.INDUSTRIAL_REMOTE_CREDENTIAL_ENV];
+    assert.ok(credential, 'The optional fixture control requires its test token');
+    const headers = { Authorization: `Bearer ${credential}`, 'Content-Type': 'application/json' };
+    const info = await fetch(new URL('/v1/service-info', fixtureUrl), { headers }).then(r =>
+      r.json(),
+    );
+    assert.equal(info.fixture, true, 'Fault controls must target the explicit UI fixture');
+    assert.equal(info.engineeringExecution, false);
+    const queryFailure = async value => {
+      const response = await fetch(new URL('/__fixture/state', fixtureUrl), {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ queryFailure: value }),
+      });
+      assert.equal(response.ok, true, 'Fixture query-failure control must succeed');
+    };
+    try {
+      await queryFailure(true);
+      await wait(`Boolean(document.querySelector('.ia-status-error-details'))`);
+      assert.equal(
+        await evaluate(`document.querySelector('.ia-composer textarea').disabled`),
+        true,
+      );
+      assert.equal(
+        await evaluate(`document.querySelector('.ia-status-error [role="alert"]').textContent`),
+        '暂时无法更新远程状态，请稍后重试。',
+        'The visible failure explains recovery without exposing IPC diagnostics',
+      );
+      assert.equal(
+        await evaluate(`document.querySelector('.ia-status-error-details summary').textContent`),
+        '错误详情',
+      );
+      assert.equal(
+        await evaluate(`document.querySelector('.ia-status-error-details').open`),
+        false,
+        'Error diagnostics are collapsed by default',
+      );
+      const rawReason = await evaluate(
+        `document.querySelector('.ia-status-error-reason').textContent`,
+      );
+      assert.match(rawReason, /UI_FIXTURE_QUERY_FAILED/);
+      assert.match(rawReason, /remote:session/);
+      await capture('09d-remote-query-failed');
+      await click('.ia-status-error-details summary');
+      await wait(`document.querySelector('.ia-status-error-details').open`);
+      assert.equal(
+        await evaluate(`document.querySelector('.ia-status-error-reason').textContent`),
+        rawReason,
+        'Expanding diagnostics retains the original failure reason',
+      );
+    } finally {
+      await queryFailure(false);
+    }
+    await wait(
+      `!document.querySelector('.ia-status-error') && document.querySelector('.ia-composer textarea')?.disabled === false`,
+    );
+  }
 
   // 8. Open the seeded chat: the remote sandbox tool call carries a green
   // badge while the local call does not. Tool identities arrive through the
@@ -232,6 +346,10 @@ async function runInner(window) {
     );
     assert.ok(metrics.composer.width >= 240, `${name}: composer keeps a usable width`);
     assert.ok(
+      metrics.flow.bottom <= metrics.composer.top,
+      `${name}: transcript stays above the composer`,
+    );
+    assert.ok(
       metrics.card.right <= metrics.composer.left ||
         metrics.card.left >= metrics.composer.right ||
         metrics.card.bottom <= metrics.composer.top ||
@@ -271,6 +389,15 @@ async function runInner(window) {
     'false',
   );
   assert.equal(await evaluate(`document.querySelector('.ia-status-card').hidden`), true);
+  assert.equal(
+    await evaluate(`(() => {
+    const pill = document.querySelector('.ia-status-pill').getBoundingClientRect();
+    const header = document.querySelector('.ia-chat-header').getBoundingClientRect();
+    return pill.top - header.bottom >= 15 && pill.height >= 36;
+  })()`),
+    true,
+    'Collapsed execution status has breathing room below the toolbar',
+  );
   await capture('17-status-collapsed-dark-en');
   window.setBounds(originalBounds);
 

@@ -272,8 +272,14 @@ export function ChatStatusCard({
                   </div>
                 )}
                 {error && (
-                  <div className="ia-status-error" role="alert">
-                    {error}
+                  <div className="ia-status-error">
+                    <p className="ia-status-error-message" role="alert">
+                      {t('Could not update the remote status. Try again shortly.')}
+                    </p>
+                    <details className="ia-status-error-details">
+                      <summary>{t('Error details')}</summary>
+                      <pre className="ia-status-error-reason">{error}</pre>
+                    </details>
                   </div>
                 )}
               </div>

@@ -1229,9 +1229,7 @@ function registerHandlers() {
     try {
       const inventory = await client.capabilities();
       const tools = Array.isArray(inventory?.tools) ? inventory.tools : [];
-      return tools
-        .map(tool => (tool?.descriptor || tool)?.id)
-        .filter(id => typeof id === 'string');
+      return tools.map(tool => (tool?.descriptor || tool)?.id).filter(id => typeof id === 'string');
     } catch {
       return [];
     } finally {
@@ -2437,7 +2435,7 @@ async function createWindow() {
     await waitFor(`Boolean(document.querySelector('.ia-model-modal'))`);
     screenshots.push(await shot('settings'));
     await window.webContents.executeJavaScript(
-      `document.querySelector('.ia-model-modal header button').click(); document.querySelector('.ia-sidebar-brand .ia-icon').click(); document.querySelector('.ia-chat-actions button:last-child').click()`,
+      `document.querySelector('.ia-model-modal header button').click(); document.querySelector('.ia-sidebar-chrome .ia-icon').click(); document.querySelector('.ia-chat-actions button:last-child').click()`,
     );
     await waitFor(
       `!document.querySelector('.ia-sidebar') && !document.querySelector('.ia-workspace')`,

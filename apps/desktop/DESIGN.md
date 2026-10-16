@@ -1,186 +1,186 @@
 ---
-name: "Industrial Harness desktop"
-description: "A neutral desktop conversation workbench with compact system type and a persistent project context."
+name: 'Industrial Harness desktop'
+description: 'A neutral desktop conversation workbench with compact system type and a persistent project context.'
 colors:
-  light-bg: "#fafafa"
-  light-panel: "#f2f2f2"
-  light-raised: "#ffffff"
-  light-border: "#dedede"
-  light-control-border: "#b5b5b5"
-  light-text: "#252525"
-  light-muted: "#686868"
-  light-hover: "#e8e8e8"
-  light-active: "#e9e9e9"
-  light-accent: "#343434"
-  light-code: "#f3f3f3"
-  light-sidebar: "#eeeeee"
-  light-sidebar-hover: "#e3e3e3"
-  light-sidebar-active: "#dedede"
-  light-success: "#317357"
-  light-danger: "#b13939"
-  light-warning: "#96631e"
-  dark-bg: "#161616"
-  dark-panel: "#222222"
-  dark-raised: "#282828"
-  dark-border: "#3a3a3a"
-  dark-control-border: "#707070"
-  dark-text: "#dedede"
-  dark-muted: "#a1a1a1"
-  dark-hover: "#343434"
-  dark-active: "#333333"
-  dark-accent: "#dedede"
-  dark-code: "#202020"
-  dark-sidebar: "#282828"
-  dark-sidebar-hover: "#343434"
-  dark-sidebar-active: "#3d3d3d"
-  dark-success: "#85d0ae"
-  dark-danger: "#f19b9b"
-  dark-warning: "#edc580"
+  light-bg: '#fafafa'
+  light-panel: '#f2f2f2'
+  light-raised: '#ffffff'
+  light-border: '#dedede'
+  light-control-border: '#b5b5b5'
+  light-text: '#252525'
+  light-muted: '#686868'
+  light-hover: '#e8e8e8'
+  light-active: '#e9e9e9'
+  light-accent: '#343434'
+  light-code: '#f3f3f3'
+  light-sidebar: '#eeeeee'
+  light-sidebar-hover: '#e3e3e3'
+  light-sidebar-active: '#dedede'
+  light-success: '#317357'
+  light-danger: '#b13939'
+  light-warning: '#96631e'
+  dark-bg: '#161616'
+  dark-panel: '#222222'
+  dark-raised: '#282828'
+  dark-border: '#3a3a3a'
+  dark-control-border: '#707070'
+  dark-text: '#dedede'
+  dark-muted: '#a1a1a1'
+  dark-hover: '#343434'
+  dark-active: '#333333'
+  dark-accent: '#dedede'
+  dark-code: '#202020'
+  dark-sidebar: '#282828'
+  dark-sidebar-hover: '#343434'
+  dark-sidebar-active: '#3d3d3d'
+  dark-success: '#85d0ae'
+  dark-danger: '#f19b9b'
+  dark-warning: '#edc580'
 typography:
   welcome:
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'IBM Plex Sans', sans-serif"
-    fontSize: "26px"
+    fontSize: '26px'
     fontWeight: 500
     lineHeight: 1.3
-    letterSpacing: "-0.02em"
+    letterSpacing: '-0.02em'
   project-title:
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'IBM Plex Sans', sans-serif"
-    fontSize: "30px"
+    fontSize: '30px'
     fontWeight: 500
     lineHeight: 1.3
-    letterSpacing: "-0.03em"
+    letterSpacing: '-0.03em'
   dialog-title:
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'IBM Plex Sans', sans-serif"
-    fontSize: "20px"
+    fontSize: '20px'
     fontWeight: 500
     lineHeight: 1.5
   body:
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'IBM Plex Sans', sans-serif"
-    fontSize: "13px"
+    fontSize: '13px'
     fontWeight: 400
     lineHeight: 1.5
   conversation:
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'IBM Plex Sans', sans-serif"
-    fontSize: "13px"
+    fontSize: '13px'
     fontWeight: 400
     lineHeight: 1.6
   label:
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'IBM Plex Sans', sans-serif"
-    fontSize: "12px"
+    fontSize: '12px'
     fontWeight: 400
     lineHeight: 1.5
   metadata:
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'IBM Plex Sans', sans-serif"
-    fontSize: "11px"
+    fontSize: '11px'
     fontWeight: 400
     lineHeight: 1.5
   domain-status:
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'IBM Plex Sans', sans-serif"
-    fontSize: "11px"
+    fontSize: '11px'
     fontWeight: 400
-    lineHeight: "16px"
+    lineHeight: '16px'
   source:
-    fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace"
-    fontSize: "12px"
+    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace'
+    fontSize: '12px'
     fontWeight: 400
     lineHeight: 1.6
 rounded:
-  inline-code: "4px"
-  control: "6px"
-  approval: "7px"
-  secondary: "8px"
-  send: "9px"
-  tab: "9px"
-  popover: "12px"
-  composer-body: "13px"
-  surface: "14px"
-  pill: "999px"
+  inline-code: '4px'
+  control: '6px'
+  approval: '7px'
+  secondary: '8px'
+  send: '9px'
+  tab: '9px'
+  popover: '12px'
+  composer-body: '13px'
+  surface: '14px'
+  pill: '999px'
 spacing:
-  xs: "4px"
-  sm: "8px"
-  md: "12px"
-  inset: "14px"
-  lg: "16px"
-  xl: "20px"
-  section: "24px"
-  canvas: "32px"
+  xs: '4px'
+  sm: '8px'
+  md: '12px'
+  inset: '14px'
+  lg: '16px'
+  xl: '20px'
+  section: '24px'
+  canvas: '32px'
 components:
   button-primary:
-    backgroundColor: "{colors.light-accent}"
-    textColor: "{colors.light-bg}"
-    rounded: "{rounded.control}"
-    typography: "{typography.label}"
-    padding: "10px 14px"
+    backgroundColor: '{colors.light-accent}'
+    textColor: '{colors.light-bg}'
+    rounded: '{rounded.control}'
+    typography: '{typography.label}'
+    padding: '10px 14px'
   button-primary-dark:
-    backgroundColor: "{colors.dark-accent}"
-    textColor: "{colors.dark-bg}"
-    rounded: "{rounded.control}"
-    typography: "{typography.label}"
-    padding: "10px 14px"
+    backgroundColor: '{colors.dark-accent}'
+    textColor: '{colors.dark-bg}'
+    rounded: '{rounded.control}'
+    typography: '{typography.label}'
+    padding: '10px 14px'
   button-secondary:
-    backgroundColor: "transparent"
-    textColor: "{colors.light-muted}"
-    rounded: "{rounded.secondary}"
-    typography: "{typography.label}"
-    padding: "5px 10px"
+    backgroundColor: 'transparent'
+    textColor: '{colors.light-muted}'
+    rounded: '{rounded.secondary}'
+    typography: '{typography.label}'
+    padding: '5px 10px'
   button-ghost:
-    backgroundColor: "transparent"
-    textColor: "{colors.light-muted}"
-    rounded: "{rounded.control}"
-    padding: "7px"
-    size: "32px"
+    backgroundColor: 'transparent'
+    textColor: '{colors.light-muted}'
+    rounded: '{rounded.control}'
+    padding: '7px'
+    size: '32px'
   button-send:
-    backgroundColor: "{colors.light-accent}"
-    textColor: "{colors.light-bg}"
-    rounded: "{rounded.send}"
-    padding: "7px"
-    size: "34px"
+    backgroundColor: '{colors.light-accent}'
+    textColor: '{colors.light-bg}'
+    rounded: '{rounded.send}'
+    padding: '7px'
+    size: '34px'
   composer:
-    backgroundColor: "{colors.light-panel}"
-    textColor: "{colors.light-text}"
-    rounded: "{rounded.surface}"
-    typography: "{typography.conversation}"
-    padding: "0"
+    backgroundColor: '{colors.light-panel}'
+    textColor: '{colors.light-text}'
+    rounded: '{rounded.surface}'
+    typography: '{typography.conversation}'
+    padding: '0'
   composer-body:
-    backgroundColor: "{colors.light-raised}"
-    textColor: "{colors.light-text}"
-    rounded: "{rounded.composer-body}"
-    typography: "{typography.conversation}"
-    padding: "14px"
+    backgroundColor: '{colors.light-raised}'
+    textColor: '{colors.light-text}'
+    rounded: '{rounded.composer-body}'
+    typography: '{typography.conversation}'
+    padding: '14px'
   navigation-chat-active:
-    backgroundColor: "{colors.light-sidebar-active}"
-    textColor: "{colors.light-text}"
-    rounded: "{rounded.control}"
-    typography: "{typography.label}"
-    padding: "7px 10px"
+    backgroundColor: '{colors.light-sidebar-active}'
+    textColor: '{colors.light-text}'
+    rounded: '{rounded.control}'
+    typography: '{typography.label}'
+    padding: '7px 10px'
   workspace-tab-active:
-    backgroundColor: "{colors.light-raised}"
-    textColor: "{colors.light-text}"
-    rounded: "{rounded.tab}"
-    padding: "9px 12px"
+    backgroundColor: '{colors.light-raised}'
+    textColor: '{colors.light-text}'
+    rounded: '{rounded.tab}'
+    padding: '9px 12px'
   domain-pill:
-    backgroundColor: "{colors.light-raised}"
-    textColor: "{colors.light-text}"
-    rounded: "{rounded.pill}"
-    typography: "{typography.domain-status}"
-    padding: "5px 9px"
+    backgroundColor: '{colors.light-raised}'
+    textColor: '{colors.light-text}'
+    rounded: '{rounded.pill}'
+    typography: '{typography.domain-status}'
+    padding: '5px 9px'
   approval:
-    backgroundColor: "transparent"
-    textColor: "{colors.light-text}"
-    rounded: "{rounded.approval}"
-    padding: "12px"
+    backgroundColor: 'transparent'
+    textColor: '{colors.light-text}'
+    rounded: '{rounded.approval}'
+    padding: '12px'
   user-message:
-    backgroundColor: "{colors.light-active}"
-    textColor: "{colors.light-text}"
-    rounded: "{rounded.surface}"
-    typography: "{typography.conversation}"
-    padding: "10px 14px"
+    backgroundColor: '{colors.light-active}'
+    textColor: '{colors.light-text}'
+    rounded: '{rounded.surface}'
+    typography: '{typography.conversation}'
+    padding: '10px 14px'
   message-copy:
-    backgroundColor: "{colors.light-panel}"
-    textColor: "{colors.light-muted}"
-    rounded: "{rounded.popover}"
-    padding: "0"
-    size: "32px"
+    backgroundColor: '{colors.light-panel}'
+    textColor: '{colors.light-muted}'
+    rounded: '{rounded.popover}'
+    padding: '0'
+    size: '32px'
 ---
 
 # Design System: Industrial Harness desktop
@@ -191,13 +191,15 @@ The execution card extends the neutral workbench using Impeccable's Operate and
 polish guidance. Task and remote state stay together; conversation remains the
 primary work area.
 
-- The collapsed control reserves a row below the header, with a 32 px minimum
+- The collapsed control reserves a row below the header, with a 36 px minimum
   target, a single-line status and a tabular task count.
 - At a chat-column width of 960 px or more, opening the card reserves a 320 px
   conversation/composer gutter for a 296 px side panel. This responds to the
   actual chat column, including split workspace layouts.
 - In narrower columns the card stays in flow above messages, bounded to
   36 vh / 320 px. Content scrolls independently; the header remains available.
+  At window heights of 600 px or less, the bound becomes 28 vh / 180 px;
+  the transcript stays clipped to its own scrolling area above the composer.
 - Use a raised surface, one border and a 12 px radius. Headers have a 16 px icon
   column, 8 px gaps and 16 px insets. State text gets its own line; chevrons share
   a column. Task text aligns with section text; the active row uses panel fill.
@@ -210,6 +212,9 @@ primary work area.
   Reduced motion disables spinner/chevron motion.
 - Project/capability pages hide presentation while keeping polling mounted.
   Both themes use existing semantic tokens and retain user preference.
+- Query failures show a readable summary and a collapsed Error details
+  disclosure that retains the original IPC and HTTP diagnostic text. Recovery
+  follows the existing readiness gate rather than preserving stale ready state.
 
 `chat-status.test.cjs` covers task states, remote failures, prerequisites and
 translations. `remote-ui-selftest` includes bounds, focus and capture checks at
@@ -276,7 +281,7 @@ Below 900 px content width, the shell automatically uses chat/file tabs and disa
 
 Below a 560 px chat container, hide the visual keyboard hint while retaining the accessible input description. Below 440 px, reduce the composer body inset to 12 px and the empty-state action margin above to 12 px. The renderer has no fixed minimum-width floor.
 
-At content heights of 600 px or less, empty chat uses a compact vertical arrangement: the welcome scroll region does not shrink and has 12 px top padding; the title becomes 22 px with an 8 px bottom margin; composer top padding and body inset become 12 px; textarea height becomes 50 px; and the welcome actions use 12 px top margin. Hide the visual keyboard shortcut hint in this state while preserving the accessible help. This adapts the existing centered arrival group to short windows.
+At content heights of 600 px or less, empty chat uses a compact vertical arrangement: the welcome scroll region does not shrink and has 12 px top padding; the title becomes 22 px with an 8 px bottom margin; composer top padding and body inset become 12 px; textarea height becomes 50 px; and the welcome actions use 12 px top margin. While the status card is expanded in a short empty chat, hide the welcome heading and description to preserve input space; collapsing the card restores them. Hide the visual keyboard shortcut hint in this state while preserving the accessible help. This adapts the existing centered arrival group to short windows. Local Computer Use checked the bounded card, independent scrolling and unobscured composer at 962 × 483 logical pixels on 2026-10-16; see [PD-081](../../doc/product-decisions.md#pd-081聊天执行状态卡的层级与窄栏适配) for the scope and limits of this acceptance.
 
 Native window sizing uses logical pixels and the display's available work area. The minimum is 640 × 480, clamped to that area on smaller displays. First launch centers a window no larger than 1440 × 900; later display changes keep it within visible bounds. The former 1000 × 650 minimum is now a verification size, not the native minimum. The implementation is recorded in [window-bounds.cjs](electron/window-bounds.cjs).
 
@@ -348,13 +353,22 @@ these checks require a working native Electron session to establish visual evide
 
 ### Inputs / Fields
 
+Model configuration uses a 16 px title and a vertically bounded dialog. Its
+field region scrolls independently while the header, 32 px close control and
+footer actions remain visible. Labels and inputs use the 12 px control role;
+keyboard Tab navigation retains access from Settings into model configuration.
+
 The composer uses panel tone around a raised body, with a thin border. Empty sessions include a project strip above that body. Input starts at 64 px high, or 50 px in short empty sessions, resizes between 50 and 160 px, and uses the conversation role. Focus-within adds an accent border and 1 px outline offset by 3 px. Border motion is 160 ms with `cubic-bezier(0.16, 1, 0.3, 1)`; reduced motion disables it.
 
 Preserve Enter to send, Shift+Enter for a line, IME composition handling, and the accessible help text. Availability follows actual project/domain, task, image-input, and remote readiness. The approval selector stays explicit.
 
 ### Navigation
 
-Project names sit above read-only domain metadata. The active project uses sidebar-hover tone; the current chat uses sidebar-active tone. Other chat rows remain quiet at regular weight. Nested chats retain a fine vertical rule. Deletion controls appear on row hover or keyboard focus. Names truncate without pushing out controls, and the sidebar brand may wrap at compact widths.
+The sidebar shows the retained green mark and **Micius Harness** below the native window controls, directly above Projects. Its 20 px left inset aligns with the section label; the collapse control remains in the separate top window strip. This follows the user's 2026-10-16 naming and placement request.
+
+Project names sit above read-only domain metadata. The active project uses sidebar-hover tone; the current chat uses sidebar-active tone. Other chat rows remain quiet at regular weight. Nested chats retain a fine vertical rule. Deletion controls appear on row hover or keyboard focus. Names truncate without pushing out controls.
+
+The execution-status strip begins 16 px below the conversation toolbar. Its collapsed control has a 36 px minimum height and 10 px internal gaps; the wide expanded card retains the same top inset.
 
 ### Workspace tabs
 

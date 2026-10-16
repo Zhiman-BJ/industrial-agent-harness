@@ -63,6 +63,7 @@ export function RemoteServiceSettings() {
         </p>
       )}
       <button
+        className="ia-remote-primary"
         onClick={() => void check()}
         disabled={
           checking || !service || ['not_configured', 'credentials_missing'].includes(service.status)
@@ -203,12 +204,17 @@ export function ProjectExecution({
               )}
             </p>
           )}
-          {state.service.status === 'unchecked' && (
+          {['unchecked', 'unavailable'].includes(state.service.status) && (
             <button
+              className="ia-remote-primary"
               disabled={busy || pending}
               onClick={() => void change(() => window.viewerHost!.remoteCheck())}
             >
-              {t('Connect')}
+              {pending
+                ? t('Connecting…')
+                : state.service.status === 'unavailable'
+                  ? t('Check connection')
+                  : t('Connect')}
             </button>
           )}
           {state.service.status === 'connected' &&
@@ -224,7 +230,11 @@ export function ProjectExecution({
                   )}
                 </p>
                 {!files && (
-                  <button disabled={busy || pending} onClick={() => void change(chooseFiles)}>
+                  <button
+                    className="ia-remote-primary"
+                    disabled={busy || pending}
+                    onClick={() => void change(chooseFiles)}
+                  >
                     {state.files.length ? t('Manage synced files') : t('Choose files to sync')}
                   </button>
                 )}
@@ -249,6 +259,7 @@ export function ProjectExecution({
                     ))}
                     {!files.length && <p>{t('No eligible files found.')}</p>}
                     <button
+                      className="ia-remote-primary"
                       disabled={busy || pending || !selected.length}
                       onClick={() =>
                         void change(async () =>
@@ -287,6 +298,7 @@ export function ProjectExecution({
                       })}
                     </p>
                     <button
+                      className="ia-remote-primary"
                       disabled={busy || pending}
                       onClick={() =>
                         void change(async () => {

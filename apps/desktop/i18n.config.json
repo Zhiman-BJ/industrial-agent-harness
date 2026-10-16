@@ -12,6 +12,18 @@
     }
   },
   "messages": {
+    "Agent settings": {
+      "en": "Agent settings",
+      "zh-CN": "Agent 设置"
+    },
+    "Remote environment is not ready. Check project execution settings.": {
+      "en": "Remote environment is not ready. Check project execution settings.",
+      "zh-CN": "远程环境尚未就绪，请检查项目执行设置。"
+    },
+    "Execution settings": {
+      "en": "Execution settings",
+      "zh-CN": "执行设置"
+    },
     "Remote ready": {
       "en": "Remote ready",
       "zh-CN": "远程就绪"
@@ -19,6 +31,14 @@
     "Remote request failed": {
       "en": "Remote request failed",
       "zh-CN": "远程请求失败"
+    },
+    "Could not update the remote status. Try again shortly.": {
+      "en": "Could not update the remote status. Try again shortly.",
+      "zh-CN": "暂时无法更新远程状态，请稍后重试。"
+    },
+    "Error details": {
+      "en": "Error details",
+      "zh-CN": "错误详情"
     },
     "In progress": {
       "en": "In progress",
