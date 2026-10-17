@@ -40,7 +40,9 @@ Validation for this change:
   Python environment, invalid local runtime distribution lock and denied loopback listen.
   These gates are not reported as passing; they are separate from this successful remote run.
 
-Current limitations: no live model-driven chat was exercised; the current service has
+Limitations of this diagnostic: no live model-driven chat was exercised; a later
+[MiniMax-M3 Desktop conversation](../remote-chat-20261017/README.md) covers that path.
+The current service has
 no invocation lookup for unknown outcomes; interrupted result import needs operator
 handling. No unknown mutation was replayed during this test. Earlier discovery failures
 occurred before execution; the saved client session and project were reused.

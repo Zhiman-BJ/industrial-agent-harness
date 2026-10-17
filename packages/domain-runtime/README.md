@@ -22,7 +22,13 @@ records, reopen, corruption and disconnect handling. `scripts/verify-current-rem
 is an opt-in live diagnostic through settings, Broker and Runtime; it does not perform
 model inference. The real 2026-10-16 Chip run, source verifier result, downloaded artifacts
 and local record reopen are recorded in [deployment evidence](../../doc/evidence/remote-gateway-20261016/README.md).
-This does not qualify other domains or a model-driven conversation.
+That diagnostic did not use a model. A separate 2026-10-17 real Desktop conversation
+with MiniMax-M3 and Kimi Code 2.1.1 exercised the same shared Runtime: the model's
+approved `chip.rtl.verify` call completed in a fresh remote sandbox lease, the source
+verifier passed, and the model read this run's report and finished its reply.
+Reopened records and all three artifact hashes matched. See the
+[conversation evidence and limits](../../doc/evidence/remote-chat-20261017/README.md).
+These cases do not qualify other domains or CLI live model execution.
 
 Owns deterministic domain execution, run state, evidence, and artifact provenance. It must not depend on Electron, Kimi, or the MCP transport.
 

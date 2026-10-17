@@ -1,0 +1,285 @@
+{
+  "run": {
+    "schemaVersion": "1",
+    "id": "6145c20e-a07f-4f7d-b583-e3239b3fcc75",
+    "projectId": "43d9565034be85b49537b99c2717de0816d934b0e661995ae18b4cb971a7c6bf",
+    "domain": "chip",
+    "stateId": "88ec6ff9-8a17-4271-bb89-e222bf680354",
+    "startedAt": "2026-10-17T00:09:44.844Z",
+    "endedAt": "2026-10-17T00:10:02.486Z",
+    "status": "completed",
+    "actionIds": [
+      "f6ac009f-35a1-41cb-9753-b3beee8552c8"
+    ]
+  },
+  "action": {
+    "id": "f6ac009f-35a1-41cb-9753-b3beee8552c8",
+    "runId": "6145c20e-a07f-4f7d-b583-e3239b3fcc75",
+    "projectId": "43d9565034be85b49537b99c2717de0816d934b0e661995ae18b4cb971a7c6bf",
+    "domain": "chip",
+    "toolId": "chip.rtl.verify",
+    "schemaVersion": "1",
+    "toolVersion": "0.6.1-core.2",
+    "stateId": "88ec6ff9-8a17-4271-bb89-e222bf680354",
+    "inputHashes": {
+      "eda.yaml": "3f443071a1acea375d5c86328fb1b5719d5ce1c34bf05a2a820ef5dea3fd1a00",
+      "smoke_tb.sv": "4d87257501bdf363b8c9a30538e724bb8cdc0dc0f6cb94cf9fb556552a6595ff"
+    },
+    "inputs": {},
+    "startedAt": "2026-10-17T00:09:44.844Z",
+    "endedAt": "2026-10-17T00:10:02.486Z",
+    "status": "completed",
+    "diagnostics": [
+      "Remote request 4b988ce1-eb86-4bf0-86ed-c8194f37ad38; source verifier f91b4e56-c217-4643-897e-f5e992f037ee."
+    ],
+    "artifactIds": [
+      "13731205-291c-4d5f-8cc2-dfbb33b53489",
+      "14bf7fbb-0e23-4868-be3c-ba6aa86d3978",
+      "8ff1d66d-b2d3-465d-acf4-b36134d8c954"
+    ],
+    "verification": {
+      "schemaVersion": "1",
+      "id": "aa2023c7-3bae-4334-900e-8cc2e723645c",
+      "status": "passed",
+      "verifierId": "remote.reported",
+      "reason": "Remote verifier chip.rtl.assertions: Assertions enabled; testbench reached $finish and produced a real VCD. Functional coverage remains testbench-defined.",
+      "metrics": {
+        "completed": true,
+        "waveformPresent": true,
+        "assertionFailure": false
+      },
+      "evidence": {
+        "artifactIds": [
+          "13731205-291c-4d5f-8cc2-dfbb33b53489",
+          "14bf7fbb-0e23-4868-be3c-ba6aa86d3978",
+          "8ff1d66d-b2d3-465d-acf4-b36134d8c954"
+        ],
+        "inputHashes": {
+          "eda.yaml": "3f443071a1acea375d5c86328fb1b5719d5ce1c34bf05a2a820ef5dea3fd1a00",
+          "smoke_tb.sv": "4d87257501bdf363b8c9a30538e724bb8cdc0dc0f6cb94cf9fb556552a6595ff"
+        }
+      }
+    }
+  },
+  "state": {
+    "schemaVersion": "1",
+    "id": "eb6d4958-1129-4c38-a13b-3914ef7851d4",
+    "projectId": "43d9565034be85b49537b99c2717de0816d934b0e661995ae18b4cb971a7c6bf",
+    "domain": "chip",
+    "stage": null,
+    "status": "verified",
+    "artifacts": [
+      {
+        "schemaVersion": "1",
+        "id": "13731205-291c-4d5f-8cc2-dfbb33b53489",
+        "projectId": "43d9565034be85b49537b99c2717de0816d934b0e661995ae18b4cb971a7c6bf",
+        "runId": "6145c20e-a07f-4f7d-b583-e3239b3fcc75",
+        "actionId": "f6ac009f-35a1-41cb-9753-b3beee8552c8",
+        "kind": "log.tool",
+        "relativePath": "remote-results/4b988ce1-eb86-4bf0-86ed-c8194f37ad38/0-log.tool.log",
+        "sha256": "0c389442e53aec1e4a9799a83967f6bc14c9cd0312ce910e69885c3ff22501f8",
+        "sizeBytes": 4270,
+        "source": "domain-tool",
+        "inputHashes": {
+          "eda.yaml": "3f443071a1acea375d5c86328fb1b5719d5ce1c34bf05a2a820ef5dea3fd1a00",
+          "smoke_tb.sv": "4d87257501bdf363b8c9a30538e724bb8cdc0dc0f6cb94cf9fb556552a6595ff"
+        }
+      },
+      {
+        "schemaVersion": "1",
+        "id": "14bf7fbb-0e23-4868-be3c-ba6aa86d3978",
+        "projectId": "43d9565034be85b49537b99c2717de0816d934b0e661995ae18b4cb971a7c6bf",
+        "runId": "6145c20e-a07f-4f7d-b583-e3239b3fcc75",
+        "actionId": "f6ac009f-35a1-41cb-9753-b3beee8552c8",
+        "kind": "report.simulation",
+        "relativePath": "remote-results/4b988ce1-eb86-4bf0-86ed-c8194f37ad38/1-report.simulation.json",
+        "sha256": "8ac9714f71ffa197a680b48a8978036e1b02c2a5782b7d5c8fb93bd80cdf6151",
+        "sizeBytes": 615,
+        "source": "domain-tool",
+        "inputHashes": {
+          "eda.yaml": "3f443071a1acea375d5c86328fb1b5719d5ce1c34bf05a2a820ef5dea3fd1a00",
+          "smoke_tb.sv": "4d87257501bdf363b8c9a30538e724bb8cdc0dc0f6cb94cf9fb556552a6595ff"
+        }
+      },
+      {
+        "schemaVersion": "1",
+        "id": "8ff1d66d-b2d3-465d-acf4-b36134d8c954",
+        "projectId": "43d9565034be85b49537b99c2717de0816d934b0e661995ae18b4cb971a7c6bf",
+        "runId": "6145c20e-a07f-4f7d-b583-e3239b3fcc75",
+        "actionId": "f6ac009f-35a1-41cb-9753-b3beee8552c8",
+        "kind": "waveform.vcd",
+        "relativePath": "remote-results/4b988ce1-eb86-4bf0-86ed-c8194f37ad38/2-waveform.vcd.vcd",
+        "sha256": "a373b895c7d8122b63f1dfb1b71042a4d68d9388b4a4cb74a970b22becdbd343",
+        "sizeBytes": 360,
+        "source": "domain-tool",
+        "inputHashes": {
+          "eda.yaml": "3f443071a1acea375d5c86328fb1b5719d5ce1c34bf05a2a820ef5dea3fd1a00",
+          "smoke_tb.sv": "4d87257501bdf363b8c9a30538e724bb8cdc0dc0f6cb94cf9fb556552a6595ff"
+        }
+      }
+    ],
+    "inputHashes": {
+      "eda.yaml": "3f443071a1acea375d5c86328fb1b5719d5ce1c34bf05a2a820ef5dea3fd1a00",
+      "smoke_tb.sv": "4d87257501bdf363b8c9a30538e724bb8cdc0dc0f6cb94cf9fb556552a6595ff"
+    },
+    "verificationIds": [
+      "aa2023c7-3bae-4334-900e-8cc2e723645c"
+    ],
+    "createdAt": "2026-10-17T00:10:02.486Z"
+  },
+  "checkpoint": {
+    "schemaVersion": "1",
+    "id": "fa4e073a-7f66-48f3-a7c5-41dc7cd6d10e",
+    "parentId": "568a147a-3c8a-47bd-8858-74254b81ca9a",
+    "stateHash": "e654e87677fdd5d707b192dc3ca70d3c3843002859823e1abe10f92413b334bf",
+    "createdAt": "2026-10-17T00:10:02.487Z",
+    "state": {
+      "schemaVersion": "1",
+      "id": "eb6d4958-1129-4c38-a13b-3914ef7851d4",
+      "projectId": "43d9565034be85b49537b99c2717de0816d934b0e661995ae18b4cb971a7c6bf",
+      "domain": "chip",
+      "stage": null,
+      "status": "verified",
+      "artifacts": [
+        {
+          "schemaVersion": "1",
+          "id": "13731205-291c-4d5f-8cc2-dfbb33b53489",
+          "projectId": "43d9565034be85b49537b99c2717de0816d934b0e661995ae18b4cb971a7c6bf",
+          "runId": "6145c20e-a07f-4f7d-b583-e3239b3fcc75",
+          "actionId": "f6ac009f-35a1-41cb-9753-b3beee8552c8",
+          "kind": "log.tool",
+          "relativePath": "remote-results/4b988ce1-eb86-4bf0-86ed-c8194f37ad38/0-log.tool.log",
+          "sha256": "0c389442e53aec1e4a9799a83967f6bc14c9cd0312ce910e69885c3ff22501f8",
+          "sizeBytes": 4270,
+          "source": "domain-tool",
+          "inputHashes": {
+            "eda.yaml": "3f443071a1acea375d5c86328fb1b5719d5ce1c34bf05a2a820ef5dea3fd1a00",
+            "smoke_tb.sv": "4d87257501bdf363b8c9a30538e724bb8cdc0dc0f6cb94cf9fb556552a6595ff"
+          }
+        },
+        {
+          "schemaVersion": "1",
+          "id": "14bf7fbb-0e23-4868-be3c-ba6aa86d3978",
+          "projectId": "43d9565034be85b49537b99c2717de0816d934b0e661995ae18b4cb971a7c6bf",
+          "runId": "6145c20e-a07f-4f7d-b583-e3239b3fcc75",
+          "actionId": "f6ac009f-35a1-41cb-9753-b3beee8552c8",
+          "kind": "report.simulation",
+          "relativePath": "remote-results/4b988ce1-eb86-4bf0-86ed-c8194f37ad38/1-report.simulation.json",
+          "sha256": "8ac9714f71ffa197a680b48a8978036e1b02c2a5782b7d5c8fb93bd80cdf6151",
+          "sizeBytes": 615,
+          "source": "domain-tool",
+          "inputHashes": {
+            "eda.yaml": "3f443071a1acea375d5c86328fb1b5719d5ce1c34bf05a2a820ef5dea3fd1a00",
+            "smoke_tb.sv": "4d87257501bdf363b8c9a30538e724bb8cdc0dc0f6cb94cf9fb556552a6595ff"
+          }
+        },
+        {
+          "schemaVersion": "1",
+          "id": "8ff1d66d-b2d3-465d-acf4-b36134d8c954",
+          "projectId": "43d9565034be85b49537b99c2717de0816d934b0e661995ae18b4cb971a7c6bf",
+          "runId": "6145c20e-a07f-4f7d-b583-e3239b3fcc75",
+          "actionId": "f6ac009f-35a1-41cb-9753-b3beee8552c8",
+          "kind": "waveform.vcd",
+          "relativePath": "remote-results/4b988ce1-eb86-4bf0-86ed-c8194f37ad38/2-waveform.vcd.vcd",
+          "sha256": "a373b895c7d8122b63f1dfb1b71042a4d68d9388b4a4cb74a970b22becdbd343",
+          "sizeBytes": 360,
+          "source": "domain-tool",
+          "inputHashes": {
+            "eda.yaml": "3f443071a1acea375d5c86328fb1b5719d5ce1c34bf05a2a820ef5dea3fd1a00",
+            "smoke_tb.sv": "4d87257501bdf363b8c9a30538e724bb8cdc0dc0f6cb94cf9fb556552a6595ff"
+          }
+        }
+      ],
+      "inputHashes": {
+        "eda.yaml": "3f443071a1acea375d5c86328fb1b5719d5ce1c34bf05a2a820ef5dea3fd1a00",
+        "smoke_tb.sv": "4d87257501bdf363b8c9a30538e724bb8cdc0dc0f6cb94cf9fb556552a6595ff"
+      },
+      "verificationIds": [
+        "aa2023c7-3bae-4334-900e-8cc2e723645c"
+      ],
+      "createdAt": "2026-10-17T00:10:02.486Z"
+    },
+    "runId": "6145c20e-a07f-4f7d-b583-e3239b3fcc75",
+    "actionIds": [
+      "f6ac009f-35a1-41cb-9753-b3beee8552c8"
+    ],
+    "artifactIds": [
+      "13731205-291c-4d5f-8cc2-dfbb33b53489",
+      "14bf7fbb-0e23-4868-be3c-ba6aa86d3978",
+      "8ff1d66d-b2d3-465d-acf4-b36134d8c954"
+    ]
+  },
+  "verification": {
+    "schemaVersion": "1",
+    "id": "aa2023c7-3bae-4334-900e-8cc2e723645c",
+    "status": "passed",
+    "verifierId": "remote.reported",
+    "reason": "Remote verifier chip.rtl.assertions: Assertions enabled; testbench reached $finish and produced a real VCD. Functional coverage remains testbench-defined.",
+    "metrics": {
+      "completed": true,
+      "waveformPresent": true,
+      "assertionFailure": false
+    },
+    "evidence": {
+      "artifactIds": [
+        "13731205-291c-4d5f-8cc2-dfbb33b53489",
+        "14bf7fbb-0e23-4868-be3c-ba6aa86d3978",
+        "8ff1d66d-b2d3-465d-acf4-b36134d8c954"
+      ],
+      "inputHashes": {
+        "eda.yaml": "3f443071a1acea375d5c86328fb1b5719d5ce1c34bf05a2a820ef5dea3fd1a00",
+        "smoke_tb.sv": "4d87257501bdf363b8c9a30538e724bb8cdc0dc0f6cb94cf9fb556552a6595ff"
+      }
+    }
+  },
+  "artifacts": [
+    {
+      "schemaVersion": "1",
+      "id": "13731205-291c-4d5f-8cc2-dfbb33b53489",
+      "projectId": "43d9565034be85b49537b99c2717de0816d934b0e661995ae18b4cb971a7c6bf",
+      "runId": "6145c20e-a07f-4f7d-b583-e3239b3fcc75",
+      "actionId": "f6ac009f-35a1-41cb-9753-b3beee8552c8",
+      "kind": "log.tool",
+      "relativePath": "remote-results/4b988ce1-eb86-4bf0-86ed-c8194f37ad38/0-log.tool.log",
+      "sha256": "0c389442e53aec1e4a9799a83967f6bc14c9cd0312ce910e69885c3ff22501f8",
+      "sizeBytes": 4270,
+      "source": "domain-tool",
+      "inputHashes": {
+        "eda.yaml": "3f443071a1acea375d5c86328fb1b5719d5ce1c34bf05a2a820ef5dea3fd1a00",
+        "smoke_tb.sv": "4d87257501bdf363b8c9a30538e724bb8cdc0dc0f6cb94cf9fb556552a6595ff"
+      }
+    },
+    {
+      "schemaVersion": "1",
+      "id": "14bf7fbb-0e23-4868-be3c-ba6aa86d3978",
+      "projectId": "43d9565034be85b49537b99c2717de0816d934b0e661995ae18b4cb971a7c6bf",
+      "runId": "6145c20e-a07f-4f7d-b583-e3239b3fcc75",
+      "actionId": "f6ac009f-35a1-41cb-9753-b3beee8552c8",
+      "kind": "report.simulation",
+      "relativePath": "remote-results/4b988ce1-eb86-4bf0-86ed-c8194f37ad38/1-report.simulation.json",
+      "sha256": "8ac9714f71ffa197a680b48a8978036e1b02c2a5782b7d5c8fb93bd80cdf6151",
+      "sizeBytes": 615,
+      "source": "domain-tool",
+      "inputHashes": {
+        "eda.yaml": "3f443071a1acea375d5c86328fb1b5719d5ce1c34bf05a2a820ef5dea3fd1a00",
+        "smoke_tb.sv": "4d87257501bdf363b8c9a30538e724bb8cdc0dc0f6cb94cf9fb556552a6595ff"
+      }
+    },
+    {
+      "schemaVersion": "1",
+      "id": "8ff1d66d-b2d3-465d-acf4-b36134d8c954",
+      "projectId": "43d9565034be85b49537b99c2717de0816d934b0e661995ae18b4cb971a7c6bf",
+      "runId": "6145c20e-a07f-4f7d-b583-e3239b3fcc75",
+      "actionId": "f6ac009f-35a1-41cb-9753-b3beee8552c8",
+      "kind": "waveform.vcd",
+      "relativePath": "remote-results/4b988ce1-eb86-4bf0-86ed-c8194f37ad38/2-waveform.vcd.vcd",
+      "sha256": "a373b895c7d8122b63f1dfb1b71042a4d68d9388b4a4cb74a970b22becdbd343",
+      "sizeBytes": 360,
+      "source": "domain-tool",
+      "inputHashes": {
+        "eda.yaml": "3f443071a1acea375d5c86328fb1b5719d5ce1c34bf05a2a820ef5dea3fd1a00",
+        "smoke_tb.sv": "4d87257501bdf363b8c9a30538e724bb8cdc0dc0f6cb94cf9fb556552a6595ff"
+      }
+    }
+  ]
+}

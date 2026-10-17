@@ -1,5 +1,11 @@
 # 远程软件、MCP 与沙箱：v1.1 重构
 
+2026-10-17 更新：已用 MiniMax-M3 完成真实 Desktop/Kimi 对话闭环：模型描述并调用
+`chip.rtl.verify`，经审批进入远程沙箱，源 Verifier 返回 `passed`，模型读取本次报告并
+完成回复。三份产物的大小与 SHA-256、持久化规范记录均已核对。
+这是有审批的 Chip smoke 验收；实际过程与限制见
+[模型驱动验收记录](evidence/remote-chat-20261017/README.md)。
+
 2026-10-16 更新：已接通当前部署的 `mcp-v1` 契约，并通过真实 Chip 沙箱调用。
 该契约的本地规范记录、发现方式和恢复限制见文末；下列历史 canonical gateway
 描述中的 grant、服务端 Run/Action/Checkpoint 和 invocation 查询不适用于它。
@@ -138,6 +144,16 @@ their recorded hashes. Local Run/Action/State/Checkpoint records reopened unchan
 and the Desktop project page listed the outputs and downloaded the VCD successfully.
 This was an explicitly approved diagnostic with no model inference, not a completed
 Kimi conversation or qualification of other domains.
+
+On 2026-10-17, the actual Desktop composer additionally completed a MiniMax-M3
+conversation through pinned Kimi Code 2.1.1 and the same shared task/Broker/Runtime
+path. A fresh application session/sandbox lease executed `chip.rtl.verify` once
+after operator approval. The source verifier passed; the model read the fresh
+report/log and finished its response. Reopened canonical records and all three
+artifact hashes matched the received tool result and remote receipt. See the
+[conversation evidence](evidence/remote-chat-20261017/README.md), including the
+rejected Shell attempt and corrected file-read schema error. CLI live model
+execution and other domains remain untested by this case.
 
 Known limits: no current-service invocation status endpoint, no automatic unknown-outcome
 replay, no automatic incomplete-import repair, and remote artifact listing covers only
