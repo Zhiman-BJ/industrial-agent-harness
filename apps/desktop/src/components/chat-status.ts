@@ -55,6 +55,8 @@ export function summarizeRemote({
       label: serviceLabels[service.status],
       tone: service.status === 'unavailable' ? 'bad' : 'idle',
     };
+  if (task?.needsImport)
+    return { label: 'Remote results need recovery before continuing.', tone: 'idle' };
   if (session && ['stopped', 'expired', 'failed'].includes(session.status))
     return {
       label: 'Remote session ended. Start a new chat.',
@@ -62,7 +64,7 @@ export function summarizeRemote({
     };
   if (!service.domains.includes(domain))
     return { label: 'This domain is not available remotely yet.', tone: 'idle' };
-  if (!service.executableDomains?.includes(domain))
+  if (!service.executableDomains?.includes(domain) && !service.capabilities?.runtimeDiscovery)
     return { label: 'This remote domain is available for testing only.', tone: 'idle' };
   if (task) {
     const labels: Record<string, string> = {

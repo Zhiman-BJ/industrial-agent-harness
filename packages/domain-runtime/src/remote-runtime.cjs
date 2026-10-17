@@ -547,6 +547,12 @@ class RemoteRuntime {
   async waitForIdle() {
     await Promise.allSettled([...this.contexts.values()].map(context => context.execution));
   }
+  get(kind, id) {
+    return this.workspace.get(kind, id);
+  }
+  assertProjectBound() {
+    return this.workspace.assertProjectBound();
+  }
   readArtifact(id) {
     return this.workspace.readArtifact(id);
   }
@@ -579,7 +585,10 @@ class RemoteRuntime {
   }
 }
 function createRemoteRuntime(options) {
-  const runtime = new RemoteRuntime(options);
+  const runtime =
+    options.settings.project(options.projectDir, options.domain).gatewayContract === 'mcp-v1'
+      ? require('./current-remote-runtime.cjs').createCurrentRemoteRuntime(options, RemoteRuntime)
+      : new RemoteRuntime(options);
   return {
     runtime,
     configurationCurrent: () => runtime.current(),
