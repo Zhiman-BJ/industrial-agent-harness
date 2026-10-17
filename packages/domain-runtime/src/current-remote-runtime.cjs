@@ -26,15 +26,25 @@ function createCurrentRemoteRuntime(options, Base) {
       this.workspace.verifiers['remote.reported'] = ({ result }) => result.assessment;
     }
     async inspect(context) {
+      const signal = context?.controller?.signal;
+      signal?.throwIfAborted();
       this.assertCurrent();
       await this.settings.ensureSynced(this.projectDir, this.domain);
+      signal?.throwIfAborted();
       if (context) {
         const pending = this.status(context);
         if (pending && ['submitting', 'running', 'unknown'].includes(pending.status))
           throw Error(
             'The previous remote outcome is unknown. Its saved request must not be replayed.',
           );
-        const inventory = await context.client.listTools();
+        if (pending?.needsImport)
+          throw Error(
+            'The previous remote result still needs import. Recover it before executing again.',
+          );
+        // Unresolved project effects cannot be bypassed by opening another chat.
+        this.settings.assertTaskIdle(this.projectDir, this.domain);
+        const inventory = await context.client.listTools({}, { signal });
+        signal?.throwIfAborted();
         if (
           inventory.domain !== this.domain ||
           inventory.protected !== true ||
@@ -54,7 +64,8 @@ function createCurrentRemoteRuntime(options, Base) {
         // require the live protected runtime to describe each candidate.
         let candidates = inventory.tools;
         if (candidates === undefined) {
-          const info = await this.control.info();
+          const info = await this.control.info({ signal });
+          signal?.throwIfAborted();
           if (info.capabilitySnapshotHash !== inventory.capabilitySnapshotHash)
             throw Error('Remote catalog and active runtime do not share a capability snapshot.');
           const catalogs = info.domainCatalog?.filter(item => item.domain === this.domain);
@@ -80,7 +91,8 @@ function createCurrentRemoteRuntime(options, Base) {
             throw Error('No tool descriptor is bound to the active remote Pack/profile.');
           candidates = [profiles[0].descriptor];
           for (const candidate of candidates) {
-            const detail = await context.client.describeTool(candidate.id);
+            const detail = await context.client.describeTool(candidate.id, { signal });
+            signal?.throwIfAborted();
             if (detail.tool?.id !== candidate.id)
               throw Error('Remote tool description does not match the active profile.');
           }
@@ -142,9 +154,25 @@ function createCurrentRemoteRuntime(options, Base) {
     }
     async executeOne(request, policy, context) {
       await this.inspect(context);
+      // The workspace has its own action controller, created only when execute
+      // starts. A cancellation during asynchronous discovery must survive that handoff.
+      context.controller.signal.throwIfAborted();
+      // Another chat may have left an unresolved result while discovery was waiting.
+      this.settings.assertTaskIdle(this.projectDir, this.domain);
       const result = await this.workspace.execute(request, { ...policy, ownerId: context.chatId });
       this.state = result.state;
       this.checkpoint = result.checkpoint;
+      const pending = this.status(context);
+      // A returned result alone is insufficient: the core also returns failure
+      // records after collection errors. Only a matching, committed remote.reported
+      // assessment confirms import, including a valid remote engineering failure.
+      if (
+        pending?.needsImport &&
+        pending.actionId === result.action.id &&
+        pending.runId === result.run.id &&
+        result.verification.verifierId === 'remote.reported'
+      )
+        this.publish(context, { ...pending, needsImport: false });
       return result;
     }
     async executeRemote(descriptor, { inputs, action, signal }, context) {
@@ -244,7 +272,7 @@ function createCurrentRemoteRuntime(options, Base) {
         });
         this.publish(context, {
           ...pending,
-          status: 'completed',
+          status: receipt.status,
           outcome: 'completed',
           needsImport: true,
           producedArtifacts: [...previousArtifacts, ...refs],
@@ -276,13 +304,8 @@ function createCurrentRemoteRuntime(options, Base) {
             metrics: verified.metrics,
           };
         }
-        this.publish(context, {
-          ...pending,
-          status: receipt.status,
-          outcome: 'completed',
-          needsImport: false,
-          producedArtifacts: [...previousArtifacts, ...refs],
-        });
+        // Keep needsImport durable until workspace.execute has committed all
+        // canonical records. A crash or local store failure must leave this gate closed.
         return {
           executionSucceeded: receipt.status === 'completed',
           artifacts,
@@ -305,6 +328,7 @@ function createCurrentRemoteRuntime(options, Base) {
       }
     }
     cancel(context) {
+      context?.controller?.abort();
       this.workspace.cancel(context?.chatId);
     }
   }

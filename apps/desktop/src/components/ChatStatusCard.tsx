@@ -111,6 +111,7 @@ export function ChatStatusCard({
               (state.service.executableDomains?.includes(domain) === true ||
                 state.service.capabilities?.runtimeDiscovery === true) &&
               !['stopped', 'expired', 'failed'].includes(remoteSession?.status || '') &&
+              !value?.needsImport &&
               !['submitting', 'running', 'unknown'].includes(value?.status || ''),
           );
         }

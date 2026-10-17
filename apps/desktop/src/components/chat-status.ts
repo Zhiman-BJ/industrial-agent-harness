@@ -55,6 +55,8 @@ export function summarizeRemote({
       label: serviceLabels[service.status],
       tone: service.status === 'unavailable' ? 'bad' : 'idle',
     };
+  if (task?.needsImport)
+    return { label: 'Remote results need recovery before continuing.', tone: 'idle' };
   if (session && ['stopped', 'expired', 'failed'].includes(session.status))
     return {
       label: 'Remote session ended. Start a new chat.',

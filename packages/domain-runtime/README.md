@@ -17,6 +17,17 @@ resuming an interrupted artifact import still require operator handling. Artifac
 browsing lists only results recorded by this client, not all remote project history.
 Transport close does not terminate the application session or its sandbox.
 
+The 2026-10-17 reliability fix carries cancellation through asynchronous discovery
+and rechecks it before starting a workspace action. Once a request was submitted,
+Stop still only ends the local wait; its unknown outcome cannot be replayed.
+`needsImport` stays set until the matching local Run/Action/Verification/Checkpoint
+has committed through the Runtime, including a legitimate remote verification
+failure. Collection or transaction failures retain that flag and the source receipt.
+Pending imports block execution across chats, upload/rebind/location changes and
+service replacement, including after reopen. A second check after discovery closes
+the race with another chat's failed import. Desktop reports that results need recovery
+and disables execution. Recovery of incomplete imports still requires operator handling.
+
 The in-memory contract suite exercises upload, Broker/approval boundaries, persistent
 records, reopen, corruption and disconnect handling. `scripts/verify-current-remote-gateway.cjs`
 is an opt-in live diagnostic through settings, Broker and Runtime; it does not perform

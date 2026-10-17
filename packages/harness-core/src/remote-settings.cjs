@@ -369,10 +369,10 @@ class RemoteSettings {
         (!pending.serviceIdentity ||
           !previous.serviceIdentity ||
           pending.serviceIdentity === previous.serviceIdentity) &&
-        active.has(pending.status)
+        (active.has(pending.status) || pending.needsImport === true)
       )
         throw Error(
-          'An old remote invocation remains active or unknown. Resolve it before creating a new project binding.',
+          'An old remote invocation remains active or unknown, or needs import. Resolve it before creating a new project binding.',
         );
     }
   }
@@ -392,7 +392,7 @@ class RemoteSettings {
       for (const file of fs.readdirSync(root)) {
         const pending = JSON.parse(fs.readFileSync(path.join(root, file), 'utf8'));
         if (
-          active.has(pending.status) &&
+          (active.has(pending.status) || pending.needsImport === true) &&
           projects.some(
             project =>
               project.remoteProjectId === pending.remoteProjectId &&
@@ -402,7 +402,7 @@ class RemoteSettings {
           )
         )
           throw Error(
-            'Another remote project has an active or unknown invocation. Resolve it before changing the service identity.',
+            'Another remote project has an active or unknown invocation, or needs import. Resolve it before changing the service identity.',
           );
       }
     }
@@ -546,10 +546,11 @@ class RemoteSettings {
       if (
         pending.remoteProjectId === project.remoteProjectId &&
         pending.serviceIdentity === this.identity() &&
-        ['submitting', 'running', 'unknown'].includes(pending.status)
+        (['submitting', 'running', 'unknown'].includes(pending.status) ||
+          pending.needsImport === true)
       )
         throw Error(
-          'A remote invocation remains active or unknown. Resolve its outcome before changing execution settings.',
+          'A remote invocation remains active or unknown, or needs import. Resolve it before further execution or settings changes.',
         );
     }
   }

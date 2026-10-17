@@ -948,6 +948,7 @@ export interface RemoteTaskState {
   invocationId: string;
   status: string;
   outcome?: string;
+  needsImport?: boolean;
 }
 export interface RemoteSessionState {
   id: string;
