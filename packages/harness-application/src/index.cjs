@@ -502,45 +502,54 @@ class TaskService {
     this.chats.get(entry.id, entry.project.path, entry.project.domain);
     if (!this.chats.turnBelongsTo(entry.id, turnId))
       throw Error('Result request belongs to another chat.');
-    const runtime =
-      entry.runtimeBundle?.runtime || this.projects.get(entry.project, this.registry())?.runtime;
-    return new TaskResults(this.chats, entry, turnId, runtime, () => {}).view();
+    const records = this.projects.read(entry.project);
+    try {
+      return new TaskResults(this.chats, entry, turnId, records, () => {}).view();
+    } finally {
+      records?.close();
+    }
   }
   async openResult(entry, request) {
     if (request.chatId && request.chatId !== entry.id)
       throw Error('Result request belongs to another chat.');
     this.chats.get(entry.id, entry.project.path, entry.project.domain);
     const events = this.chats.turnEvents(entry.id, request.turnId);
-    const runtime =
-      entry.runtimeBundle?.runtime || this.projects.get(entry.project, this.registry())?.runtime;
-    let group;
-    if (request.groupId) {
-      const view = this.results(entry, request.turnId);
-      group = view.groups.find(group => group.id === request.groupId);
-      if (!group || !group.artifacts.some(artifact => artifact.id === request.artifactId))
-        throw Error('Output is outside this recorded result group.');
-    } else if (
-      !events.some(
-        event => event.type === 'industrial-result' && event.action?.id === request.actionId,
+    // Viewing committed evidence must not create an execution runtime, acquire a
+    // remote session, or require the service's current credentials/configuration.
+    const records = this.projects.read(entry.project);
+    try {
+      if (!records) throw Error('Recorded output is unavailable for this project.');
+      let group;
+      if (request.groupId) {
+        const view = new TaskResults(this.chats, entry, request.turnId, records, () => {}).view();
+        group = view.groups.find(group => group.id === request.groupId);
+        if (!group || !group.artifacts.some(artifact => artifact.id === request.artifactId))
+          throw Error('Output is outside this recorded result group.');
+      } else if (
+        !events.some(
+          event => event.type === 'industrial-result' && event.action?.id === request.actionId,
+        )
       )
-    )
-      throw Error('Output Action is outside this request.');
-    const artifact = runtime.get('artifact', request.artifactId);
-    const resolved = await resolveResultArtifact(runtime, {
-      actionId: group ? artifact?.actionId : request.actionId,
-      artifactId: request.artifactId,
-    });
-    const companions = [];
-    if (
-      group &&
-      !request.revealOnly &&
-      [group.primaryArtifactId, group.previewArtifactId].includes(request.artifactId)
-    )
-      for (const id of group.companionArtifactIds)
-        companions.push(
-          await resolveResultArtifact(runtime, { actionId: group.actionId, artifactId: id }),
-        );
-    return { ...resolved, companions };
+        throw Error('Output Action is outside this request.');
+      const artifact = records.get('artifact', request.artifactId);
+      const resolved = await resolveResultArtifact(records, {
+        actionId: group ? artifact?.actionId : request.actionId,
+        artifactId: request.artifactId,
+      });
+      const companions = [];
+      if (
+        group &&
+        !request.revealOnly &&
+        [group.primaryArtifactId, group.previewArtifactId].includes(request.artifactId)
+      )
+        for (const id of group.companionArtifactIds)
+          companions.push(
+            await resolveResultArtifact(records, { actionId: group.actionId, artifactId: id }),
+          );
+      return { ...resolved, companions };
+    } finally {
+      records?.close();
+    }
   }
   evidence(entry, id) {
     return entry.runtimeBundle?.runtime.readArtifact(id) || this.context(entry).readArtifact(id);

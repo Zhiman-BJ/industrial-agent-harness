@@ -210,12 +210,21 @@ test('shared runtime persists canonical local records from the current server re
   assert.equal(result.state.status, 'verified');
   assert.equal(f.calls, 1);
   assert.equal(f.runtime.status().needsImport, false);
+  const requestsBeforeRead = f.urls.length;
+  for (const kind of ['run', 'action', 'state', 'verification', 'checkpoint'])
+    assert.deepEqual(f.runtime.get(kind, result[kind].id), result[kind]);
+  assert.deepEqual(f.runtime.get('artifact', result.artifacts[0].id), result.artifacts[0]);
+  assert.equal(f.runtime.get('presentation', result.action.id).actionId, result.action.id);
+  assert.equal(f.runtime.get('artifact', randomUUID()), null);
+  f.runtime.assertProjectBound();
+  assert.equal(f.urls.length, requestsBeforeRead, 'record reads must not contact the service');
   assert.equal(
     f.runtime.readArtifact(result.artifacts[0].id).content.toString(),
     'actual fixture evidence',
   );
   assert.equal((await f.settings.artifacts(f.projectDir, 'test')).length, 1);
   await f.reopen();
+  assert.deepEqual(f.runtime.get('action', result.action.id), result.action);
   assert.equal((await f.runtime.inspect()).id, result.state.id);
   assert.equal(f.runtime.listRuns().length, 2);
   assert.ok(!f.urls.some(url => /\/(state|capabilities|grants|invocations)$/.test(url)));

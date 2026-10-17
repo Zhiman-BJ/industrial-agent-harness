@@ -70,6 +70,8 @@ Canonical records and the source receipt remain authoritative.
 
 This qualifies the small Chip smoke input on this deployed profile. It does not
 qualify other projects/domains, CLI live model execution, or production recovery.
+The later [Desktop result-opening follow-up](../remote-results-ui-20261017/README.md)
+records a discovered artifact-opening bug, its fix, and actual report/VCD screenshots.
 Current-service unknown outcomes still have no invocation lookup or automatic
 replay; interrupted import still requires operator handling.
 

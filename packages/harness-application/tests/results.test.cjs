@@ -147,6 +147,41 @@ test('persisted remote result records remain readable before remote execution is
   assert.equal(groups[0].id, result.results.groups[0].id);
   assert.equal(groups[0].contentStatus, 'recorded');
   assert.equal(groups[0].artifacts[0].relativePath, 'saved.txt');
+  const view = f.tasks.results(f.entry, result.results.turnId);
+  assert.equal(view.groups[0].id, groups[0].id);
+  const request = {
+    chatId: f.entry.id,
+    turnId: result.results.turnId,
+    groupId: groups[0].id,
+    actionId: groups[0].actionId,
+    artifactId: groups[0].primaryArtifactId,
+  };
+  assert.equal(
+    fs.readFileSync((await f.tasks.openResult(f.entry, request)).file, 'utf8'),
+    'Saved output',
+  );
+  assert.equal(
+    (await f.tasks.openResult(f.entry, { ...request, groupId: undefined, revealOnly: true }))
+      .artifact.id,
+    request.artifactId,
+  );
+  await assert.rejects(
+    f.tasks.openResult(f.entry, { ...request, groupId: 'unrelated-group' }),
+    /outside this recorded result group/,
+  );
+  await assert.rejects(
+    f.tasks.openResult(f.entry, { ...request, groupId: undefined, actionId: 'unrelated-action' }),
+    /outside this request/,
+  );
+  const other = f.tasks.chats.create(f.project.path, f.project.domain);
+  await assert.rejects(
+    f.tasks.openResult(f.tasks.resume(f.project, other.id), request),
+    /another chat/,
+  );
+  fs.writeFileSync(path.join(f.project.path, 'saved.txt'), 'Changed data');
+  await assert.rejects(f.tasks.openResult(f.entry, request), /changed/);
+  await assert.rejects(f.tasks.openResult(f.entry, { ...request, revealOnly: true }), /changed/);
+  assert.equal(f.tasks.results(f.entry, request.turnId).groups[0].contentStatus, 'changed');
   assert.equal(f.tasks.projects.bundles.size, 0);
 });
 

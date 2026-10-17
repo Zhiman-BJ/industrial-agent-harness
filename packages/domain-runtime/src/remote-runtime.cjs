@@ -547,6 +547,12 @@ class RemoteRuntime {
   async waitForIdle() {
     await Promise.allSettled([...this.contexts.values()].map(context => context.execution));
   }
+  get(kind, id) {
+    return this.workspace.get(kind, id);
+  }
+  assertProjectBound() {
+    return this.workspace.assertProjectBound();
+  }
   readArtifact(id) {
     return this.workspace.readArtifact(id);
   }
