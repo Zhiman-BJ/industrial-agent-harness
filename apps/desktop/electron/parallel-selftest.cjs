@@ -177,6 +177,30 @@ async function run(window) {
     );
     await wait(`document.querySelector('.ia-approval')?.innerText.includes('${marker}')`);
   }
+  function rendererEvent(name, trigger) {
+    return new Promise((resolve, reject) => {
+      const contents = window.webContents;
+      const cleanup = () => {
+        clearTimeout(timer);
+        contents.removeListener(name, onEvent);
+      };
+      const onEvent = (...args) => {
+        cleanup();
+        resolve(args);
+      };
+      const timer = setTimeout(() => {
+        cleanup();
+        reject(Error(`Parallel renderer timed out waiting for ${name}`));
+      }, 15000);
+      contents.once(name, onEvent);
+      try {
+        trigger();
+      } catch (error) {
+        cleanup();
+        reject(error);
+      }
+    });
+  }
   try {
     await wait(`document.querySelector('.ia-chat-header b')?.innerText==='Parallel project A'`);
     await submit('SESSION_ALPHA');
@@ -538,6 +562,83 @@ async function run(window) {
       1,
     );
     const lateId = await evaluate(`window.viewerHost.chats().then(list=>list.activeId)`);
+    const lateHistory = await evaluate(
+      `window.viewerHost.chatHistory({id:${JSON.stringify(lateId)}})`,
+    );
+    const mainPid = process.pid;
+    let rendererCrash;
+    const crashStore = new ChatStore(path.join(evidence, 'chats'));
+    try {
+      // Compare persisted records at the same layer: the IPC history separately
+      // decorates result events with their current display status.
+      const persistedBeforeCrash = crashStore.history(lateId, binding.path, binding.domain);
+      // Crash only this dedicated selftest window. Recovery is an explicit test
+      // reload, not a promise that the product automatically reloads a renderer.
+      [, rendererCrash] = await rendererEvent('render-process-gone', () =>
+        window.webContents.forcefullyCrashRenderer(),
+      );
+      // Electron 44 documents both reasons for forcefullyCrashRenderer().
+      assert.ok(['crashed', 'killed'].includes(rendererCrash.reason));
+      assert.equal(window.webContents.isCrashed(), true);
+      assert.equal(window.isDestroyed(), false);
+      assert.equal(process.pid, mainPid, 'The original main process survives renderer failure');
+      const persisted = crashStore.history(lateId, binding.path, binding.domain);
+      assert.deepEqual(persisted.turns, persistedBeforeCrash.turns);
+      assert.equal(persisted.turns.filter(turn => turn.task === 'SESSION_LATE').length, 1);
+      assert.notEqual(persisted.turns.at(-1).status, 'running');
+      assert.equal(
+        persisted.turns
+          .flatMap(turn => turn.events)
+          .filter(event => event.type === 'text' && event.text.includes('SESSION_LATE_ONLY'))
+          .length,
+        1,
+        'Main-process history remains readable while the renderer is crashed',
+      );
+    } finally {
+      crashStore.close();
+    }
+    await rendererEvent('did-finish-load', () => window.webContents.reload());
+    await wait(
+      `document.querySelector('.ia-chat-scroll')?.innerText.includes('SESSION_LATE_ONLY')&&!document.querySelector('.ia-composer textarea').disabled`,
+    );
+    assert.equal(window.webContents.isCrashed(), false);
+    assert.equal(await evaluate(`window.viewerHost.chats().then(list=>list.activeId)`), lateId);
+    assert.deepEqual(
+      (await evaluate(`window.viewerHost.chatHistory({id:${JSON.stringify(lateId)}})`)).turns,
+      lateHistory.turns,
+      'Explicit reload restores the same persisted turns without replaying results',
+    );
+    assert.equal(
+      await evaluate(
+        `document.querySelector('.ia-chat-scroll').innerText.split('SESSION_LATE_ONLY').length-1`,
+      ),
+      1,
+    );
+    assert.equal(
+      await evaluate(
+        `Boolean(document.querySelector('.ia-approval')||document.querySelector('button[title="Stop agent"]'))`,
+      ),
+      false,
+      'Renderer recovery must not resurrect a resolved approval or Stop control',
+    );
+    await submit('SESSION_RECOVERED');
+    await evaluate(`document.querySelector('.ia-approval button').click()`);
+    turns.get('SESSION_RECOVERED').finish();
+    await wait(
+      `document.querySelector('.ia-chat-scroll')?.innerText.includes('SESSION_RECOVERED_ONLY')&&!document.querySelector('button[title="Stop agent"]')&&!document.querySelector('.ia-composer textarea').disabled`,
+    );
+    const recoveredHistory = await evaluate(
+      `window.viewerHost.chatHistory({id:${JSON.stringify(lateId)}})`,
+    );
+    assert.equal(recoveredHistory.turns.length, lateHistory.turns.length + 1);
+    assert.equal(recoveredHistory.turns.at(-1).task, 'SESSION_RECOVERED');
+    assert.notEqual(recoveredHistory.turns.at(-1).status, 'running');
+    assert.equal(
+      await evaluate(
+        `document.querySelector('.ia-chat-scroll').innerText.split('SESSION_RECOVERED_ONLY').length-1`,
+      ),
+      1,
+    );
     await evaluate(`window.viewerHost.deleteChat(${JSON.stringify(lateId)})`);
     await newChat();
     await submit('SESSION_FINAL');
@@ -560,15 +661,25 @@ async function run(window) {
         questionIsolation: true,
         repeatedStop: true,
         lateHistoryAndLiveEvents: true,
+        rendererCrash: {
+          reason: rendererCrash.reason,
+          exitCode: rendererCrash.exitCode,
+          recovery: 'explicit-reload',
+          mainProcessSurvived: true,
+          persistedHistoryExactlyOnce: true,
+          staleControlsAbsent: true,
+          subsequentTaskCompleted: true,
+        },
         activeShutdown: true,
         evidence,
       }),
     );
   } catch (error) {
-    fs.writeFileSync(
-      path.join(evidence, 'parallel-failure.png'),
-      (await window.webContents.capturePage()).toPNG(),
-    );
+    if (!window.isDestroyed() && !window.webContents.isCrashed())
+      fs.writeFileSync(
+        path.join(evidence, 'parallel-failure.png'),
+        (await window.webContents.capturePage()).toPNG(),
+      );
     throw error;
   }
 }
