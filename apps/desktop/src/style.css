@@ -1045,6 +1045,20 @@ body,
   box-shadow: 0 16px 56px #00000033;
   color: var(--ia-text);
 }
+/* Keep dialog actions reachable when connection fields exceed a short window. */
+.ia-model-modal:has(> .ia-model-fields) {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.ia-model-modal:has(> .ia-model-fields) > header,
+.ia-model-modal:has(> .ia-model-fields) > footer {
+  flex-shrink: 0;
+}
+.ia-model-modal:has(> .ia-model-fields) > .ia-model-fields {
+  min-height: 0;
+  overflow-y: auto;
+}
 .ia-model-modal > header {
   display: flex;
   justify-content: space-between;
@@ -1536,6 +1550,15 @@ body,
   gap: 3px;
   margin-left: auto;
   flex-shrink: 0;
+}
+/* A fullscreen error is status text, not a fixed-width toolbar control. */
+.ia-workspace-actions:has(> [role='status']) {
+  flex-wrap: wrap;
+  max-width: 100%;
+}
+.ia-workspace-actions > [role='status'] {
+  flex-basis: 100%;
+  overflow-wrap: anywhere;
 }
 .ia-workspace-actions button {
   width: var(--ia-control-size);
