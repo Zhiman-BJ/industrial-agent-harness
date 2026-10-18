@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useModalFocus } from '../use-modal-focus';
+import { useEffect, useState } from 'react';
 import { ChevronDown, ExternalLink, ShieldCheck, X } from 'lucide-react';
 import { useDisplayText } from '@industrial-agent-harness/viewer-builtin/text';
 import type { AccountConfig, AccountView } from '../account-api';
@@ -12,7 +13,7 @@ export function AccountSettings({ onClose }: { onClose: () => void }) {
   const [notice, setNotice] = useState('');
   const [code, setCode] = useState('');
   const [submittingCode, setSubmittingCode] = useState(false);
-  const dialog = useRef<HTMLElement>(null);
+  const dialog = useModalFocus(onClose);
   useEffect(() => {
     let active = true;
     const receive = (next: AccountView) => {
@@ -30,12 +31,9 @@ export function AccountSettings({ onClose }: { onClose: () => void }) {
       .catch(() => {
         if (active) setError('Unable to load account settings.');
       });
-    const previous = document.activeElement as HTMLElement | null;
-    dialog.current?.focus();
     return () => {
       active = false;
       unsubscribe();
-      previous?.focus();
     };
   }, []);
   async function act(action: () => Promise<AccountView>) {
@@ -87,24 +85,6 @@ export function AccountSettings({ onClose }: { onClose: () => void }) {
         aria-label={t('Platform account')}
         ref={dialog}
         tabIndex={-1}
-        onKeyDown={event => {
-          if (event.key === 'Escape') onClose();
-          if (event.key === 'Tab') {
-            const nodes = Array.from(
-              dialog.current?.querySelectorAll<HTMLElement>(
-                'button:not(:disabled), input:not(:disabled), summary',
-              ) || [],
-            ).filter(node => node.offsetParent !== null);
-            if (!nodes.length) return;
-            if (event.shiftKey && document.activeElement === nodes[0]) {
-              event.preventDefault();
-              nodes.at(-1)?.focus();
-            } else if (!event.shiftKey && document.activeElement === nodes.at(-1)) {
-              event.preventDefault();
-              nodes[0]?.focus();
-            }
-          }
-        }}
       >
         <header>
           <div>
