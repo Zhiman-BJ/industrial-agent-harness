@@ -1,6 +1,6 @@
 # Main review — 2026-10-18
 
-统一问题跟踪：[GitHub issue #219](https://github.com/Zhiman-BJ/industrial-agent-harness/issues/219)。本地修复提交 `3b6d907`、`b610dbc`，尚未推送或合并。
+统一问题跟踪：[GitHub issue #219](https://github.com/Zhiman-BJ/industrial-agent-harness/issues/219)。初次本地修复提交 `3b6d907`、`b610dbc` 及后续文档已提交 [Harness PR #220](https://github.com/Zhiman-BJ/industrial-agent-harness/pull/220)；最新完整 CI 发现与待验证修复见文末，不将 PR 提交等同合并或正式发行。
 
 ## 基线与边界
 
@@ -110,3 +110,20 @@ UI 覆盖最小窗口、焦点、主题/对比度、中英文、workspace/tabs�
 原始证据保留在本 worktree 的 `dist/ci-reports/`：`local-review-native-20261018/`、`local-review-baseline-20261018/`、`local-review-coverage-20261018/`、`local-review-performance-20261018/`、`local-review-performance-baseline-20261018/` 和 `local-review-gates-20261018/`。初始失败日志未被覆盖；native summary 以每个 suite 最后一次完整执行为准。
 
 仍需干净、不受限 runner 的 frozen install、全 portable/contract gate、正式打包和 Windows/Linux 原生验收，以及真实远程执行成功/失败/同步。Renderer 显式 reload 恢复不证明自动自愈；main crash/重启、在途各阶段 crash、长期 UI 内存泄漏、跨平台完整进程树无孤儿、首屏可交互时延仍未完整验证。具体操作与证据要求见 [qa-runbook](../qa-runbook.md) 的七模块矩阵。
+
+## PR #220 发布与完整 CI 后续发现
+
+Harness 修复已通过正常 GitHub UI 提交至 [PR #220](https://github.com/Zhiman-BJ/industrial-agent-harness/pull/220)。远端 head `fe18d5c` 的 tree 为 `5c5975eb99a819442df5e4c9ed8bfa0b2838558a`，与本地提交 `d0ff6e5` 一致；UI 提交的 commit SHA 不同，不影响这次已核对的内容一致性。
+
+该远端 head 的[常规 PR CI 39118290515](https://github.com/Zhiman-BJ/industrial-agent-harness/actions/runs/39118290515) 全部成功；独立的 [Architecture 39118290481](https://github.com/Zhiman-BJ/industrial-agent-harness/actions/runs/39118290481)、[trusted Architecture 39118289172](https://github.com/Zhiman-BJ/industrial-agent-harness/actions/runs/39118289172) 和[账户检查 39118290490](https://github.com/Zhiman-BJ/industrial-agent-harness/actions/runs/39118290490) 也成功。这不代替 full=true 的完整安装与原生验收。
+
+随后手动触发的 [full=true run 39118388104](https://github.com/Zhiman-BJ/industrial-agent-harness/actions/runs/39118388104) 发现以下两项，继续放在同一 issue #219。修复已进入本地工作区，尚需新 head 的远端 CI 验证；该完整运行不能记作全绿。
+
+| ID      | 完整 CI 的发现                                                                                                               | 本地修复与验证边界                                                                                                                                                                                                                                              |
+| ------- | ---------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| TEST-04 | Windows 安装器子进程 readiness 文件已存在但 PID 字节尚未写入；测试读取空串后 `Number('') === 0`，错误地用 PID 0 做 reap 断言 | 仅修改 `packages/pack-manager/src/runtime-assets.test.cjs`：在原 5 秒 readiness 预算内等待正整数 PID，保留 2 秒 reap 期限；新增空文件与 PID 0 不得提前就绪的回归。定向 24/24 通过，未放宽安装器或子进程清理验收                                                 |
+| CI-01   | full 模式的 macOS Desktop 安装链路没有先准备官方 runtime archives，报告缺少 KiCad/Godot/FreeCAD 归档                         | 仅在 `.github/workflows/desktop-package.yml` 的 macOS 且 full 条件下调用既有 `node scripts/prepare-ci-runtime-archives.cjs --download`；沿用官方大小/hash 校验及 `GITHUB_ENV` 归档传递。原安装、修复、工程、Viewer 与重启断言全部保留，尚待远端完整安装流程验证 |
+
+主线程独立复验 runtime-assets 定向 24/24 及 architecture checker 通过。architecture-contract 负向测试为 19 pass，加既有 candidate-fetch 的 `spawnSync git ENOBUFS` 环境阻塞 1 项；它是上文已登记的同一环境问题，不新建缺陷 ID，也不改记通过。没有据此修改架构 checker、policy 或契约断言。
+
+本节补充发布与远端验证进展，先前本地失败、owner 原生 blocked、旧 Harness Pack pin、DEP-01 待分诊及其他未完成验收继续保留。下一步以包含 TEST-04/CI-01 修复的新远端 exact head 重跑完整 CI；在结果出来前，不宣称这两项已经获得 CI 关闭证据。
