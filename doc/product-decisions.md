@@ -794,7 +794,6 @@ CSV/TSV 显示表格并提供表头开关、全文筛选与分页；普通 JSON 
 - 验收边界：远程端为 `scripts/remote-ui-fixture.cjs` 启动的回环地址受控服务，记录 `engineeringExecution: false`，工程验证保持 `not_run`。上述结果证明客户端 UI 与协议状态转换，不证明真实模型任务、EDA 工具、OS 沙箱或生产远程 worker 已执行；本轮没有运行自动原生 UI selftest 套件。
 - 非原生检查：最终桌面构建与 TypeScript 检查通过，修改文件的 ESLint 为 0 errors / 0 warnings，语言测试 6/6，架构静态检查通过。桌面单测 60/61，剩余一项因沙箱禁止监听（`listen EPERM`）未通过；架构测试 19/20，剩余一项由沙箱中 Git 的 `DARWIN_USER_TEMP_DIR` 警告撑爆测试的 3 字节输出缓冲，产生 `ENOBUFS`，在未修改的 `41a9603` 基线亦复现。未将环境阻塞记为测试通过，未为此放宽门禁或修改架构检查。
 
-
 ## PD-082：已落盘远程任务自动释放沙箱
 
 - 日期：2026-10-19。
@@ -819,3 +818,23 @@ CSV/TSV 显示表格并提供表头开关、全文筛选与分页；普通 JSON 
 - 来源：用户反馈项目旁「+」无法选择领域，缺少 Domain Pack 安装引导，零 Pack 时无法默认使用通用领域。
 - 决定：通用领域是 Core 内置工作区能力，不需要 Pack；新增项目默认选通用，提供专业 Pack 安装入口，往返保留草稿，安装成功回填新领域。首次安装引导允许直接创建通用项目。后续领域切换仍在项目详情进行并隔离会话。
 - 边界：不虚构专业工具就绪，不绕过 Pack 校验、工具范围和审批，不更改固定领域 CLI 分包约束。安装失败可返回草稿继续通用项目。实现、验收命令与本机 Electron 启动限制见[项目创建与领域引导](project-onboarding.md)。
+
+## PD-085：Windows Agent 原生 MXC 候选后端
+
+- 日期：2026-10-19。
+- 状态：已由 PD-086 取代；MXC 候选未通过 Windows 原生与安装包验收。
+- 来源：#225 及 #224 CI 证实随机 restricting SID 后端阻塞 NUL/管道和真实 Kimi；用户同意尝试微软 MXC。
+- 决定：Windows 后端使用固定 MXC 独立执行器及原生 BaseContainer/PSEC 能力门禁，仅 session/scratch 获得写入权限。为兼容当前 Electron 的 Node 版本，通过原生执行器保持标准输入输出，不修改上游 Kimi。
+- 可观察行为：缺少必要 Windows 原生能力时明确拒绝启动；不自动提权、不修改宿主 ACL，不退回旧 token、AppContainer/DACL 或裸跑。CLI 的残留状态检查使用本次独立目录，不处理其他 MXC 消费者的 ACL 日志。
+- 边界：保留 #224 Draft；定向策略测试不代表 Windows 执行已通过。Windows 11 版本、标准用户、per-user 安装及真实 Kimi/MCP/取消清理均需独立验收，不自动关闭 #223/#225；详见[Windows 隔离候选](windows-agent-isolation.md)。
+
+## PD-086：Windows 使用当前用户权限运行 Kimi
+
+- 日期：2026-10-19。
+- 状态：用户明确确认，取代 PD-085 的 MXC 启动硬依赖。
+- 来源：用户认为本机 MXC 隔离过于复杂，确认优先让 Windows 正常聊天、创建并调用远程工业沙箱、查看成果与自动释放。
+- 决定：Windows 直接启动原版 Kimi，使用当前用户权限；移除 MXC 依赖、原生能力门禁、受限令牌与 C# supervisor。不自动提权或更改系统 ACL；macOS/Linux 保留既有隔离。
+- 可观察行为：Windows 的 execution-boundary 明确报告 windows-current-user、osIsolation=false、projectWritable=true；模型上下文不再承诺工程只读。保留会话工作目录、持久上下文、有界项目输入快照、显式环境与宿主服务令牌过滤。默认 session 可位于 settings 的子目录。
+- 权限边界：Windows 本机 Bash、文件工具和后代进程拥有当前用户权限，可修改其有权访问的工程、配置及其他文件。工作目录和审批不是操作系统写入隔离。工业工具仍经过 Broker、审批和远程 Runtime；这些检查不覆盖本机原生文件操作。
+- 生命周期：优先使用 Kimi 原生 shutdown，强制取消存活进程时使用 Windows taskkill /T /F；这是普通进程清理，不承诺 Job Object 的宿主崩溃或根进程自然退出后的整棵树强制回收。
+- 验收：Windows NUL/stdio、参数/私有 Node、settings 嵌套目录、当前用户写权限、取消、真实 Kimi/MCP/Bash/resume 与安装包均须实际验证；远程领域工具及沙箱释放另按实际证据验收。

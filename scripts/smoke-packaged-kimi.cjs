@@ -6,6 +6,10 @@ const path = require('node:path');
 const { createRequire } = require('node:module');
 
 async function child(archive, directory, endpoint) {
+  const shareDir = path.join(directory, 'session');
+  const projectDir = path.join(directory, 'project');
+  fs.mkdirSync(shareDir);
+  fs.mkdirSync(projectDir);
   const appRequire = createRequire(path.join(archive, 'electron', 'main.cjs'));
   const agentEntry = appRequire.resolve('@industrial-agent-harness/agent-kimi');
   const agentRequire = createRequire(agentEntry);
@@ -20,12 +24,12 @@ async function child(archive, directory, endpoint) {
     contextSize: 32768,
     thinking: false,
   };
-  fs.writeFileSync(path.join(directory, 'config.toml'), configToml(profile));
-  fs.writeFileSync(path.join(directory, 'mcp.json'), '{}');
+  fs.writeFileSync(path.join(shareDir, 'config.toml'), configToml(profile));
+  fs.writeFileSync(path.join(shareDir, 'mcp.json'), '{}');
   let hostCalls = 0;
   const options = {
-    workDir: directory,
-    shareDir: directory,
+    workDir: shareDir,
+    shareDir,
     env: sessionEnv(profile, 'packaged-local-fixture'),
     externalTools: [
       createExternalTool({
@@ -40,13 +44,11 @@ async function child(archive, directory, endpoint) {
     ],
   };
   let sandbox;
-  if (process.platform === 'darwin') {
-    const projectDir = path.join(directory, 'project');
-    fs.mkdirSync(projectDir);
+  if (['darwin', 'win32'].includes(process.platform)) {
     const { createProcessSandbox } = agentRequire('./process-sandbox.cjs');
     sandbox = createProcessSandbox({
       executable: agentRequire('./code-session.cjs').bundledExecutable(),
-      shareDir: directory,
+      shareDir,
       projectDir,
       kimiProjectAccess: true,
       environment: { ...process.env, ...options.env },
@@ -56,6 +58,8 @@ async function child(archive, directory, endpoint) {
       workDir: sandbox.workDir,
       projectDir,
       env: sandbox.env,
+      envIsolated: true,
+      spawn: sandbox.spawn,
     });
   }
   let session = createSession(options);
@@ -95,7 +99,9 @@ async function child(archive, directory, endpoint) {
     session = createSession({ ...options, sessionId: identity.sessionId, resumeRequired: true });
     sessions.push(session);
     await run('PACKAGED_SECOND: continue the saved conversation.');
+    assert.equal(session.sessionId, identity.sessionId);
     assert.equal(session.nativeId, identity.nativeId);
+    assert.equal(hostCalls, 1, 'resuming must not replay the host callback');
     const snapshot = await session.diagnosticSnapshot();
     assert.equal(snapshot[0].format, 'kimi-code-server-v1');
     assert.match(JSON.stringify(snapshot), /PACKAGED_FIRST/);
