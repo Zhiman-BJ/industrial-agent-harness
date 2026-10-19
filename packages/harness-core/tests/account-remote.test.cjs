@@ -240,10 +240,7 @@ test('two AuthManagers sharing a CLI session cannot send the new account token v
   };
   assert.equal(first.view().user.sub, 'user-123');
   assert.equal(first.store.read().user.sub, subject);
-  await assert.rejects(
-    client.cancel('11111111-1111-4111-8111-111111111111', '22222222-2222-4222-8222-222222222222'),
-    /project account/,
-  );
+  await assert.rejects(client.createProject('chip'), /project account/);
   assert.equal(first.view().user.sub, subject);
   assert.equal(sends, 0);
   await assert.rejects(client.info(), /project account/);
