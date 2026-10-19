@@ -132,6 +132,26 @@ class RemoteGatewaySessions {
     writePrivateJson(this.file(binding.key), value);
     return Object.freeze(value);
   }
+  renewReleased(binding, applicationSessionId) {
+    const current = this.read(binding.key);
+    if (
+      current.clientSessionId !== binding.clientSessionId ||
+      current.applicationSessionId !== applicationSessionId ||
+      current.status !== 'stopped'
+    )
+      throw Error('Only a confirmed stopped remote session can be renewed.');
+    const value = {
+      ...current,
+      previousClientSessionId: current.clientSessionId,
+      previousApplicationSessionId: applicationSessionId,
+      clientSessionId: crypto.randomUUID(),
+      applicationSessionId: null,
+      status: 'released',
+      updatedAt: new Date().toISOString(),
+    };
+    writePrivateJson(this.file(binding.key), value);
+    return Object.freeze(value);
+  }
 }
 
 module.exports = { RemoteGatewaySessions, gatewayIdentity, boundedIdentity };

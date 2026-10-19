@@ -478,14 +478,14 @@ body,
   font-variant-numeric: tabular-nums;
 }
 .ia-app .ia-message-copy {
-  width: 32px;
-  height: 32px;
+  width: 24px;
+  height: 24px;
   padding: 0;
   flex-shrink: 0;
   display: grid;
   place-items: center;
   border: 0;
-  border-radius: 12px;
+  border-radius: 8px;
   background: var(--ia-panel);
   color: var(--ia-muted);
 }
@@ -567,6 +567,61 @@ body,
 .ia-flow-error {
   color: var(--ia-danger) !important;
   font-size: 11px;
+}
+.ia-app .ia-flow-error-card {
+  border: 1px solid color-mix(in srgb, var(--ia-danger) 35%, transparent);
+  border-radius: 7px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+}
+.ia-app .ia-flow-error-card b {
+  font-size: 12px;
+}
+.ia-app .ia-flow-error-actions {
+  display: flex;
+  gap: 6px;
+}
+.ia-app .ia-flow-error-actions button {
+  border: 1px solid var(--ia-border);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 11px;
+  background: transparent;
+}
+.ia-app .ia-flow-error-actions button:hover:not(:disabled) {
+  background: var(--ia-hover);
+}
+.ia-app .ia-approval-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 6px 0 2px;
+}
+.ia-app .ia-approval-fields dt {
+  color: var(--ia-muted);
+  font-size: 10px;
+}
+.ia-app .ia-approval-fields dd {
+  margin: 1px 0 0;
+  overflow-wrap: anywhere;
+}
+.ia-app .ia-approval-fields dd code {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11.5px;
+}
+.ia-app .ia-approval-fields dd small {
+  display: block;
+  color: var(--ia-muted);
+  font-size: 10px;
+  padding: 1px 0 0;
+}
+.ia-app .ia-create-hint {
+  display: block;
+  color: var(--ia-muted);
+  padding: 3px 0 0;
 }
 .ia-approval {
   border: 1px solid var(--ia-border);
@@ -660,6 +715,9 @@ body,
 }
 .ia-app .ia-chat-approval-mode {
   max-width: 150px;
+  /* A native select cannot ellipsize; flex shrink would clip it mid-word.
+     Keep it at content width and let the controls row wrap instead. */
+  flex: none;
   color: var(--ia-muted);
   background: var(--ia-panel);
   border: 1px solid var(--ia-border);
@@ -667,6 +725,56 @@ body,
   padding: 4px 6px;
   font: inherit;
   font-size: 11px;
+}
+.ia-app button.ia-model-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 250px;
+  /* Shrink this pill (its name ellipsizes) before the row wraps. */
+  min-width: 0;
+  flex: 0 1 auto;
+  padding: 5px 9px;
+  border: 1px solid var(--ia-border);
+  border-radius: 999px;
+  background: var(--ia-raised);
+  color: var(--ia-text);
+  font-size: 11px;
+  line-height: 16px;
+}
+.ia-model-pill .ia-model-pill-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ia-model-pill .ia-model-pill-ctx {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: none;
+  color: var(--ia-muted);
+  border-left: 1px solid var(--ia-border);
+  padding-left: 8px;
+}
+.ia-model-pill .ia-model-pill-bar {
+  width: 34px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--ia-border);
+  overflow: hidden;
+}
+.ia-model-pill .ia-model-pill-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--ia-accent);
+}
+.ia-model-pill .ia-model-pill-ctx.high {
+  color: var(--ia-warning);
+}
+.ia-model-pill .ia-model-pill-ctx.high .ia-model-pill-bar > span {
+  background: var(--ia-warning);
 }
 .ia-context-select {
   display: flex;

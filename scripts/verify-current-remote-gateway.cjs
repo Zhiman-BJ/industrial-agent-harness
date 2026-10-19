@@ -1,5 +1,5 @@
 // Opt-in live diagnostic: exercises the same settings, Broker and Runtime used
-// by Desktop/CLI. It performs no model inference and never terminates a sandbox.
+// by Desktop/CLI. It performs no model inference; normal Runtime cleanup applies.
 const {
   createProjectRuntime,
   resolveProjectTask,
@@ -9,6 +9,7 @@ async function verifyCurrentGateway({
   projectDir,
   domain,
   toolId,
+  inputs = {},
   files,
   chatId,
   directory,
@@ -53,7 +54,7 @@ async function verifyCurrentGateway({
       throw Error('Requested tool was not selected by the Broker.');
     onProgress('scope', { tools: resolved.scope.tools, stateId: state.id });
     const result = await runtime.execute(
-      { toolId, inputs: {}, expectedStateId: state.id },
+      { toolId, inputs, expectedStateId: state.id },
       { scope: resolved.scope, approval: true },
     );
     const session = await settings.session(projectDir, domain, chatId);

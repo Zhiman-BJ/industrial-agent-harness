@@ -1,5 +1,11 @@
 # 远程软件、MCP 与沙箱：v1.1 重构
 
+2026-10-19 更新：当前 `mcp-v1` 路径支持一个 profile 的多个工具：以受保护 inventory 的 Pack/profile/能力摘要绑定服务目录中的 `worker.toolIds`，逐个通过实时 describe 确认身份；拒绝缺失、重复和超限集合。CAD 四工具可发现，真实 build、下载与 Viewer 验收见[证据](evidence/remote-cad-20261019/README.md)。工具输入 schema 仍以远端实际返回为准；当前 CAD 服务仅返回 object，并未完整披露参数约束。
+
+单用户单沙箱 quota 下，当前路径在远端调用结果确定、本地产物与规范记录提交、`needsImport` 清除后自动释放。先核对项目、领域、聊天身份和非 busy 状态，只有服务确认同一 application session 为 `stopped` 才更新持久绑定、生成下一代 client session key。同一聊天的下一次调用重新建立远程会话，已有工程历史保留；任务后刷新不重新占用刚释放的 quota。工程验证失败但证据已完整提交的任务也可释放，运行中、结果未知及待导入任务保留会话。释放异常独立显示 pending，保留已提交的工程结论；后续调用先重新确认释放，未确认时不提交新工程调用。
+
+该自动释放只覆盖当前 `mcp-v1` 任务完成路径，不是全局空闲回收器：仅发现/描述工具而未执行的会话、旧版本遗留会话和进程意外退出仍需服务端 TTL 或显式结束。不会为抢 quota 终止其他聊天，不自动重放工程调用。显式结束的旧行为与历史 canonical gateway 协议不变。
+
 2026-10-17 更新：已用 MiniMax-M3 完成真实 Desktop/Kimi 对话闭环：模型描述并调用
 `chip.rtl.verify`，经审批进入远程沙箱，源 Verifier 返回 `passed`，模型读取本次报告并
 完成回复。三份产物的大小与 SHA-256、持久化规范记录均已核对。
@@ -140,7 +146,7 @@ the bound subject again after token acquisition. Tokens never enter model argume
 
 Current-service execution availability is checked by protected tool discovery when a
 chat connects. A metadata-only discovery response binds the catalog hash, Pack and active
-profile to its descriptor; the live runtime must also describe that exact tool. A static
+profile to its bounded worker tool list; the live runtime must describe each exact tool. A static
 catalog entry alone does not establish executable/native support. The UI permits this
 discovery after sync and displays service failures when discovery rejects.
 

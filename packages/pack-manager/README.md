@@ -27,7 +27,11 @@ The primary image channel is an anonymous HTTPS release tarball; a running Linux
 is an external prerequisite. Entries with no published release are not automatically selected.
 When a Pack also declares native applications, Docker availability is checked before either
 native or image downloads. Missing Docker and an unreachable engine produce distinct setup
-messages in both adapters and leave the Pack inactive.
+messages in both adapters and leave the Pack inactive. The docker CLI is discovered through the
+shared ladder in `@industrial-agent-harness/domain-runtime`: the PATH first, then well-known
+installs (`~/.docker/bin`, `/usr/local/bin`, `/opt/homebrew/bin`, the Docker.app bundle) and a
+timeout-bounded login-shell PATH capture for GUI launches whose environment lacks them; the miss
+message lists every searched location.
 Installing images does not configure a project's execution profile or qualify an engineering task.
 
 Container preparation streams bytes to disk while checking the exact size and SHA-256. It reads
