@@ -33,7 +33,7 @@
 
 | 序 | 事项 | 状态 | 为什么是前置 |
 | --- | --- | --- | --- |
-| a | 合并 PR #128（apps.cli、packages/sdk 转 internal，去 CLI 化 README/CONTRIBUTING） | 合并前置 | 已拍板的产品边界，不合并则导出面与决定不一致。修复分支将决策顺延为 PD-083，并把 CLI 集成测试归还 CLI，引用台账不得扩大 |
+| a | 合并 PR #128（apps.cli、packages/sdk 转 internal，去 CLI 化 README/CONTRIBUTING） | 已合并（2026-10-19） | 产品边界已落实；决策编号为 PD-083，CLI 集成测试归属 CLI，引用台账未扩大。执行 T0 时仍需核对所选 SHA 包含该变更 |
 | b | #102 构建隔离收尾 | OPEN（P0） | release 门禁规则：任何 `planned` internal 条目仍有活引用即阻断。准确数量以目标 source SHA 的清单与扫描结果为准；#128 的 CLI 上限为 2、SDK 上限为 3，只减不增 |
 | c | #106 导出器 | OPEN（P0，未开工） | 公开树唯一合法生成器；输入输出契约见 editions.md §4（固定 source SHA、公开树、派生公开清单、私有审计报告、确定性变换）。**先实现独立演练模式**（允许 release 字段待定，只输出本地候选产物），首发前按 §4 演练序列执行 |
 | d | #107 公开历史同步 | OPEN（P0） | **首发只需最小形态**：单条整理后的初始提交（不带内部历史）。版本映射与幂等恢复可首发后补齐，不阻断首发 |
@@ -82,7 +82,7 @@
 ## 7. 风险与待决事项
 
 1. **仓库可见性与 pack 通道耦合**：两内部仓库当前为 PUBLIC（headless/chip 等 Release 产物匿名下载的前提）。OSS 用户的 domain pack 获取依赖 industrial-domain-packs Release 可达；若内部仓将来转回 Private，该通道对匿名用户断裂，OSS 版需另配 pack 镜像或子集。转私前必须与 OSS 通道一并决策。
-2. **README verbatim 自洽**：导出规则是 README 原样进公开仓。#128 合并前，main 的 README 仍含 CLI 安装指引，此刻导出会产生公开仓死链——首发必须排在 #128 合并之后。
+2. **README verbatim 自洽**：导出规则是 README 原样进公开仓。#128 已移除公开 CLI/SDK 安装入口；首发仍须核对所选 SHA 包含此变更，并检查导出树中的全部链接，不能将 README 修改视为导出器验收完成。
 3. **AGENTS.md 版本化转换**：根 AGENTS.md 随公开面发布，其中反引号提及的内部 doc 路径由 #106 按既定转换规则处理（PD-069 2026-10-12 修订许可），导出器实现时逐条登记进审计报告。
 4. **正式版双轨对齐**：内部对应版本与 OSS 首版 `v0.0.1` 必须映射到同一 source SHA；两者版本号可以不同，不能据此推断行为或发行范围相同。版本映射由 #107 维护，人工不得口头约定。
 5. **治理机械留在内部**：架构合约 checker/policy/CODEOWNERS/architecture workflow 不导出（by design）；公开仓的等价边界检查 = `tests/architecture/boundaries.test.cjs` + 派生公开清单 + structure.yml。若公开仓边界检查需要加强，改公开条目后由导出器带回，不在公开仓手工长期分叉。
