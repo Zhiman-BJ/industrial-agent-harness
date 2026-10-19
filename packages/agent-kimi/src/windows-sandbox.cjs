@@ -94,7 +94,8 @@ function assertMxcProbe(probe) {
           needsDaclAugmentation: probe?.needsDaclAugmentation,
           psec: probe?.probes?.baseContainerApiPresent,
           hostLoopback: probe?.probes?.baseContainerSupportsIngressHostLoopbackAllow,
-        }),
+        }) +
+        '. This policy requires Windows 11 with native bidirectional host-loopback support (24H2: 26100.9550+, 25H2: 26200.9550+) and a successful native capability probe. Windows Server support is not established. See https://github.com/microsoft/mxc/blob/v1.0.1/docs/backends/process-container/networking.md',
     );
 }
 

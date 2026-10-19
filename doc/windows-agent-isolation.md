@@ -20,11 +20,37 @@ The supervisor does not change host file or device ACLs, integrity labels, users
 
 Microsoft documents native process isolation beginning with updated Windows 11 24H2/25H2 builds; actual runtime capabilities remain authoritative. Older Windows, Server runners and managed devices without those capabilities must fail visibly. There is no restricted-token, AppContainer/DACL, administrator or unprotected fallback. See [MXC platform requirements](https://github.com/microsoft/mxc/blob/v1.0.1/docs/backends/process-container/os-version-support.md), [stable policy](https://github.com/microsoft/mxc/blob/v1.0.1/schemas/stable/mxc-config.schema.1.0.0.json), and [tier selection](https://github.com/microsoft/mxc/blob/v1.0.1/src/mxc-sdk/src/backends/process_container/common/fallback_detector.rs).
 
+### Exact platform requirements and diagnosis
+
+The pinned MXC 1.0.1 support table lists these first Windows 11 cumulative builds for process isolation:
+
+| Windows 11 release | First documented build |
+| ------------------ | ---------------------- |
+| 24H2               | 26100.9278             |
+| 25H2               | 26200.9278             |
+| 26H2               | 26300.9550             |
+| 26H1               | 28000.2804             |
+
+The revision after the dot matters. Windows 11 22H2 build 22621 is outside this documented range. Windows Server 2025 sharing build number 26100 does not establish the same OS contract; the table does not list Server support. [KB5120998](https://support.microsoft.com/en-us/servicing/os/windows-11/2026/08/kb5120998-windows-11-24h2-25h2-update) introduced MXC process isolation on Windows 11 through a gradual rollout, so a supported build is a prerequisite, not a substitute for the request-aware native probe. Native PSEC enforcement does not require a UAC prompt per launch; the separate MXC host-preparation tools do require elevation and are not run by Harness.
+
+This product policy additionally needs a loopback server inside the container so Harness can connect to Kimi. [MXC networking support](https://github.com/microsoft/mxc/blob/v1.0.1/docs/backends/process-container/networking.md) documents that capability starting at **26100.9550 for 24H2** and **26200.9550 for 25H2**, after the initial process-isolation builds. The policy probe must also report `baseContainerSupportsIngressHostLoopbackAllow=true`; meeting the base process-isolation version alone is insufficient. These version requirements describe upstream capabilities, not completed Harness qualification.
+
+Feature IDs `61389575` and `61155944` occur in [MXC issue #495](https://github.com/microsoft/mxc/issues/495), which concerns the older `Experimental_CreateProcessInSandbox` API and MXC 0.6.0-alpha. The pinned backend instead uses `CreateProcessSecurityEnvironment` and capability queries. The current CI result does not identify a disabled Feature Store entry as the cause. Harness does not prescribe ViVeTool or change machine feature flags.
+
+For a failing machine, collect the following read-only PowerShell information alongside the bounded policy-probe result. This distinguishes the Windows SKU and full revision without changing the system:
+
+```powershell
+Get-CimInstance Win32_OperatingSystem | Select-Object Caption, Version, ProductType
+Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' | Select-Object DisplayVersion, CurrentBuildNumber, UBR, EditionID
+```
+
 ## Acceptance and current limits
 
 Keep PR #224 Draft until real native Windows and packaged Agent checks succeed. Local macOS policy/configuration tests cannot qualify Windows behavior. Existing Windows native tests retain their assertions for NUL read/write, inherited/file/ignore/pipe child stdio, private user-only Node installation, argv fidelity, session writes, protected and foreign-Low write rejection, Job cleanup, and real pinned Kimi model/MCP/native-Bash/resume. Unsupported native capability is a failed acceptance result, not a planned skip.
 
 The previous token backend reached JavaScript but denied NUL writes, failed `stdio: ignore`, hung creating pipes and timed out in real Kimi. The MXC implementation must pass those same tests; this change alone is not evidence that #225 is resolved. Standard-user operation, per-user packaged installation, linked-path attacks and complete cleanup still require actual Windows evidence.
+
+Retest of head `a02d530` did not establish a working platform. The user reported all three exercised cases refusing startup on Windows 11 22H2 build 22621. [Windows Portable CI](https://github.com/Zhiman-BJ/industrial-agent-harness/actions/runs/39245901831/job/118037831849) on Windows Server 2025 reports all four native cases failing with `psec=false` and `hostLoopback=false`. Those workloads never reached NUL, pipe or Kimi execution. Updated Windows 11 from the support table still needs real standard-user and packaged acceptance; neither adding diagnostics nor changing a CI runner would itself repair 22H2 compatibility.
 
 Packaged Kimi smoke uses this production boundary, including source and executor materialization from the archive. The ordinary PR Desktop smoke does not call that Agent smoke; the latter currently runs in the release workflow. Neither desktop UI startup nor a source-only probe establishes packaged Agent qualification.
 

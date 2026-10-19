@@ -177,6 +177,29 @@ test('Windows MXC requires a usable BaseContainer for the complete requested pol
     assert.throws(() => assertMxcProbe(probe), /MXC|PSEC|BaseContainer|probe/i);
 });
 
+test('Windows MXC refusal explains the platform requirement without exposing raw diagnostics', () => {
+  const secret = 'host-only-test-credential';
+  assert.throws(
+    () =>
+      assertMxcProbe({
+        error: secret,
+        warnings: [secret],
+        probes: {
+          baseContainerApiPresent: false,
+          baseContainerSupportsIngressHostLoopbackAllow: false,
+        },
+      }),
+    error => {
+      assert.match(error.message, /24H2: 26100\.9550/);
+      assert.match(error.message, /25H2: 26200\.9550/);
+      assert.match(error.message, /Windows Server support is not established/);
+      assert.match(error.message, /"psec":false,"hostLoopback":false/);
+      assert.equal(error.message.includes(secret), false);
+      return true;
+    },
+  );
+});
+
 test('Windows packaged read grants use physical ASAR archives instead of virtual members', () => {
   const archive = 'C:\\Apps\\Harness\\resources\\app.asar';
   const uppercaseArchive = 'C:\\Apps\\Other\\resources\\APP.ASAR';
