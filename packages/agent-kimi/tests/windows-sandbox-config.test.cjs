@@ -9,6 +9,7 @@ const {
   quoteWindowsArgument,
   buildMxcPolicy,
   assertMxcProbe,
+  hostReadRoots,
 } = require('../src/windows-sandbox.cjs');
 const { createSession } = require('../src/code-session.cjs');
 
@@ -174,6 +175,41 @@ test('Windows MXC requires a usable BaseContainer for the complete requested pol
     }),
   ])
     assert.throws(() => assertMxcProbe(probe), /MXC|PSEC|BaseContainer|probe/i);
+});
+
+test('Windows implicit read grants omit inaccessible paging files without losing explicit roots', () => {
+  const explicit = ['D:\\Projects\\design', 'D:\\Runtime\\node.exe'];
+  const errors = new Map([
+    ['D:\\DumpStack.log.tmp', 'EINVAL'],
+    ['D:\\pagefile.sys', 'EPERM'],
+  ]);
+  const fileSystem = {
+    readdirSync(volume) {
+      assert.equal(volume, 'D:\\');
+      return ['Projects', 'Runtime', 'DumpStack.log.tmp', 'pagefile.sys'].map(name => ({ name }));
+    },
+    realpathSync(file) {
+      if (errors.has(file))
+        throw Object.assign(Error('system file metadata unavailable'), { code: errors.get(file) });
+      return file;
+    },
+  };
+  assert.deepEqual(hostReadRoots(explicit, fileSystem), [
+    ...explicit,
+    'D:\\',
+    'D:\\Projects',
+    'D:\\Runtime',
+  ]);
+  assert.throws(
+    () =>
+      hostReadRoots(explicit, {
+        ...fileSystem,
+        realpathSync() {
+          throw Object.assign(Error('I/O failure'), { code: 'EIO' });
+        },
+      }),
+    /I\/O failure/,
+  );
 });
 
 test('native session dispatch uses the protected launcher and never restores a removed host credential', async t => {

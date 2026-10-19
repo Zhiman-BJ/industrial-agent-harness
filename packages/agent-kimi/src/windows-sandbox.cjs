@@ -120,7 +120,7 @@ function materializeMxc(directory) {
   return executable;
 }
 
-function hostReadRoots(paths) {
+function hostReadRoots(paths, fileSystem = fs) {
   // A native volume-root grant is not recursive. Expand its immediate children
   // so existing host reads remain available while writes stay separately scoped.
   const volumes = new Set(
@@ -132,13 +132,16 @@ function hostReadRoots(paths) {
   const roots = new Set(paths.filter(Boolean));
   for (const volume of volumes) {
     roots.add(volume);
-    for (const entry of fs.readdirSync(volume, { withFileTypes: true })) {
-      const child = path.join(volume, entry.name);
+    for (const entry of fileSystem.readdirSync(volume, { withFileTypes: true })) {
+      const child = path.win32.join(volume, entry.name);
       try {
-        fs.realpathSync(child);
+        fileSystem.realpathSync(child);
         roots.add(child);
       } catch (error) {
-        if (!['EACCES', 'EPERM', 'ENOENT', 'EBUSY'].includes(error.code)) throw error;
+        // Windows paging/crash-dump files can reject even metadata queries
+        // with EINVAL. These are only generated read grants: omitting an
+        // unresolvable child tightens access and leaves explicit roots intact.
+        if (!['EACCES', 'EPERM', 'ENOENT', 'EBUSY', 'EINVAL'].includes(error.code)) throw error;
       }
     }
   }
@@ -381,4 +384,5 @@ module.exports = {
   quoteWindowsArgument,
   buildMxcPolicy,
   assertMxcProbe,
+  hostReadRoots,
 };
