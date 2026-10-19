@@ -22,3 +22,11 @@
 2026-10-16 本地共享任务测试、类型检查和构建通过。Electron 44 在当前执行环境启动时 SIGABRT，原生 UI 自测尚未完成，不据此宣称打包或跨平台验收通过。架构检查器通过；候选源码物化测试出现现有 `spawnSync git ENOBUFS`，在未修改的旧工作树复现，未改动检查器或策略。
 
 完整 industrial-core 原生集成测试在本机未通过：缺少 Chip Pack 的 Python venv（状态检查退回基础工作区，专业工具未进入 scope），且本地模型测试服务监听返回 EPERM。因此本次不宣称专业领域原生执行链路已完成回归。
+
+## 2026-10-19 复审
+
+[跨平台 CI（30e5b86）](https://github.com/Zhiman-BJ/industrial-agent-harness/actions/runs/39208991507) 已通过 macOS 与 Windows 的项目引导、既有桌面 UI、打包及首启检查。引导验证涵盖空安装目录、General 创建、草稿保留、受控下载失败、重试和领域回填。修复后的测试在恢复宽窗口后再查询侧栏按钮，并通过设置入口改变主题，避免读取已卸载节点或让 React 重绘覆盖截图主题。
+
+新建项目沿用共享弹窗焦点管理；General 的 CLI 集成测试位于 CLI 内，避免公开底层包新增对内部适配器的引用。与 CLI 归属修改组合后的 59 项本地定向/架构测试通过，架构例外额度未扩大。
+
+本机 2026-10-19 的 Electron 启动仍在 macOS `NSApplication` / `_RegisterApplication` 阶段触发 SIGABRT；该失败不计为 UI 通过。上面的通过结论来自 CI 的真实 renderer → preload → IPC 路径。受控模型和签名测试 Pack 不构成专业软件执行资格，也不宣称修复了本机启动环境。
