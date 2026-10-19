@@ -3,7 +3,13 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { windowsEnvironment, inside } = require('../src/windows-sandbox.cjs');
+const {
+  windowsEnvironment,
+  inside,
+  quoteWindowsArgument,
+  buildMxcPolicy,
+  assertMxcProbe,
+} = require('../src/windows-sandbox.cjs');
 const { createSession } = require('../src/code-session.cjs');
 
 test('Windows credential exclusions are case insensitive and environment keys have one effective value', () => {
@@ -29,6 +35,145 @@ test('Windows storage comparisons distinguish sibling prefixes, volumes and path
   assert.equal(inside('C:\\Session', 'C:\\Session-other'), false);
   assert.equal(inside('C:\\Session', 'C:\\Session\\..\\project'), false);
   assert.equal(inside('C:\\Session', 'D:\\Session\\workspace'), false);
+});
+
+test('Windows MXC command lines preserve literal CRT arguments without a shell', () => {
+  const cases = [
+    ['', '""'],
+    ['plain', '"plain"'],
+    ['two words', '"two words"'],
+    ['a"quoted"value', String.raw`"a\"quoted\"value"`],
+    ['C:\\directory with spaces\\', '"C:\\directory with spaces\\\\"'],
+    ['\\"quoted', String.raw`"\\\"quoted"`],
+    ['尾部 Unicode', '"尾部 Unicode"'],
+    ['& | < > ^ % !', '"& | < > ^ % !"'],
+    ['line\tbreak\n', '"line\tbreak\n"'],
+  ];
+  for (const [input, expected] of cases)
+    assert.equal(quoteWindowsArgument(input), expected, JSON.stringify(input));
+  for (const input of [undefined, null, 1, {}, ['argument'], 'embedded\0nul'])
+    assert.throws(() => quoteWindowsArgument(input), /argument|NUL|string/i);
+});
+
+function mxcLaunch(overrides = {}) {
+  return {
+    executable: 'C:\\Program Files\\Node\\node.exe',
+    args: ['C:\\runtime\\main.mjs', 'web', '--port', '12345'],
+    workingDirectory: 'C:\\Sessions\\one\\workspace',
+    writableRoots: ['C:\\Sessions\\one', 'C:\\Boundary\\scratch'],
+    readonlyRoots: ['C:\\Projects\\design', 'C:\\runtime', 'C:\\HarnessState'],
+    environment: { Path: 'C:\\Windows\\System32', KIMI_CODE_HOME: 'C:\\Sessions\\one' },
+    ...overrides,
+  };
+}
+
+test('Windows MXC policies permit only declared storage and explicitly refuse DACL fallback', t => {
+  const name = 'HARNESS_TEST_MXC_HOST_ONLY';
+  const previous = process.env[name];
+  process.env[name] = 'host-only-test-credential';
+  t.after(() => {
+    if (previous === undefined) delete process.env[name];
+    else process.env[name] = previous;
+  });
+  const input = mxcLaunch();
+  const policy = buildMxcPolicy(input);
+  assert.deepEqual(policy, {
+    version: '1.0.0',
+    containment: 'processcontainer',
+    fallback: { allowDaclMutation: false },
+    lifecycle: { destroyOnExit: true, preservePolicy: false },
+    filesystem: {
+      readwritePaths: input.writableRoots,
+      readonlyPaths: input.readonlyRoots,
+    },
+    process: {
+      commandLine:
+        '"C:\\Program Files\\Node\\node.exe" "C:\\runtime\\main.mjs" "web" "--port" "12345"',
+      cwd: input.workingDirectory,
+      env: ['Path=C:\\Windows\\System32', 'KIMI_CODE_HOME=C:\\Sessions\\one'],
+      inheritDefaultEnv: false,
+    },
+    network: {
+      egress: { default: 'allow' },
+      ingress: { default: 'deny', hostLoopback: 'allow' },
+    },
+    ui: { disable: false, clipboard: 'none', injection: false },
+    processContainer: {
+      capabilities: ['registryRead'],
+      leastPrivilege: false,
+      ui: {
+        isolation: 'desktop',
+        desktopSystemControl: false,
+        systemSettings: 'none',
+        ime: false,
+      },
+    },
+    telemetry: { enabled: false },
+  });
+  assert.equal(
+    policy.process.env.some(value => value.startsWith(name + '=')),
+    false,
+  );
+  assert.deepEqual(buildMxcPolicy(mxcLaunch({ environment: {} })).process.env, []);
+});
+
+test('Windows MXC policies reject ambiguous launches before creating a command', () => {
+  for (const overrides of [
+    { executable: 'node.exe' },
+    { workingDirectory: 'workspace' },
+    { writableRoots: [] },
+    { writableRoots: ['C:\\Sessions\\one'] },
+    { writableRoots: ['C:\\Sessions\\one', 'C:\\Boundary\\scratch', 'C:\\extra'] },
+    { args: ['safe', 'embedded\0nul'] },
+  ])
+    assert.throws(() => buildMxcPolicy(mxcLaunch(overrides)), /absolute|root|argument|NUL/i);
+});
+
+function supportedMxcProbe(overrides = {}) {
+  return {
+    tier: 'base-container',
+    needsDaclAugmentation: false,
+    warnings: [],
+    probes: {
+      baseContainerApiPresent: true,
+      baseContainerSupportsIngressHostLoopbackAllow: true,
+    },
+    ...overrides,
+  };
+}
+
+test('Windows MXC requires a usable BaseContainer for the complete requested policy', () => {
+  assert.doesNotThrow(() => assertMxcProbe(supportedMxcProbe()));
+  for (const probe of [
+    undefined,
+    null,
+    {},
+    [],
+    'base-container',
+    supportedMxcProbe({ tier: 'appcontainer-dacl' }),
+    supportedMxcProbe({ tier: 'appcontainer-bfs' }),
+    supportedMxcProbe({ tier: 'unknown' }),
+    supportedMxcProbe({ tier: undefined }),
+    supportedMxcProbe({ needsDaclAugmentation: true }),
+    supportedMxcProbe({ needsDaclAugmentation: undefined }),
+    supportedMxcProbe({ needsDaclAugmentation: 'false' }),
+    supportedMxcProbe({ error: 'PSEC policy cannot be represented' }),
+    supportedMxcProbe({ probes: undefined }),
+    supportedMxcProbe({ probes: {} }),
+    supportedMxcProbe({
+      probes: {
+        baseContainerApiPresent: false,
+        baseContainerSupportsIngressHostLoopbackAllow: true,
+      },
+    }),
+    supportedMxcProbe({
+      probes: {
+        baseContainerApiPresent: true,
+        baseContainerSupportsIngressHostLoopbackAllow: false,
+      },
+    }),
+  ])
+    assert.throws(() => assertMxcProbe(probe), /MXC|PSEC|BaseContainer|probe/i);
 });
 
 test('native session dispatch uses the protected launcher and never restores a removed host credential', async t => {

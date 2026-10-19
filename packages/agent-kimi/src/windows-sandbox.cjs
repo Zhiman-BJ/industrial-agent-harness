@@ -21,6 +21,130 @@ function inside(parent, child) {
   );
 }
 
+function quoteWindowsArgument(value) {
+  if (typeof value !== 'string' || value.includes('\0'))
+    throw Error('Windows command arguments must be strings without NUL.');
+  return '"' + value.replace(/(\\*)"/g, '$1$1\\"').replace(/\\+$/, '$&$&') + '"';
+}
+
+function absoluteWindowsPath(value) {
+  if (typeof value !== 'string' || value.includes('\0') || !/^[a-z]:\\/i.test(value))
+    throw Error('MXC requires absolute local Windows paths.');
+  return value;
+}
+
+function buildMxcPolicy({
+  executable,
+  args,
+  workingDirectory,
+  writableRoots,
+  readonlyRoots,
+  environment,
+}) {
+  absoluteWindowsPath(executable);
+  absoluteWindowsPath(workingDirectory);
+  if (!Array.isArray(writableRoots) || writableRoots.length !== 2)
+    throw Error('MXC requires exactly two writable roots.');
+  for (const root of [...writableRoots, ...readonlyRoots]) absoluteWindowsPath(root);
+  if (
+    inside(writableRoots[0], writableRoots[1]) ||
+    inside(writableRoots[1], writableRoots[0]) ||
+    !inside(writableRoots[0], workingDirectory)
+  )
+    throw Error('MXC writable roots must be disjoint and contain the workspace.');
+  const commandLine = [executable, ...args].map(quoteWindowsArgument).join(' ');
+  if (commandLine.length >= 32767)
+    throw Error('MXC command arguments exceed the Windows command-line limit.');
+  const env = Object.entries(environment).map(([key, value]) => {
+    if (!key || /[=\0]/.test(key) || typeof value !== 'string' || value.includes('\0'))
+      throw Error('MXC requires valid environment strings without NUL.');
+    return key + '=' + value;
+  });
+  return {
+    version: '1.0.0',
+    containment: 'processcontainer',
+    fallback: { allowDaclMutation: false },
+    lifecycle: { destroyOnExit: true, preservePolicy: false },
+    filesystem: { readwritePaths: [...writableRoots], readonlyPaths: [...readonlyRoots] },
+    process: { commandLine, cwd: workingDirectory, env, inheritDefaultEnv: false },
+    network: { egress: { default: 'allow' }, ingress: { default: 'deny', hostLoopback: 'allow' } },
+    ui: { disable: false, clipboard: 'none', injection: false },
+    processContainer: {
+      capabilities: ['registryRead'],
+      leastPrivilege: false,
+      ui: { isolation: 'desktop', desktopSystemControl: false, systemSettings: 'none', ime: false },
+    },
+    telemetry: { enabled: false },
+  };
+}
+
+function assertMxcProbe(probe) {
+  if (
+    !probe ||
+    probe.tier !== 'base-container' ||
+    probe.needsDaclAugmentation !== false ||
+    probe.error ||
+    probe.probes?.baseContainerApiPresent !== true ||
+    probe.probes?.baseContainerSupportsIngressHostLoopbackAllow !== true
+  )
+    throw Error(
+      'Windows Agent requires native MXC BaseContainer/PSEC with host-loopback support; ACL fallback is disabled. Detected: ' +
+        JSON.stringify({
+          tier: probe?.tier,
+          needsDaclAugmentation: probe?.needsDaclAugmentation,
+          psec: probe?.probes?.baseContainerApiPresent,
+          hostLoopback: probe?.probes?.baseContainerSupportsIngressHostLoopbackAllow,
+        }),
+    );
+}
+
+const mxcExecutorDigests = {
+  x64: '090f5d1f7bb93104ab08dcd4e8034ef954aeefcdaf6658dde5f7dff4cfc12f3a',
+  arm64: '91aa4171e8809f33f19622c381116188eab7d8c8cffad231230a31b58146ee77',
+};
+
+function materializeMxc(directory) {
+  // Consume only the pinned standalone executable. Loading the ESM SDK's FFI
+  // would require newer Node stdio APIs than the packaged Electron provides.
+  const expected = mxcExecutorDigests[process.arch];
+  if (!expected) throw Error('Windows MXC requires x64 or arm64.');
+  const root = path.dirname(require.resolve('@microsoft/mxc-sdk/package.json'));
+  const manifest = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+  if (manifest.version !== '1.0.1') throw Error('Windows MXC requires the pinned SDK 1.0.1.');
+  const bytes = fs.readFileSync(path.join(root, 'bin', process.arch, 'wxc-exec.exe'));
+  if (crypto.createHash('sha256').update(bytes).digest('hex') !== expected)
+    throw Error('Windows MXC executor integrity check failed. Repair the installation.');
+  const executable = path.join(directory, 'wxc-exec.exe');
+  fs.writeFileSync(executable, bytes, { flag: 'wx' });
+  fs.copyFileSync(path.join(root, 'LICENSE.md'), path.join(directory, 'MXC-LICENSE.md'));
+  return executable;
+}
+
+function hostReadRoots(paths) {
+  // A native volume-root grant is not recursive. Expand its immediate children
+  // so existing host reads remain available while writes stay separately scoped.
+  const volumes = new Set(
+    paths
+      .filter(Boolean)
+      .filter(value => /^[a-z]:\\/i.test(value))
+      .map(value => path.win32.parse(value).root.toUpperCase()),
+  );
+  const roots = new Set(paths.filter(Boolean));
+  for (const volume of volumes) {
+    roots.add(volume);
+    for (const entry of fs.readdirSync(volume, { withFileTypes: true })) {
+      const child = path.join(volume, entry.name);
+      try {
+        fs.realpathSync(child);
+        roots.add(child);
+      } catch (error) {
+        if (!['EACCES', 'EPERM', 'ENOENT', 'EBUSY'].includes(error.code)) throw error;
+      }
+    }
+  }
+  return [...roots];
+}
+
 function localDirectory(input) {
   const resolved = fs.realpathSync(input);
   if (!/^[a-z]:\\/i.test(resolved) || !fs.statSync(resolved).isDirectory())
@@ -103,7 +227,21 @@ function createWindowsProcessSandbox({
       );
     const script = /\.[cm]?js$/i.test(target);
     const command = script ? fs.realpathSync(process.execPath) : target;
+    const executor = materializeMxc(directory);
     const runner = compileRunner(directory);
+    // MXC's CLI checks orphaned DACL journals before probing. Give this launch
+    // a fresh, private journal directory so it cannot repair another consumer's
+    // state. This override belongs only to the trusted executor, never the Agent.
+    const mxcState = path.join(directory, 'mxc-dacl-state');
+    fs.mkdirSync(mxcState);
+    const readonlyRoots = hostReadRoots([
+      project,
+      ...protectedRoots,
+      command,
+      target,
+      directory,
+      process.env.SystemRoot || process.env.SYSTEMROOT || 'C:\\Windows',
+    ]);
     const env = windowsEnvironment(
       {
         ...windowsEnvironment(environment, hostOnlyEnv),
@@ -128,7 +266,7 @@ function createWindowsProcessSandbox({
         projectDir: project,
         agentWorkDir: workDir,
         writableRoots: [share, scratch],
-        mechanism: 'windows-restricted-token-low-integrity',
+        mechanism: 'windows-mxc-base-container',
         hostRuntimeRequired: true,
       },
       spawn(commandPath, args, options = {}) {
@@ -148,22 +286,61 @@ function createWindowsProcessSandbox({
         const launchEnv = windowsEnvironment({ ...env, ...options.env }, hostOnlyEnv);
         for (const name of ['KIMI_SHARE_DIR', 'KIMI_CODE_HOME', 'TEMP', 'TMP', 'TMPDIR'])
           launchEnv[name] = env[name];
+        const request = path.join(directory, crypto.randomUUID() + '.request.json');
+        fs.writeFileSync(
+          request,
+          JSON.stringify(
+            buildMxcPolicy({
+              executable: command,
+              args: nativeArgs,
+              workingDirectory: workDir,
+              writableRoots: [share, scratch],
+              readonlyRoots,
+              environment: launchEnv,
+            }),
+          ),
+        );
+        const executorEnv = Object.fromEntries(
+          Object.entries(launchEnv).filter(([name]) => !name.toUpperCase().startsWith('MXC_')),
+        );
+        executorEnv.MXC_DACL_STATE_DIR = mxcState;
+        // This request requires native host-loopback support and disallows host
+        // DACL mutation. The executor also enforces this at launch, so a failed
+        // native launch can never retry through AppContainer or an unwrapped Kimi.
+        const probe = spawnSync(executor, ['--config', request, '--probe'], {
+          encoding: 'utf8',
+          timeout: 15000,
+          windowsHide: true,
+          env: executorEnv,
+        });
+        try {
+          if (probe.error || probe.status !== 0)
+            throw Error(
+              'Windows MXC native policy probe failed (' +
+                (probe.error?.code || probe.status || probe.signal) +
+                '); no alternate backend was started.',
+            );
+          assertMxcProbe(JSON.parse(probe.stdout));
+        } catch (error) {
+          fs.rmSync(request, { force: true });
+          throw error;
+        }
         fs.writeFileSync(
           policy,
           JSON.stringify({
-            executable: command,
-            args: nativeArgs,
+            executable: executor,
+            args: [request],
             workingDirectory: workDir,
             writableRoots: [share, scratch],
             protectedRoots,
-            environment: launchEnv,
+            environment: executorEnv,
             parentPid: process.pid,
           }),
         );
         const child = spawn(runner, [policy], {
           ...options,
           cwd: workDir,
-          env: launchEnv,
+          env: executorEnv,
           shell: false,
           detached: false,
           windowsHide: true,
@@ -172,6 +349,7 @@ function createWindowsProcessSandbox({
         child.once('close', () => {
           children.delete(child);
           fs.rmSync(policy, { force: true });
+          fs.rmSync(request, { force: true });
         });
         return child;
       },
@@ -196,4 +374,11 @@ function createWindowsProcessSandbox({
   }
 }
 
-module.exports = { createWindowsProcessSandbox, windowsEnvironment, inside };
+module.exports = {
+  createWindowsProcessSandbox,
+  windowsEnvironment,
+  inside,
+  quoteWindowsArgument,
+  buildMxcPolicy,
+  assertMxcProbe,
+};

@@ -819,3 +819,12 @@ CSV/TSV 显示表格并提供表头开关、全文筛选与分页；普通 JSON 
 - 来源：用户反馈项目旁「+」无法选择领域，缺少 Domain Pack 安装引导，零 Pack 时无法默认使用通用领域。
 - 决定：通用领域是 Core 内置工作区能力，不需要 Pack；新增项目默认选通用，提供专业 Pack 安装入口，往返保留草稿，安装成功回填新领域。首次安装引导允许直接创建通用项目。后续领域切换仍在项目详情进行并隔离会话。
 - 边界：不虚构专业工具就绪，不绕过 Pack 校验、工具范围和审批，不更改固定领域 CLI 分包约束。安装失败可返回草稿继续通用项目。实现、验收命令与本机 Electron 启动限制见[项目创建与领域引导](project-onboarding.md)。
+
+## PD-085：Windows Agent 原生 MXC 候选后端
+
+- 日期：2026-10-19。
+- 状态：用户授权尝试；候选实现，Windows 原生与安装包验收未完成。
+- 来源：#225 及 #224 CI 证实随机 restricting SID 后端阻塞 NUL/管道和真实 Kimi；用户同意尝试微软 MXC。
+- 决定：Windows 后端使用固定 MXC 独立执行器及原生 BaseContainer/PSEC 能力门禁，仅 session/scratch 获得写入权限。为兼容当前 Electron 的 Node 版本，通过原生执行器保持标准输入输出，不修改上游 Kimi。
+- 可观察行为：缺少必要 Windows 原生能力时明确拒绝启动；不自动提权、不修改宿主 ACL，不退回旧 token、AppContainer/DACL 或裸跑。CLI 的残留状态检查使用本次独立目录，不处理其他 MXC 消费者的 ACL 日志。
+- 边界：保留 #224 Draft；定向策略测试不代表 Windows 执行已通过。Windows 11 版本、标准用户、per-user 安装及真实 Kimi/MCP/取消清理均需独立验收，不自动关闭 #223/#225；详见[Windows 隔离候选](windows-agent-isolation.md)。
