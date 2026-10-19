@@ -951,6 +951,11 @@ export interface RemoteTaskState {
   status: string;
   outcome?: string;
   needsImport?: boolean;
+  sessionRelease?: {
+    status: 'releasing' | 'released' | 'pending';
+    sessionId?: string;
+    code?: string;
+  };
 }
 export interface RemoteSessionState {
   id: string;

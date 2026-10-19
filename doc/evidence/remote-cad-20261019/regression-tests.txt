@@ -1,0 +1,58 @@
+✔ current snapshot protocol uploads exact bytes, then completes; rejects foreign targets before upload (9.103542ms)
+✔ official MCP transport refreshes headers on an existing connection and uses protected call contract (14.834375ms)
+✔ current artifact download checks the recorded digest and rejects corruption (0.474166ms)
+✔ official SDK initializes with host-bound headers and preserves invocation envelope (57.851375ms)
+▶ HTTP, JSON-RPC and tool errors retain retry outcomes without exposing diagnostics
+  ✔ http (13.617125ms)
+  ✔ jsonrpc (7.272292ms)
+  ✔ tool (5.863959ms)
+✔ HTTP, JSON-RPC and tool errors retain retry outcomes without exposing diagnostics (27.203875ms)
+▶ only explicitly retryable not_submitted failures are replayed with a bounded limit
+  ✔ unknown (4.513ms)
+  ✔ undefined (8.027292ms)
+  ✔ limit and Retry-After (10.419709ms)
+✔ only explicitly retryable not_submitted failures are replayed with a bounded limit (58.620417ms)
+✔ same application binding serializes clients; queued cancellation is never submitted (18.723458ms)
+✔ file upload verifies selected bytes and artifact download verifies metadata (14.382875ms)
+✔ unbound project creation and explicit application termination use separate routes (3.130583ms)
+✔ safe download rejects traversal, symlinks, overwrites and changed bytes (8.106708ms)
+✔ unbounded HTTP error streams and oversized structured tool results fail before full buffering (16.342792ms)
+✔ stable chat binding survives reconnect and restart without storing credentials (47.51325ms)
+✔ different chat, project, domain, service identity or credentials isolate application keys (66.844584ms)
+✔ corrupt or symlink binding files fail closed (11.536208ms)
+✔ binding reads reject file before open replacement and close the descriptor (14.930875ms)
+✔ binding reads reject file after open replacement and close the descriptor (12.602542ms)
+✔ binding reads reject symlink before open replacement and close the descriptor (11.442667ms)
+✔ binding reads reject removal after open replacement and close the descriptor (10.879209ms)
+✔ empty and text-only remote histories do not require execution setup or load Packs (45.592334ms)
+✔ persisted remote result records remain readable before remote execution is ready (94.541209ms)
+✔ one history read hashes each recorded file once and the next read detects changed content (635.072541ms)
+✔ ordinary files automatically register real refs, persist once and open only the recorded contents (49.9415ms)
+✔ explicit replacements preserve history; parallel outputs and optional selection retain all groups (80.270709ms)
+✔ failed request retains visible partial files and does not relabel the preceding success (58.064417ms)
+✔ late results keep the original request, cannot change a newer selection, and background readiness never arms preview (80.560667ms)
+✔ application tools work through the authenticated MCP bridge without an industrial runtime (29.4465ms)
+✔ current selection rejects changed bytes while preserving the recorded check (43.118083ms)
+✔ cancelled requests preserve actual partial outputs and never authorize automatic preview (50.491ms)
+Industrial result display failed: controlled display failure
+Industrial result view failed: controlled view failure
+✔ result display failures never block scope state synchronization (91.842667ms)
+✔ both application adapters reject cross-imports and industrial process bypasses (40.823416ms)
+✔ a new domain ID or agent dependency cannot enter generic core (31.750792ms)
+✔ manifest-only adapter and peer dependency violations are rejected before import (37.354166ms)
+✔ satellites cannot publish a competing canonical package (1.480083ms)
+✔ legacy orchestration may shrink but cannot grow or move into another adapter (12.323375ms)
+✔ frozen domain implementations cannot be edited, extended or rebaselined (19.547917ms)
+✔ a feature cannot widen its own exceptions or replace the trusted checker (11.81475ms)
+✔ domain source owns tools but cannot grow an application or canonical core (15.656083ms)
+✔ remote consumers require an exact Pack commit and matching locked integrity (2.855167ms)
+✔ remote domain verification and edits to canonical vendor snapshots are rejected (3.890958ms)
+✔ source and policy paths cannot escape through symlinks or traversal (1.853791ms)
+ℹ tests 46
+ℹ suites 0
+ℹ pass 46
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1753.740166

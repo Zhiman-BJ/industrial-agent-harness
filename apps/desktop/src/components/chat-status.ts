@@ -67,6 +67,16 @@ export function summarizeRemote({
   if (!service.executableDomains?.includes(domain) && !service.capabilities?.runtimeDiscovery)
     return { label: 'This remote domain is available for testing only.', tone: 'idle' };
   if (task) {
+    if (task.sessionRelease?.status === 'pending')
+      return { label: 'Remote result saved; sandbox release pending', tone: 'idle' };
+    if (task.sessionRelease?.status === 'released')
+      return {
+        label:
+          task.status === 'failed'
+            ? 'Remote task failed; sandbox released'
+            : 'Remote task completed; sandbox released',
+        tone: task.status === 'failed' ? 'bad' : 'ok',
+      };
     const labels: Record<string, string> = {
       submitting: 'Preparing remote task…',
       running: 'Running remotely…',

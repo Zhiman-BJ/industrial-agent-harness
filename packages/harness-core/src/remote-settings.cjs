@@ -147,6 +147,7 @@ class RemoteSettings {
     this.file = path.join(directory, 'remote-settings.json');
     this.reviews = new Map();
     this.locks = new Set();
+    this.sessionReleases = new Map();
     this.connection = { status: 'unchecked', domains: [] };
     this.sessions = new RemoteGatewaySessions({
       directory: path.join(directory, 'remote-sessions'),
@@ -631,6 +632,69 @@ class RemoteSettings {
       return await client.terminateSession(applicationSessionId);
     } finally {
       await client.close();
+    }
+  }
+  releaseCompletedSession(directory, domain, chatId) {
+    const key = this.taskFile(directory, domain, chatId);
+    if (this.sessionReleases.has(key)) return this.sessionReleases.get(key);
+    const promise = this.releaseCompletedSessionOnce(directory, domain, chatId).finally(() =>
+      this.sessionReleases.delete(key),
+    );
+    this.sessionReleases.set(key, promise);
+    return promise;
+  }
+  async releaseCompletedSessionOnce(directory, domain, chatId) {
+    const pending = this.task(directory, domain, chatId);
+    if (
+      !pending ||
+      pending.needsImport !== false ||
+      pending.outcome !== 'completed' ||
+      !['completed', 'failed'].includes(pending.status)
+    )
+      return null;
+    if (pending.sessionRelease?.status === 'released') return pending.sessionRelease;
+    const binding = this.sessionBinding(directory, domain, chatId);
+    const client = this.sessionClient(directory, domain, chatId);
+    const record = value => {
+      if (this.task(directory, domain, chatId)?.invocationId !== pending.invocationId)
+        throw Error('Remote task changed during session release.');
+      writePrivateJson(this.taskFile(directory, domain, chatId), {
+        ...pending,
+        sessionRelease: value,
+      });
+      return value;
+    };
+    try {
+      // Recover a crash between confirmed teardown and the final journal write.
+      if (
+        binding.status === 'released' &&
+        binding.previousApplicationSessionId &&
+        pending.sessionRelease?.sessionId === binding.previousApplicationSessionId
+      )
+        return record({ status: 'released', sessionId: binding.previousApplicationSessionId });
+      const current = await client.currentSession();
+      if (
+        current.projectId !== binding.remoteProjectId ||
+        current.domain !== domain ||
+        current.clientSessionId !== binding.clientSessionId ||
+        current.callLocked
+      )
+        throw Error('Remote session identity changed or is busy; automatic release deferred.');
+      record({ status: 'releasing', sessionId: current.id });
+      const stopped =
+        current.status === 'stopped' ? current : await client.terminateSession(current.id);
+      if (stopped.id !== current.id || stopped.status !== 'stopped')
+        throw Error('Remote sandbox release was not confirmed.');
+      const observed = this.sessions.update(binding, {
+        applicationSessionId: current.id,
+        status: 'stopped',
+      });
+      this.sessions.renewReleased(observed, current.id);
+      return record({ status: 'released', sessionId: current.id });
+    } catch (error) {
+      return record({ status: 'pending', code: error.code || 'RELEASE_UNCONFIRMED' });
+    } finally {
+      await client.close().catch(() => {});
     }
   }
   async artifacts(directory, domain) {

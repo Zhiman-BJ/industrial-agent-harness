@@ -1,0 +1,4 @@
+{
+  "message": "Remote gateway request failed (http, SESSION_NOT_FOUND, 404).",
+  "code": "SESSION_NOT_FOUND"
+}

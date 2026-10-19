@@ -16,6 +16,13 @@ async function setup(
     metadataOnly = false,
     staleCatalog = false,
     failedReceipt = false,
+    workerTools = ['test.run'],
+    wrongDescription = false,
+    releaseSessions = true,
+    releaseFailure = false,
+    releaseSessionChange = {},
+    unconfirmedStop = false,
+    sessionLimit = 1,
   } = {},
 ) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'current-runtime-'));
@@ -29,9 +36,27 @@ async function setup(
     calls = 0;
   const bytes = Buffer.from('actual fixture evidence');
   const urls = [];
+  const sessions = new Map();
+  let terminations = 0;
   const fetch = async (url, init) => {
     const route = new URL(url).pathname;
     urls.push(route);
+    const clientSessionId = new Headers(init.headers).get('x-client-session-id');
+    if (releaseSessions && route === '/v1/sessions/current/test') {
+      const session = sessions.get(clientSessionId);
+      return session
+        ? json({ ...session, ...releaseSessionChange })
+        : new Response(JSON.stringify({ error: { code: 'SESSION_NOT_FOUND' } }), { status: 404 });
+    }
+    if (releaseSessions && route.endsWith('/terminate')) {
+      terminations++;
+      if (releaseFailure === true || (releaseFailure === 'once' && terminations === 1))
+        throw Error('Teardown transport lost');
+      const session = [...sessions.values()].find(item => route.includes(item.id));
+      assert.ok(session);
+      session.status = unconfirmedStop ? 'stopping' : 'stopped';
+      return json(session);
+    }
     if (route === '/v1/service-info')
       return json({
         version: '1.1.0',
@@ -47,7 +72,7 @@ async function setup(
                   {
                     id: 'native',
                     descriptor: { id: 'test.run', version: '1' },
-                    worker: { toolIds: ['test.run'] },
+                    worker: { toolIds: workerTools },
                   },
                 ],
               },
@@ -85,7 +110,21 @@ async function setup(
       if (!init.body) return new Response(null, { status: 405 });
       const body = JSON.parse(init.body);
       if (body.id === undefined) return new Response(null, { status: 202 });
-      if (body.method === 'initialize')
+      if (body.method === 'initialize') {
+        if (releaseSessions && !sessions.has(clientSessionId)) {
+          assert.ok(
+            [...sessions.values()].filter(item => item.status !== 'stopped').length < sessionLimit,
+            'active session quota',
+          );
+          sessions.set(clientSessionId, {
+            id: randomUUID(),
+            projectId,
+            domain: 'test',
+            clientSessionId,
+            status: 'idle',
+            callLocked: false,
+          });
+        }
         return json({
           jsonrpc: '2.0',
           id: body.id,
@@ -95,6 +134,7 @@ async function setup(
             serverInfo: { name: 'fixture', version: '1' },
           },
         });
+      }
       let payload;
       if (body.params.name === 'domain_tool_list')
         payload = {
@@ -106,8 +146,11 @@ async function setup(
             : { tools: [{ id: 'test.run', risk: 'mutating' }] }),
         };
       else if (body.params.name === 'domain_tool_describe') {
-        assert.equal(body.params.arguments.toolId, 'test.run');
-        payload = { tool: { id: 'test.run' }, inputs: { type: 'object' } };
+        assert.ok(workerTools.includes(body.params.arguments.toolId));
+        payload = {
+          tool: { id: wrongDescription ? 'test.foreign' : body.params.arguments.toolId },
+          inputs: { type: 'object' },
+        };
       } else {
         calls++;
         assert.equal(body.params.arguments.snapshotId, snapshotId);
@@ -175,6 +218,10 @@ async function setup(
     projectDir,
     chatId,
     urls,
+    sessions,
+    get terminations() {
+      return terminations;
+    },
     get runtime() {
       return runtime;
     },
@@ -241,6 +288,39 @@ test('metadata-only discovery rejects a different catalog snapshot before any mu
   await assert.rejects(f.runtime.inspect(), /capability snapshot/);
   assert.equal(f.calls, 0);
 });
+test('metadata-only discovery exposes every protected worker tool, not only the entry descriptor', async t => {
+  const workerTools = ['test.run', 'test.inspect', 'test.export', 'test.edit'];
+  const f = await setup(t, { metadataOnly: true, workerTools });
+  await f.runtime.inspect();
+  assert.deepEqual(
+    f.runtime.remoteTools.map(tool => tool.id),
+    workerTools,
+  );
+  const result = await invoke(f);
+  const index = JSON.parse(
+    fs.readFileSync(
+      path.join(
+        f.projectDir,
+        path.dirname(result.artifacts[0].relativePath),
+        'artifact-bundle.json',
+      ),
+    ),
+  );
+  assert.equal(index.artifacts[0].sha256, result.artifacts[0].sha256);
+  assert.equal(index.artifacts[0].name, path.basename(result.artifacts[0].relativePath));
+});
+for (const options of [
+  { workerTools: ['test.run', 'test.run'] },
+  { workerTools: [] },
+  { workerTools: Array(129).fill('test.run') },
+  { wrongDescription: true },
+])
+  test(`invalid protected worker inventory is rejected: ${JSON.stringify(options)}`, async t => {
+    const f = await setup(t, { metadataOnly: true, ...options });
+    await assert.rejects(f.runtime.inspect(), /profile/i);
+    assert.equal(f.calls, 0);
+    assert.deepEqual(f.runtime.remoteTools, []);
+  });
 for (const failure of ['corrupt', 'disconnect'])
   test(`current runtime rejects ${failure} without replaying mutation`, async t => {
     const f = await setup(t, { [failure]: true });
@@ -416,7 +496,7 @@ test('the import flag clears only after canonical records are readable', async t
 });
 
 test('a chat awaiting discovery cannot bypass another chat newly requiring import', async t => {
-  const f = await setup(t);
+  const f = await setup(t, { sessionLimit: 2 });
   const state = await f.runtime.inspect();
   const client = f.runtime.context(f.chatId).client;
   const list = client.listTools.bind(client);
@@ -451,3 +531,105 @@ test('a chat awaiting discovery cannot bypass another chat newly requiring impor
   assert.match(result.action.diagnostics.join('\n'), /import/);
   assert.equal(f.calls, 1);
 });
+
+test('completed imports automatically release quota and the same chat can run again', async t => {
+  const f = await setup(t, { releaseSessions: true });
+  const firstBinding = f.settings.sessionBinding(f.projectDir, 'test', f.chatId);
+  const first = await invoke(f);
+  assert.equal(first.action.status, 'completed');
+  assert.equal(f.terminations, 1);
+  assert.equal(f.runtime.status().sessionRelease.status, 'released');
+  const nextBinding = f.settings.sessionBinding(f.projectDir, 'test', f.chatId);
+  assert.notEqual(nextBinding.clientSessionId, firstBinding.clientSessionId);
+  assert.equal(
+    nextBinding.previousApplicationSessionId,
+    f.runtime.status().sessionRelease.sessionId,
+  );
+  await f.runtime.inspect();
+  assert.equal(f.sessions.size, 1, 'post-turn refresh must not reacquire the released quota');
+  const second = await invoke(f);
+  assert.equal(second.action.status, 'completed', second.action.diagnostics.join('\n'));
+  assert.equal(f.terminations, 2);
+  assert.equal(f.calls, 2);
+  assert.equal(f.sessions.size, 2);
+  assert.ok([...f.sessions.values()].every(item => item.status === 'stopped'));
+  assert.equal(f.runtime.get('action', first.action.id).status, 'completed');
+});
+test('uncertain sandbox release preserves committed results and does not rotate the session key', async t => {
+  const f = await setup(t, { releaseSessions: true, releaseFailure: true });
+  const binding = f.settings.sessionBinding(f.projectDir, 'test', f.chatId);
+  const result = await invoke(f);
+  assert.equal(result.action.status, 'completed');
+  assert.equal(result.verification.status, 'passed');
+  assert.equal(f.runtime.status().sessionRelease.status, 'pending');
+  assert.equal(
+    f.settings.sessionBinding(f.projectDir, 'test', f.chatId).clientSessionId,
+    binding.clientSessionId,
+  );
+  await assert.rejects(() => f.runtime.inspect(), /release is not confirmed/);
+  assert.equal(f.calls, 1, 'uncertain teardown must not dispatch another engineering call');
+});
+test('a later refresh confirms deferred release before the same chat executes again', async t => {
+  const f = await setup(t, { releaseSessions: true, releaseFailure: 'once' });
+  const first = await invoke(f);
+  assert.equal(first.action.status, 'completed');
+  assert.equal(f.runtime.status().sessionRelease.status, 'pending');
+  await f.runtime.inspect();
+  assert.equal(f.runtime.status().sessionRelease.status, 'released');
+  assert.equal(f.sessions.size, 1);
+  const second = await invoke(f);
+  assert.equal(second.action.status, 'completed');
+  assert.equal(f.calls, 2);
+  assert.equal(f.terminations, 3);
+});
+test('closing a released MCP transport cannot invalidate the committed result', async t => {
+  const f = await setup(t);
+  const state = await f.runtime.inspect();
+  const client = f.runtime.context(f.chatId).client;
+  const close = client.close.bind(client);
+  client.close = async () => {
+    await close();
+    throw Error('Injected transport close failure');
+  };
+  const result = await executeFrom(f, state);
+  assert.equal(result.action.status, 'completed');
+  assert.equal(result.verification.status, 'passed');
+  assert.equal(f.runtime.status().sessionRelease.status, 'released');
+});
+for (const releaseSessionChange of [
+  { callLocked: true },
+  { projectId: randomUUID() },
+  { clientSessionId: randomUUID() },
+  { domain: 'foreign' },
+])
+  test(`automatic release rejects mismatched or busy session: ${Object.keys(releaseSessionChange)[0]}`, async t => {
+    const f = await setup(t, { releaseSessions: true, releaseSessionChange });
+    const binding = f.settings.sessionBinding(f.projectDir, 'test', f.chatId);
+    const result = await invoke(f);
+    assert.equal(result.action.status, 'completed');
+    assert.equal(f.runtime.status().sessionRelease.status, 'pending');
+    assert.equal(f.terminations, 0);
+    assert.equal(
+      f.settings.sessionBinding(f.projectDir, 'test', f.chatId).clientSessionId,
+      binding.clientSessionId,
+    );
+  });
+test('stopping does not count as a confirmed released sandbox', async t => {
+  const f = await setup(t, { releaseSessions: true, unconfirmedStop: true });
+  const binding = f.settings.sessionBinding(f.projectDir, 'test', f.chatId);
+  const result = await invoke(f);
+  assert.equal(result.verification.status, 'passed');
+  assert.equal(f.runtime.status().sessionRelease.status, 'pending');
+  assert.equal(
+    f.settings.sessionBinding(f.projectDir, 'test', f.chatId).clientSessionId,
+    binding.clientSessionId,
+  );
+});
+for (const failure of ['corrupt', 'disconnect'])
+  test(`automatic release preserves ${failure} recovery evidence`, async t => {
+    const f = await setup(t, { releaseSessions: true, [failure]: true });
+    await invoke(f);
+    assert.equal(f.terminations, 0);
+    assert.equal(await f.settings.releaseCompletedSession(f.projectDir, 'test', f.chatId), null);
+    assert.equal(f.terminations, 0);
+  });
