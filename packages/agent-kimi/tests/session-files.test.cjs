@@ -24,7 +24,7 @@ test('Kimi session receives only selected repository skills and an isolated MCP 
   });
 });
 
-test('session exposes project skill roots without copying or changing project files', t => {
+test('session exposes project skill roots without changing project files', t => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'industrial-project-skills-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const project = path.join(root, 'project with spaces');
@@ -54,30 +54,35 @@ test('session exposes project skill roots without copying or changing project fi
   prepareSessionFiles(scope, runtime, session, project);
   const config = fs.readFileSync(path.join(session, 'config.toml'), 'utf8');
   const extra = JSON.parse(config.split('\n')[0].split(' = ')[1]);
+  const inputRoot = process.platform === 'win32' ? path.join(session, 'workspace') : project;
   assert.deepEqual(extra, [
-    fs.realpathSync(path.join(project, '.skill')),
-    fs.realpathSync(path.join(project, '.skills')),
-    fs.realpathSync(path.join(project, '.claude/skills')),
-    fs.realpathSync(path.join(project, '.codex/skills')),
+    fs.realpathSync(path.join(inputRoot, '.skill')),
+    fs.realpathSync(path.join(inputRoot, '.skills')),
+    fs.realpathSync(path.join(inputRoot, '.claude/skills')),
+    fs.realpathSync(path.join(inputRoot, '.codex/skills')),
     path.join(session, 'skills'),
   ]);
   for (const brand of ['.kimi', '.claude', '.codex', '.agents']) {
     const mapped = path.join(session, 'workspace', brand, 'skills');
-    assert.equal(fs.realpathSync(mapped), fs.realpathSync(path.join(project, brand, 'skills')));
+    if (process.platform === 'win32') assert.equal(fs.lstatSync(mapped).isSymbolicLink(), false);
+    else
+      assert.equal(fs.realpathSync(mapped), fs.realpathSync(path.join(project, brand, 'skills')));
     assert.match(
       fs.readFileSync(path.join(mapped, 'local-guide/SKILL.md'), 'utf8'),
       /Original content/,
     );
   }
   assert.deepEqual(fs.readdirSync(path.join(session, 'skills')), []);
-  assert.equal(
-    fs.realpathSync(path.join(session, 'workspace/AGENTS.md')),
-    fs.realpathSync(path.join(project, 'AGENTS.md')),
-  );
-  assert.equal(
-    fs.realpathSync(path.join(session, 'workspace/.kimi/AGENTS.md')),
-    fs.realpathSync(path.join(project, '.kimi/AGENTS.md')),
-  );
+  for (const relative of ['AGENTS.md', '.kimi/AGENTS.md']) {
+    const mapped = path.join(session, 'workspace', relative);
+    if (process.platform === 'win32') {
+      assert.equal(fs.lstatSync(mapped).isSymbolicLink(), false);
+      assert.equal(
+        fs.readFileSync(mapped, 'utf8'),
+        fs.readFileSync(path.join(project, relative), 'utf8'),
+      );
+    } else assert.equal(fs.realpathSync(mapped), fs.realpathSync(path.join(project, relative)));
+  }
   // Re-preparing persistent storage must not leave deleted project roots active.
   fs.rmSync(path.join(project, '.kimi'), { recursive: true });
   fs.rmSync(path.join(project, '.skill'), { recursive: true });
@@ -91,9 +96,9 @@ test('session exposes project skill roots without copying or changing project fi
       fs.readFileSync(path.join(session, 'config.toml'), 'utf8').split('\n')[0].split(' = ')[1],
     ),
     [
-      fs.realpathSync(path.join(project, '.skills')),
-      fs.realpathSync(path.join(project, '.claude/skills')),
-      fs.realpathSync(path.join(project, '.codex/skills')),
+      fs.realpathSync(path.join(inputRoot, '.skills')),
+      fs.realpathSync(path.join(inputRoot, '.claude/skills')),
+      fs.realpathSync(path.join(inputRoot, '.codex/skills')),
       path.join(session, 'skills'),
     ],
   );
@@ -113,10 +118,16 @@ test('missing project skill roots are optional and workspace parent links are re
   fs.writeFileSync(path.join(project, '.skill'), 'a file is not a skills root');
   assert.deepEqual(prepareProjectWorkspace(session, project), []);
   fs.symlinkSync(project, path.join(session, 'workspace/.kimi'), 'junction');
-  assert.throws(() => prepareProjectWorkspace(session, project), /requires a session directory/);
+  assert.throws(
+    () => prepareProjectWorkspace(session, project),
+    /requires a session directory|input links are not permitted/,
+  );
   fs.rmSync(path.join(session, 'workspace'), { recursive: true });
   fs.symlinkSync(project, path.join(session, 'workspace'), 'junction');
-  assert.throws(() => prepareProjectWorkspace(session, project), /session workspace directory/);
+  assert.throws(
+    () => prepareProjectWorkspace(session, project),
+    /session workspace directory|input links are not permitted/,
+  );
   assert.equal(
     fs.readFileSync(path.join(project, '.skill'), 'utf8'),
     'a file is not a skills root',

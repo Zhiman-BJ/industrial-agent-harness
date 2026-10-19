@@ -30,6 +30,16 @@ function createProcessSandbox({
 }) {
   environment = { ...environment };
   for (const key of hostOnlyEnv) delete environment[key];
+  if (platform === 'win32')
+    return require('./windows-sandbox.cjs').createWindowsProcessSandbox({
+      executable,
+      shareDir,
+      projectDir,
+      protectedPaths,
+      environment,
+      hostOnlyEnv,
+      kimiProjectAccess,
+    });
   if (
     !['darwin', 'linux'].includes(platform) ||
     (platform === 'darwin' && !fs.existsSync('/usr/bin/sandbox-exec'))

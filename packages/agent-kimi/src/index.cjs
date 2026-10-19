@@ -487,7 +487,10 @@ class KimiSession {
               approvalMode,
               ...(this.sessionFactory === createSession
                 ? {
-                    executionBoundary: 'seatbelt-workspace-v1',
+                    executionBoundary:
+                      process.platform === 'win32'
+                        ? 'windows-restricted-token-low-integrity-v1'
+                        : 'seatbelt-workspace-v1',
                     projectWorkspace: 'inputs-v1',
                   }
                 : {}),
@@ -564,6 +567,8 @@ class KimiSession {
           projectDir: this.workDir,
           ...(this.persistentSession ? { sessionId: this.persistentSession.id } : {}),
           executable: this.processSandbox?.executable || runtime.executable,
+          spawn: this.processSandbox?.spawn,
+          envIsolated: Boolean(this.processSandbox),
           shareDir: this.sessionConfigDir,
           resumeRequired: Boolean(stored?.initialized),
           model: 'industrial',
@@ -602,7 +607,7 @@ class KimiSession {
       } else
         log.record('session.reuse', { sessionId: this.session.sessionId || null, currentScopeKey });
       const projectContext = this.processSandbox
-        ? `\nBound engineering Project: ${this.workDir}. Native working directory is isolated session scratch; the project/ symlink exposes the real project for reading. Changes to scratch do not modify the engineering Project. Use absolute Project paths or project/ for inspection, and industrial_action_call for authorized engineering mutations.`
+        ? `\nBound engineering Project: ${this.workDir}. Native working directory is isolated session scratch.${this.processSandbox.projectAlias === false ? '' : ' The project/ symlink exposes the real project for reading.'} Changes to scratch do not modify the engineering Project. Use absolute Project paths${this.processSandbox.projectAlias === false ? '' : ' or project/'} for inspection, and industrial_action_call for authorized engineering mutations.`
         : '';
       const prompt = `${context}${projectContext}\n\nUser task: ${task}${images.length ? '\nAttached images are user-provided visual references, not engineering verification.' : ''}`;
       const content = imageContent(prompt, images, runtime.profile.imageInput);

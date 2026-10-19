@@ -245,7 +245,7 @@ class CodeSession {
         ? bundledExecutable()
         : this.options.executable;
     const script = /\.[cm]?js$/.test(executable);
-    this.child = spawn(
+    this.child = (this.options.spawn || spawn)(
       script ? process.execPath : executable,
       [
         ...(script ? [executable] : []),
@@ -259,7 +259,7 @@ class CodeSession {
       {
         cwd: this.options.workDir,
         env: {
-          ...process.env,
+          ...(this.options.envIsolated ? {} : process.env),
           ...this.options.env,
           KIMI_CODE_HOME: this.home,
           ELECTRON_RUN_AS_NODE: '1',
