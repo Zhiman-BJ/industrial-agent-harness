@@ -110,3 +110,139 @@ test('remote credential provider uses its resource token and rotates the shared 
   await assert.rejects(client.info(), /project account/);
   assert.equal(headers.length, 2);
 });
+
+test('token acquisition rejects account switches and logout before sending a request', async t => {
+  for (const next of ['second', null]) {
+    let subject = 'first';
+    let sends = 0;
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'remote-token-race-'));
+    t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+    const account = {
+      config: { remoteOrigin: 'https://remote.example' },
+      view: () => ({ user: subject ? { sub: subject } : null }),
+      serviceToken: async () => {
+        subject = next;
+        return 'foreign-token';
+      },
+    };
+    const client = new RemoteSettings({
+      directory,
+      account,
+      environment: {},
+      fetch: async () => {
+        sends++;
+        return Response.json({});
+      },
+    }).client();
+    await assert.rejects(client.info(), /project account/);
+    assert.equal(sends, 0);
+  }
+});
+
+test('account switch during invalid_token refresh prevents the retry', async t => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'remote-retry-race-'));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  let subject = 'first',
+    sends = 0;
+  const account = {
+    config: { remoteOrigin: 'https://remote.example' },
+    view: () => ({ user: { sub: subject } }),
+    serviceToken: async (_service, _target, options) => {
+      if (options?.rejectedToken) subject = 'second';
+      return subject + '-token';
+    },
+  };
+  const client = new RemoteSettings({
+    directory,
+    account,
+    environment: {},
+    fetch: async (_url, options) => {
+      sends++;
+      assert.equal(options.headers.Authorization, 'Bearer first-token');
+      return new Response('{}', {
+        status: 401,
+        headers: { 'www-authenticate': 'Bearer error="invalid_token"' },
+      });
+    },
+  }).client();
+  await assert.rejects(client.info(), /project account/);
+  assert.equal(sends, 1);
+});
+
+test('two AuthManagers sharing a CLI session cannot send the new account token via an old client', async t => {
+  const { AuthManager, SessionStore } = require('../../harness-auth/src/index.cjs');
+  const { createIssuer } = require('../../harness-auth/tests/issuer.cjs');
+  const { fetch, createServer } = require('../../harness-auth/tests/memory-http.cjs');
+  const issuer = await createIssuer();
+  t.after(issuer.close);
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'remote-shared-cli-'));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const claims = token => JSON.parse(Buffer.from(token.split('.')[1], 'base64url'));
+  let subject = 'user-123';
+  const transport = async (input, init) => {
+    const response = await fetch(input, init);
+    const route = new URL(input).pathname;
+    if (route === '/userinfo') return Response.json({ sub: subject });
+    if (
+      route === '/token' &&
+      new URLSearchParams(init.body).get('grant_type') === 'authorization_code'
+    ) {
+      const result = await response.json();
+      result.id_token = await issuer.sign(
+        { nonce: claims(result.id_token).nonce },
+        'harness-native',
+        'JWT',
+        { subject },
+      );
+      return Response.json(result);
+    }
+    return response;
+  };
+  const manager = () =>
+    new AuthManager({
+      config: issuer.config,
+      createServer,
+      fetch: transport,
+      store: new SessionStore({ directory: path.join(directory, 'shared'), allowPlaintext: true }),
+    });
+  const first = manager(),
+    second = manager();
+  t.after(() => {
+    first.close();
+    second.close();
+  });
+  const login = account =>
+    account.login({
+      openBrowser: async url => {
+        await fetch(await issuer.authorize(url));
+      },
+    });
+  await login(first);
+  let sends = 0;
+  const client = new RemoteSettings({
+    directory,
+    environment: {},
+    account: first,
+    fetch: async () => {
+      sends++;
+      return Response.json({});
+    },
+  }).client();
+  subject = 'second-account';
+  await login(second);
+  issuer.behavior.transformServiceResponse = async result => {
+    result.access_token = await issuer.sign(
+      { client_id: 'harness-native' },
+      'industrial-mcp-remote',
+      'at+jwt',
+      { subject },
+    );
+  };
+  assert.equal(first.view().user.sub, 'user-123');
+  assert.equal(first.store.read().user.sub, subject);
+  await assert.rejects(client.createProject('chip'), /project account/);
+  assert.equal(first.view().user.sub, subject);
+  assert.equal(sends, 0);
+  await assert.rejects(client.info(), /project account/);
+  assert.equal(sends, 0);
+});

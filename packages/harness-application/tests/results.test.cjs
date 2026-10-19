@@ -11,7 +11,7 @@ const { RemoteSettings } = require('@industrial-agent-harness/harness-core');
 const { IndustrialRuntime } = require('@industrial-agent-harness/domain-runtime');
 const { TaskResults } = require('../src/results.cjs');
 
-function setup(t, script) {
+function setup(t, script, cleanupError) {
   const directory = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-results-')));
   const project = { id: 'project', domain: 'chip', path: path.join(directory, 'project') };
   fs.mkdirSync(project.path);
@@ -59,7 +59,11 @@ function setup(t, script) {
   const chat = tasks.chats.create(project.path, project.domain);
   let entry = tasks.resume(project, chat.id);
   t.after(async () => {
-    await tasks.close();
+    if (cleanupError)
+      await assert.rejects(tasks.close(), error =>
+        error.errors?.some(cause => cleanupError.test(cause.message)),
+      );
+    else await tasks.close();
     fs.rmSync(directory, { recursive: true, force: true });
   });
   return {
@@ -491,4 +495,63 @@ test('result display failures never block scope state synchronization', async t 
   // failure — assert the final status so nothing is swallowed.
   const done = await f.run('display failure isolation');
   assert.equal(done.status, 'completed');
+});
+
+test('persistent result view failure still finishes the turn and releases leases', async t => {
+  const f = setup(t, async ({ apply, context }) => {
+    context.view = () => {
+      throw Error('persistent presentation failure');
+    };
+    const result = JSON.parse((await apply([change('persistent.txt', 'committed')])).output);
+    assert.equal(result.actionStatus, 'completed');
+    assert.equal(f.entry.scope.stateId, result.stateId);
+  });
+  const done = await f.run('persistent display failure');
+  assert.equal(done.status, 'completed');
+  assert.equal(done.results, undefined);
+  assert.equal(fs.readFileSync(path.join(f.project.path, 'persistent.txt'), 'utf8'), 'committed');
+  assert.equal(f.tasks.sessions.busy(f.entry), false);
+  assert.equal(f.entry.release, undefined);
+  assert.equal(f.entry.releasePack, undefined);
+  assert.equal(
+    f.tasks.chats.history(f.entry.id, f.project.path, f.project.domain).turns.at(-1).status,
+    'completed',
+  );
+  await f.tasks.prepare(f.entry, { task: 'next turn' });
+});
+
+test('industrial-result consumer failure preserves action output and fresh scope', async t => {
+  const f = setup(t, async ({ apply }) => {
+    const result = JSON.parse((await apply([change('consumer.txt', 'committed')])).output);
+    assert.equal(result.actionStatus, 'completed');
+    assert.equal(f.entry.scope.stateId, result.stateId);
+  });
+  f.tasks.options.onEvent = event => {
+    if (event.type === 'industrial-result') throw Error('consumer failed');
+  };
+  assert.equal((await f.run('consumer failure')).status, 'completed');
+  assert.equal(f.tasks.sessions.busy(f.entry), false);
+});
+
+test('settlement persistence failure stays observable while turn and leases finish', async t => {
+  const f = setup(
+    t,
+    async ({ context }) => {
+      const append = f.tasks.chats.append.bind(f.tasks.chats);
+      f.tasks.chats.append = (id, event) => {
+        if (event.eventId?.startsWith('results-phase:')) throw Error('result persistence failed');
+        return append(id, event);
+      };
+      assert.equal(context.snapshot().phase, 'running');
+    },
+    /result persistence failed/,
+  );
+  await assert.rejects(f.run('storage failure'), /result persistence failed/);
+  assert.equal(f.tasks.sessions.busy(f.entry), false);
+  assert.equal(f.entry.release, undefined);
+  assert.equal(f.entry.releasePack, undefined);
+  assert.equal(
+    f.tasks.chats.history(f.entry.id, f.project.path, f.project.domain).turns.at(-1).status,
+    'completed',
+  );
 });
