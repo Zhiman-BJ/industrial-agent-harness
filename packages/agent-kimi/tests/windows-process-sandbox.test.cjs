@@ -95,18 +95,25 @@ test('Windows token supports null-device I/O and headless subprocess primitives'
     const fs = require('node:fs');
     const path = require('node:path');
     const { spawnSync } = require('node:child_process');
+    const progress = value => fs.writeSync(2, 'Windows primitive probe: ' + JSON.stringify(value) + '\\n');
+    progress({ stage: 'javascript entered' });
     const nullDevice = [fs.constants.O_RDONLY, fs.constants.O_WRONLY, fs.constants.O_RDWR].map(flags => {
-      try { const fd = fs.openSync('NUL', flags); fs.closeSync(fd); return { flags, ok: true }; }
+      progress({ stage: 'open NUL', flags });
+      try { const fd = fs.openSync(String.fromCharCode(92, 92, 46, 92) + 'NUL', flags); fs.closeSync(fd); return { flags, ok: true }; }
       catch (error) { return { flags, ok: false, code: error.code, syscall: error.syscall }; }
     });
+    progress({ nullDevice });
     const files = ['input', 'output', 'error'].map((name, index) => fs.openSync(path.join(process.cwd(), name), index ? 'w' : 'w+'));
     const subprocesses = ['inherit', 'files', 'ignore', 'pipe'].map(mode => {
+      progress({ stage: 'spawn', mode });
       try {
         const result = spawnSync(process.execPath, ['-e', 'process.exit(0)'], {
           stdio: mode === 'files' ? files : mode, windowsHide: true,
           timeout: 1500, encoding: 'utf8',
         });
-        return { mode, status: result.status, code: result.error?.code, stderr: result.stderr };
+        const item = { mode, status: result.status, code: result.error?.code, stderr: result.stderr };
+        progress(item);
+        return item;
       } catch (error) { return { mode, code: error.code, syscall: error.syscall }; }
     });
     for (const fd of files) fs.closeSync(fd);
