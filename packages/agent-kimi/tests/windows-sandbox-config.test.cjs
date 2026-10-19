@@ -177,6 +177,36 @@ test('Windows MXC requires a usable BaseContainer for the complete requested pol
     assert.throws(() => assertMxcProbe(probe), /MXC|PSEC|BaseContainer|probe/i);
 });
 
+test('Windows packaged read grants use physical ASAR archives instead of virtual members', () => {
+  const archive = 'C:\\Apps\\Harness\\resources\\app.asar';
+  const uppercaseArchive = 'C:\\Apps\\Other\\resources\\APP.ASAR';
+  const virtualMembers = [
+    archive + '\\node_modules\\@moonshot-ai\\kimi-code\\dist\\main.mjs',
+    archive + '\\node_modules\\@industrial-agent-harness\\agent-kimi\\src\\index.cjs',
+    uppercaseArchive + '\\electron\\main.cjs',
+  ];
+  const unpacked = archive + '.unpacked\\node_modules\\runtime\\native.exe';
+  const fileSystem = {
+    readdirSync(volume) {
+      assert.equal(volume, 'C:\\');
+      return [{ name: 'Apps' }];
+    },
+    realpathSync(file) {
+      assert.equal(file, 'C:\\Apps');
+      return file;
+    },
+  };
+  const roots = hostReadRoots([...virtualMembers, archive, unpacked], fileSystem);
+  assert.deepEqual(roots, [archive, uppercaseArchive, unpacked, 'C:\\', 'C:\\Apps']);
+  const policy = buildMxcPolicy(mxcLaunch({ readonlyRoots: roots }));
+  assert.deepEqual(policy.filesystem.readonlyPaths, roots);
+  assert.equal(
+    policy.filesystem.readonlyPaths.some(file => /\.asar\\/i.test(file)),
+    false,
+    'native filesystem grants must never contain an Electron virtual archive member',
+  );
+});
+
 test('Windows implicit read grants omit inaccessible paging files without losing explicit roots', () => {
   const explicit = ['D:\\Projects\\design', 'D:\\Runtime\\node.exe'];
   const errors = new Map([

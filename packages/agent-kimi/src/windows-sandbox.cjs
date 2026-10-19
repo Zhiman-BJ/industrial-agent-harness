@@ -121,15 +121,17 @@ function materializeMxc(directory) {
 }
 
 function hostReadRoots(paths, fileSystem = fs) {
+  // Electron resolves JS entries inside app.asar, but the Windows kernel
+  // opens the physical archive. Native grants must never name virtual members.
+  paths = paths.filter(Boolean).map(value => /^(.*?\.asar)(?:\\|$)/i.exec(value)?.[1] || value);
   // A native volume-root grant is not recursive. Expand its immediate children
   // so existing host reads remain available while writes stay separately scoped.
   const volumes = new Set(
     paths
-      .filter(Boolean)
       .filter(value => /^[a-z]:\\/i.test(value))
       .map(value => path.win32.parse(value).root.toUpperCase()),
   );
-  const roots = new Set(paths.filter(Boolean));
+  const roots = new Set(paths);
   for (const volume of volumes) {
     roots.add(volume);
     for (const entry of fileSystem.readdirSync(volume, { withFileTypes: true })) {
