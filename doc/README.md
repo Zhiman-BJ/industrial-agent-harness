@@ -67,6 +67,7 @@ Godot/PCB 的源工程文件另有[受限只读预览](engineering-file-viewers.
 | [双版本产品边界与公开清单](editions.md) | Internal/OSS edition 划分、机器清单校验、导出约定与发布门禁（#101/#100） |
 | [Micius Harness 开源版发布流程](oss-release-runbook.md) | 外部开源仓库首发/例行发布操作手册：待定案清单、工程缺口、T0–T9 序列、泄密扫描与验收 DoD |
 | [桌面 UI 优化](desktop-ui-refinement.md) | Impeccable 产品模式、设计系统、首次使用与项目导航、主题与窗口验收 |
+| [项目创建与领域引导](project-onboarding.md) | General 默认领域、安装往返草稿与跨平台引导验收 |
 | [自适应窗口与标签页](desktop-layouts.md) | 两列／多标签切换、窄窗口、显示器边界、查看状态与回归 |
 | [桌面语言切换](desktop-languages.md) | 中英文与跟随系统、偏好保存、自有控件范围、状态保留与验证 |
 | [架构决策记录](decisions.md) | 已确定的决定、提案间的差异和需要验证的接口 |

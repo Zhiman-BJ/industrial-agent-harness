@@ -811,3 +811,11 @@ CSV/TSV 显示表格并提供表头开关、全文筛选与分页；普通 JSON 
 - 来源：用户 2026-10-12 决定；本条取代 PD-069 中 "apps.cli 作为公开适配器" 的条款，PD-069 其余内容（双版本边界、机器清单机制、导出器约束）不变。
 - 决定：`apps/cli`（含 headless 打包链、Linux Chip 安装器、bench CLI runner 与 inspect-log 诊断）与 `packages/sdk`（运行契约为驱动内部打包的 headless CLI）转入 internal edition，不进入公开导出。机器清单同步翻转（原 `apps.cli` 公开条目、`packages.sdk` 公开条目与 `internal.diagnostics.cli-inspect-log` 覆盖条目合并为 `internal.apps.cli` 与 `internal.packages.sdk`）；公开 README 不再宣传 CLI，CLI 完整文档保留在 `apps/cli/README.md`（internal，不导出）。
 - 边界：不物理删除任何文件——内部仓库继续维护 CLI 及其发行流水线（release-headless / release-linux-chip）；#106 导出器按清单自动剪枝（含 workspace/lockfile/workflow 与公开测试集选择）；公开代码残留的静态引用（`scripts/qualify-cad-tasks.cjs`、`packages/harness-application/tests/task-service.test.cjs` 指向 CLI；`scripts/benchmark-harness.cjs`、`scripts/benchmark-paired.cjs` 指向 SDK）记入 #102 只减不增台账，随构建隔离收敛归零。
+
+## PD-084：通用项目兜底与创建流程内的领域安装引导
+
+- 日期：2026-10-16。
+- 状态：源码已实现；共享任务路径及 macOS/Windows 原生 renderer 自测已通过（2026-10-19），专业软件资格边界不变。
+- 来源：用户反馈项目旁「+」无法选择领域，缺少 Domain Pack 安装引导，零 Pack 时无法默认使用通用领域。
+- 决定：通用领域是 Core 内置工作区能力，不需要 Pack；新增项目默认选通用，提供专业 Pack 安装入口，往返保留草稿，安装成功回填新领域。首次安装引导允许直接创建通用项目。后续领域切换仍在项目详情进行并隔离会话。
+- 边界：不虚构专业工具就绪，不绕过 Pack 校验、工具范围和审批，不更改固定领域 CLI 分包约束。安装失败可返回草稿继续通用项目。实现、验收命令与本机 Electron 启动限制见[项目创建与领域引导](project-onboarding.md)。

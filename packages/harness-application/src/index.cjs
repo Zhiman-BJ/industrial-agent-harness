@@ -233,7 +233,8 @@ class TaskService {
     entry.cancelReason = undefined;
     const settled = this.beginOperation();
     try {
-      entry.releasePack = this.packManager?.acquireUse(entry.project.domain);
+      if (!this.registry().domains.find(item => item.id === entry.project.domain)?.builtin)
+        entry.releasePack = this.packManager?.acquireUse(entry.project.domain);
       entry.release = this.chats.acquire(entry.id);
       this.chats.recoverInterrupted();
       const current = await this.resolve(entry, { ...entry.resolvedRequest, task });

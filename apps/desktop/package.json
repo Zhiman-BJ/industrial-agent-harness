@@ -17,6 +17,7 @@
     "test:browser": "electron . --browser-selftest",
     "test:language": "electron . --language-selftest",
     "test:ui": "electron . --ui-selftest",
+    "test:project-onboarding": "electron . --project-onboarding-selftest",
     "test:messages": "electron . --messages-selftest",
     "test:engineering": "electron . --engineering-selftest",
     "test:cad": "electron . --cad-selftest",

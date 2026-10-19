@@ -30,6 +30,17 @@ const {
 } = require('@industrial-agent-harness/pack-manager/src/catalog.cjs');
 if (app.isPackaged && !process.env.INDUSTRIAL_HARNESS_PACK_STORE)
   process.env.INDUSTRIAL_HARNESS_PACK_STORE = defaultPackDirectory();
+if (process.argv.includes('--project-onboarding-selftest')) {
+  process.env.INDUSTRIAL_HARNESS_PACK_STORE = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'project-onboarding-packs-'),
+  );
+  delete process.env.INDUSTRIAL_HARNESS_PACK_CATALOG_URL;
+  delete process.env.INDUSTRIAL_HARNESS_PACK_KEYS_FILE;
+  process.env.INDUSTRIAL_HARNESS_PACK_FEED_FILE = path.join(
+    process.env.INDUSTRIAL_HARNESS_PACK_STORE,
+    'no-feed.json',
+  );
+}
 if (process.argv.includes('--packaged-smoke'))
   process.env.INDUSTRIAL_HARNESS_PACK_STORE =
     process.env.HARNESS_PACKAGED_SMOKE_STORE ||
@@ -166,6 +177,7 @@ if (
     '--replay-selftest',
     '--packaged-smoke',
     '--install-experience-selftest',
+    '--project-onboarding-selftest',
     '--container-install-selftest',
   ].some(flag => process.argv.includes(flag))
 )
@@ -824,12 +836,14 @@ function registerHandlers() {
         : null,
     installed: managedPacks
       ? packManager.list().map(item => describeInstalled(packManager, item))
-      : installedDomains().map(item => ({
-          domain: item.id,
-          version: 'development',
-          label: item.label,
-          emoji: item.emoji,
-        })),
+      : installedDomains()
+          .filter(item => !item.builtin)
+          .map(item => ({
+            domain: item.id,
+            version: 'development',
+            label: item.label,
+            emoji: item.emoji,
+          })),
     errors: managedPacks ? packManager.scan().errors : [],
   }));
   ipcMain.handle('domains:available', async () => {
@@ -1823,6 +1837,13 @@ async function createWindow() {
   });
   if (process.env.INDUSTRIAL_DEV_URL) await window.loadURL(process.env.INDUSTRIAL_DEV_URL);
   else await window.loadURL('app://viewer/index.html');
+  if (process.argv.includes('--project-onboarding-selftest')) {
+    await require('./project-onboarding-selftest.cjs').run(window, dialog, {
+      manager: packManager,
+    });
+    app.quit();
+    return;
+  }
   if (process.argv.includes('--container-install-selftest')) {
     await require('./container-install-selftest.cjs').run(window, { manager: packManager });
     app.quit();
@@ -1976,7 +1997,7 @@ async function createWindow() {
         );
       }
       const domains = await window.webContents.executeJavaScript(
-        `window.viewerHost.domains().then(items => items.map(item => item.id).sort())`,
+        `window.viewerHost.domains().then(items => items.filter(item => !item.builtin).map(item => item.id).sort())`,
       );
       if (JSON.stringify(domains) !== JSON.stringify(planned.map(item => item.id).sort()))
         throw Error('Installed Domains did not reach the registry.');

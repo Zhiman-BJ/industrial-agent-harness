@@ -1762,6 +1762,53 @@ body,
   color: var(--ia-muted);
   background: var(--ia-panel);
 }
+.ia-create-project {
+  width: min(560px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.ia-create-project > header,
+.ia-create-project > footer {
+  flex: none;
+}
+.ia-create-project h2 {
+  font-size: 16px;
+}
+.ia-create-project .ia-model-fields {
+  overflow-y: auto;
+}
+.ia-create-domains-guide {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--ia-border);
+  font-size: 12px;
+}
+.ia-create-domains-guide > div {
+  flex: 1 1 240px;
+}
+.ia-create-domains-guide strong {
+  font-weight: 500;
+}
+.ia-create-domains-guide p {
+  margin: 6px 0 0;
+  color: var(--ia-muted);
+  line-height: 1.6;
+}
+.ia-app .ia-create-install {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--ia-border);
+  padding: 8px 10px;
+  font-size: 12px;
+}
 .ia-domain-choices {
   display: flex;
   flex-wrap: wrap;

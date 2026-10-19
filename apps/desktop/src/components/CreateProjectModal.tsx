@@ -1,8 +1,8 @@
-import { useModalFocus } from '../use-modal-focus';
 import { DomainIcon } from '@industrial-agent-harness/viewer-builtin/domain-icon';
 import { useDisplayText } from '@industrial-agent-harness/viewer-builtin/text';
 import { useState } from 'react';
-import { FolderOpen, X } from 'lucide-react';
+import { useModalFocus } from '../use-modal-focus';
+import { FolderOpen, Download, X } from 'lucide-react';
 import type { DomainOption } from '@industrial-agent-harness/viewer-builtin/api';
 
 type Draft = { directory: string; name: string; domain: string };
@@ -21,6 +21,7 @@ export function CreateProjectModal({
   error,
   onChange,
   onChooseDirectory,
+  onManageDomains,
   onClose,
   onCreate,
 }: {
@@ -29,13 +30,19 @@ export function CreateProjectModal({
   error: string;
   onChange: (draft: Draft) => void;
   onChooseDirectory: () => Promise<void>;
+  onManageDomains: () => void;
   onClose: () => void;
   onCreate: (request: Draft) => Promise<void>;
 }) {
   const { t } = useDisplayText();
-  const dialog = useModalFocus(onClose);
   const [saving, setSaving] = useState(false);
+  const dialog = useModalFocus(() => {
+    if (!saving) onClose();
+  });
+  const selected = domains.find(item => item.id === draft.domain);
+  const hasPacks = domains.some(item => !item.builtin);
   async function create() {
+    if (saving || !selected || !draft.directory || !draft.name.trim()) return;
     setSaving(true);
     try {
       await onCreate(draft);
@@ -47,15 +54,15 @@ export function CreateProjectModal({
     <div
       className="ia-modal-backdrop"
       onMouseDown={event => {
-        if (event.target === event.currentTarget) onClose();
+        if (event.target === event.currentTarget && !saving) onClose();
       }}
     >
       <section
-        className="ia-model-modal ia-create-project"
         ref={dialog}
         tabIndex={-1}
         role="dialog"
         aria-modal="true"
+        className="ia-model-modal ia-create-project"
         aria-label={t('Create project')}
       >
         <header>
@@ -63,7 +70,7 @@ export function CreateProjectModal({
             <h2>{t('New project')}</h2>
             <p>{t('Choose a folder and a domain for this project.')}</p>
           </div>
-          <button onClick={onClose} aria-label={t('Close project creation')}>
+          <button disabled={saving} onClick={onClose} aria-label={t('Close project creation')}>
             <X size={17} />
           </button>
         </header>
@@ -72,6 +79,7 @@ export function CreateProjectModal({
             {t('Project name')}{' '}
             <input
               value={draft.name}
+              disabled={saving}
               onChange={event => onChange({ ...draft, name: event.target.value })}
               maxLength={100}
               placeholder={t('Project name')}
@@ -79,7 +87,11 @@ export function CreateProjectModal({
           </label>
           <div className="ia-create-field">
             <span>{t('Local directory')}</span>
-            <button className="ia-folder-picker" onClick={() => void onChooseDirectory()}>
+            <button
+              disabled={saving}
+              className="ia-folder-picker"
+              onClick={() => void onChooseDirectory()}
+            >
               <FolderOpen size={15} />
               <span>{draft.directory || t('Choose folder…')}</span>
             </button>
@@ -96,9 +108,15 @@ export function CreateProjectModal({
                 <button
                   key={item.id}
                   type="button"
+                  disabled={saving}
                   className="ia-domain-choice"
+                  data-domain={item.id}
                   aria-pressed={draft.domain === item.id}
-                  title={t(DOMAIN_DESCRIPTIONS[item.id] || item.label)}
+                  title={t(
+                    item.builtin
+                      ? 'Built in · No installation required'
+                      : DOMAIN_DESCRIPTIONS[item.id] || item.label,
+                  )}
                   onClick={() => onChange({ ...draft, domain: item.id })}
                 >
                   <DomainIcon domain={item.id} />
@@ -106,19 +124,52 @@ export function CreateProjectModal({
                 </button>
               ))}
             </div>
+            {selected?.builtin && (
+              <small className="ia-create-hint">
+                {t(
+                  'General projects support everyday coding and file tasks. No domain pack is required.',
+                )}
+              </small>
+            )}
             {draft.domain && DOMAIN_DESCRIPTIONS[draft.domain] && (
               <small className="ia-create-hint">{t(DOMAIN_DESCRIPTIONS[draft.domain])}</small>
             )}
+            <div className="ia-create-domains-guide">
+              <div>
+                <strong>
+                  {t(
+                    hasPacks
+                      ? 'Need another domain?'
+                      : 'Start with General, or add a specialized domain',
+                  )}
+                </strong>
+                <p>
+                  {t(
+                    'Domain packs add specialized tools and skills. You can change the domain later in project details.',
+                  )}
+                </p>
+              </div>
+              <button disabled={saving} className="ia-create-install" onClick={onManageDomains}>
+                <Download size={15} />
+                {t('Install domain packs')}
+              </button>
+            </div>
           </div>
-          {error && <p className="ia-model-error">{t(error)}</p>}
+          {error && (
+            <p role="alert" className="ia-model-error">
+              {t(error)}
+            </p>
+          )}
         </div>
         <footer>
           <span />
-          <button onClick={onClose}>{t('Cancel')}</button>
+          <button disabled={saving} onClick={onClose}>
+            {t('Cancel')}
+          </button>
           <button
             className="primary"
             onClick={() => void create()}
-            disabled={saving || !draft.directory || !draft.name.trim() || !draft.domain}
+            disabled={saving || !draft.directory || !draft.name.trim() || !selected}
           >
             {saving ? t('Creating…') : t('Create project')}
           </button>

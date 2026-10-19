@@ -4,66 +4,14 @@
   "locales": {
     "zh-CN": {
       "label": "简体中文",
-      "systemLanguages": [
-        "zh"
-      ]
+      "systemLanguages": ["zh"]
     },
     "en": {
       "label": "English",
-      "systemLanguages": [
-        "en"
-      ]
+      "systemLanguages": ["en"]
     }
   },
   "messages": {
-    "Agent settings": {
-      "en": "Agent settings",
-      "zh-CN": "Agent 设置"
-    },
-    "Remote environment is not ready. Check project execution settings.": {
-      "en": "Remote environment is not ready. Check project execution settings.",
-      "zh-CN": "远程环境尚未就绪，请检查项目执行设置。"
-    },
-    "Execution settings": {
-      "en": "Execution settings",
-      "zh-CN": "执行设置"
-    },
-    "Remote ready": {
-      "en": "Remote ready",
-      "zh-CN": "远程就绪"
-    },
-    "Remote request failed": {
-      "en": "Remote request failed",
-      "zh-CN": "远程请求失败"
-    },
-    "Could not update the remote status. Try again shortly.": {
-      "en": "Could not update the remote status. Try again shortly.",
-      "zh-CN": "暂时无法更新远程状态，请稍后重试。"
-    },
-    "Error details": {
-      "en": "Error details",
-      "zh-CN": "错误详情"
-    },
-    "In progress": {
-      "en": "In progress",
-      "zh-CN": "进行中"
-    },
-    "Not completed": {
-      "en": "Not completed",
-      "zh-CN": "未完成"
-    },
-    "{0} of {1} tasks completed": {
-      "en": "{0} of {1} tasks completed",
-      "zh-CN": "已完成 {0}/{1} 项任务"
-    },
-    "{0} files synced": {
-      "en": "{0} files synced",
-      "zh-CN": "已同步 {0} 个文件"
-    },
-    "Ending remote session…": {
-      "en": "Ending remote session…",
-      "zh-CN": "正在结束远程会话…"
-    },
     "Copy message": {
       "en": "Copy message",
       "zh-CN": "复制消息"
@@ -2720,30 +2668,6 @@
       "en": "Expand task list",
       "zh-CN": "展开任务列表"
     },
-    "Remote environment": {
-      "en": "Remote environment",
-      "zh-CN": "远程环境"
-    },
-    "Execution status": {
-      "en": "Execution status",
-      "zh-CN": "执行状态"
-    },
-    "Collapse remote status": {
-      "en": "Collapse remote status",
-      "zh-CN": "收起远程状态"
-    },
-    "Expand remote status": {
-      "en": "Expand remote status",
-      "zh-CN": "展开远程状态"
-    },
-    "Expand status card": {
-      "en": "Expand status card",
-      "zh-CN": "展开状态卡"
-    },
-    "Collapse status card": {
-      "en": "Collapse status card",
-      "zh-CN": "收起状态卡"
-    },
     "Tasks": {
       "en": "Tasks",
       "zh-CN": "任务"
@@ -4019,6 +3943,126 @@
     "Game/simulation engineering with the Godot engine.": {
       "en": "Game/simulation engineering with the Godot engine.",
       "zh-CN": "基于 Godot 引擎的游戏/仿真工程。"
+    },
+    "General": {
+      "en": "General",
+      "zh-CN": "通用"
+    },
+    "Built in · No installation required": {
+      "en": "Built in · No installation required",
+      "zh-CN": "内置 · 无需安装"
+    },
+    "General projects support everyday coding and file tasks. No domain pack is required.": {
+      "en": "General projects support everyday coding and file tasks. No domain pack is required.",
+      "zh-CN": "通用项目支持日常编程和文件任务，无需安装领域包。"
+    },
+    "Need another domain?": {
+      "en": "Need another domain?",
+      "zh-CN": "需要其他领域？"
+    },
+    "Start with General, or add a specialized domain": {
+      "en": "Start with General, or add a specialized domain",
+      "zh-CN": "直接开始通用项目，或添加专业领域"
+    },
+    "Domain packs add specialized tools and skills. You can change the domain later in project details.": {
+      "en": "Domain packs add specialized tools and skills. You can change the domain later in project details.",
+      "zh-CN": "领域包提供专业工具和技能。之后也可以在项目详情中切换领域。"
+    },
+    "Install domain packs": {
+      "en": "Install domain packs",
+      "zh-CN": "安装领域包"
+    },
+    "Install a project domain": {
+      "en": "Install a project domain",
+      "zh-CN": "安装项目领域"
+    },
+    "Your project details are saved. After installation, return to finish creating your project.": {
+      "en": "Your project details are saved. After installation, return to finish creating your project.",
+      "zh-CN": "已保留填写的项目信息。安装完成后将返回并继续创建项目。"
+    },
+    "General projects are ready to use without installing a domain pack.": {
+      "en": "General projects are ready to use without installing a domain pack.",
+      "zh-CN": "无需安装领域包，也可以直接创建通用项目。"
+    },
+    "Continue with General": {
+      "en": "Continue with General",
+      "zh-CN": "使用通用领域继续"
+    },
+    "Back to project": {
+      "en": "Back to project",
+      "zh-CN": "返回创建项目"
+    },
+    "Agent settings": {
+      "en": "Agent settings",
+      "zh-CN": "Agent 设置"
+    },
+    "Remote environment is not ready. Check project execution settings.": {
+      "en": "Remote environment is not ready. Check project execution settings.",
+      "zh-CN": "远程环境尚未就绪，请检查项目执行设置。"
+    },
+    "Execution settings": {
+      "en": "Execution settings",
+      "zh-CN": "执行设置"
+    },
+    "Remote ready": {
+      "en": "Remote ready",
+      "zh-CN": "远程就绪"
+    },
+    "Remote request failed": {
+      "en": "Remote request failed",
+      "zh-CN": "远程请求失败"
+    },
+    "Could not update the remote status. Try again shortly.": {
+      "en": "Could not update the remote status. Try again shortly.",
+      "zh-CN": "暂时无法更新远程状态，请稍后重试。"
+    },
+    "Error details": {
+      "en": "Error details",
+      "zh-CN": "错误详情"
+    },
+    "In progress": {
+      "en": "In progress",
+      "zh-CN": "进行中"
+    },
+    "Not completed": {
+      "en": "Not completed",
+      "zh-CN": "未完成"
+    },
+    "{0} of {1} tasks completed": {
+      "en": "{0} of {1} tasks completed",
+      "zh-CN": "已完成 {0}/{1} 项任务"
+    },
+    "{0} files synced": {
+      "en": "{0} files synced",
+      "zh-CN": "已同步 {0} 个文件"
+    },
+    "Ending remote session…": {
+      "en": "Ending remote session…",
+      "zh-CN": "正在结束远程会话…"
+    },
+    "Remote environment": {
+      "en": "Remote environment",
+      "zh-CN": "远程环境"
+    },
+    "Execution status": {
+      "en": "Execution status",
+      "zh-CN": "执行状态"
+    },
+    "Collapse remote status": {
+      "en": "Collapse remote status",
+      "zh-CN": "收起远程状态"
+    },
+    "Expand remote status": {
+      "en": "Expand remote status",
+      "zh-CN": "展开远程状态"
+    },
+    "Expand status card": {
+      "en": "Expand status card",
+      "zh-CN": "展开状态卡"
+    },
+    "Collapse status card": {
+      "en": "Collapse status card",
+      "zh-CN": "收起状态卡"
     },
     "Install and start Docker before preparing the container image.": {
       "en": "Install and start Docker before preparing the container image.",
