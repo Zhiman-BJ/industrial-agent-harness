@@ -9,13 +9,13 @@
 - 安装成功后返回草稿并选中本次安装的一个领域；多选安装时其余领域同样可用。关闭、取消或安装失败时仍可返回原草稿，错误和重试继续由安装管理器处理。
 - 初次启动可以选择「使用通用领域继续」。安装目录未配置、网络失败、平台暂不支持某 Pack，都不应迫使用户安装专业领域才能开始。
 - 项目详情仍是后续切换领域的唯一入口；切换沿用原有会话隔离。专业领域工具只有在对应 Pack 安装并通过原有校验后才加入领域能力。
-- 创建按钮要求有效名称、目录和当前注册表中的领域。创建期间禁止重复提交和修改表单。使用原生 modal dialog 保持键盘焦点、Escape 关闭与后台隔离，小窗口下正文滚动、底部动作保持可见。
+- 创建按钮要求有效名称、目录和当前注册表中的领域。创建期间禁止重复提交和修改表单。沿用共享弹窗焦点管理，保持 Tab 焦点循环、Escape 关闭和关闭后焦点恢复，小窗口下正文滚动、底部动作保持可见。
 
 固定领域 CLI 分包保持原绑定，不扩展成通用发行版。通用工作区仅复用现有 Runtime，不新增领域实现、验证器或外部软件安装路径；文件写入仍遵循审批和哈希检查，不等于工程验收。
 
 ## 验证入口与边界
 
-- `node --test packages/harness-application/tests/general-project.test.cjs`：空的真实 managed Pack store、Desktop TaskService 与 CLI、基础文件 Action、无专业工具泄露、非法领域拒绝。Agent 内核使用受控测试替身，不调用真实模型。
+- `node --test apps/cli/tests/general-project.test.cjs`：空的真实 managed Pack store、Desktop TaskService 与 CLI、基础文件 Action、无专业工具泄露、非法领域拒绝。Agent 内核使用受控测试替身，不调用真实模型。
 - `pnpm --filter @industrial-agent-harness/desktop test:ui`：已有专业领域、通用默认选择、安装入口往返与草稿保留。
 - 构建后运行 `pnpm --filter @industrial-agent-harness/desktop test:project-onboarding`：真实 Electron renderer → preload → IPC，空安装通用创建、失败下载、重试安装、领域回填、深浅色和 640 × 480 布局。使用隔离用户目录和签名测试 Pack，不下载专业软件。可设置 `INDUSTRIAL_UI_SCREENSHOTS` 保存截图。
 

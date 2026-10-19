@@ -1,6 +1,6 @@
 {
   "name": "@industrial-agent-harness/desktop",
-  "version": "1.0.1-beta.4",
+  "version": "1.0.1-beta.5",
   "private": true,
   "main": "electron/main.cjs",
   "scripts": {
@@ -50,7 +50,7 @@
     "react-markdown": "10.1.0",
     "remark-gfm": "4.0.1",
     "@industrial-agent-harness/harness-application": "workspace:*",
-    "@zhiman-bj/industrial-domain-packs": "https://codeload.github.com/Zhiman-BJ/industrial-domain-packs/tar.gz/f91a8ab3c071e4500fd4097bb3123a7fbb0ca635",
+    "@zhiman-bj/industrial-domain-packs": "https://codeload.github.com/Zhiman-BJ/industrial-domain-packs/tar.gz/df0ac91ee5619952be9c511b73f715a11c8dd01b",
     "@industrial-agent-harness/harness-auth": "workspace:*"
   },
   "devDependencies": {

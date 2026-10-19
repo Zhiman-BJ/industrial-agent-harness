@@ -221,7 +221,7 @@ test('portable registration installs Chip and PCB, then adds Godot; native prepa
     );
   assert.deepEqual(
     loadRegistry().domains.map(item => item.id),
-    ['chip', 'pcb'],
+    ['general', 'chip', 'pcb'],
   );
   const project = path.join(root, 'project');
   fs.mkdirSync(project);
@@ -241,7 +241,7 @@ test('portable registration installs Chip and PCB, then adds Godot; native prepa
     assert.ok(manager.runtimeAssets.status(installed.runtimeAssets).every(asset => !asset.ready));
   assert.deepEqual(
     loadRegistry().domains.map(item => item.id),
-    ['chip', 'godot', 'pcb'],
+    ['general', 'chip', 'godot', 'pcb'],
   );
   sink.text = '';
   await run(
@@ -268,7 +268,7 @@ test('portable registration installs Chip and PCB, then adds Godot; native prepa
     );
     assert.deepEqual(
       loadRegistry().domains.map(item => item.id),
-      ['cad', 'chip', 'godot', 'pcb'],
+      ['general', 'cad', 'chip', 'godot', 'pcb'],
     );
     sink.text = '';
     await run(

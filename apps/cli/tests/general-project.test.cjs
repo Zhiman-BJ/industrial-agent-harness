@@ -3,9 +3,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { TaskService } = require('../src/index.cjs');
+const { TaskService } = require('@industrial-agent-harness/harness-application');
 const { loadRegistry } = require('@industrial-agent-harness/domain-skills');
-const { run } = require('../../../apps/cli/src/main.cjs');
+const { run } = require('../src/main.cjs');
 
 // Controlled kernel; project/registry/Runtime/approval/persistence are real.
 class Kernel {

@@ -1,0 +1,45 @@
+{
+  "chatId": "c4608f46-5b15-435f-a21f-eccbbeca0f79",
+  "inputs": {
+    "recipe": {
+      "parameters": {
+        "L": 40,
+        "W": 20,
+        "T": 5,
+        "R": 2
+      },
+      "features": [
+        {
+          "id": "Plate",
+          "op": "box",
+          "length": "L",
+          "width": "W",
+          "height": "T"
+        },
+        {
+          "id": "Drilled",
+          "op": "hole",
+          "base": "Plate",
+          "radius": "R",
+          "height": "T",
+          "origin": [
+            10,
+            10,
+            0
+          ]
+        }
+      ],
+      "result": "Drilled"
+    },
+    "expect": {
+      "volume": 3937.1681469282044,
+      "solids": 1,
+      "bounds": [
+        40,
+        20,
+        5
+      ]
+    }
+  },
+  "startedAt": "2026-10-19T03:22:22.902Z"
+}

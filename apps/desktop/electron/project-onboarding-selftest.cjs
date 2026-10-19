@@ -7,7 +7,13 @@ const { createArchive, digest, signCatalog } = require('@industrial-agent-harnes
 
 async function run(window, dialog, { manager }) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'project-onboarding-'));
-  const evaluate = script => window.webContents.executeJavaScript(script, true);
+  const evaluate = async script => {
+    try {
+      return await window.webContents.executeJavaScript(script, true);
+    } catch (error) {
+      throw new Error(`Project onboarding renderer failed: ${script}`, { cause: error });
+    }
+  };
   async function wait(script) {
     const end = Date.now() + 15000;
     while (Date.now() < end) {
@@ -33,6 +39,20 @@ async function run(window, dialog, { manager }) {
       output: path.join(directory, `${name}.png`),
     });
   }
+  async function setTheme(theme) {
+    await click('.ia-settings-button');
+    await wait(`Boolean(document.querySelector('.ia-settings-row button'))`);
+    if (
+      !(await evaluate(
+        `document.querySelector('.ia-app').classList.contains('theme-' + ${JSON.stringify(theme)})`,
+      ))
+    )
+      await click('.ia-settings-row button');
+    await click('.ia-settings-title button');
+    await wait(
+      `document.querySelector('.ia-app').classList.contains('theme-' + ${JSON.stringify(theme)})`,
+    );
+  }
   const originalDialog = dialog.showOpenDialog;
   const originalFetch = global.fetch;
   let folder = path.join(root, 'general-project');
@@ -49,13 +69,14 @@ async function run(window, dialog, { manager }) {
     await wait(
       `document.querySelector('.ia-domain-choice[data-domain="general"]')?.getAttribute('aria-pressed') === 'true'`,
     );
+    await require('./modal-focus-selftest.cjs').check(window, '.ia-create-project');
     await click('.ia-folder-picker');
     await wait(
       `document.querySelector('.ia-folder-picker').textContent.includes('general-project')`,
     );
     await input('My general project');
     await capture('project-general-light');
-    await evaluate(`document.querySelector('.ia-app').classList.add('theme-dark')`);
+    await setTheme('dark');
     window.setContentSize(640, 480);
     await wait(`innerWidth === 640`);
     await capture('project-general-dark-compact');
@@ -81,11 +102,12 @@ async function run(window, dialog, { manager }) {
       `window.viewerHost.projectBindings().then(state=>state.projects.some(project=>project.name==='My general project' && project.domain==='general'))`,
     );
     assert.deepEqual(manager.list(), []);
-    await wait(
-      `!document.querySelector('.ia-create-project') && !document.querySelector('.ia-projects-heading button').disabled`,
-    );
-    await evaluate(`document.querySelector('.ia-app').classList.remove('theme-dark')`);
+    // Compact layout unmounts the sidebar; restore it before querying its + button.
     window.setSize(1100, 760);
+    await wait(
+      `!document.querySelector('.ia-create-project') && document.querySelector('.ia-projects-heading button')?.disabled === false`,
+    );
+    await setTheme('light');
     // Sidebar + uses the same flow, including a failed install and retry.
     folder = path.join(root, 'specialized-project');
     fs.mkdirSync(folder);

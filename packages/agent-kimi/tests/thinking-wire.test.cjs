@@ -45,7 +45,9 @@ for (const mode of ['minimax-old-profile', 'compatible-default', 'kimi-on', 'kim
     t.after(async () => {
       await session.close();
       model.close();
-      fs.rmSync(directory, { recursive: true, force: true });
+      // Windows may retain transient handles after the native process exits.
+      // Retry removal for a bounded interval; persistent leaks still fail.
+      fs.rmSync(directory, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
     });
     for (const prompt of ['Reply OK', 'Reply OK again']) {
       const turn = session.prompt(prompt);

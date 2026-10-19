@@ -1,6 +1,7 @@
 import { DomainIcon } from '@industrial-agent-harness/viewer-builtin/domain-icon';
 import { useDisplayText } from '@industrial-agent-harness/viewer-builtin/text';
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
+import { useModalFocus } from '../use-modal-focus';
 import { FolderOpen, Download, X } from 'lucide-react';
 import type { DomainOption } from '@industrial-agent-harness/viewer-builtin/api';
 
@@ -34,13 +35,12 @@ export function CreateProjectModal({
   onCreate: (request: Draft) => Promise<void>;
 }) {
   const { t } = useDisplayText();
-  const dialog = useRef<HTMLDialogElement>(null);
   const [saving, setSaving] = useState(false);
+  const dialog = useModalFocus(() => {
+    if (!saving) onClose();
+  });
   const selected = domains.find(item => item.id === draft.domain);
   const hasPacks = domains.some(item => !item.builtin);
-  useEffect(() => {
-    dialog.current?.showModal();
-  }, []);
   async function create() {
     if (saving || !selected || !draft.directory || !draft.name.trim()) return;
     setSaving(true);
@@ -51,134 +51,130 @@ export function CreateProjectModal({
     }
   }
   return (
-    <dialog
-      ref={dialog}
-      className="ia-model-modal ia-create-project"
-      aria-label={t('Create project')}
-      onCancel={event => {
-        event.preventDefault();
-        if (!saving) onClose();
-      }}
+    <div
+      className="ia-modal-backdrop"
       onMouseDown={event => {
-        if (event.target === event.currentTarget && !saving) {
-          const rect = event.currentTarget.getBoundingClientRect();
-          if (
-            event.clientX < rect.left ||
-            event.clientX > rect.right ||
-            event.clientY < rect.top ||
-            event.clientY > rect.bottom
-          )
-            onClose();
-        }
+        if (event.target === event.currentTarget && !saving) onClose();
       }}
     >
-      <header>
-        <div>
-          <h2>{t('New project')}</h2>
-          <p>{t('Choose a folder and a domain for this project.')}</p>
-        </div>
-        <button disabled={saving} onClick={onClose} aria-label={t('Close project creation')}>
-          <X size={17} />
-        </button>
-      </header>
-      <div className="ia-model-fields">
-        <label>
-          {t('Project name')}{' '}
-          <input
-            value={draft.name}
-            disabled={saving}
-            onChange={event => onChange({ ...draft, name: event.target.value })}
-            maxLength={100}
-            placeholder={t('Project name')}
-          />
-        </label>
-        <div className="ia-create-field">
-          <span>{t('Local directory')}</span>
-          <button
-            disabled={saving}
-            className="ia-folder-picker"
-            onClick={() => void onChooseDirectory()}
-          >
-            <FolderOpen size={15} />
-            <span>{draft.directory || t('Choose folder…')}</span>
-          </button>
-          <small className="ia-create-hint">
-            {t('Existing files are kept as-is; the agent only writes after you approve an action.')}
-          </small>
-        </div>
-        <div className="ia-create-field">
-          <span>{t('Domain')}</span>
-          <div className="ia-domain-choices" role="group" aria-label={t('New project domain')}>
-            {domains.map(item => (
-              <button
-                key={item.id}
-                type="button"
-                disabled={saving}
-                className="ia-domain-choice"
-                data-domain={item.id}
-                aria-pressed={draft.domain === item.id}
-                title={t(
-                  item.builtin
-                    ? 'Built in · No installation required'
-                    : DOMAIN_DESCRIPTIONS[item.id] || item.label,
-                )}
-                onClick={() => onChange({ ...draft, domain: item.id })}
-              >
-                <DomainIcon domain={item.id} />
-                {t(item.label)}
-              </button>
-            ))}
+      <section
+        ref={dialog}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        className="ia-model-modal ia-create-project"
+        aria-label={t('Create project')}
+      >
+        <header>
+          <div>
+            <h2>{t('New project')}</h2>
+            <p>{t('Choose a folder and a domain for this project.')}</p>
           </div>
-          {selected?.builtin && (
+          <button disabled={saving} onClick={onClose} aria-label={t('Close project creation')}>
+            <X size={17} />
+          </button>
+        </header>
+        <div className="ia-model-fields">
+          <label>
+            {t('Project name')}{' '}
+            <input
+              value={draft.name}
+              disabled={saving}
+              onChange={event => onChange({ ...draft, name: event.target.value })}
+              maxLength={100}
+              placeholder={t('Project name')}
+            />
+          </label>
+          <div className="ia-create-field">
+            <span>{t('Local directory')}</span>
+            <button
+              disabled={saving}
+              className="ia-folder-picker"
+              onClick={() => void onChooseDirectory()}
+            >
+              <FolderOpen size={15} />
+              <span>{draft.directory || t('Choose folder…')}</span>
+            </button>
             <small className="ia-create-hint">
               {t(
-                'General projects support everyday coding and file tasks. No domain pack is required.',
+                'Existing files are kept as-is; the agent only writes after you approve an action.',
               )}
             </small>
-          )}
-          {draft.domain && DOMAIN_DESCRIPTIONS[draft.domain] && (
-            <small className="ia-create-hint">{t(DOMAIN_DESCRIPTIONS[draft.domain])}</small>
-          )}
-          <div className="ia-create-domains-guide">
-            <div>
-              <strong>
-                {t(
-                  hasPacks
-                    ? 'Need another domain?'
-                    : 'Start with General, or add a specialized domain',
-                )}
-              </strong>
-              <p>
-                {t(
-                  'Domain packs add specialized tools and skills. You can change the domain later in project details.',
-                )}
-              </p>
-            </div>
-            <button disabled={saving} className="ia-create-install" onClick={onManageDomains}>
-              <Download size={15} />
-              {t('Install domain packs')}
-            </button>
           </div>
+          <div className="ia-create-field">
+            <span>{t('Domain')}</span>
+            <div className="ia-domain-choices" role="group" aria-label={t('New project domain')}>
+              {domains.map(item => (
+                <button
+                  key={item.id}
+                  type="button"
+                  disabled={saving}
+                  className="ia-domain-choice"
+                  data-domain={item.id}
+                  aria-pressed={draft.domain === item.id}
+                  title={t(
+                    item.builtin
+                      ? 'Built in · No installation required'
+                      : DOMAIN_DESCRIPTIONS[item.id] || item.label,
+                  )}
+                  onClick={() => onChange({ ...draft, domain: item.id })}
+                >
+                  <DomainIcon domain={item.id} />
+                  {t(item.label)}
+                </button>
+              ))}
+            </div>
+            {selected?.builtin && (
+              <small className="ia-create-hint">
+                {t(
+                  'General projects support everyday coding and file tasks. No domain pack is required.',
+                )}
+              </small>
+            )}
+            {draft.domain && DOMAIN_DESCRIPTIONS[draft.domain] && (
+              <small className="ia-create-hint">{t(DOMAIN_DESCRIPTIONS[draft.domain])}</small>
+            )}
+            <div className="ia-create-domains-guide">
+              <div>
+                <strong>
+                  {t(
+                    hasPacks
+                      ? 'Need another domain?'
+                      : 'Start with General, or add a specialized domain',
+                  )}
+                </strong>
+                <p>
+                  {t(
+                    'Domain packs add specialized tools and skills. You can change the domain later in project details.',
+                  )}
+                </p>
+              </div>
+              <button disabled={saving} className="ia-create-install" onClick={onManageDomains}>
+                <Download size={15} />
+                {t('Install domain packs')}
+              </button>
+            </div>
+          </div>
+          {error && (
+            <p role="alert" className="ia-model-error">
+              {t(error)}
+            </p>
+          )}
         </div>
-        {error && (
-          <p role="alert" className="ia-model-error">
-            {t(error)}
-          </p>
-        )}
-      </div>
-      <footer>
-        <span />
-        <button disabled={saving} onClick={onClose}>
-          {t('Cancel')}
-        </button>
-        <button
-          className="primary"
-          onClick={() => void create()}
-          disabled={saving || !draft.directory || !draft.name.trim() || !selected}
-        >
-          {saving ? t('Creating…') : t('Create project')}
-        </button>
-      </footer>
-    </dialog>
+        <footer>
+          <span />
+          <button disabled={saving} onClick={onClose}>
+            {t('Cancel')}
+          </button>
+          <button
+            className="primary"
+            onClick={() => void create()}
+            disabled={saving || !draft.directory || !draft.name.trim() || !selected}
+          >
+            {saving ? t('Creating…') : t('Create project')}
+          </button>
+        </footer>
+      </section>
+    </div>
   );
 }

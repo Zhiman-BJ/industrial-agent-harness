@@ -54,3 +54,5 @@ engineering edits or verification logic is added to the host. See
 [responsive layouts and validation](../../doc/desktop-layouts.md).
 
 任务成果入口复用 Registry、共享工作区和导航。CAD／通用文档显式允许前台唯一候选的一次只读自动预览；其他 Viewer 默认不自动打开。手动成果／导出入口核对记录文件和配套哈希；文件变化明确拒绝，Viewer 不更改历史检查。macOS arm64 源码 Electron 的真实产物卡→OCCT、缩放／滚轮／触控板／Fit／全屏与历史／焦点验收见[任务成果](../../doc/task-results.md)。
+
+远程 CAD 下载文件可使用同目录 `artifact-bundle.json` 定位原预览 manifest，再按哈希匹配 BREP/STL/草图配套。索引不含可执行逻辑，限制 64 KiB / 64 项，文件名只允许安全 basename，配套必须与模型位于同一真实目录；大小、摘要、重复及符号链接越界均校验。它只辅助显示，不新增工程 Artifact 或 Verifier 结论。真实 FCStd/STEP 的文件树→Registry→OCCT、缩放/Fit/全屏证据见[远程 CAD 验收](../../doc/evidence/remote-cad-20261019/README.md)。

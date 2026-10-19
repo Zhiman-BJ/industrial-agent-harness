@@ -7,6 +7,7 @@ import type { ResultOpenRequest } from '@industrial-agent-harness/viewer-builtin
 import { AnswerMarkdown } from './AnswerMarkdown';
 import { ThinkingPreview } from './ThinkingPreview';
 import { MessageActions } from './MessageActions';
+import { Cloud } from 'lucide-react';
 import { splitLeadingThinking } from '../message-content';
 import { memo, useRef, useState } from 'react';
 
@@ -317,6 +318,7 @@ export const AgentFlow = memo(function AgentFlow({
   onOpenModelSettings,
   turnId,
   chatId,
+  remoteTools,
 }: {
   events: AgentEvent[];
   running: boolean;
@@ -329,6 +331,7 @@ export const AgentFlow = memo(function AgentFlow({
   onOpenModelSettings?: () => void;
   turnId?: string;
   chatId?: string;
+  remoteTools?: ReadonlySet<string>;
 }) {
   const { t, locale } = useDisplayText();
   const results = new Map<string, ToolResult>();
@@ -481,6 +484,12 @@ export const AgentFlow = memo(function AgentFlow({
                 ))}
                 {result?.error ? t('Tool failed') : result ? t('Tool finished') : t('Using tool')} ·{' '}
                 {event.name}
+                {remoteTools?.has(event.name) && (
+                  <span className="ia-remote-badge">
+                    <Cloud size={11} />
+                    {t('Remote sandbox')}
+                  </span>
+                )}
               </summary>
               <div className="ia-tool-detail">
                 <small>{t('Input')}</small>

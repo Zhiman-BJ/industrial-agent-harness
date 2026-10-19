@@ -82,6 +82,10 @@ jobs:
         run: |
           mkdir -p dist/ci-reports
           node scripts/smoke-packaged-desktop.cjs 2>&1 | tee dist/ci-reports/desktop-first-run.log
+      - name: Prepare verified official archives for full Domain installation
+        if: inputs.full && matrix.platform == 'mac'
+        shell: bash
+        run: node scripts/prepare-ci-runtime-archives.cjs --download
       - name: Verify full Domain installation
         if: inputs.full
         shell: bash
