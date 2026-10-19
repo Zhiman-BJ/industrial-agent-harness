@@ -6,11 +6,36 @@ const path = require('node:path');
 const { execFile } = require('node:child_process');
 const { promisify } = require('node:util');
 const {
+  cadInstallEnvironment,
   packagedSelftestExpectsExternalApp,
   provisionExternalFreeCADApp,
 } = require('../../scripts/smoke-packaged-cad.cjs');
 
 const execute = promisify(execFile);
+
+test('CAD child receives the prepared official archive while an explicit override wins', async () => {
+  for (const [environment, expected] of [
+    [{ HARNESS_FREECAD_ARCHIVE: '/fixture/official FreeCAD.dmg' }, '/fixture/official FreeCAD.dmg'],
+    [
+      {
+        HARNESS_FREECAD_ARCHIVE: '/fixture/official FreeCAD.dmg',
+        HARNESS_CAD_INSTALL_ARCHIVE: '/fixture/explicit FreeCAD.dmg',
+      },
+      '/fixture/explicit FreeCAD.dmg',
+    ],
+    [{}, ''],
+  ]) {
+    const original = { ...environment };
+    const supplied = Object.freeze(environment);
+    const { stdout } = await execute(
+      process.execPath,
+      ['-e', "process.stdout.write(process.env.HARNESS_CAD_INSTALL_ARCHIVE || '')"],
+      { env: cadInstallEnvironment(supplied) },
+    );
+    assert.equal(stdout, expected);
+    assert.deepEqual(supplied, original);
+  }
+});
 
 test('the external-app gate follows the packaged selftest contract marker', async t => {
   const directory = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-cad-gate-')));

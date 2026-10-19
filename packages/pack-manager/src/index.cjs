@@ -472,6 +472,12 @@ class PackManager {
       availableBytes: this.space(this.directory),
     };
   }
+  runtimeArchives(entry) {
+    return this.runtimeAssets.archives(entry.runtimeAssets || []);
+  }
+  importRuntimeArchive(asset, file) {
+    return this.runtimeAssets.importArchive(asset, file);
+  }
   stateFile() {
     return path.join(this.directory, 'installed.json');
   }

@@ -7,6 +7,7 @@ import type {
   DomainInstallationStatus,
   DomainInstallProgress,
   DomainOption,
+  RuntimeArchiveRequirement,
 } from '@industrial-agent-harness/viewer-builtin/api';
 import {
   cancelInstallation,
@@ -16,6 +17,7 @@ import {
   InstallationOutcome,
   InstallationProgress,
   InstallationSize,
+  RuntimePreparation,
   RuntimeReadiness,
   UnavailableDomains,
   selectedFootprint,
@@ -47,6 +49,8 @@ export function DomainManager({
   const [error, setError] = useState('');
   const [feedError, setFeedError] = useState('');
   const [progress, setProgress] = useState<DomainInstallProgress | null>(null);
+  const [preparation, setPreparation] = useState<RuntimeArchiveRequirement[] | null>(null);
+  const [importing, setImporting] = useState(false);
   useEffect(() => {
     dialog.current?.showModal();
     dialog.current?.querySelector<HTMLHeadingElement>('header h2')?.focus();
@@ -117,17 +121,27 @@ export function DomainManager({
   }
   const installing = saving || Boolean(status?.operation?.active) || Boolean(progress);
   const disabled = busy || installing || cancelling;
+  async function runInstall() {
+    const result = await window.viewerHost!.domainInstall(selected);
+    onChanged(result.installed);
+    setSelected([]);
+    await refresh();
+    if (firstRun) setComplete(true);
+  }
   async function install() {
     if (!selected.length || disabled || loading) return;
     setSaving(true);
     setError('');
     setComplete(false);
     try {
-      const result = await window.viewerHost!.domainInstall(selected);
-      onChanged(result.installed);
-      setSelected([]);
-      await refresh();
-      if (firstRun) setComplete(true);
+      // Runtime archives come from their official sites via the user's own
+      // browser; surface the import checklist before touching the installer.
+      const requirements = await window.viewerHost!.domainRuntimeArchives(selected);
+      if (requirements.some(item => !item.present)) {
+        setPreparation(requirements);
+        return;
+      }
+      await runInstall();
     } catch (reason) {
       const next = await refresh();
       if (
@@ -138,6 +152,42 @@ export function DomainManager({
     } finally {
       setSaving(false);
       setProgress(null);
+    }
+  }
+  async function continueInstall() {
+    if (!preparation || preparation.some(item => !item.present) || disabled) return;
+    setPreparation(null);
+    setSaving(true);
+    setError('');
+    try {
+      await runInstall();
+    } catch (reason) {
+      const next = await refresh();
+      if (
+        next?.lastOperation?.outcome !== 'cancelled' ||
+        !String(reason).includes('Domain preparation cancelled.')
+      )
+        setError(String(reason));
+    } finally {
+      setSaving(false);
+      setProgress(null);
+    }
+  }
+  async function importArchive(item: RuntimeArchiveRequirement) {
+    if (importing) return;
+    setImporting(true);
+    setError('');
+    try {
+      const result = await window.viewerHost!.domainImportRuntimeArchive({
+        domain: item.domain,
+        asset: item.id,
+      });
+      if (result.imported && selected.length)
+        setPreparation(await window.viewerHost!.domainRuntimeArchives(selected));
+    } catch (reason) {
+      setError(String(reason));
+    } finally {
+      setImporting(false);
     }
   }
   async function repair(domain: string) {
@@ -290,7 +340,19 @@ export function DomainManager({
             </div>
           </div>
         )}
-        {status?.managed && (
+        {preparation && (
+          <RuntimePreparation
+            items={preparation}
+            importing={importing}
+            onImport={item => void importArchive(item)}
+            onOpen={item =>
+              void window
+                .viewerHost!.domainOpenRuntimeArchive({ domain: item.domain, asset: item.id })
+                .catch(reason => setError(String(reason)))
+            }
+          />
+        )}
+        {status?.managed && !preparation && (
           <>
             <div className="ia-domains-list">
               {selectable.map(item => {
@@ -385,23 +447,38 @@ export function DomainManager({
         <button onClick={() => void refresh()} disabled={loading || installing || cancelling}>
           {t('Check updates')}
         </button>
-        <button disabled={cancelling} onClick={close}>
-          {t(
-            installing && status?.operation?.cancellable !== false
-              ? 'Cancel installation and close'
-              : firstRun && !complete
-                ? 'Skip for now'
-                : 'Close',
-          )}
-        </button>
-        {status?.managed && selectable.length > 0 && (
+        {preparation ? (
+          <button onClick={() => setPreparation(null)}>{t('Back')}</button>
+        ) : (
+          <button disabled={cancelling} onClick={close}>
+            {t(
+              installing && status?.operation?.cancellable !== false
+                ? 'Cancel installation and close'
+                : firstRun && !complete
+                  ? 'Skip for now'
+                  : 'Close',
+            )}
+          </button>
+        )}
+        {preparation ? (
           <button
             className="ia-domains-primary"
-            disabled={!selected.length || disabled || loading}
-            onClick={() => void install()}
+            disabled={preparation.some(item => !item.present) || disabled || loading}
+            onClick={() => void continueInstall()}
           >
-            {installing ? t('Installing…') : t('Install {0}', { '0': selected.length || '' })}
+            {t('Continue installation')}
           </button>
+        ) : (
+          status?.managed &&
+          selectable.length > 0 && (
+            <button
+              className="ia-domains-primary"
+              disabled={!selected.length || disabled || loading}
+              onClick={() => void install()}
+            >
+              {installing ? t('Installing…') : t('Install {0}', { '0': selected.length || '' })}
+            </button>
+          )
         )}
       </footer>
     </dialog>

@@ -205,7 +205,9 @@ class IndustrialRuntime {
       if (owner) {
         try {
           process.kill(Number(owner), 0);
-          throw Error('Project runtime is active in another process.');
+          throw Error(
+            `Project runtime is active in another process (pid ${owner}). Close the other window or CLI session using this project, then retry.`,
+          );
         } catch (error) {
           if (error.code !== 'ESRCH') throw error;
         }

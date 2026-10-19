@@ -308,3 +308,31 @@ test('a platform-only Pack is omitted from other platform catalogs', t => {
   assert.deepEqual(catalog.packs.map(item => item.domain).sort(), ['chip']);
   assert.ok(catalog.packs.every(item => item.platforms.length > 0));
 });
+
+test('CLI parses the archive import command and validates its arguments', () => {
+  const { parse } = require('../src/domains.cjs');
+  assert.deepEqual(
+    parse([
+      'import',
+      'pcb',
+      '--file',
+      'kicad.dmg',
+      '--catalog',
+      'https://c',
+      '--keys-file',
+      'k.json',
+    ]),
+    {
+      command: 'import',
+      domain: 'pcb',
+      file: 'kicad.dmg',
+      catalog: 'https://c',
+      keysFile: 'k.json',
+    },
+  );
+  assert.throws(
+    () => parse(['import', 'pcb', '--catalog', 'https://c', '--keys-file', 'k.json']),
+    /--file/,
+  );
+  assert.throws(() => parse(['import']), /Domain ID/);
+});

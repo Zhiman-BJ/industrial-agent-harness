@@ -11,6 +11,10 @@ const api = {
   domainAvailable: () => ipcRenderer.invoke('domains:available'),
   domainCancel: () => ipcRenderer.invoke('domains:cancel'),
   domainInstall: domains => ipcRenderer.invoke('domains:install', { domains }),
+  domainRuntimeArchives: domains => ipcRenderer.invoke('domains:runtime-archives', { domains }),
+  domainImportRuntimeArchive: request =>
+    ipcRenderer.invoke('domains:import-runtime-archive', request),
+  domainOpenRuntimeArchive: request => ipcRenderer.invoke('domains:open-runtime-archive', request),
   domainRemove: domain => ipcRenderer.invoke('domains:remove', { domain }),
   domainRepair: domain => ipcRenderer.invoke('domains:repair', { domain }),
   onDomainProgress: callback => {

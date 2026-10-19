@@ -1,6 +1,6 @@
 {
   "name": "@industrial-agent-harness/desktop",
-  "version": "1.0.1-beta.2",
+  "version": "1.0.1-beta.5",
   "private": true,
   "main": "electron/main.cjs",
   "scripts": {

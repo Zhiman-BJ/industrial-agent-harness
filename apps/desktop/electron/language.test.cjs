@@ -145,3 +145,27 @@ test('configured regional languages take precedence and the fallback is configur
     /fallback locale/,
   );
 });
+
+test('turn-end statuses translate instead of leaking English next to a translated label', async () => {
+  const { translate } = await core;
+  const { messages } = require('../i18n.config.json');
+  // AgentFlow renders t('Turn') + t(event.result.status) on one line; this list
+  // mirrors the done-result statuses emitted by the Kimi adapter and the
+  // application layer (plus the recording fixtures' 'success'). An entry here
+  // must exist in the dictionary or Chinese shows "轮次 finished" mixed text.
+  const statuses = [
+    'finished',
+    'cancelled',
+    'error',
+    'completed',
+    'interrupted',
+    'incomplete',
+    'success',
+  ];
+  for (const status of statuses) {
+    assert.ok(Object.hasOwn(messages, status), `Missing turn-status entry: ${status}`);
+    for (const locale of ['en', 'zh-CN'])
+      assert.ok(translate(locale, status).trim(), `${status} / ${locale}`);
+    assert.equal(translate('zh-CN', 'Turn'), '轮次');
+  }
+});

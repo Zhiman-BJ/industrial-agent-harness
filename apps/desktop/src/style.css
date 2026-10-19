@@ -467,14 +467,14 @@ body,
   font-variant-numeric: tabular-nums;
 }
 .ia-app .ia-message-copy {
-  width: 32px;
-  height: 32px;
+  width: 24px;
+  height: 24px;
   padding: 0;
   flex-shrink: 0;
   display: grid;
   place-items: center;
   border: 0;
-  border-radius: 12px;
+  border-radius: 8px;
   background: var(--ia-panel);
   color: var(--ia-muted);
 }
@@ -556,6 +556,61 @@ body,
 .ia-flow-error {
   color: var(--ia-danger) !important;
   font-size: 11px;
+}
+.ia-app .ia-flow-error-card {
+  border: 1px solid color-mix(in srgb, var(--ia-danger) 35%, transparent);
+  border-radius: 7px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+}
+.ia-app .ia-flow-error-card b {
+  font-size: 12px;
+}
+.ia-app .ia-flow-error-actions {
+  display: flex;
+  gap: 6px;
+}
+.ia-app .ia-flow-error-actions button {
+  border: 1px solid var(--ia-border);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 11px;
+  background: transparent;
+}
+.ia-app .ia-flow-error-actions button:hover:not(:disabled) {
+  background: var(--ia-hover);
+}
+.ia-app .ia-approval-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 6px 0 2px;
+}
+.ia-app .ia-approval-fields dt {
+  color: var(--ia-muted);
+  font-size: 10px;
+}
+.ia-app .ia-approval-fields dd {
+  margin: 1px 0 0;
+  overflow-wrap: anywhere;
+}
+.ia-app .ia-approval-fields dd code {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11.5px;
+}
+.ia-app .ia-approval-fields dd small {
+  display: block;
+  color: var(--ia-muted);
+  font-size: 10px;
+  padding: 1px 0 0;
+}
+.ia-app .ia-create-hint {
+  display: block;
+  color: var(--ia-muted);
+  padding: 3px 0 0;
 }
 .ia-approval {
   border: 1px solid var(--ia-border);
@@ -643,6 +698,9 @@ body,
 }
 .ia-app .ia-chat-approval-mode {
   max-width: 150px;
+  /* A native select cannot ellipsize; flex shrink would clip it mid-word.
+     Keep it at content width and let the controls row wrap instead. */
+  flex: none;
   color: var(--ia-muted);
   background: var(--ia-panel);
   border: 1px solid var(--ia-border);
@@ -650,6 +708,56 @@ body,
   padding: 4px 6px;
   font: inherit;
   font-size: 11px;
+}
+.ia-app button.ia-model-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 250px;
+  /* Shrink this pill (its name ellipsizes) before the row wraps. */
+  min-width: 0;
+  flex: 0 1 auto;
+  padding: 5px 9px;
+  border: 1px solid var(--ia-border);
+  border-radius: 999px;
+  background: var(--ia-raised);
+  color: var(--ia-text);
+  font-size: 11px;
+  line-height: 16px;
+}
+.ia-model-pill .ia-model-pill-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ia-model-pill .ia-model-pill-ctx {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: none;
+  color: var(--ia-muted);
+  border-left: 1px solid var(--ia-border);
+  padding-left: 8px;
+}
+.ia-model-pill .ia-model-pill-bar {
+  width: 34px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--ia-border);
+  overflow: hidden;
+}
+.ia-model-pill .ia-model-pill-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--ia-accent);
+}
+.ia-model-pill .ia-model-pill-ctx.high {
+  color: var(--ia-warning);
+}
+.ia-model-pill .ia-model-pill-ctx.high .ia-model-pill-bar > span {
+  background: var(--ia-warning);
 }
 .ia-context-select {
   display: flex;
@@ -936,6 +1044,20 @@ body,
   border-radius: 14px;
   box-shadow: 0 16px 56px #00000033;
   color: var(--ia-text);
+}
+/* Keep dialog actions reachable when connection fields exceed a short window. */
+.ia-model-modal:has(> .ia-model-fields) {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.ia-model-modal:has(> .ia-model-fields) > header,
+.ia-model-modal:has(> .ia-model-fields) > footer {
+  flex-shrink: 0;
+}
+.ia-model-modal:has(> .ia-model-fields) > .ia-model-fields {
+  min-height: 0;
+  overflow-y: auto;
 }
 .ia-model-modal > header {
   display: flex;
@@ -1428,6 +1550,15 @@ body,
   gap: 3px;
   margin-left: auto;
   flex-shrink: 0;
+}
+/* A fullscreen error is status text, not a fixed-width toolbar control. */
+.ia-workspace-actions:has(> [role='status']) {
+  flex-wrap: wrap;
+  max-width: 100%;
+}
+.ia-workspace-actions > [role='status'] {
+  flex-basis: 100%;
+  overflow-wrap: anywhere;
 }
 .ia-workspace-actions button {
   width: var(--ia-control-size);
@@ -4352,6 +4483,65 @@ body {
   flex-wrap: wrap;
   gap: 3px 12px;
   font-size: var(--ia-font-xs);
+}
+.ia-runtime-preparation {
+  display: grid;
+  gap: 10px;
+  font-size: var(--ia-font-sm);
+}
+.ia-runtime-preparation h2 {
+  margin: 0;
+  font-size: var(--ia-font-md);
+  font-weight: 500;
+}
+.ia-runtime-preparation > p {
+  margin: 0;
+  color: var(--ia-muted);
+}
+.ia-runtime-archive {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px;
+  border: 1px solid var(--ia-border);
+  border-radius: 6px;
+}
+.ia-runtime-archive[data-present] {
+  border-color: var(--ia-border);
+  background: var(--ia-hover);
+}
+.ia-runtime-archive-title {
+  display: grid;
+  gap: 2px;
+}
+.ia-runtime-archive-title b,
+.ia-runtime-archive-ready {
+  font-weight: 500;
+}
+.ia-runtime-archive-title small {
+  color: var(--ia-muted);
+  font-size: var(--ia-font-xs);
+}
+.ia-runtime-archive-actions {
+  display: flex;
+  gap: 8px;
+}
+.ia-runtime-archive-actions button {
+  border: 1px solid var(--ia-border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  background: transparent;
+  color: var(--ia-text);
+  font-size: var(--ia-font-xs);
+  cursor: pointer;
+}
+.ia-runtime-archive-actions button:hover:not(:disabled) {
+  background: var(--ia-hover);
+}
+.ia-runtime-archive-actions button:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 .ia-domain-progress {
   display: grid;

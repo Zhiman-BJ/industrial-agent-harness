@@ -31,7 +31,12 @@ test('successful approval emits a resolution even without an SDK echo and reject
   assert.equal(events.length, 1);
   finish();
   await pending;
-  assert.deepEqual(events[1], { type: 'approval-resolved', id: 'a1', decision: 'approve' });
+  assert.deepEqual(events[1], {
+    type: 'approval-resolved',
+    id: 'a1',
+    decision: 'approve',
+    origin: 'user',
+  });
   session.emitEvent({
     type: 'ApprovalResponse',
     payload: { request_id: 'a1', response: 'approve' },

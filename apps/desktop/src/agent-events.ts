@@ -13,6 +13,7 @@ export function latestEvent<Type extends AgentEvent['type']>(
 export function appendDisplayEvents(current: AgentEvent[], events: AgentEvent[]): AgentEvent[] {
   if (!events.length) return current;
   const updated = [...current];
+  let subagentIndices: Map<string, number> | undefined;
   let contentIndex = updated.length - 1;
   while (
     contentIndex >= 0 &&
@@ -21,13 +22,20 @@ export function appendDisplayEvents(current: AgentEvent[], events: AgentEvent[])
     contentIndex--;
   for (const event of events) {
     if (event.type === 'subagent-state') {
-      const index = updated.findIndex(
-        item => item.type === 'subagent-state' && item.id === event.id,
-      );
-      if (index >= 0) {
+      if (!subagentIndices) {
+        subagentIndices = new Map();
+        for (let index = 0; index < updated.length; index++) {
+          const item = updated[index];
+          if (item.type === 'subagent-state' && !subagentIndices.has(item.id))
+            subagentIndices.set(item.id, index);
+        }
+      }
+      const index = subagentIndices.get(event.id);
+      if (index !== undefined) {
         updated[index] = event;
         continue;
       }
+      subagentIndices.set(event.id, updated.length);
     }
     const previous = updated[contentIndex];
     if (

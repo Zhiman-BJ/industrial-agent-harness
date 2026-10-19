@@ -7,6 +7,9 @@ const { Transfer, TransferProgress } = require('./transfer.cjs');
 const { availableSpace, footprint, checkSpace } = require('./install-space.cjs');
 const { run } = require('./runtime-assets.cjs');
 const { inspectOciArchive } = require('./oci-archive.cjs');
+const {
+  dockerCli: { resolveDockerCli, resolveDockerCliSync, dockerSearchLocations },
+} = require('@industrial-agent-harness/domain-runtime');
 
 const LOCK_PATH = 'provenance/runtime-distribution.json';
 const SHA = /^sha256:[a-f0-9]{64}$/;
@@ -202,7 +205,10 @@ async function checkLinuxEngine({ docker, environment, command, signal }) {
     signal?.throwIfAborted();
     if (error.code === 'ENOENT')
       throw Error(
-        'Docker was not found. Install Docker Desktop (macOS/Windows) or Docker Engine (Linux), make sure the docker command is available, then retry.',
+        'Docker was not found. Install Docker Desktop (macOS/Windows) or Docker Engine (Linux), make sure the docker command is available, then retry.' +
+          (docker === 'docker'
+            ? ' Searched the PATH and ' + dockerSearchLocations(environment).join(', ') + '.'
+            : ` Docker executable not found at ${docker}.`),
         { cause: error },
       );
     throw Error(
@@ -231,6 +237,7 @@ async function acquireImage({
   space = availableSpace,
   stallMs,
   timeoutMs,
+  resolveDocker = resolveDockerCli,
 }) {
   // Installation supplies the lock from the authenticated .hpack bytes. Only the
   // standalone developer API performs discovery / honors the environment override.
@@ -238,9 +245,19 @@ async function acquireImage({
   if (!found) throw Error(`No ${LOCK_PATH} found at or above ${packDirectory}.`);
   const [asset] = selectedAssets(found.lock, [image]);
   const report = progress => onProgress?.({ label: asset.entry.id, ...progress });
+  signal?.throwIfAborted();
+  // A bare 'docker' relies on PATH alone; GUI-launched processes inherit
+  // launchd's minimal PATH, so probe Docker Desktop's well-known installs and
+  // the login-shell PATH before spawning.
+  if (docker === 'docker') {
+    const resolved = await resolveDocker(environment, { signal });
+    if (resolved) {
+      docker = resolved.docker;
+      environment = resolved.environment;
+    }
+  }
   const execute = args =>
     command(docker, args, { env: environment, signal, timeout: 10 * 60 * 1000 });
-  signal?.throwIfAborted();
   report({ phase: 'checking' });
   await checkLinuxEngine({ docker, environment, command, signal });
   fs.mkdirSync(temporaryDirectory, { recursive: true });
@@ -310,12 +327,24 @@ class ContainerImageManager {
     environment = process.env,
     command = run,
     space = availableSpace,
+    resolveDocker = resolveDockerCli,
   }) {
     this.directory = path.join(directory, '.container-images');
     this.docker = docker;
     this.environment = environment;
     this.command = command;
     this.space = space;
+    this.resolveDocker = resolveDocker;
+  }
+  // Resolve a bare 'docker' on demand; an explicitly injected command path is
+  // honored as-is, and the resolved absolute path survives later calls.
+  async resolveRuntimeCommand(signal) {
+    if (this.docker !== 'docker') return;
+    const resolved = await this.resolveDocker(this.environment, { signal });
+    if (resolved) {
+      this.docker = resolved.docker;
+      this.environment = resolved.environment;
+    }
   }
   receiptFile(asset) {
     return path.join(this.directory, asset.sha256 + '.json');
@@ -337,6 +366,15 @@ class ContainerImageManager {
     }
   }
   status(lock, images) {
+    if (this.docker === 'docker') {
+      // Sync probing only: status must stay non-async; the login-shell capture
+      // runs later in preflight/ensure if these locations miss.
+      const resolved = resolveDockerCliSync(this.environment);
+      if (resolved) {
+        this.docker = resolved.docker;
+        this.environment = resolved.environment;
+      }
+    }
     return selectedAssets(lock, images).map(asset => {
       const receipt = this.receipt(asset);
       const child =
@@ -360,6 +398,7 @@ class ContainerImageManager {
     const assets = selectedAssets(lock, images);
     if (!assets.length) return;
     options.onProgress?.({ phase: 'checking', label: assets[0].entry.id });
+    await this.resolveRuntimeCommand(options.signal);
     await checkLinuxEngine({
       docker: this.docker,
       environment: this.environment,
@@ -368,6 +407,7 @@ class ContainerImageManager {
     });
   }
   async ensure(lock, images, options = {}) {
+    await this.resolveRuntimeCommand(options.signal);
     const results = [];
     for (const asset of selectedAssets(lock, images)) {
       options.signal?.throwIfAborted();
