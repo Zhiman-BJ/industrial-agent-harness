@@ -86,6 +86,55 @@ function alive(pid) {
   }
 }
 
+test('Windows token supports null-device I/O and headless subprocess primitives', async t => {
+  if (!windowsOnly(t)) return;
+  const dirs = fixture(t);
+  const sandbox = createBoundary(dirs);
+  dirs.defer(() => sandbox.close());
+  const probe = `
+    const fs = require('node:fs');
+    const path = require('node:path');
+    const { spawnSync } = require('node:child_process');
+    const nullDevice = [fs.constants.O_RDONLY, fs.constants.O_WRONLY, fs.constants.O_RDWR].map(flags => {
+      try { const fd = fs.openSync('NUL', flags); fs.closeSync(fd); return { flags, ok: true }; }
+      catch (error) { return { flags, ok: false, code: error.code, syscall: error.syscall }; }
+    });
+    const files = ['input', 'output', 'error'].map((name, index) => fs.openSync(path.join(process.cwd(), name), index ? 'w' : 'w+'));
+    const subprocesses = ['inherit', 'files', 'ignore', 'pipe'].map(mode => {
+      try {
+        const result = spawnSync(process.execPath, ['-e', 'process.exit(0)'], {
+          stdio: mode === 'files' ? files : mode, windowsHide: true,
+          timeout: 1500, encoding: 'utf8',
+        });
+        return { mode, status: result.status, code: result.error?.code, stderr: result.stderr };
+      } catch (error) { return { mode, code: error.code, syscall: error.syscall }; }
+    });
+    for (const fd of files) fs.closeSync(fd);
+    process.stdout.write(JSON.stringify({ nullDevice, subprocesses }));
+  `;
+  const result = await capture(
+    sandbox.spawn(process.execPath, ['-e', probe], {
+      cwd: sandbox.workDir,
+      env: sandbox.env,
+      stdio: ['pipe', 'pipe', 'pipe'],
+      windowsHide: true,
+    }),
+  );
+  assert.equal(result.code, 0, result.stderr);
+  const report = JSON.parse(result.stdout);
+  t.diagnostic(JSON.stringify(report));
+  assert.ok(
+    report.nullDevice.every(item => item.ok),
+    'headless tools require null-device I/O',
+  );
+  for (const child of report.subprocesses)
+    assert.equal(
+      child.status,
+      0,
+      child.mode + ': ' + (child.code || child.stderr || 'no exit status'),
+    );
+});
+
 test(
   'Windows restricted descendants preserve argv and pipes, allow session writes and deny protected or foreign writes',
   { timeout: 60000 },
