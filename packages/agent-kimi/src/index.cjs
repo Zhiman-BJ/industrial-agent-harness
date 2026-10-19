@@ -549,7 +549,8 @@ class KimiSession {
         const hostedTools = runtimeTools(
           this.diagnostics.industrialRuntime,
           this.getScope,
-          (descriptor, request) => this.requestRuntimeApproval(descriptor, request),
+          (descriptor, request, context) =>
+            this.requestRuntimeApproval(descriptor, request, context),
           (result, context) => this.diagnostics.onIndustrialResult?.(result, context),
           {
             imageInput: Boolean(runtime.profile.imageInput),
@@ -1038,8 +1039,21 @@ class KimiSession {
       throw error;
     }
   }
-  requestRuntimeApproval(descriptor, request) {
-    if (this.lastApprovalMode === 'auto') return Promise.resolve(true);
+  requestRuntimeApproval(descriptor, request, applicationContext) {
+    // Host runtimes can reserve decisions such as uploading local project
+    // files for explicit consent, independently of ordinary chat auto mode.
+    const runtime = this.diagnostics.industrialRuntime;
+    const context = { taskId: applicationContext?.turnId };
+    const explicit = runtime?.requiresExplicitApproval?.(request, context) === true;
+    if (
+      !explicit &&
+      (this.lastApprovalMode === 'auto' ||
+        runtime?.hasStandingApproval?.(request, context) === true)
+    )
+      return Promise.resolve(true);
+    // Invalid/expired preparation plans must fail before entering the pending
+    // approval lifecycle; otherwise a failed preview leaves an orphan request.
+    const preview = runtime?.approvalPreview?.(request, context);
     const id = crypto.randomUUID();
     return new Promise(resolve => {
       this.pendingApprovals.set(id, 'pending');
@@ -1054,7 +1068,7 @@ class KimiSession {
         description: `Execute ${descriptor.id} through the persistent industrial runtime.`,
         action: descriptor.id,
         stateId: request.expectedStateId,
-        preview: this.diagnostics.industrialRuntime?.approvalPreview?.(request),
+        preview,
       });
     });
   }

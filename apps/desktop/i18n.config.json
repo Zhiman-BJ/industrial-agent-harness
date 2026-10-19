@@ -12,6 +12,34 @@
     }
   },
   "messages": {
+    "Files synced": {
+      "en": "Files synced",
+      "zh-CN": "文件已同步"
+    },
+    "Start with your task. Agent will prepare remote files and request one approval.": {
+      "en": "Start with your task. Agent will prepare remote files and request one approval.",
+      "zh-CN": "直接描述任务，Agent 会准备远程文件并统一请求授权。"
+    },
+    "You can keep chatting. Agent prepares the files and remote tools for one approval before execution.": {
+      "en": "You can keep chatting. Agent prepares the files and remote tools for one approval before execution.",
+      "zh-CN": "你可以继续聊天。Agent 会准备所需文件和远程工具，并在执行前统一请求授权。"
+    },
+    "Files will be prepared when needed": {
+      "en": "Files will be prepared when needed",
+      "zh-CN": "按需准备文件"
+    },
+    "Start a chat to describe your task. Agent prepares the required files and remote tools, then asks for one approval before execution. Manual file sync is optional.": {
+      "en": "Start a chat to describe your task. Agent prepares the required files and remote tools, then asks for one approval before execution. Manual file sync is optional.",
+      "zh-CN": "直接新建聊天描述任务。Agent 会准备所需文件和远程工具，并在执行前统一请求授权。也可以手动同步文件。"
+    },
+    "Only approved files are uploaded. You can also review and sync files manually below.": {
+      "en": "Only approved files are uploaded. You can also review and sync files manually below.",
+      "zh-CN": "仅上传已授权的文件。你也可以在下方手动查看清单并同步文件。"
+    },
+    "Creates a new project on the configured service. Previous remote files and results stay in the old project. Agent will request a new file approval before remote execution.": {
+      "en": "Creates a new project on the configured service. Previous remote files and results stay in the old project. Agent will request a new file approval before remote execution.",
+      "zh-CN": "在当前服务上创建新的远程项目。原有文件和结果保留在旧项目中。Agent 会在远程执行前重新请求文件授权。"
+    },
     "Copy message": {
       "en": "Copy message",
       "zh-CN": "复制消息"

@@ -92,10 +92,16 @@ class TaskService {
   async resolve(entry, request, registry = this.registry(), preview = false) {
     if (!registry.domains.some(item => item.id === entry.project.domain))
       throw Error('Choose a valid project domain.');
-    entry.runtimeBundle = preview ? undefined : this.projects.get(entry.project, registry);
-    if (entry.runtimeBundle?.runtime.forSession) {
-      const bundle = entry.runtimeBundle;
-      entry.runtimeBundle = {
+    const previousRuntime = entry.agentRuntime || entry.runtimeBundle?.runtime;
+    const agentActive = Boolean(
+      entry.agent?.running || entry.agent?.backgroundTasks || entry.agent?.turn,
+    );
+    if (!preview && agentActive && entry.runtimeBundle?.configurationCurrent?.() === false)
+      throw Error('Stop the running chat before replacing its execution configuration.');
+    let nextBundle = preview ? undefined : this.projects.get(entry.project, registry);
+    if (nextBundle?.runtime.forSession) {
+      const bundle = nextBundle;
+      nextBundle = {
         ...bundle,
         runtime: bundle.runtime.forSession(entry.id),
         get capabilities() {
@@ -103,6 +109,16 @@ class TaskService {
         },
       };
     }
+    if (!preview && entry.agent && previousRuntime !== nextBundle?.runtime) {
+      if (agentActive)
+        throw Error('Stop the running chat before replacing its execution configuration.');
+      // Native session identity is retained by ChatStore. Retire only the idle
+      // wrapper whose tool callbacks still target the replaced Runtime.
+      await entry.agent.close();
+      entry.agent = undefined;
+      entry.agentRuntime = undefined;
+    }
+    entry.runtimeBundle = nextBundle;
     entry.externalServers = entry.runtimeBundle?.runtime.hostRuntimeOnly
       ? []
       : this.external.records();
@@ -406,6 +422,7 @@ class TaskService {
         },
         options.plugins || this.options.plugins?.(entry) || [],
       );
+      entry.agentRuntime ||= entry.runtimeBundle?.runtime;
       entry.agent.emit = emit;
       if (options.images?.length) emit({ type: 'user-images', images: options.images });
       const completion = (async () => {

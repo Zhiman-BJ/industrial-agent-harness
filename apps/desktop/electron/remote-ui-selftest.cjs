@@ -142,37 +142,22 @@ async function runInner(window) {
   await wait(`Boolean(document.querySelector('.ia-remote-project-body'))`);
   await capture('03-project-remote-toggle');
 
-  // Before upload, the actual remote readiness gate blocks input. The composer
-  // explains that state and takes the user back to project execution settings.
+  // Chat is available before upload; Agent prepares a batch approval on demand.
   await wait(`document.querySelector('.ia-project-start')?.disabled === false`);
   await click('.ia-project-start');
-  await wait(`document.querySelector('.ia-composer textarea')?.disabled === true`);
-  const remoteAgentAvailable = await evaluate(
-    `window.viewerHost.agentStatus().then(s => s.available)`,
-  );
-  const blockedHint = remoteAgentAvailable
-    ? '远程环境尚未就绪，请检查项目执行设置。'
-    : '运行 Agent 任务需要 Kimi CLI';
-  await wait(
-    `document.querySelector('#ia-composer-status')?.textContent === ${JSON.stringify(blockedHint)}`,
-  );
+  await wait(`document.querySelector('.ia-composer textarea')?.disabled === false`);
+  const inputTask = text =>
+    evaluate(`(() => {
+    const node = document.querySelector('.ia-composer textarea');
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(node, ${JSON.stringify(text)});
+    node.dispatchEvent(new Event('input', { bubbles: true }));
+  })()`);
+  await inputTask('先分析项目，再准备远程执行需要的文件');
+  await wait(`document.querySelector('.ia-send')?.disabled === false`);
+  await inputTask('');
   assert.equal(await evaluate(`document.querySelector('.ia-send').disabled`), true);
-  if (remoteAgentAvailable) {
-    assert.equal(
-      await evaluate(`document.querySelector('.ia-composer-status-action').textContent.trim()`),
-      '执行设置',
-    );
-    await capture('03b-chat-remote-not-ready');
-    await click('.ia-composer-status-action');
-  } else {
-    // UI-only runs need not have Kimi installed. Preserve that higher-priority
-    // blocker rather than claiming the runtime is available for this fixture.
-    assert.equal(
-      await evaluate(`Boolean(document.querySelector('.ia-composer-status-action'))`),
-      false,
-    );
-    await click('.ia-composer-project');
-  }
+  await capture('03b-chat-before-remote-upload');
+  await click('.ia-composer-project');
   await wait(`Boolean(document.querySelector('.ia-project-execution'))`);
   assert.equal(
     await evaluate(`(() => {
@@ -180,7 +165,7 @@ async function runInner(window) {
       return Boolean(dock?.hidden) && dock.getClientRects().length === 0;
     })()`),
     true,
-    'Returning from the blocked composer hides the status card on project settings',
+    'Returning from chat hides the status card on project settings',
   );
   await wait(`Boolean(document.querySelector('.ia-remote-project-body'))`);
 
@@ -226,12 +211,12 @@ async function runInner(window) {
   // with an enabled composer; opening the card shifts the conversation left.
   await wait(`document.querySelector('.ia-project-start')?.disabled === false`);
   await click('.ia-project-start');
-  await wait(`document.querySelector('.ia-status-dock')?.textContent.includes('远程就绪')`);
+  await wait(`document.querySelector('.ia-status-dock')?.textContent.includes('文件已同步')`);
   await wait(`document.querySelector('.ia-composer textarea')?.disabled === false`);
   assert.equal(
-    await evaluate(`Boolean(document.querySelector('.ia-composer-status-action'))`),
+    await evaluate(`document.querySelector('.ia-composer-hint').classList.contains('is-blocked')`),
     false,
-    'The remote setup prompt disappears only after the actual readiness gate clears',
+    'Remote execution status is informational and never blocks chat',
   );
   await capture('09-chat-status-pill');
   await click('.ia-status-pill');
@@ -264,9 +249,12 @@ async function runInner(window) {
     try {
       await queryFailure(true);
       await wait(`Boolean(document.querySelector('.ia-status-error-details'))`);
+      await inputTask('继续在本地分析，远程恢复后再执行');
+      await wait(`document.querySelector('.ia-send')?.disabled === false`);
+      await inputTask('');
       assert.equal(
         await evaluate(`document.querySelector('.ia-composer textarea').disabled`),
-        true,
+        false,
       );
       assert.equal(
         await evaluate(`document.querySelector('.ia-status-error [role="alert"]').textContent`),

@@ -59,6 +59,7 @@ function runtimeTools(
       }),
       handler: async request => {
         const applicationContext = getApplicationContext?.();
+        const taskId = applicationContext?.turnId;
         if ((request.inputs !== undefined) === (request.inputsJson !== undefined))
           throw Error('Supply exactly one of inputs or inputsJson.');
         if (request.inputsJson !== undefined) {
@@ -85,11 +86,12 @@ function runtimeTools(
         const approval =
           descriptor?.risk !== 'mutating'
             ? true
-            : inScope && (await approve(descriptor, JSON.parse(boundRequest)));
+            : inScope && (await approve(descriptor, JSON.parse(boundRequest), applicationContext));
         const result = await runtime.execute(JSON.parse(boundRequest), {
           scope: getScope(),
           approval,
           ownerId,
+          taskId,
         });
         const results = await onResult(result, applicationContext);
         const output = JSON.stringify({
