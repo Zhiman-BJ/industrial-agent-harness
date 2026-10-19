@@ -929,3 +929,11 @@ CSV/TSV 显示表格并提供表头开关、全文筛选与分页；普通 JSON 
 - 可观察行为：现有领域包入口支持仅安装或修复 Viewer，不被无关 Docker/native 前置阻挡；Viewer 就绪与工程依赖分别显示。准备前后真实检查 PNG 渲染，损坏或失败的运行时不标 ready；缓存可离线复用，取消可重试。打开 GDS 不隐式下载。
 - 兼容：显式 KLAYOUT_PYTHON 优先且无效不回退；旧工作树 venv 只保留为源码开发兼容。新 open 重新校验，连续 render 复用进程，安装/修复后重新解析；setup:layout 转为共享安装器的开发入口。
 - 边界：显示不修改源文件、DomainState 或 Verification，不代表 DRC/LVS 或制造验收；固定跨平台资源不等于原生平台验收。该决定补齐 PD-091/092 当时记录的 KLayout 依赖托管缺口，见[托管 Viewer Python](managed-viewer-python.md)。
+
+## PD-095：在现有版图 Viewer 增加 2.5D 查看
+
+- 日期：2026-10-19。
+- 状态：源码已实现逐层概览与局部精确 tile 修订，构建/单元及有界后端压力/几何对照检查通过；新版 Chrome 预览与原生 Electron 验收待完成。旧 macOS 整 ROI 验收仅是历史证据，安装包资格不变。
+- 来源：用户要求在现有 Viewer 增加立体查看，反馈对应关系与选择不足，并授权从软件层面处理 geometry limit 和超大/复杂版图。
+- 决定：保留默认二维及同一 ROI；逐层概览先显示，立体缩放触发局部精确 tile，有界缓存与队列控制资源。精确超限显示有标识的概览，不自动缩小区域、不静默隐藏层。提供 XY 俯视、区域坐标、按 layer/datatype 选择/高亮/隔离及二维对比，区分概览拾取与精确拾取。
+- 边界：图层展开不推断 PDK 高度、工艺层语义或网络。输入暂限 128 MiB，KLayout 仍完整解析；缓存预算与 RSS 软监控不等于外存引擎或 OS 硬隔离。私有快照保留内容绑定，recorded result 继续复核 owner 的来源和配套权限。没有超大容量/FPS 或远端上传承诺。详见 [Viewer 层](viewer-layer.md#版图-25d-示意层叠)与[阶段方案](layout-large-designs.md)。

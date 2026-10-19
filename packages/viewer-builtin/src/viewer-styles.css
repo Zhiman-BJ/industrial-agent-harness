@@ -2919,3 +2919,214 @@
 .rp-engineering-number {
   color: #c49ae0;
 }
+
+.rp-layout-pane,
+.rp-layout-raster,
+.rp-layout-solid {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+.rp-layout-pane[hidden] {
+  display: none;
+}
+.rp-layout-tools {
+  min-height: 45px;
+  height: auto;
+  flex-wrap: wrap;
+}
+.rp-layout-tools .rp-tool-caption {
+  min-width: 35px;
+}
+.rp-layout-modes {
+  display: flex;
+  gap: 2px;
+}
+.rp-layout-modes button {
+  padding: 5px 8px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+}
+.rp-layout-modes button[aria-pressed='true'] {
+  background: #18374c;
+  border-color: #49baff;
+  color: #e1f6ff;
+}
+.rp-layout-stack-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--ia-border, #23313d);
+  color: var(--ia-text-muted, #8ba4b6);
+  font-size: 11px;
+}
+.rp-layout-stack-tools label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.rp-layout-stack-tools input {
+  width: 100px;
+  accent-color: var(--ia-accent, #49baff);
+}
+.rp-layout-stack-tools output {
+  min-width: 30px;
+}
+.rp-layout-message {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: #071421;
+  color: #dcebf5;
+  font-size: 12px;
+  line-height: 1.7;
+  text-align: center;
+  cursor: default;
+}
+.rp-layout-message button {
+  border: 1px solid #49baff;
+  border-radius: 5px;
+  padding: 6px 12px;
+  color: #e1f6ff;
+  background: #18374c;
+  cursor: pointer;
+}
+.rp-layout-hint {
+  position: absolute;
+  bottom: 10px;
+  left: 12px;
+  padding: 5px 8px;
+  border-radius: 4px;
+  background: #071421df;
+  color: #c0d7e6;
+  font-size: 10px;
+  pointer-events: none;
+}
+.rp-layout-3d canvas:focus-visible {
+  outline: 2px solid var(--ia-accent, #49baff);
+  outline-offset: -3px;
+}
+
+/* Identifiable GDS layers and explicit source ROI for geometric comparison. */
+.rp-layout-inspect-pane {
+  flex-direction: row;
+}
+.rp-layout-inspect-pane > .rp-layout-solid {
+  min-width: 0;
+}
+.rp-layout-inspector {
+  display: flex;
+  flex-direction: column;
+  width: 204px;
+  flex: 0 0 204px;
+  min-height: 0;
+  border-left: 1px solid #263d50;
+  background: #0c1823;
+  color: #c0d7e6;
+  font-size: 11px;
+}
+.rp-layout-inspector header {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+  padding: 10px;
+}
+.rp-layout-inspector p {
+  margin: 0;
+  padding: 6px 10px;
+  line-height: 1.5;
+  color: #8ba4b6;
+}
+.rp-layout-inspector button,
+.rp-layout-region button {
+  color: inherit;
+  background: transparent;
+  border: 1px solid #365369;
+  border-radius: 4px;
+  padding: 4px 6px;
+  cursor: pointer;
+  font: inherit;
+}
+.rp-layout-selection {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 10px;
+  border-block: 1px solid #263d50;
+}
+.rp-layout-selection code {
+  color: #87d9ff;
+}
+.rp-layout-layer-list {
+  flex: 1;
+  min-height: 70px;
+  overflow: auto;
+  padding: 5px;
+}
+.rp-layout-layer-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+.rp-layout-layer-row[data-selected='true'] {
+  background: #204d68;
+}
+.rp-layout-layer-row input {
+  flex: 0 0 auto;
+  accent-color: #49baff;
+}
+.rp-layout-layer-row button {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  border: 0;
+  text-align: left;
+}
+.rp-layout-layer-row button span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rp-layout-layer-row code {
+  opacity: 0.75;
+}
+.rp-layout-region {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 12px;
+  padding: 6px 10px;
+  color: #9ebacc;
+  background: #0c1823;
+  border-bottom: 1px solid #263d50;
+  font-size: 10px;
+}
+@media (max-width: 1000px) {
+  .rp-layout-inspector {
+    width: 170px;
+    flex-basis: 170px;
+  }
+}
+.rp-layout-stream-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  padding: 6px 12px;
+  font-size: 10px;
+  color: var(--ia-text-muted, #8ba4b6);
+  border-top: 1px solid var(--ia-border, #23313d);
+}

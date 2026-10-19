@@ -1,0 +1,90 @@
+{
+  "status": "passed",
+  "scope": "Read-only production RasterService acceptance; no GUI or new EDA flow execution",
+  "limitations": [
+    "Sobel is an archived teaching-process output, not a newly qualified run",
+    "SKY130 FIFO is a small existing OpenLane design; it does not establish large industrial-chip coverage",
+    "Workspace has no original OAS/OASIS artifact; OAS coverage remains untested",
+    "Worker RSS is a self-observed soft limit, not an OS hard memory isolation guarantee"
+  ],
+  "fixtures": [
+    {
+      "name": "sobel-real",
+      "sha256": "88eb101db90f76a960f5b83e446423b7f8d66fa28240dc1110c49b6ceeabac95",
+      "layers": 22,
+      "uniqueShapeRecords": 71718,
+      "logicalShapeOccurrences": 1025550,
+      "roi": [
+        120,
+        120,
+        130,
+        130
+      ],
+      "loadMilliseconds": 170.235,
+      "nonCycleCalls": 89,
+      "nonCycleP95Milliseconds": 7.236,
+      "nonCycleMaxMilliseconds": 170.302,
+      "cacheCycles": 12,
+      "cycleRequests": 300,
+      "cycleCacheHits": 300,
+      "cacheBytesStable": true,
+      "stableCacheBytes": 4673956,
+      "peakWorkerRssMiB": 98.67,
+      "memoryObservation": "self-rss",
+      "oracle": {
+        "passed": true,
+        "tileChecks": 66,
+        "seamChecks": 22,
+        "nonemptyTileChecks": 45,
+        "tileFailures": [],
+        "seamFailures": []
+      },
+      "recovery": {
+        "inFlightRejected": "KLayout renderer stopped. Retry the viewport.",
+        "uncachedRequestSucceeded": true,
+        "identicalGeometry": true,
+        "workersStarted": 2
+      },
+      "sourceUnchanged": true
+    },
+    {
+      "name": "sync-fifo-real",
+      "sha256": "8d51593e15cb0dfd179b7fee444daee9407773d49fe7e379596c366d172082cd",
+      "layers": 41,
+      "uniqueShapeRecords": 95126,
+      "logicalShapeOccurrences": 536769,
+      "roi": [
+        111.707,
+        117.067,
+        121.707,
+        127.067
+      ],
+      "loadMilliseconds": 101.094,
+      "nonCycleCalls": 165,
+      "nonCycleP95Milliseconds": 3.177,
+      "nonCycleMaxMilliseconds": 103.32,
+      "cacheCycles": 12,
+      "cycleRequests": 528,
+      "cycleCacheHits": 528,
+      "cacheBytesStable": true,
+      "stableCacheBytes": 2752471,
+      "peakWorkerRssMiB": 82.3,
+      "memoryObservation": "self-rss",
+      "oracle": {
+        "passed": true,
+        "tileChecks": 123,
+        "seamChecks": 41,
+        "nonemptyTileChecks": 68,
+        "tileFailures": [],
+        "seamFailures": []
+      },
+      "recovery": {
+        "inFlightRejected": "KLayout renderer stopped. Retry the viewport.",
+        "uncachedRequestSucceeded": true,
+        "identicalGeometry": true,
+        "workersStarted": 2
+      },
+      "sourceUnchanged": true
+    }
+  ]
+}
