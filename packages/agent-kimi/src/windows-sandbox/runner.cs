@@ -48,6 +48,13 @@ internal static class Runner
     static IntPtr originalStation;
     static bool assigned;
     static int finished;
+    static string stage = "initialize";
+
+    static void Stage(string value)
+    {
+        stage = value;
+        Console.Error.WriteLine("Windows agent isolation: " + value);
+    }
 
     sealed class Grant
     {
@@ -61,23 +68,32 @@ internal static class Runner
     {
         try
         {
+            // Children inherit this mode. A DLL startup failure must return its
+            // status, not wait forever for a dialog on the noninteractive desktop.
+            SetErrorMode(GetErrorMode() | 1 | 2 | 0x8000);
             if (argv.Length != 1) throw new InvalidOperationException("Expected one policy JSON path.");
             Configuration config = new JavaScriptSerializer().Deserialize<Configuration>(File.ReadAllText(argv[0]));
+            Stage("validate policy");
             Validate(config);
             SecurityIdentifier sid = NewSid();
             launchSid = sid;
             SecurityIdentifier user = WindowsIdentity.GetCurrent().User;
+            Stage("prepare token");
             PrepareToken(sid, user);
             // Inspect the complete trees before changing any ACL. All ACL changes use these handles.
             foreach (string root in config.writableRoots) InspectTree(root);
             foreach (Grant grant in grants) ApplyGrant(grant, sid);
+            Stage("verify file boundary");
             VerifyBoundary(config);
+            Stage("prepare noninteractive desktop");
             CreatePrivateDesktop(sid, user);
             return Launch(config);
         }
         catch (Exception error)
         {
-            Console.Error.WriteLine("Windows agent isolation failed: " + error.Message);
+            Win32Exception native = error as Win32Exception;
+            Console.Error.WriteLine("Windows agent isolation failed during " + stage + ": " + error.Message +
+                (native == null ? "" : " (Win32 " + native.NativeErrorCode + ", 0x" + native.NativeErrorCode.ToString("X8") + ")"));
             return 125;
         }
         finally
@@ -320,7 +336,12 @@ internal static class Runner
         SID_AND_ATTRIBUTES low = new SID_AND_ATTRIBUTES { sid = SidBytes(new SecurityIdentifier("S-1-16-4096")), attributes = 0x20 };
         IntPtr mandatory = Marshal.AllocHGlobal(Marshal.SizeOf(typeof(SID_AND_ATTRIBUTES))); allocations.Add(mandatory); Marshal.StructureToPtr(low, mandatory, false);
         if (!SetTokenInformation(token, 25, mandatory, Marshal.SizeOf(typeof(SID_AND_ATTRIBUTES)) + 12)) Fail("Set low integrity token");
-        RawSecurityDescriptor descriptor = new RawSecurityDescriptor("D:(A;;0x1301bf;;;" + user.Value + ")(A;;0x1301bf;;;" + sid.Value + ")(A;;GA;;;SY)(A;;RC;;;OW)");
+        // A token default DACL applies to new kernel objects as well as files.
+        // File Modify is not a process/thread/event access mask (it omits process
+        // query rights, for example). Generic access maps to each object's type.
+        // Existing host paths receive no new grants; the restricting list is
+        // still solely the launch SID, and writable storage keeps its bounded ACL.
+        RawSecurityDescriptor descriptor = new RawSecurityDescriptor("D:(A;;GA;;;" + user.Value + ")(A;;GA;;;" + sid.Value + ")(A;;GA;;;SY)(A;;RC;;;OW)");
         IntPtr dacl = AclBytes(descriptor.DiscretionaryAcl);
         IntPtr value = Marshal.AllocHGlobal(IntPtr.Size); allocations.Add(value); Marshal.WriteIntPtr(value, dacl);
         if (!SetTokenInformation(token, 6, value, IntPtr.Size)) Fail("Set token default ACL");
@@ -351,14 +372,20 @@ internal static class Runner
         RawSecurityDescriptor acl = new RawSecurityDescriptor("D:(A;;GA;;;" + user.Value + ")(A;;GA;;;" + sid.Value + ")(A;;GA;;;SY)S:(ML;;NW;;;LW)");
         byte[] bytes = new byte[acl.BinaryLength]; acl.GetBinaryForm(bytes, 0);
         SECURITY_ATTRIBUTES security = new SECURITY_ATTRIBUTES { length = Marshal.SizeOf(typeof(SECURITY_ATTRIBUTES)), descriptor = Bytes(bytes), inherit = false };
-        string name = "industrial-agent-" + Guid.NewGuid().ToString("N");
-        windowStation = CreateWindowStation(name, 0, 0x37f, ref security);
-        if (windowStation == IntPtr.Zero) Fail("Create private window station");
+        // Standard users cannot supply a window-station name. Let Windows choose
+        // the noninteractive logon station, without rewriting any existing ACL.
+        // Each launch still owns a uniquely named, separately secured desktop.
+        windowStation = CreateWindowStation(null, 0, 0x37f, ref security);
+        if (windowStation == IntPtr.Zero) Fail("Open noninteractive window station");
+        StringBuilder name = new StringBuilder(32768);
+        uint required;
+        if (!GetUserObjectInformation(windowStation, 2, name, (uint)(name.Capacity * 2), out required)) Fail("Read noninteractive window station name");
+        string privateDesktop = "industrial-agent-" + Guid.NewGuid().ToString("N");
         originalStation = GetProcessWindowStation();
         if (!SetProcessWindowStation(windowStation)) Fail("Select private window station");
-        try { desktop = CreateDesktop("agent", IntPtr.Zero, IntPtr.Zero, 0, 0x1ff, ref security); if (desktop == IntPtr.Zero) Fail("Create private desktop"); }
+        try { desktop = CreateDesktop(privateDesktop, IntPtr.Zero, IntPtr.Zero, 0, 0x1ff, ref security); if (desktop == IntPtr.Zero) Fail("Create private desktop"); }
         finally { if (!SetProcessWindowStation(originalStation)) Environment.FailFast("Cannot restore host window station."); }
-        desktopName = name + "\\agent";
+        desktopName = name.ToString() + "\\" + privateDesktop;
     }
     static string desktopName;
 
@@ -401,6 +428,7 @@ internal static class Runner
         IntPtr env = Bytes(Encoding.Unicode.GetBytes(environment.ToString()));
         StringBuilder command = new StringBuilder(Quote(config.executable)); foreach (string arg in config.args) command.Append(' ').Append(Quote(arg));
         PROCESS_INFORMATION process;
+        Stage("create suspended target");
         if (!CreateProcessAsUser(token, config.executable, command, IntPtr.Zero, IntPtr.Zero, true, 4 | 0x400 | 0x80000, env, config.workingDirectory, ref startup, out process)) Fail("Create isolated agent");
         try
         {
@@ -421,9 +449,13 @@ internal static class Runner
                     if (status != 258) { TerminateJobObject(job, 125); return; }
                 }
             }); watcher.IsBackground = true; watcher.Start();
+            Stage("resume target");
             if (ResumeThread(process.thread) == UInt32.MaxValue) Fail("Resume isolated agent");
+            Stage("wait for target");
             if (WaitForSingleObject(process.process, UInt32.MaxValue) != 0) Fail("Wait for isolated agent");
-            uint code; if (!GetExitCodeProcess(process.process, out code)) Fail("Read agent exit code"); return unchecked((int)code);
+            uint code; if (!GetExitCodeProcess(process.process, out code)) Fail("Read agent exit code");
+            if (code != 0) Console.Error.WriteLine("Windows agent target exited with status 0x" + code.ToString("X8"));
+            return unchecked((int)code);
         }
         finally { CloseHandle(process.thread); CloseHandle(process.process); }
     }
@@ -455,6 +487,7 @@ internal static class Runner
     [DllImport("advapi32.dll", SetLastError = true)] static extern bool RevertToSelf();
     [DllImport("kernel32.dll", SetLastError = true)] static extern bool CloseHandle(IntPtr handle);
     [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)] static extern IntPtr CreateWindowStation(string name, uint flags, uint access, ref SECURITY_ATTRIBUTES security);
+    [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)] static extern bool GetUserObjectInformation(IntPtr value, int index, StringBuilder information, uint length, out uint needed);
     [DllImport("user32.dll", SetLastError = true)] static extern IntPtr GetProcessWindowStation();
     [DllImport("user32.dll", SetLastError = true)] static extern bool SetProcessWindowStation(IntPtr station);
     [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)] static extern IntPtr CreateDesktop(string name, IntPtr device, IntPtr mode, uint flags, uint access, ref SECURITY_ATTRIBUTES security);
@@ -475,4 +508,6 @@ internal static class Runner
     [DllImport("kernel32.dll", SetLastError = true)] static extern uint ResumeThread(IntPtr thread);
     [DllImport("kernel32.dll", SetLastError = true)] static extern uint WaitForSingleObject(IntPtr handle, uint milliseconds);
     [DllImport("kernel32.dll", SetLastError = true)] static extern bool GetExitCodeProcess(IntPtr process, out uint code);
+    [DllImport("kernel32.dll")] static extern uint SetErrorMode(uint mode);
+    [DllImport("kernel32.dll")] static extern uint GetErrorMode();
 }

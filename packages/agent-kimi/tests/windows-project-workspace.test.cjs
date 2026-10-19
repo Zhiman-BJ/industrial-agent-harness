@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const vm = require('node:vm');
 const { prepareProjectWorkspace } = require('../src/project-workspace.cjs');
 
 function fixture(t) {
@@ -167,16 +168,58 @@ test('Windows rejects overly deep and excessive input trees without partial snap
   assert.equal(fs.existsSync(f.session), false);
 });
 
-test(
-  'Windows rejects reserved names and alternate data stream syntax',
-  { skip: process.platform === 'win32' },
-  t => {
+test('Windows rejects reserved names and alternate data stream syntax without partial snapshots', t => {
+  const source = require.resolve('../src/project-workspace.cjs');
+  for (const name of ['CON.md', 'LPT1.log', 'guide:stream', 'trailing.', 'escape\\name']) {
     const f = fixture(t);
-    for (const name of ['CON.md', 'LPT1.log', 'guide:stream', 'trailing.', 'escape\\name']) {
+    f.write('AGENTS.md', 'initial instructions');
+    f.write('.skills/guide/SKILL.md', 'initial skill');
+    const inputDirectory = fs.realpathSync(path.join(f.project, '.skills'));
+    let injectedEnumerations = 0;
+    // Windows cannot materialize these names. Inject only the directory entry;
+    // the real production validator and all other filesystem operations run.
+    const fileSystem = {
+      ...fs,
+      readdirSync(directory, ...options) {
+        const entries = fs.readdirSync(directory, ...options);
+        if (path.resolve(directory) !== inputDirectory) return entries;
+        injectedEnumerations++;
+        return [...entries, name];
+      },
+    };
+    const sandbox = {
+      module: { exports: {} },
+      require: id => (id === 'node:fs' ? fileSystem : require(id)),
+      process,
+      Buffer,
+    };
+    vm.runInNewContext(fs.readFileSync(source, 'utf8'), sandbox, { filename: source });
+    const prepare = () =>
+      sandbox.module.exports.prepareProjectWorkspace(f.session, f.project, 'win32');
+    assert.throws(prepare, /Unsupported Windows project input name/);
+    assert.equal(fs.existsSync(f.session), false);
+
+    f.prepare();
+    f.write('AGENTS.md', 'replacement instructions');
+    f.write('.skills/guide/SKILL.md', 'replacement skill');
+    assert.throws(prepare, /Unsupported Windows project input name/);
+    assert.equal(injectedEnumerations, 2);
+    assert.equal(
+      fs.readFileSync(path.join(f.workspace, 'AGENTS.md'), 'utf8'),
+      'initial instructions',
+    );
+    assert.equal(
+      fs.readFileSync(path.join(f.workspace, '.skills/guide/SKILL.md'), 'utf8'),
+      'initial skill',
+    );
+
+    // POSIX also exercises the ordinary module against real on-disk entries.
+    if (process.platform !== 'win32') {
+      fs.rmSync(f.session, { recursive: true, force: true });
       const file = f.write(`.skills/${name}`);
       assert.throws(f.prepare, /Unsupported Windows project input name/);
       assert.equal(fs.existsSync(f.session), false);
       fs.unlinkSync(file);
     }
-  },
-);
+  }
+});

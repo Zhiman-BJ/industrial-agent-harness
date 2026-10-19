@@ -96,6 +96,28 @@ test(
     });
     const projectFile = path.join(dirs.project, 'source.txt');
     fs.writeFileSync(projectFile, 'original project');
+    // Per-user installers and nvm place executables behind user-private ACLs.
+    // Exercise that path without adding Users/Everyone to the restricting list.
+    const privateRuntime = path.join(dirs.state, 'private-runtime');
+    fs.mkdirSync(privateRuntime);
+    const userSid = execFileSync('whoami.exe', ['/user', '/fo', 'csv', '/nh'], {
+      encoding: 'utf8',
+      windowsHide: true,
+    }).match(/S-1-5-[\d-]+/)?.[0];
+    assert.ok(userSid, 'the Windows fixture must identify its current user');
+    execFileSync(
+      'icacls.exe',
+      [
+        privateRuntime,
+        '/inheritance:r',
+        '/grant:r',
+        `*${userSid}:(OI)(CI)F`,
+        '*S-1-5-18:(OI)(CI)F',
+      ],
+      { windowsHide: true, stdio: 'pipe' },
+    );
+    const privateNode = path.join(privateRuntime, 'node.exe');
+    fs.copyFileSync(process.execPath, privateNode);
     const sandbox = createBoundary(dirs, {
       environment: { ...process.env, HARNESS_TEST_HOST_SECRET: 'host-only-value' },
       hostOnlyEnv: ['HARNESS_TEST_HOST_SECRET'],
@@ -134,6 +156,8 @@ test(
     const inherited = spawnSync(process.execPath, ['-e',
       'try { require("node:fs").writeFileSync(process.argv[1], "bypass"); process.exit(9); } catch (e) { if (!["EACCES", "EPERM"].includes(e.code)) throw e; }',
       ${JSON.stringify(projectFile)}], { encoding: 'utf8' });
+    const privateChild = spawnSync(${JSON.stringify(privateNode)}, ['-e',
+      'process.stdout.write("PRIVATE_RUNTIME_OK")'], { encoding: 'utf8' });
     let input = '';
     process.stdin.setEncoding('utf8');
     process.stdin.on('data', chunk => input += chunk);
@@ -141,6 +165,8 @@ test(
       argv: process.argv.slice(1), input, writes,
       temp: fs.readFileSync(temporary, 'utf8'),
       inherited: inherited.status, inheritedError: inherited.stderr,
+      privateChild: privateChild.status, privateOutput: privateChild.stdout,
+      privateError: privateChild.error?.message || privateChild.stderr,
       hostSecret: process.env.HARNESS_TEST_HOST_SECRET ?? null,
     })));
   `;
@@ -163,6 +189,8 @@ test(
     );
     assert.equal(output.temp, 'TEMP_WRITE_OK');
     assert.equal(output.inherited, 0, output.inheritedError);
+    assert.equal(output.privateChild, 0, output.privateError);
+    assert.equal(output.privateOutput, 'PRIVATE_RUNTIME_OK');
     assert.equal(output.hostSecret, null);
     assert.equal(fs.readFileSync(allowed, 'utf8'), 'SESSION_WRITE_OK');
     assert.equal(fs.readFileSync(projectFile, 'utf8'), 'original project');
