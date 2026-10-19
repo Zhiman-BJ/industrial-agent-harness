@@ -804,6 +804,14 @@ CSV/TSV 显示表格并提供表头开关、全文筛选与分页；普通 JSON 
 - 可观察行为：完成状态显示沙箱已释放；释放未确认显示待释放，工程结论保留。下一次调用先确认待释放状态，不能把释放成功推断为工具执行成功或反过来。
 - 边界：未知、运行中、待导入结果不自动释放；不抢占其他聊天，不扩大 quota，不重放工程操作。当前覆盖 `mcp-v1` 完成路径，发现后未执行、遗留会话和进程崩溃不承诺自动空闲回收。领域执行逻辑继续归 owner Pack；Viewer 仅按产物摘要做只读展示。
 
+## PD-083：CLI 与 SDK 转入内部版本
+
+- 日期：2026-10-12。
+- 状态：已确定。
+- 来源：用户 2026-10-12 决定；本条取代 PD-069 中 "apps.cli 作为公开适配器" 的条款，PD-069 其余内容（双版本边界、机器清单机制、导出器约束）不变。
+- 决定：`apps/cli`（含 headless 打包链、Linux Chip 安装器、bench CLI runner 与 inspect-log 诊断）与 `packages/sdk`（运行契约为驱动内部打包的 headless CLI）转入 internal edition，不进入公开导出。机器清单同步翻转（原 `apps.cli` 公开条目、`packages.sdk` 公开条目与 `internal.diagnostics.cli-inspect-log` 覆盖条目合并为 `internal.apps.cli` 与 `internal.packages.sdk`）；公开 README 不再宣传 CLI，CLI 完整文档保留在 `apps/cli/README.md`（internal，不导出）。
+- 边界：不物理删除任何文件——内部仓库继续维护 CLI 及其发行流水线（release-headless / release-linux-chip）；#106 导出器按清单自动剪枝（含 workspace/lockfile/workflow 与公开测试集选择）；公开代码残留的静态引用（`scripts/qualify-cad-tasks.cjs`、`packages/harness-application/tests/task-service.test.cjs` 指向 CLI；`scripts/benchmark-harness.cjs`、`scripts/benchmark-paired.cjs` 指向 SDK）记入 #102 只减不增台账，随构建隔离收敛归零。
+
 ## PD-084：通用项目兜底与创建流程内的领域安装引导
 
 - 日期：2026-10-16。

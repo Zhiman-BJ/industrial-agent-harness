@@ -8,7 +8,7 @@ English · [简体中文](README.zh-CN.md)
 
 **An AI workbench for engineering projects, with scoped tools and verifiable results.**
 
-Industrial Agent Harness connects local projects, Kimi Code, professional software and engineering evidence through a desktop workbench and a headless CLI. Domain Packs provide the knowledge, tools and verification methods for each field.
+Industrial Agent Harness connects local projects, Kimi Code, professional software and engineering evidence through a desktop workbench. Domain Packs provide the knowledge, tools and verification methods for each field.
 
 > [!IMPORTANT]
 > **Developer Preview.** The project is a Workbench MVP with persistent, scoped engineering runtimes. APIs, Pack interfaces and runtime behavior are still evolving. This README describes the current source tree; published preview archives follow their own release notes.
@@ -23,7 +23,7 @@ Industrial Agent Harness connects local projects, Kimi Code, professional softwa
 - **Use project guidance.** Discover `.skill/`, `.skills/` and standard project Skill directories, and load project `AGENTS.md` through Kimi's native mechanism. See the [compatibility audit](doc/kimi-native-compatibility-audit.md) for remaining limitations.
 - **Keep engineering evidence.** Domain runtimes record inputs, actions, artifacts, verification and checkpoints. Input changes invalidate current evidence; interrupted work remains visible after restart.
 - **Inspect artifacts in the workbench.** View waveforms, netlists, layouts, KiCad designs, Godot assets and ordinary project files.
-- **Automate and extend.** Use the CLI's JSON Lines events, the Node SDK or stdio JSON-RPC; build independent Domain Packs with complete Skill resources and installation integrity checks.
+- **Extend with Domain Packs.** Build independent Domain Packs with complete Skill resources and installation integrity checks.
 
 Kimi Code owns the agent loop, conversation history and compaction. Harness supplies project context, scoped engineering tools and evidence. A completed agent turn or a successful process exit does not establish engineering acceptance.
 
@@ -50,19 +50,7 @@ npm install --global pnpm@11.1.3
 pnpm install --frozen-lockfile
 ```
 
-### 1. Explore the CLI without a model
-
-```sh
-pnpm cli run \
-  --project-dir ./examples/chip-sobel \
-  --domain chip \
-  --task "Inspect netlist signals" \
-  --scope-only
-```
-
-This prints the registered capability scope and disclosure trace. It needs no API key or native engineering tools, and does not execute or verify the design.
-
-### 2. Start the desktop workbench
+### 1. Start the desktop workbench
 
 ```sh
 pnpm --filter @industrial-agent-harness/desktop setup:kimi
@@ -79,9 +67,9 @@ Select the server's **API format** independently of the Kimi agent kernel. Offic
 
 The sidebar shows the green Core mark and Micius Harness on a separate row above Projects, aligned with the project section. Project navigation places each project name above its domain metadata. Settings groups appearance, agent configuration and application options without changing their existing actions. Escape or Close returns focus to Settings; clicking outside dismisses the popover without taking focus from the chosen control.
 
-The setup command verifies the bundled **Kimi Code 2.1.1** runtime; Desktop and CLI share the authenticated Server API integration. No separate Python Kimi installation is needed. See the [migration record](doc/kimi-code-migration.md) for history, diagnostics and compatibility. Layout viewing additionally needs KLayout Python: run `pnpm --filter @industrial-agent-harness/desktop setup:layout` or set `KLAYOUT_PYTHON`.
+The setup command verifies the bundled **Kimi Code 2.1.1** runtime; Desktop uses the authenticated Server API integration. No separate Python Kimi installation is needed. See the [migration record](doc/kimi-code-migration.md) for history, diagnostics and compatibility. Layout viewing additionally needs KLayout Python: run `pnpm --filter @industrial-agent-harness/desktop setup:layout` or set `KLAYOUT_PYTHON`.
 
-### 3. Maintainer native regression on macOS with Apple Silicon
+### 2. Maintainer native regression on macOS with Apple Silicon
 
 This historical full-suite source entry includes compatibility tests that need host Verilator, a C++ toolchain, uv and Python 3.13. It is a maintainer workflow, separate from ordinary installed Chip use, which runs the prebuilt EDA image. The current managed and installed tests additionally require Docker:
 
@@ -95,7 +83,7 @@ The tests run real RTL simulation and check assertions, waveforms, failure handl
 
 The current managed Chip profile is qualified on macOS ARM64 and Linux x86-64 with Docker. The historical Linux [one-command installer](releases/chip-linux-installer-v0.1.0-preview.3.md) retains its own versioned runtime and installation instructions.
 
-Prefer a packaged preview? Browse [GitHub Releases](https://github.com/Zhiman-BJ/industrial-agent-harness/releases) and follow that version's instructions. [Headless installation](apps/cli/README.md#github-release-安装) and [domain CLI packages](doc/domain-cli-downloads.md) cover checksums and external dependencies. Existing archives do not acquire newer source features automatically.
+Prefer a packaged preview? Browse [GitHub Releases](https://github.com/Zhiman-BJ/industrial-agent-harness/releases) and follow that version's instructions. Existing archives do not acquire newer source features automatically.
 
 Current source consumes **Domain Packs 0.7.0** at owner commit `1eae41d583bc526c36ae8a8f6c08343504949928`. Installing a Pack installs its trusted capabilities, Skills and adapters; native dependencies are installed externally; container preparation and remote configuration are separate actions. In the capability center or project details, choose a qualified native, container or remote profile, associate compatible existing software, or explicitly prepare a container image after installing and starting Docker. Native profiles have no Harness download/install action. Native FreeCAD, Godot and the isolated DXF runtime do not require Docker; Docker remains necessary for Chip, PCB design and DXF container profiles. The product catalog offers four domains: Chip, PCB, Godot and CAD. CUDA is withdrawn from fresh and legacy installed product entries; its standalone implementation remains available. Domain cards use clear borders, a one-line purpose and collapsed requirements; status names actual missing dependencies. Green means ready, yellow means missing, red means check failure and neutral means unchecked. The latest failed check overrides saved Ready in the display. The Go platform component performs fixed environment detection, not a full domain MCP rewrite. See [distribution v2](doc/runtime-distribution-v2.md), [installation experience](doc/install-experience.md) and [current acceptance evidence](doc/qa-runtime-distribution-v2-20261012.md). Model configuration, environment readiness and engineering verification remain separate. This source change does not establish a signed public installer, Core OTA, new Mac CI runner or broader native qualification.
 
@@ -116,7 +104,7 @@ Build your own Pack with the [Pack authoring tutorial](doc/pack-authoring.md). D
 
 ### Task results
 
-Tools register compact result rows automatically through the shared task service, with attached reports grouped under Supporting results and file/check details expanded on demand; CLI emits the same groups and file references. Open the main result, inspect native files/exports, and read checks for the recorded version. Explicit replacements preserve history; parallel designs stay visible. One supported read-only preview can open once after a foreground request settles, provided you have not changed files/tabs/chats. History, background work, failures and ambiguous choices never take focus. Partial outputs and changed files are labeled. Agent `select_result` is optional. FreeCAD generation → consecutive edits → checks → cards → OCCT viewing was exercised on macOS arm64 from source, separately from a real-model demonstration; no new installer/platform qualification. [Behavior, contract and evidence](doc/task-results.md).
+Tools register compact result rows automatically through the shared task service, with attached reports grouped under Supporting results and file/check details expanded on demand. Open the main result, inspect native files/exports, and read checks for the recorded version. Explicit replacements preserve history; parallel designs stay visible. One supported read-only preview can open once after a foreground request settles, provided you have not changed files/tabs/chats. History, background work, failures and ambiguous choices never take focus. Partial outputs and changed files are labeled. Agent `select_result` is optional. FreeCAD generation → consecutive edits → checks → cards → OCCT viewing was exercised on macOS arm64 from source, separately from a real-model demonstration; no new installer/platform qualification. [Behavior, contract and evidence](doc/task-results.md).
 
 Reading chat history requires no execution setup, including for unfinished remote projects. Saved result events read existing facts without loading Packs, and share file validation within that read; later reads and file opening recheck content.
 
@@ -152,7 +140,6 @@ Try the [Sobel chip project](examples/chip-sobel/README.md), [LED board](example
 | Start here                                                                                   | Details                                                                                                                             |
 | -------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
 | [Documentation index](doc/README.md)                                                         | Architecture, product decisions and module guides; most detailed documentation is currently in Chinese.                             |
-| [CLI](apps/cli/README.md) · [Node SDK](doc/sdk.md)                                           | Tasks, streaming events, chat recovery, cancellation and stdio JSON-RPC.                                                            |
 | [Pack authoring](doc/pack-authoring.md) · [Versioned contracts](doc/contracts-versioning.md) | Independent Pack development, resources, compatibility and canonical industrial facts.                                              |
 | [Current delivery and validation](doc/harness-quality-three-tracks.md)                       | Implemented scope, exercised tests and remaining work. Historical architecture proposals are not implementation claims.             |
 | [Paired evaluation baseline](doc/benchmark-baseline.md)                                      | Native Kimi/Harness comparison, frozen inputs and independent verification. Formal model success-rate and cost results are pending. |
@@ -207,6 +194,6 @@ MOCK_REMOTE_TOKEN=mock-token node scripts/remote-ui-fixture.cjs
 
 Launch the test client with `INDUSTRIAL_REMOTE_SERVICE_URL=http://127.0.0.1:8787`, `INDUSTRIAL_REMOTE_CREDENTIAL_ENV=MOCK_REMOTE_TOKEN` and the same `MOCK_REMOTE_TOKEN`. File upload still requires explicit review and confirmation. This fixture establishes UI protocol behavior only, not production remote execution or engineering qualification.
 
-CLI and Desktop now share the Harness task application; domain metadata, Skills and implementations come from one immutable Domain Packs release. See [consumer migration and validation](doc/shared-task-and-pack-consumption.md).
+The Harness task application is shared across Desktop and the internal headless surface; domain metadata, Skills and implementations come from one immutable Domain Packs release. See [consumer migration and validation](doc/shared-task-and-pack-consumption.md).
 
 The preceding managed release pinned Domain Packs 0.6.0 by immutable commit and prepared the declared Harbor assets through the generic Pack Manager. Its historical evidence follows. macOS ARM64 qualification covers the declared CAD, PCB and Godot profiles and the CUDA remote client; managed Chip also passed Linux x86-64 installation and native checks. See [installation evidence](doc/install-experience.md) and each domain's qualification limits. Historical preview archives retain their original dependencies and scope.
