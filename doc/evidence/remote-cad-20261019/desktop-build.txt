@@ -1,0 +1,32 @@
+$ pnpm --filter @industrial-agent-harness/desktop build
+$ tsc --noEmit && vite build
+vite v8.2.2 building client environment for production...
+transforming...
+✓ 2138 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                              0.97 kB │ gzip:     0.50 kB
+dist/assets/ibm-plex-sans-latin-variable-IvpUvPa2.woff2     45.71 kB
+dist/assets/harness-occt-CxdVwTKt.wasm                   8,723.29 kB │ gzip: 2,877.44 kB
+dist/assets/CadViewport-DchzvxI6.css                         3.10 kB │ gzip:     1.05 kB
+dist/assets/index-Cgju5Uny.css                             131.38 kB │ gzip:    24.32 kB
+dist/assets/MarkdownView-BTsHa4Ue.js                         0.88 kB │ gzip:     0.54 kB
+dist/assets/TextView-FgTKyUvi.js                             1.52 kB │ gzip:     0.72 kB
+dist/assets/KiCadViewport-BlHZGGBm.js                        2.13 kB │ gzip:     1.03 kB
+dist/assets/WaveformViewport-C_e9TgdK.js                     3.97 kB │ gzip:     1.75 kB
+dist/assets/GodotViewport-8M-6bikP.js                        5.43 kB │ gzip:     2.20 kB
+dist/assets/LayoutViewport-C9-HPD_H.js                       5.60 kB │ gzip:     2.41 kB
+dist/assets/NetlistViewport-BFKo5UA6.js                      5.90 kB │ gzip:     2.54 kB
+dist/assets/DocumentViewport-BEf8lHpr.js                     6.72 kB │ gzip:     2.66 kB
+dist/assets/text-D4Ts-FJp.js                                 8.83 kB │ gzip:     3.39 kB
+dist/assets/EngineeringViewport-u55K8Ad-.js                  8.98 kB │ gzip:     3.44 kB
+dist/assets/AssetViewport-BuD2kzAg.js                       10.62 kB │ gzip:     3.69 kB
+dist/assets/CadViewport-CM1BM_bG.js                        195.52 kB │ gzip:    56.41 kB
+dist/assets/index-DKY0gXnw.js                              636.43 kB │ gzip:   187.33 kB
+
+[plugin builtin:vite-reporter]
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 735ms

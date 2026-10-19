@@ -1,0 +1,31 @@
+{
+  "testedAtUtc": "2026-10-17T02:47:56.186Z",
+  "sourceExecutionCommit": "08523a4",
+  "sourceChatId": "b5e46166-06f7-48f0-aed4-923cecda97a1",
+  "sourceTurnId": "a5fe98a2-cc70-4f30-8a1b-43855b435b2f",
+  "sourceRequestId": "4b988ce1-eb86-4bf0-86ed-c8194f37ad38",
+  "executionRuntimeBundles": 0,
+  "outputs": [
+    {
+      "file": "0-log.tool.log",
+      "artifactId": "13731205-291c-4d5f-8cc2-dfbb33b53489",
+      "sizeBytes": 4270,
+      "sha256": "0c389442e53aec1e4a9799a83967f6bc14c9cd0312ce910e69885c3ff22501f8",
+      "matched": true
+    },
+    {
+      "file": "1-report.simulation.json",
+      "artifactId": "14bf7fbb-0e23-4868-be3c-ba6aa86d3978",
+      "sizeBytes": 615,
+      "sha256": "8ac9714f71ffa197a680b48a8978036e1b02c2a5782b7d5c8fb93bd80cdf6151",
+      "matched": true
+    },
+    {
+      "file": "2-waveform.vcd.vcd",
+      "artifactId": "8ff1d66d-b2d3-465d-acf4-b36134d8c954",
+      "sizeBytes": 360,
+      "sha256": "a373b895c7d8122b63f1dfb1b71042a4d68d9388b4a4cb74a970b22becdbd343",
+      "matched": true
+    }
+  ]
+}

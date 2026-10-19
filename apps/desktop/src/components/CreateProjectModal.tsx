@@ -1,3 +1,4 @@
+import { useModalFocus } from '../use-modal-focus';
 import { DomainIcon } from '@industrial-agent-harness/viewer-builtin/domain-icon';
 import { useDisplayText } from '@industrial-agent-harness/viewer-builtin/text';
 import { useState } from 'react';
@@ -32,6 +33,7 @@ export function CreateProjectModal({
   onCreate: (request: Draft) => Promise<void>;
 }) {
   const { t } = useDisplayText();
+  const dialog = useModalFocus(onClose);
   const [saving, setSaving] = useState(false);
   async function create() {
     setSaving(true);
@@ -50,6 +52,8 @@ export function CreateProjectModal({
     >
       <section
         className="ia-model-modal ia-create-project"
+        ref={dialog}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-label={t('Create project')}
