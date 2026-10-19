@@ -6,7 +6,7 @@ import type {
   RemoteProjectState,
   RemoteServiceState,
   RemoteSyncReview,
-  RemoteTaskState,
+  RemoteArtifact,
 } from '@industrial-agent-harness/viewer-builtin/api';
 
 const serviceLabels = {
@@ -15,17 +15,6 @@ const serviceLabels = {
   unchecked: 'Not connected',
   connected: 'Connected',
   unavailable: 'Temporarily unavailable',
-};
-const taskLabels: Record<string, string> = {
-  submitting: 'Preparing remote task…',
-  queued: 'Waiting for an available sandbox…',
-  provisioning: 'Preparing sandbox…',
-  running: 'Running remotely…',
-  collecting: 'Collecting results…',
-  completed: 'Remote task completed',
-  failed: 'Remote task failed',
-  cancelled: 'Remote task cancelled',
-  unknown: 'Checking remote task outcome…',
 };
 
 export function RemoteServiceSettings() {
@@ -74,6 +63,7 @@ export function RemoteServiceSettings() {
         </p>
       )}
       <button
+        className="ia-remote-primary"
         onClick={() => void check()}
         disabled={
           checking || !service || ['not_configured', 'credentials_missing'].includes(service.status)
@@ -81,6 +71,7 @@ export function RemoteServiceSettings() {
       >
         {checking ? t('Connecting…') : t('Check connection')}
       </button>
+      {service?.reason && <p role="alert">{t(service.reason)}</p>}
       {error && <p role="alert">{t(error)}</p>}
     </section>
   );
@@ -102,6 +93,7 @@ export function ProjectExecution({
   const [files, setFiles] = useState<string[] | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [review, setReview] = useState<RemoteSyncReview>();
+  const [rebinding, setRebinding] = useState(false);
   const [pending, setPending] = useState(false),
     [error, setError] = useState('');
   const lock = useRef(false);
@@ -115,7 +107,10 @@ export function ProjectExecution({
           setSelected(value.files);
           onReady(
             value.location === 'local' ||
-              (Boolean(value.syncedAt) && value.service.status === 'connected'),
+              (Boolean(value.syncedAt) &&
+                value.service.status === 'connected' &&
+                (value.service.executableDomains?.includes(project.domain || '') === true ||
+                  value.service.capabilities?.runtimeDiscovery === true)),
           );
         }
       })
@@ -137,7 +132,10 @@ export function ProjectExecution({
       setState(next);
       onReady(
         next.location === 'local' ||
-          (Boolean(next.syncedAt) && next.service.status === 'connected'),
+          (Boolean(next.syncedAt) &&
+            next.service.status === 'connected' &&
+            (next.service.executableDomains?.includes(project.domain || '') === true ||
+              next.service.capabilities?.runtimeDiscovery === true)),
       );
       if (changed) onChanged();
     } catch (reason) {
@@ -200,6 +198,7 @@ export function ProjectExecution({
             {t(serviceLabels[state.service.status])}
             {state.syncedAt && ` · ${t('Approved files synced')}`}
           </p>
+          {state.service.reason && <p role="alert">{t(state.service.reason)}</p>}
           {state.service.status === 'not_configured' && (
             <p>
               {t(
@@ -207,12 +206,17 @@ export function ProjectExecution({
               )}
             </p>
           )}
-          {state.service.status === 'unchecked' && (
+          {['unchecked', 'unavailable'].includes(state.service.status) && (
             <button
+              className="ia-remote-primary"
               disabled={busy || pending}
               onClick={() => void change(() => window.viewerHost!.remoteCheck())}
             >
-              {t('Connect')}
+              {pending
+                ? t('Connecting…')
+                : state.service.status === 'unavailable'
+                  ? t('Check connection')
+                  : t('Connect')}
             </button>
           )}
           {state.service.status === 'connected' &&
@@ -224,11 +228,15 @@ export function ProjectExecution({
               <>
                 <p>
                   {t(
-                    'Only files you confirm below will be uploaded. Changes to these files sync before the next task; adding files requires another confirmation.',
+                    'Only reviewed files are uploaded. Review and upload changed files before the next remote task.',
                   )}
                 </p>
                 {!files && (
-                  <button disabled={busy || pending} onClick={() => void change(chooseFiles)}>
+                  <button
+                    className="ia-remote-primary"
+                    disabled={busy || pending}
+                    onClick={() => void change(chooseFiles)}
+                  >
                     {state.files.length ? t('Manage synced files') : t('Choose files to sync')}
                   </button>
                 )}
@@ -253,6 +261,7 @@ export function ProjectExecution({
                     ))}
                     {!files.length && <p>{t('No eligible files found.')}</p>}
                     <button
+                      className="ia-remote-primary"
                       disabled={busy || pending || !selected.length}
                       onClick={() =>
                         void change(async () =>
@@ -291,6 +300,7 @@ export function ProjectExecution({
                       })}
                     </p>
                     <button
+                      className="ia-remote-primary"
                       disabled={busy || pending}
                       onClick={() =>
                         void change(async () => {
@@ -314,6 +324,49 @@ export function ProjectExecution({
             )}
         </div>
       )}
+      {state?.location === 'remote' &&
+        state.service.status === 'connected' &&
+        !state.service.executableDomains?.includes(project.domain || '') &&
+        !state.service.capabilities?.runtimeDiscovery && (
+          <p>{t('This remote domain is available for testing only.')}</p>
+        )}
+      {state?.location === 'remote' && state.syncedAt && (
+        <RemoteDownloads key={project.id} projectId={project.id} busy={busy || pending} />
+      )}
+      {state?.location === 'remote' && state.hasRemoteProject && (
+        <div>
+          {!rebinding ? (
+            <button disabled={busy || pending} onClick={() => setRebinding(true)}>
+              {t('Connect to a new remote project')}
+            </button>
+          ) : (
+            <>
+              <p>
+                {t(
+                  'Creates a new project on the configured service. Previous remote files and results stay in the old project. Review and upload files before running again.',
+                )}
+              </p>
+              <button
+                disabled={busy || pending}
+                onClick={() =>
+                  void change(async () => {
+                    await window.viewerHost!.remoteRebind({ projectId: project.id });
+                    setFiles(null);
+                    setSelected([]);
+                    setReview(undefined);
+                    setRebinding(false);
+                  }, true)
+                }
+              >
+                {t('Create new remote project')}
+              </button>
+              <button disabled={pending} onClick={() => setRebinding(false)}>
+                {t('Cancel')}
+              </button>
+            </>
+          )}
+        </div>
+      )}
       {error && (
         <p role="alert" className="ia-project-error">
           {t(error)}
@@ -323,87 +376,62 @@ export function ProjectExecution({
   );
 }
 
-export function RemoteTaskStatus({
-  projectId,
-  onReady,
-  onConfigure,
-}: {
-  projectId: string;
-  onReady: (ready: boolean) => void;
-  onConfigure: () => void;
-}) {
+function RemoteDownloads({ projectId, busy }: { projectId: string; busy: boolean }) {
   const { t } = useDisplayText();
-  const [project, setProject] = useState<RemoteProjectState>();
-  const [task, setTask] = useState<RemoteTaskState | null>(null),
-    [error, setError] = useState('');
-  useEffect(() => {
-    let alive = true,
-      timer: ReturnType<typeof setTimeout>;
-    onReady(false);
-    async function poll() {
-      try {
-        const state = await window.viewerHost!.remoteProject({ projectId });
-        const ready = state.service.status === 'connected' && Boolean(state.syncedAt);
-        const value = state.task ? await window.viewerHost!.remoteTask({ projectId }) : null;
-        if (alive) {
-          setProject(state);
-          onReady(ready);
-          setTask(value);
-          setError('');
-        }
-      } catch (reason) {
-        if (alive) {
-          setError(String(reason));
-          onReady(false);
-        }
-      }
-      if (alive) timer = setTimeout(() => void poll(), 2000);
+  const [artifacts, setArtifacts] = useState<RemoteArtifact[]>([]);
+  const [pending, setPending] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [message, setMessage] = useState('');
+  async function refresh() {
+    setPending(true);
+    try {
+      setArtifacts(await window.viewerHost!.remoteArtifacts({ projectId }));
+      setLoaded(true);
+      setMessage('');
+    } catch (error) {
+      setMessage(String(error));
+    } finally {
+      setPending(false);
     }
-    void poll();
-    return () => {
-      alive = false;
-      clearTimeout(timer);
-    };
-  }, [projectId]);
+  }
   return (
-    <div className="ia-remote-task-status" role="status">
-      <Cloud size={14} />
-      <span>
-        {t(
-          task
-            ? taskLabels[task.status] || 'Checking remote task outcome…'
-            : project?.service.status === 'connected'
-              ? project.syncedAt
-                ? 'Zhiman Remote (trial)'
-                : 'Choose files to sync'
-              : project
-                ? serviceLabels[project.service.status]
-                : 'Loading…',
-        )}
-        {task?.status === 'queued' && task.queuePosition
-          ? ` · ${t('Queue position {0}', { '0': String(task.queuePosition) })}`
-          : ''}
-      </span>
-      {task?.jobId && ['queued', 'provisioning', 'running', 'collecting'].includes(task.status) && (
-        <button
-          onClick={() =>
-            void window
-              .viewerHost!.remoteCancel({
-                projectId,
-                requestId: task.requestId,
-                jobId: task.jobId!,
-              })
-              .then(setTask)
-              .catch(reason => setError(String(reason)))
-          }
-        >
-          {t('Cancel task')}
-        </button>
-      )}
-      {project && (!project.syncedAt || project.service.status !== 'connected') && (
-        <button onClick={onConfigure}>{t('Project details')}</button>
-      )}
-      {error && <span>{t('Could not refresh task status. Check the connection.')}</span>}
-    </div>
+    <section aria-label={t('Remote files')}>
+      <button disabled={busy || pending} onClick={() => void refresh()}>
+        {t('Browse remote results')}
+      </button>
+      {loaded && !artifacts.length && <p>{t('No remote artifacts yet.')}</p>}
+      {artifacts.map(artifact => {
+        const name = artifact.relativePath?.split(/[\\/]/).at(-1) || 'artifact';
+        const destination = `remote-downloads/${artifact.id}/${name}`;
+        return (
+          <div key={artifact.id} className="ia-remote-heading">
+            <span>
+              {name} · {artifact.sizeBytes} B
+              <br />
+              <small>{destination}</small>
+            </span>
+            <button
+              disabled={busy || pending}
+              title={destination}
+              onClick={() => {
+                setPending(true);
+                void window
+                  .viewerHost!.remoteDownload({
+                    projectId,
+                    artifactId: artifact.id,
+                    relativePath: destination,
+                  })
+                  .then(() => setMessage(t('Downloaded to {0}', { '0': destination })))
+                  .catch(error => setMessage(String(error)))
+                  .finally(() => setPending(false));
+              }}
+            >
+              {t('Download to project')}
+            </button>
+          </div>
+        );
+      })}
+      {message && <p role="status">{message}</p>}
+    </section>
   );
 }

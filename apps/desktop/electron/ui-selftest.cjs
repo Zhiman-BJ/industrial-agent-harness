@@ -95,10 +95,81 @@ async function run(window, dialog) {
   }
 
   await wait(`Boolean(document.querySelector('.ia-chat-welcome'))`);
+  assert.equal(
+    await evaluate(`document.querySelector('.ia-sidebar-brand b').textContent`),
+    'Industrial Harness',
+  );
+  assert.equal(
+    await evaluate(`(() => {
+    const brand = document.querySelector('.ia-sidebar-brand').getBoundingClientRect();
+    const chrome = document.querySelector('.ia-sidebar-chrome').getBoundingClientRect();
+    const projects = document.querySelector('.ia-projects-heading').getBoundingClientRect();
+    const mark = document.querySelector('.ia-product-mark').getBoundingClientRect();
+    const heading = document.querySelector('.ia-projects-heading span').getBoundingClientRect();
+    return brand.top >= chrome.bottom && brand.bottom <= projects.top && Math.abs(mark.left - heading.left) <= 1;
+  })()`),
+    true,
+    'Brand clears native controls and aligns above the project section',
+  );
   assert.equal(await evaluate(`Boolean(document.querySelector('.ia-workspace'))`), false);
   assert.equal(await evaluate(`document.querySelector('.ia-composer textarea').disabled`), true);
   assert.equal(await evaluate(`document.querySelector('.ia-send').disabled`), true);
   await capture('empty-light');
+  await click('.ia-settings-button');
+  await wait(
+    `document.querySelector('.ia-settings-popover[role="dialog"]') && document.activeElement === document.querySelector('.ia-settings-title button')`,
+  );
+  assert.deepEqual(
+    await evaluate(`Array.from(document.querySelectorAll('.ia-settings-group')).map(group => ({
+      role: group.getAttribute('role'), label: group.getAttribute('aria-label'),
+    }))`),
+    [
+      { role: 'group', label: 'Appearance' },
+      { role: 'group', label: 'Agent settings' },
+      { role: 'group', label: 'Application' },
+    ],
+    'Settings separate appearance, agent configuration, and application options without changing their order',
+  );
+  assert.equal(
+    await evaluate(`(() => {
+      const trigger = document.querySelector('.ia-settings-button');
+      const dialog = document.querySelector('.ia-settings-popover');
+      return trigger.getAttribute('aria-haspopup') === 'dialog' &&
+        trigger.getAttribute('aria-controls') === dialog.id &&
+        trigger.getAttribute('aria-expanded') === 'true' &&
+        dialog.getAttribute('aria-label') === 'Settings' &&
+        dialog.getAttribute('aria-modal') !== 'true';
+    })()`),
+    true,
+    'Settings exposes its named nonmodal dialog relationship',
+  );
+  window.focus();
+  window.webContents.focus();
+  window.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'Escape' });
+  window.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'Escape' });
+  await wait(
+    `!document.querySelector('.ia-settings-popover') && document.activeElement === document.querySelector('.ia-settings-button')`,
+  );
+  assert.equal(
+    await evaluate(`document.querySelector('.ia-settings-button').getAttribute('aria-expanded')`),
+    'false',
+    'Escape closes Settings and restores focus to its trigger',
+  );
+  await click('.ia-settings-button');
+  await wait(`document.activeElement === document.querySelector('.ia-settings-title button')`);
+  // Dispatch the outside pointer event without activating New project; the
+  // receiving control must keep focus when the nonmodal popover closes.
+  await evaluate(`(() => {
+    const target = document.querySelector('.ia-welcome-create');
+    target.focus();
+    target.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+  })()`);
+  await wait(`!document.querySelector('.ia-settings-popover')`);
+  assert.equal(
+    await evaluate(`document.activeElement === document.querySelector('.ia-welcome-create')`),
+    true,
+    'Outside dismissal must not steal focus from the chosen control',
+  );
   await click('.ia-welcome-create');
   await wait(`Boolean(document.querySelector('.ia-create-project'))`);
   await capture('create-project');
@@ -142,12 +213,34 @@ async function run(window, dialog) {
   await capture('remote-unconfigured-zh');
   await setLanguage(window, 'en');
   await click('.ia-new-chat');
-  await wait(
-    `document.querySelector('.ia-remote-task-status')?.textContent.includes('Not configured')`,
-  );
+  await wait(`document.querySelector('.ia-status-dock')?.textContent.includes('Not configured')`);
+  // The pill summary can settle before the chat page finishes mounting its
+  // composer; wait for the textarea before asserting its disabled state.
+  await wait(`Boolean(document.querySelector('.ia-composer textarea'))`);
   assert.equal(await evaluate(`document.querySelector('.ia-composer textarea').disabled`), true);
   assert.equal(await evaluate(`document.querySelector('.ia-send').disabled`), true);
-  await evaluate(`window.__remoteStatus = document.querySelector('.ia-remote-task-status')`);
+  const remoteAgentAvailable = await evaluate(
+    `window.viewerHost.agentStatus().then(s => s.available)`,
+  );
+  const remoteHint = remoteAgentAvailable
+    ? 'Remote environment is not ready. Check project execution settings.'
+    : 'Kimi CLI is required to run Agent tasks';
+  await wait(
+    `document.querySelector('#ia-composer-status')?.textContent === ${JSON.stringify(remoteHint)}`,
+  );
+  assert.equal(
+    await evaluate(`Boolean(document.querySelector('.ia-composer-status-action'))`),
+    remoteAgentAvailable,
+    'Remote setup is actionable while the higher-priority missing-Kimi hint remains truthful',
+  );
+  assert.equal(
+    await evaluate(
+      `document.querySelector('.ia-composer textarea').getAttribute('aria-describedby').split(/\\s+/).includes('ia-composer-status')`,
+    ),
+    true,
+    'The disabled composer exposes its reason to assistive technology',
+  );
+  await evaluate(`window.__remoteStatus = document.querySelector('.ia-status-dock')`);
   await click('.ia-layout-toggle');
   await wait(`Boolean(document.querySelector('.layout-tabs'))`);
   await click('.ia-tab-add');
@@ -155,7 +248,7 @@ async function run(window, dialog) {
   await click('#tab-chat');
   await wait(`!document.querySelector('.ia-chat').hidden`);
   assert.equal(
-    await evaluate(`document.querySelector('.ia-remote-task-status') === window.__remoteStatus`),
+    await evaluate(`document.querySelector('.ia-status-dock') === window.__remoteStatus`),
     true,
     'Remote task status must stay mounted when browsing another tab',
   );
@@ -164,8 +257,19 @@ async function run(window, dialog) {
   await click('.ia-chat-actions button[title="Hide workspace"]');
   await click('.ia-layout-toggle');
   await wait(`Boolean(document.querySelector('.layout-split'))`);
-  await click('.ia-remote-task-status button');
+  // Open the collapsed pill into the card, expand its remote block, then open
+  // execution settings.
+  await click('.ia-status-pill');
+  await wait(`Boolean(document.querySelector('.ia-status-dock.open .ia-status-card'))`);
+  await click('.ia-status-dock .ia-status-head');
+  await wait(`Boolean(document.querySelector('.ia-status-dock .ia-status-body:not([hidden])'))`);
+  await click('.ia-status-dock .ia-status-body .ia-log-link');
   await wait(`Boolean(document.querySelector('.ia-project-page'))`);
+  assert.equal(
+    await evaluate(`document.querySelector('.ia-status-dock').hidden`),
+    true,
+    'Chat status stays mounted but does not cover project settings',
+  );
   await click('.ia-settings-button');
   await wait(
     `Array.from(document.querySelectorAll('.ia-settings-row')).some(row => row.textContent.includes('MCP & Skills'))`,
