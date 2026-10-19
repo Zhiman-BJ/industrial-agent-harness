@@ -150,7 +150,11 @@ async function runFiles({
   files,
   reportDirectory,
   allowed = [],
-  timeout = suite === 'portable' ? 180000 : undefined,
+  // This budget covers the whole catalog, not a single test. Native Kimi/MCP
+  // startup can push the Windows catalog past three minutes on a busy runner.
+  // Keep a bounded watchdog below the 25-minute job limit; individual test
+  // deadlines and the cancellation/skip gate still apply.
+  timeout = suite === 'portable' ? 600000 : undefined,
   expectedTests = nativeTestCounts[suite],
 }) {
   if (files.length === 0) throw Error('CI test catalog is empty.');
