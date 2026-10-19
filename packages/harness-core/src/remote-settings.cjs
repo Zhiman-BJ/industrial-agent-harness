@@ -225,6 +225,8 @@ class RemoteSettings {
             if (!subject || account.view().user?.sub !== subject)
               throw Error('Sign in to the project account again.');
             const token = await account.serviceToken('remote', config.url, options);
+            // Token acquisition reloads the shared CLI session. Recheck before
+            // allowing this client's bound project to use the returned credential.
             if (account.view().user?.sub !== subject)
               throw Error('Sign in to the project account again.');
             return token;

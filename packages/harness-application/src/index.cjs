@@ -271,8 +271,10 @@ class TaskService {
           turnId,
           eventRevision: entry.eventRevision,
         };
-        const displayed = ['results-changed', 'results-ready'].includes(recorded.type)
-          ? {
+        let displayed = recorded;
+        if (['results-changed', 'results-ready'].includes(recorded.type)) {
+          try {
+            displayed = {
               ...recorded,
               results:
                 entry.resultContext?.turnId === turnId
@@ -284,10 +286,20 @@ class TaskService {
                       entry.runtimeBundle?.runtime,
                       () => {},
                     ).view(recorded.results),
-            }
-          : recorded;
-        this.options.onEvent?.(displayed, metadata);
-        options.onEvent?.(displayed, metadata);
+            };
+          } catch (error) {
+            // The event is already durable; a failed view can be rebuilt later.
+            console.error('Industrial result view failed:', error.message);
+            return;
+          }
+        }
+        for (const consumer of [this.options.onEvent, options.onEvent]) {
+          try {
+            consumer?.(displayed, metadata);
+          } catch (error) {
+            console.error('Task event consumer failed:', error.message);
+          }
+        }
         if (
           [
             'background-state',
@@ -412,14 +424,24 @@ class TaskService {
               : outcome?.type === 'done'
                 ? outcome.result.status
                 : 'incomplete');
-          resultContext.settle(status, Boolean(entry.agent?.backgroundTasks));
-          finishTurn(
-            entry,
-            () => this.chats.finish(turnId, status),
-            () => this.options.onChanged?.(),
-          );
+          try {
+            resultContext.settle(status, Boolean(entry.agent?.backgroundTasks));
+          } finally {
+            // Presentation failures must not strand the durable turn or leases.
+            finishTurn(
+              entry,
+              () => this.chats.finish(turnId, status),
+              () => this.options.onChanged?.(),
+            );
+          }
         }
         const state = entry.runtimeBundle ? await entry.runtimeBundle.runtime.inspect() : null;
+        let results;
+        try {
+          results = resultContext.view();
+        } catch (error) {
+          console.error('Industrial result view failed:', error.message);
+        }
         return {
           status:
             entry.cancelReason ||
@@ -430,7 +452,7 @@ class TaskService {
                 : 'incomplete'),
           chatId: entry.id,
           turnId,
-          results: resultContext.view(),
+          results,
           ...(state
             ? {
                 engineering: {

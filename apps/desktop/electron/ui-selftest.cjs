@@ -170,6 +170,45 @@ async function run(window, dialog) {
     true,
     'Outside dismissal must not steal focus from the chosen control',
   );
+  await evaluate(
+    `window.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', bubbles: true}))`,
+  );
+
+  await click('.ia-settings-button');
+  await evaluate(
+    `Array.from(document.querySelectorAll('.ia-settings-row')).find(row => row.textContent.includes('Model API')).querySelector('button').click()`,
+  );
+  await wait(`Boolean(document.querySelector('[aria-label="Model API settings"]'))`);
+  await require('./modal-focus-selftest.cjs').check(window, '[aria-label="Model API settings"]');
+  const originalSize = window.getSize();
+  window.setSize(640, 480);
+  await evaluate(
+    `new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))`,
+  );
+  assert.equal(
+    await evaluate(`(() => {
+    const modal = document.querySelector('[aria-label="Model API settings"]');
+    const footer = modal.querySelector('footer').getBoundingClientRect();
+    const body = modal.querySelector('.ia-model-fields');
+    return footer.bottom <= innerHeight && footer.top >= 0 &&
+      body.scrollHeight > body.clientHeight && getComputedStyle(body).overflowY === 'auto';
+  })()`),
+    true,
+    'Model actions remain visible while fields scroll at minimum window size',
+  );
+  window.setSize(...originalSize);
+
+  await evaluate(
+    `document.activeElement.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', bubbles: true, cancelable: true}))`,
+  );
+  await wait(`!document.querySelector('[aria-label="Model API settings"]')`);
+  await click('.ia-welcome-create');
+  await wait(`Boolean(document.querySelector('.ia-create-project'))`);
+  await require('./modal-focus-selftest.cjs').check(window, '.ia-create-project');
+  await evaluate(
+    `document.activeElement.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', bubbles: true, cancelable: true}))`,
+  );
+  await wait(`!document.querySelector('.ia-create-project')`);
   await click('.ia-welcome-create');
   await wait(`Boolean(document.querySelector('.ia-create-project'))`);
   await capture('create-project');
@@ -458,6 +497,13 @@ async function run(window, dialog) {
     await evaluate(`localStorage.getItem('ia-layout-v1')`),
     'split',
     'Responsive fallback must preserve the chosen layout',
+  );
+  assert.equal(
+    await evaluate(
+      `document.querySelector('.ia-workspace-actions > [role="status"]')?.textContent || ''`,
+    ),
+    '',
+    'Escape with no mounted workspace must not leave a fullscreen error in a later Viewer',
   );
   await quality('tabs-800');
   await capture('tabs-800');
