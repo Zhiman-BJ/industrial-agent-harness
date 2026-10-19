@@ -8,6 +8,15 @@ const os = require('node:os');
 const { startModel } = require('../tests/integration/fixtures/domain-mcp-model.cjs');
 const execute = promisify(execFile);
 
+function cadInstallEnvironment(environment = process.env) {
+  return {
+    ...environment,
+    // The shared CI preparer exports this verified archive for native gates.
+    HARNESS_CAD_INSTALL_ARCHIVE:
+      environment.HARNESS_CAD_INSTALL_ARCHIVE || environment.HARNESS_FREECAD_ARCHIVE || '',
+  };
+}
+
 // After the external-native-dependencies redesign the packaged CAD selftest
 // associates an externally installed FreeCAD application (HARNESS_CAD_INSTALL_APP_PATH)
 // instead of downloading one itself. Detect that contract so this smoke keeps
@@ -162,7 +171,7 @@ async function main() {
   });
   try {
     const env = {
-      ...process.env,
+      ...cadInstallEnvironment(),
       INDUSTRIAL_HARNESS_FREECAD_CMD: '',
       KIMI_EXECUTABLE: '',
       INDUSTRIAL_HARNESS_PACK_FEED_FILE: '',
@@ -205,7 +214,11 @@ async function main() {
     if (externalAppDirectory) fs.rmSync(externalAppDirectory, { recursive: true, force: true });
   }
 }
-module.exports = { packagedSelftestExpectsExternalApp, provisionExternalFreeCADApp };
+module.exports = {
+  cadInstallEnvironment,
+  packagedSelftestExpectsExternalApp,
+  provisionExternalFreeCADApp,
+};
 if (require.main === module)
   main().catch(error => {
     console.error(error);

@@ -1,3 +1,4 @@
+import { useModalFocus } from '../use-modal-focus';
 import { useDisplayText } from '@industrial-agent-harness/viewer-builtin/text';
 import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
@@ -26,6 +27,7 @@ export function ModelSettings({
   onSaved: (status: ModelProfileStatus) => void;
 }) {
   const { t } = useDisplayText();
+  const dialog = useModalFocus(onClose);
   const [profile, setProfile] = useState<ModelProfileStatus>(initial);
   const [apiKey, setApiKey] = useState('');
   const [saving, setSaving] = useState(false);
@@ -72,6 +74,8 @@ export function ModelSettings({
     >
       <section
         className="ia-model-modal"
+        ref={dialog}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-label={t('Model API settings')}

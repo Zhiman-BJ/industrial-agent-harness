@@ -68,6 +68,7 @@ async function run(window, account, fixture) {
       "Array.from(document.querySelectorAll('.ia-settings-row')).find(row => /Platform account|平台账号/.test(row.textContent)).querySelector('button').click()",
     );
     await wait("Boolean(document.querySelector('.ia-account-modal'))");
+    await require('./modal-focus-selftest.cjs').check(window, '.ia-account-modal');
   };
   const setTheme = async theme => {
     const dark = theme === 'dark';

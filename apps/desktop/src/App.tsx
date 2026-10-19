@@ -546,12 +546,18 @@ export function App() {
     localStorage.setItem('ia-theme', theme);
   }, [theme]);
   useEffect(() => {
-    const changed = () =>
+    const changed = () => {
       setViewerFullscreen(
         Boolean(workspace.current && document.fullscreenElement === workspace.current),
       );
+      setFullscreenError('');
+    };
     const escape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && document.fullscreenElement === workspace.current) {
+      if (
+        event.key === 'Escape' &&
+        workspace.current &&
+        document.fullscreenElement === workspace.current
+      ) {
         void document
           .exitFullscreen()
           .catch(() =>
