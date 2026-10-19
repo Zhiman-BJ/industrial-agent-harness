@@ -6,11 +6,11 @@
   "basisSourceRef": "78194d985032ecb11207f94f454358b901ad0274",
   "policyRevision": "IH-ARCH-001",
   "release": {
-    "externalRepoName": "",
-    "externalRepoUrl": "",
-    "externalDefaultBranch": "",
-    "license": "pending",
-    "notes": "外部仓库名称、地址、默认分支与许可证均待用户定案。为空时仅允许本地开发与导出演练；真实发布由 --gate release 显式阻断。"
+    "externalRepoName": "Zhiman-BJ/micius-harness",
+    "externalRepoUrl": "https://github.com/Zhiman-BJ/micius-harness",
+    "externalDefaultBranch": "main",
+    "license": "MIT",
+    "notes": "2026-10-16 用户定案：外部仓库 Zhiman-BJ/micius-harness（默认分支 main），许可证沿用 MIT，OSS 首版 v0.0.1。发布节奏与新增公开候选面仍待定（doc/editions.md 第 7 节）；#102 隔离完成前，release 门禁仍因 planned 条目活引用阻断。仓库须以空仓创建（无 auto-init），首推由 #106 导出器生成独立 root。"
   },
   "publicSurface": {
     "statement": "已实现且可验证的核心任务流程、必要的错误/状态/记录、选定 Viewer 和扩展接口。",

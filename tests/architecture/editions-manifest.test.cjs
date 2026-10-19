@@ -92,19 +92,12 @@ test('real repository: every module and resource is classified and the dev gate 
   assert.equal(report.ok, true);
 });
 
-test('real repository: the release gate blocks on undecided external name, license and pending isolation', () => {
+test('real repository: the release gate passes the decided repo/license and blocks only on pending #102 isolation', () => {
   const report = inspect(root, manifest, { gate: 'release' });
   assert.equal(report.ok, false);
   assert.ok(
-    report.failures.some(failure => failure.includes('externalRepoName')),
-    report.failures.join('\n'),
-  );
-  assert.ok(
-    report.failures.some(failure => failure.includes('license')),
-    report.failures.join('\n'),
-  );
-  assert.ok(
-    report.failures.some(failure => failure.includes('#102 isolation incomplete')),
+    report.failures.length > 0 &&
+      report.failures.every(failure => failure.includes('#102 isolation incomplete')),
     report.failures.join('\n'),
   );
 });
