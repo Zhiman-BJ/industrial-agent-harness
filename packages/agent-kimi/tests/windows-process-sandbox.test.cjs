@@ -161,9 +161,9 @@ test(
     fs.writeFileSync(temporary, 'TEMP_WRITE_OK');
     const inherited = spawnSync(process.execPath, ['-e',
       'try { require("node:fs").writeFileSync(process.argv[1], "bypass"); process.exit(9); } catch (e) { if (!["EACCES", "EPERM"].includes(e.code)) throw e; }',
-      ${JSON.stringify(projectFile)}], { encoding: 'utf8' });
+      ${JSON.stringify(projectFile)}], { encoding: 'utf8', windowsHide: true });
     const privateChild = spawnSync(${JSON.stringify(privateNode)}, ['-e',
-      'process.stdout.write("PRIVATE_RUNTIME_OK")'], { encoding: 'utf8' });
+      'process.stdout.write("PRIVATE_RUNTIME_OK")'], { encoding: 'utf8', windowsHide: true });
     let input = '';
     process.stdin.setEncoding('utf8');
     process.stdin.on('data', chunk => input += chunk);
@@ -238,7 +238,7 @@ test(
       const code = `
       const fs = require('node:fs');
       const child = require('node:child_process').spawn(process.execPath,
-        ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore', detached: true });
+        ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore', detached: true, windowsHide: true });
       fs.writeFileSync(${JSON.stringify(pidFile)}, String(child.pid));
       child.unref();
       ${naturalExit ? '' : 'setInterval(() => {}, 1000);'}
