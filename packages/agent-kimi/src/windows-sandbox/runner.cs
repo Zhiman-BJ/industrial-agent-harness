@@ -47,6 +47,7 @@ internal static class Runner
     static SecurityIdentifier launchSid;
     static IntPtr originalStation;
     static bool assigned;
+    static bool attributesInitialized;
     static int finished;
     static string stage = "initialize";
 
@@ -112,7 +113,7 @@ internal static class Runner
                 }
                 CloseHandle(job);
             }
-            if (attributeList != IntPtr.Zero) DeleteProcThreadAttributeList(attributeList);
+            if (attributesInitialized) DeleteProcThreadAttributeList(attributeList);
             foreach (IntPtr handle in inheritedHandles) CloseHandle(handle);
             if (desktop != IntPtr.Zero) CloseDesktop(desktop);
             if (windowStation != IntPtr.Zero) CloseWindowStation(windowStation);
@@ -419,6 +420,7 @@ internal static class Runner
         IntPtr size = IntPtr.Zero; InitializeProcThreadAttributeList(IntPtr.Zero, 1, 0, ref size);
         attributeList = Marshal.AllocHGlobal(size); allocations.Add(attributeList);
         if (!InitializeProcThreadAttributeList(attributeList, 1, 0, ref size)) Fail("Create process attribute list");
+        attributesInitialized = true;
         IntPtr handles = Marshal.AllocHGlobal(IntPtr.Size * 3); allocations.Add(handles);
         for (int i = 0; i < 3; i++) Marshal.WriteIntPtr(handles, i * IntPtr.Size, inheritedHandles[i]);
         if (!UpdateProcThreadAttribute(attributeList, 0, new IntPtr(0x20002), handles, new IntPtr(IntPtr.Size * 3), IntPtr.Zero, IntPtr.Zero)) Fail("Restrict inherited handles");
@@ -429,7 +431,11 @@ internal static class Runner
         StringBuilder command = new StringBuilder(Quote(config.executable)); foreach (string arg in config.args) command.Append(' ').Append(Quote(arg));
         PROCESS_INFORMATION process;
         Stage("create suspended target");
-        if (!CreateProcessAsUser(token, config.executable, command, IntPtr.Zero, IntPtr.Zero, true, 4 | 0x400 | 0x80000, env, config.workingDirectory, ref startup, out process)) Fail("Create isolated agent");
+        // Explicit pipe handles are the complete I/O contract. windowsHide on
+        // the outer helper does not suppress a target console/conhost; avoid
+        // that unnecessary interactive subsystem dependency for headless Kimi.
+        if (!CreateProcessAsUser(token, config.executable, command, IntPtr.Zero, IntPtr.Zero, true, 4 | 0x400 | 0x80000 | 0x08000000, env, config.workingDirectory, ref startup, out process)) Fail("Create isolated agent");
+        Console.Error.WriteLine("Windows agent target PID: " + process.processId);
         try
         {
             if (!AssignProcessToJobObject(job, process.process))
