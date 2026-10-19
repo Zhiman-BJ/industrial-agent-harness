@@ -3,11 +3,14 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { defaultResourceDirectory } = require('./resource-settings.cjs');
 const {
-  RemoteClient,
+  RemoteGatewayClient,
+  RemoteGatewaySessions,
+  REMOTE_PROTOCOL_VERSION,
   serviceUrl,
   hash,
   uuid,
   writePrivateJson,
+  safeDownload,
 } = require('@industrial-agent-harness/domain-runtime');
 const defaults = require('./remote-defaults.json');
 const keyFor = (directory, domain) => hash(`${fs.realpathSync(directory)}\0${domain}`);
@@ -83,6 +86,53 @@ function selectedSnapshot(directory, selected) {
   return { manifest, blobs, digest: hash(JSON.stringify(manifest)), totalBytes: total };
 }
 
+function validateServiceInfo(info) {
+  if (
+    info.version === '1.1.0' &&
+    info.remoteProtocolVersion === undefined &&
+    info.sessionModel === 'application-session' &&
+    Array.isArray(info.domains) &&
+    info.domains.every(id => typeof id === 'string') &&
+    Array.isArray(info.domainCatalog) &&
+    /^[a-f0-9]{64}$/.test(info.capabilitySnapshotHash || '')
+  ) {
+    return {
+      ...info,
+      gatewayContract: 'mcp-v1',
+      remoteProtocolVersion: REMOTE_PROTOCOL_VERSION,
+      serverId: 'mcp-v1-origin',
+      canonicalSchemaVersion: '1',
+      capabilities: { snapshots: true, runtimeDiscovery: true },
+    };
+  }
+  if (
+    info.remoteProtocolVersion !== REMOTE_PROTOCOL_VERSION ||
+    info.canonicalSchemaVersion !== '1' ||
+    typeof info.serverId !== 'string' ||
+    !info.serverId ||
+    !Array.isArray(info.domains) ||
+    info.domains.some(id => typeof id !== 'string') ||
+    info.sessionModel !== 'application-session'
+  )
+    throw Error('This service does not support the remote execution protocol 1.1.');
+  return info;
+}
+
+function serviceConnection(info) {
+  const profiles = Array.isArray(info.domainCapabilities) ? info.domainCapabilities : [];
+  return {
+    status: 'connected',
+    domains: info.domains,
+    protocol: info.remoteProtocolVersion,
+    capabilities: info.capabilities || {},
+    profiles,
+    executableDomains:
+      info.capabilities?.protectedExecution === true
+        ? profiles.filter(p => p.qualification === 'qualified').map(p => p.domain)
+        : [],
+  };
+}
+
 class RemoteSettings {
   constructor({
     directory = defaultResourceDirectory(),
@@ -97,27 +147,29 @@ class RemoteSettings {
     this.file = path.join(directory, 'remote-settings.json');
     this.reviews = new Map();
     this.locks = new Set();
+    this.sessionReleases = new Map();
     this.connection = { status: 'unchecked', domains: [] };
+    this.sessions = new RemoteGatewaySessions({
+      directory: path.join(directory, 'remote-sessions'),
+    });
   }
   read() {
-    let value;
     try {
-      value = JSON.parse(fs.readFileSync(this.file, 'utf8'));
+      const value = JSON.parse(fs.readFileSync(this.file, 'utf8'));
+      if (
+        ![1, 2].includes(value?.schemaVersion) ||
+        !value.projects ||
+        Array.isArray(value.projects)
+      )
+        throw Error('Invalid remote settings.');
+      return { ...value, schemaVersion: 2 };
     } catch (error) {
-      if (error.code === 'ENOENT') return { schemaVersion: 1, projects: {} };
-      throw Error('Cannot read remote settings.');
+      if (error.code === 'ENOENT') return { schemaVersion: 2, projects: {} };
+      throw error;
     }
-    if (
-      value?.schemaVersion !== 1 ||
-      !value.projects ||
-      typeof value.projects !== 'object' ||
-      Array.isArray(value.projects)
-    )
-      throw Error('Invalid remote settings.');
-    return value;
   }
   write(value) {
-    writePrivateJson(this.file, value);
+    writePrivateJson(this.file, { ...value, schemaVersion: 2 });
   }
   configuration() {
     const saved = this.read().service || {};
@@ -134,27 +186,38 @@ class RemoteSettings {
       throw Error('Invalid remote credential reference.');
     return { url: url ? serviceUrl(url) : null, credentialEnv, serverId: saved.serverId || null };
   }
-  identity() {
-    const config = this.configuration();
+  identityFor(config) {
     const account = this.accountFor(config);
     return hash(
       JSON.stringify({
         ...config,
+        // Rotating the credential value invalidates existing bindings and
+        // sessions; only its hash is ever compared or persisted.
+        credential: hash(this.environment[config.credentialEnv] || ''),
         ...(account
           ? { account: account.identity, subject: account.view().user?.sub || null }
           : {}),
       }),
     );
   }
+  identity() {
+    return this.identityFor(this.configuration());
+  }
   accountFor(config = this.configuration()) {
     return this.account?.config.remoteOrigin === config.url ? this.account : null;
   }
-  client() {
+  accountCredentialKey(config = this.configuration()) {
+    const account = this.accountFor(config);
+    if (!account) return undefined;
+    // A stable, digest-only stand-in for the rotating service token.
+    return hash(account.identity + ':' + (account.view().user?.sub || ''));
+  }
+  client(binding = {}) {
     const config = this.configuration();
-    if (!config.url) throw Error('Zhiman Remote is not configured.');
+    if (!config.url) throw Error('Remote execution is not configured.');
     const account = this.accountFor(config);
     const subject = account?.view().user?.sub;
-    return new RemoteClient({
+    return new RemoteGatewayClient({
       url: config.url,
       credential: this.environment[config.credentialEnv],
       credentialProvider: account
@@ -169,8 +232,10 @@ class RemoteSettings {
             return token;
           }
         : undefined,
-      journalDirectory: path.join(this.directory, 'remote-requests'),
+      credentialKey: account ? this.accountCredentialKey(config) : undefined,
+      serverId: config.serverId || undefined,
       fetch: this.fetch,
+      ...binding,
     });
   }
   view() {
@@ -189,41 +254,37 @@ class RemoteSettings {
   async check() {
     if (['not_configured', 'credentials_missing'].includes(this.view().status)) return this.view();
     const config = this.configuration();
+    const client = this.client();
     try {
-      const info = await this.client().info();
-      if (
-        info.contractVersion !== '0.2' ||
-        info.canonicalSchemaVersion !== '1' ||
-        typeof info.serverId !== 'string' ||
-        !Array.isArray(info.domains) ||
-        info.domains.some(id => typeof id !== 'string')
-      )
-        throw Error('Incompatible remote service.');
+      const info = validateServiceInfo(await client.info());
       if (config.serverId && config.serverId !== info.serverId)
-        throw Error('Remote service identity changed.');
+        throw Error('Remote service identity changed. Rebind the service explicitly.');
       const saved = this.read();
       saved.service = {
         ...saved.service,
         serviceUrl: config.url,
         credentialEnv: config.credentialEnv,
         serverId: info.serverId,
+        gatewayContract: info.gatewayContract || null,
       };
       this.write(saved);
-      this.connection = { status: info.ready ? 'connected' : 'unavailable', domains: info.domains };
+      this.connection = serviceConnection(info);
     } catch (error) {
       this.connection = {
         status:
           error.status === 401 || error.status === 403 ? 'credentials_missing' : 'unavailable',
         domains: [],
+        reason: String(error.message).slice(0, 500),
       };
+    } finally {
+      await client.close();
     }
     this.connectionIdentity = this.identity();
     return this.view();
   }
   project(directory, domain) {
     const value = this.read().projects[keyFor(directory, domain)] || { location: 'local' };
-    if (!['local', 'remote'].includes(value.location))
-      throw Error('Invalid project execution location.');
+    if (!['local', 'remote'].includes(value.location)) throw Error('Invalid execution location.');
     return value;
   }
   update(directory, domain, changes) {
@@ -239,87 +300,446 @@ class RemoteSettings {
     this.assertTaskIdle(directory, domain);
     return this.update(directory, domain, { location });
   }
-  taskFile(directory, domain) {
-    return path.join(this.directory, 'remote-jobs', keyFor(directory, domain) + '.json');
-  }
-  task(directory, domain) {
+  async bind(directory, domain) {
+    if ((await this.check()).status !== 'connected' || !this.view().domains.includes(domain))
+      throw Error('Remote service is unavailable for this domain.');
+    let binding = this.project(directory, domain);
+    if (binding.remoteProjectId) {
+      if (
+        binding.protocol !== REMOTE_PROTOCOL_VERSION ||
+        binding.serviceIdentity !== this.identity()
+      )
+        throw Error(
+          'The saved project belongs to another protocol, service or credential. Create an explicit new remote binding.',
+        );
+      return binding;
+    }
+    const client = this.client();
     try {
-      const value = JSON.parse(fs.readFileSync(this.taskFile(directory, domain), 'utf8'));
+      const project = await client.createProject({ domain });
+      uuid(project.id);
+      const current = this.read().service?.gatewayContract === 'mcp-v1';
+      if (
+        project.domain !== domain ||
+        (!current && !/^[a-f0-9]{64}$/.test(project.canonicalProjectId))
+      )
+        throw Error('Invalid remote project identity.');
+      binding = this.update(directory, domain, {
+        protocol: REMOTE_PROTOCOL_VERSION,
+        remoteProjectId: project.id,
+        canonicalProjectId: project.canonicalProjectId || hash(this.identity() + ':' + project.id),
+        gatewayContract: current ? 'mcp-v1' : null,
+        serviceIdentity: this.identity(),
+      });
+      return binding;
+    } finally {
+      await client.close();
+    }
+  }
+  rebindIntent(directory, domain) {
+    const previous = this.project(directory, domain);
+    if (!previous.remoteProjectId) throw Error('There is no remote project binding to replace.');
+    return {
+      type: 'rebind_review',
+      destination: this.configuration().url,
+      domain,
+      previousProjectId: previous.remoteProjectId,
+      previousProtocol: previous.protocol || 'legacy',
+      createsNewProject: true,
+      requiresExplicitUpload: true,
+      historicalFacts: 'retained_without_migration',
+    };
+  }
+  assertRebindIdle(directory, domain, previous) {
+    const active = new Set([
+      'submitting',
+      'unknown',
+      'queued',
+      'provisioning',
+      'running',
+      'collecting',
+    ]);
+    const root = path.join(this.directory, 'remote-invocations');
+    const files = fs.existsSync(root)
+      ? fs.readdirSync(root).map(file => path.join(root, file))
+      : [];
+    const legacy = path.join(this.directory, 'remote-jobs', keyFor(directory, domain) + '.json');
+    if (fs.existsSync(legacy)) files.push(legacy);
+    for (const file of files) {
+      const pending = JSON.parse(fs.readFileSync(file, 'utf8'));
+      if (
+        pending.remoteProjectId === previous.remoteProjectId &&
+        (!pending.serviceIdentity ||
+          !previous.serviceIdentity ||
+          pending.serviceIdentity === previous.serviceIdentity) &&
+        (active.has(pending.status) || pending.needsImport === true)
+      )
+        throw Error(
+          'An old remote invocation remains active or unknown, or needs import. Resolve it before creating a new project binding.',
+        );
+    }
+  }
+  assertServiceIdle() {
+    const projects = Object.values(this.read().projects);
+    const active = new Set([
+      'submitting',
+      'unknown',
+      'queued',
+      'provisioning',
+      'running',
+      'collecting',
+    ]);
+    for (const name of ['remote-invocations', 'remote-jobs']) {
+      const root = path.join(this.directory, name);
+      if (!fs.existsSync(root)) continue;
+      for (const file of fs.readdirSync(root)) {
+        const pending = JSON.parse(fs.readFileSync(path.join(root, file), 'utf8'));
+        if (
+          (active.has(pending.status) || pending.needsImport === true) &&
+          projects.some(
+            project =>
+              project.remoteProjectId === pending.remoteProjectId &&
+              (!pending.serviceIdentity ||
+                !project.serviceIdentity ||
+                pending.serviceIdentity === project.serviceIdentity),
+          )
+        )
+          throw Error(
+            'Another remote project has an active or unknown invocation, or needs import. Resolve it before changing the service identity.',
+          );
+      }
+    }
+  }
+  async rebind(directory, domain) {
+    this.rebindIntent(directory, domain);
+    const key = keyFor(directory, domain);
+    if (this.locks.has(key)) throw Error('Remote project settings are busy.');
+    const previous = this.project(directory, domain),
+      identity = this.identity(),
+      config = this.configuration();
+    this.assertRebindIdle(directory, domain, previous);
+    this.locks.add(key);
+    let client;
+    try {
+      client = this.client();
+      // Rebinding is the explicit authorization to accept the configured service's
+      // new server identity. Generic connection checks keep rejecting a changed pin.
+      const info = validateServiceInfo(await client.info());
+      if (!info.domains.includes(domain))
+        throw Error('Remote service is unavailable for this domain.');
+      const serviceIdentity = this.identityFor({
+        url: config.url,
+        credentialEnv: config.credentialEnv,
+        serverId: info.serverId,
+      });
+      if (serviceIdentity !== identity) this.assertServiceIdle();
+      const project = await client.createProject({ domain });
+      uuid(project.id);
+      if (
+        project.domain !== domain ||
+        (info.gatewayContract !== 'mcp-v1' && !/^[a-f0-9]{64}$/.test(project.canonicalProjectId))
+      )
+        throw Error('Invalid remote project identity.');
+      if (this.identity() !== identity)
+        throw Error('Remote configuration changed during rebinding.');
+      const saved = this.read();
+      if (JSON.stringify(saved.projects[key]) !== JSON.stringify(previous))
+        throw Error('Remote project binding changed during rebinding.');
+      this.assertRebindIdle(directory, domain, previous);
+      if (serviceIdentity !== identity) this.assertServiceIdle();
+      const { bindingHistory = [], ...historical } = previous;
+      const retiredAt = new Date().toISOString();
+      const service = {
+        ...saved.service,
+        serviceUrl: config.url,
+        credentialEnv: config.credentialEnv,
+        serverId: info.serverId,
+        gatewayContract: info.gatewayContract || null,
+      };
+      const binding = {
+        location: 'remote',
+        protocol: REMOTE_PROTOCOL_VERSION,
+        remoteProjectId: project.id,
+        canonicalProjectId: project.canonicalProjectId || hash(serviceIdentity + ':' + project.id),
+        gatewayContract: info.gatewayContract || null,
+        serviceIdentity,
+        bindingHistory: [
+          ...bindingHistory,
+          { binding: historical, service: saved.service || {}, retiredAt },
+        ],
+      };
+      saved.projects[key] = binding;
+      saved.service = service;
+      // One private atomic write commits both identities, only after validation
+      // and project creation succeed. No old canonical store is moved or rewritten.
+      this.write(saved);
+      this.connection = serviceConnection(info);
+      this.connectionIdentity = this.identity();
+      for (const [id, review] of this.reviews)
+        if (review.directory === fs.realpathSync(directory) && review.domain === domain)
+          this.reviews.delete(id);
+      return binding;
+    } finally {
+      try {
+        await client?.close();
+      } finally {
+        this.locks.delete(key);
+      }
+    }
+  }
+  sessionBinding(directory, domain, chatId) {
+    uuid(chatId);
+    const project = this.project(directory, domain),
+      config = this.configuration();
+    if (
+      project.protocol !== REMOTE_PROTOCOL_VERSION ||
+      !project.remoteProjectId ||
+      project.serviceIdentity !== this.identity()
+    )
+      throw Error('Bind this project to the current remote service first.');
+    return this.sessions.binding({
+      url: config.url,
+      serverId: config.serverId,
+      credential: this.environment[config.credentialEnv],
+      credentialKey: this.accountCredentialKey(config),
+      remoteProjectId: project.remoteProjectId,
+      domain,
+      chatId,
+    });
+  }
+  sessionClient(directory, domain, chatId) {
+    const binding = this.sessionBinding(directory, domain, chatId);
+    return this.client({
+      remoteProjectId: binding.remoteProjectId,
+      clientSessionId: binding.clientSessionId,
+      domain,
+    });
+  }
+  taskFile(directory, domain, chatId) {
+    if (!chatId) return null;
+    uuid(chatId);
+    return path.join(
+      this.directory,
+      'remote-invocations',
+      hash(JSON.stringify([this.identity(), keyFor(directory, domain), chatId])) + '.json',
+    );
+  }
+  task(directory, domain, chatId) {
+    const file = this.taskFile(directory, domain, chatId);
+    if (!file) return null;
+    try {
+      const value = JSON.parse(fs.readFileSync(file, 'utf8'));
       if (
         value.serviceIdentity !== this.identity() ||
         value.remoteProjectId !== this.project(directory, domain).remoteProjectId
       )
-        throw Error('Saved task belongs to another remote service or project.');
-      return {
-        requestId: value.requestId,
-        jobId: value.jobId,
-        status: value.status,
-        queuePosition: value.queuePosition,
-      };
+        throw Error('Remote invocation binding changed.');
+      return value;
     } catch (error) {
       if (error.code === 'ENOENT') return null;
       throw error;
     }
   }
   assertTaskIdle(directory, domain) {
-    if (
-      ['submitting', 'unknown', 'queued', 'provisioning', 'running', 'collecting'].includes(
-        this.task(directory, domain)?.status,
+    const root = path.join(this.directory, 'remote-invocations');
+    if (!fs.existsSync(root)) return;
+    const project = this.project(directory, domain);
+    for (const file of fs.readdirSync(root)) {
+      const pending = JSON.parse(fs.readFileSync(path.join(root, file), 'utf8'));
+      if (
+        pending.remoteProjectId === project.remoteProjectId &&
+        pending.serviceIdentity === this.identity() &&
+        (['submitting', 'running', 'unknown'].includes(pending.status) ||
+          pending.needsImport === true)
       )
-    )
-      throw Error(
-        'A remote task is still pending. Check its status before changing execution settings.',
-      );
-  }
-  async refreshTask(directory, domain) {
-    const task = this.task(directory, domain);
-    if (
-      !task ||
-      !['submitting', 'unknown', 'queued', 'provisioning', 'running', 'collecting'].includes(
-        task.status,
-      )
-    )
-      return task;
-    const binding = this.project(directory, domain),
-      client = this.client();
-    const job = task.jobId
-      ? await client.job(binding.remoteProjectId, task.jobId)
-      : await client.byRequest(binding.remoteProjectId, task.requestId);
-    if (job.requestId !== task.requestId || (task.jobId && job.jobId !== task.jobId))
-      throw Error('Saved remote job identity changed.');
-    if (!['queued', 'provisioning', 'running', 'collecting'].includes(job.status)) {
-      const file = this.taskFile(directory, domain),
-        latest = JSON.parse(fs.readFileSync(file, 'utf8'));
-      if (latest.requestId !== task.requestId) throw Error('Remote task selection changed.');
-      writePrivateJson(file, {
-        ...latest,
-        jobId: job.jobId,
-        status: job.status,
-        queuePosition: null,
-        needsImport: Boolean(job.result),
-      });
+        throw Error(
+          'A remote invocation remains active or unknown, or needs import. Resolve it before further execution or settings changes.',
+        );
     }
-    // Terminal execution status is not acceptance. Runtime verifies evidence on resume.
-    return {
-      requestId: task.requestId,
-      jobId: job.jobId,
-      status: job.status,
-      queuePosition: job.queuePosition,
-    };
   }
-  async cancelTask(directory, domain, expected) {
-    const observed = this.task(directory, domain);
+  async refreshTask(directory, domain, chatId) {
+    const pending = this.task(directory, domain, chatId);
+    if (!pending) return null;
+    if (!['submitting', 'running', 'unknown'].includes(pending.status)) return pending;
+    // The current service has no read-only invocation lookup. Never replay an
+    // unknown mutation to discover its status.
+    if (this.project(directory, domain).gatewayContract === 'mcp-v1') return pending;
+    const client = this.sessionClient(directory, domain, chatId);
+    try {
+      const received = await client.invocation(pending.invocationId);
+      const invocation =
+        received && typeof received === 'object' && !Array.isArray(received) ? received : {};
+      const completed =
+        invocation.status === 'completed' &&
+        invocation.outcome === 'completed' &&
+        invocation.result &&
+        typeof invocation.result === 'object' &&
+        !Array.isArray(invocation.result);
+      const notSubmitted =
+        invocation.status === 'failed' &&
+        invocation.outcome === 'not_submitted' &&
+        (invocation.result === undefined || invocation.result === null);
+      const active =
+        ['running', 'unknown'].includes(invocation.status) && invocation.outcome === 'unknown';
+      if (invocation.id !== pending.invocationId || (!completed && !notSubmitted && !active)) {
+        writePrivateJson(this.taskFile(directory, domain, chatId), {
+          ...pending,
+          status: 'unknown',
+          outcome: 'unknown',
+        });
+        throw Error(
+          'Remote invocation returned incomplete or inconsistent status. Its outcome remains unknown.',
+        );
+      }
+      const next = {
+        ...pending,
+        status: invocation.status,
+        outcome: invocation.outcome,
+        needsImport: Boolean(invocation.result),
+      };
+      writePrivateJson(this.taskFile(directory, domain, chatId), next);
+      return next;
+    } catch (error) {
+      // A missing invocation after a lost response is not proof that it never ran.
+      if (error.status === 404) {
+        const unknown = { ...pending, status: 'unknown', outcome: 'unknown' };
+        writePrivateJson(this.taskFile(directory, domain, chatId), unknown);
+        return unknown;
+      }
+      throw error;
+    } finally {
+      await client.close();
+    }
+  }
+  async session(directory, domain, chatId) {
+    const client = this.sessionClient(directory, domain, chatId);
+    try {
+      const session = await client.currentSession();
+      const binding = this.sessionBinding(directory, domain, chatId);
+      this.sessions.update(binding, { applicationSessionId: session.id, status: session.status });
+      return session;
+    } catch (error) {
+      if (error.code === 'SESSION_NOT_FOUND') return null;
+      throw error;
+    } finally {
+      await client.close();
+    }
+  }
+  async terminateSession(directory, domain, chatId, applicationSessionId) {
+    const client = this.sessionClient(directory, domain, chatId);
+    try {
+      const current = await client.currentSession();
+      if (current.id !== applicationSessionId)
+        throw Error('Remote session changed. Refresh before ending it.');
+      return await client.terminateSession(applicationSessionId);
+    } finally {
+      await client.close();
+    }
+  }
+  releaseCompletedSession(directory, domain, chatId) {
+    const key = this.taskFile(directory, domain, chatId);
+    if (this.sessionReleases.has(key)) return this.sessionReleases.get(key);
+    const promise = this.releaseCompletedSessionOnce(directory, domain, chatId).finally(() =>
+      this.sessionReleases.delete(key),
+    );
+    this.sessionReleases.set(key, promise);
+    return promise;
+  }
+  async releaseCompletedSessionOnce(directory, domain, chatId) {
+    const pending = this.task(directory, domain, chatId);
     if (
-      expected &&
-      (expected.requestId !== observed?.requestId || expected.jobId !== observed?.jobId)
+      !pending ||
+      pending.needsImport !== false ||
+      pending.outcome !== 'completed' ||
+      !['completed', 'failed'].includes(pending.status)
     )
-      throw Error('Remote task selection changed. Refresh before cancelling.');
-    const task = await this.refreshTask(directory, domain);
-    if (task?.requestId !== observed?.requestId)
-      throw Error('Remote task selection changed. Refresh before cancelling.');
-    if (task?.jobId && ['queued', 'provisioning', 'running', 'collecting'].includes(task.status))
-      await this.client().cancel(this.project(directory, domain).remoteProjectId, task.jobId);
-    return this.refreshTask(directory, domain);
+      return null;
+    if (pending.sessionRelease?.status === 'released') return pending.sessionRelease;
+    const binding = this.sessionBinding(directory, domain, chatId);
+    const client = this.sessionClient(directory, domain, chatId);
+    const record = value => {
+      if (this.task(directory, domain, chatId)?.invocationId !== pending.invocationId)
+        throw Error('Remote task changed during session release.');
+      writePrivateJson(this.taskFile(directory, domain, chatId), {
+        ...pending,
+        sessionRelease: value,
+      });
+      return value;
+    };
+    try {
+      // Recover a crash between confirmed teardown and the final journal write.
+      if (
+        binding.status === 'released' &&
+        binding.previousApplicationSessionId &&
+        pending.sessionRelease?.sessionId === binding.previousApplicationSessionId
+      )
+        return record({ status: 'released', sessionId: binding.previousApplicationSessionId });
+      const current = await client.currentSession();
+      if (
+        current.projectId !== binding.remoteProjectId ||
+        current.domain !== domain ||
+        current.clientSessionId !== binding.clientSessionId ||
+        current.callLocked
+      )
+        throw Error('Remote session identity changed or is busy; automatic release deferred.');
+      record({ status: 'releasing', sessionId: current.id });
+      const stopped =
+        current.status === 'stopped' ? current : await client.terminateSession(current.id);
+      if (stopped.id !== current.id || stopped.status !== 'stopped')
+        throw Error('Remote sandbox release was not confirmed.');
+      const observed = this.sessions.update(binding, {
+        applicationSessionId: current.id,
+        status: 'stopped',
+      });
+      this.sessions.renewReleased(observed, current.id);
+      return record({ status: 'released', sessionId: current.id });
+    } catch (error) {
+      return record({ status: 'pending', code: error.code || 'RELEASE_UNCONFIRMED' });
+    } finally {
+      await client.close().catch(() => {});
+    }
+  }
+  async artifacts(directory, domain) {
+    const binding = this.project(directory, domain);
+    if (binding.protocol !== REMOTE_PROTOCOL_VERSION || binding.serviceIdentity !== this.identity())
+      throw Error('Remote project binding changed.');
+    if (binding.gatewayContract === 'mcp-v1') {
+      const root = path.join(this.directory, 'remote-invocations');
+      const byId = new Map();
+      for (const name of fs.existsSync(root) ? fs.readdirSync(root) : []) {
+        const item = JSON.parse(fs.readFileSync(path.join(root, name), 'utf8'));
+        if (
+          item.serviceIdentity !== this.identity() ||
+          item.remoteProjectId !== binding.remoteProjectId
+        )
+          continue;
+        for (const ref of item.producedArtifacts || []) byId.set(ref.id, ref);
+      }
+      return [...byId.values()];
+    }
+    const client = this.client({ remoteProjectId: binding.remoteProjectId, domain });
+    try {
+      const response = await client.artifacts();
+      return Array.isArray(response) ? response : response.artifacts;
+    } finally {
+      await client.close();
+    }
+  }
+  async download(directory, domain, artifactId, relativePath) {
+    const binding = this.project(directory, domain);
+    if (binding.serviceIdentity !== this.identity()) throw Error('Remote project binding changed.');
+    const client = this.client({ remoteProjectId: binding.remoteProjectId, domain });
+    try {
+      if (binding.gatewayContract === 'mcp-v1') {
+        const ref = (await this.artifacts(directory, domain)).find(item => item.id === artifactId);
+        if (!ref) throw Error('Artifact is not recorded for this remote project.');
+        const { content } = await client.downloadProducedArtifact(ref);
+        return { ...ref, path: safeDownload(directory, relativePath, content, ref) };
+      }
+      return await client.downloadArtifact(artifactId, { directory, relativePath });
+    } finally {
+      await client.close();
+    }
   }
   snapshot(directory, files) {
     return selectedSnapshot(directory, files);
@@ -345,8 +765,9 @@ class RemoteSettings {
   async review(directory, domain, files) {
     if ((await this.check()).status !== 'connected' || !this.view().domains.includes(domain))
       throw Error('Remote service is unavailable for this domain.');
-    const snapshot = selectedSnapshot(directory, files);
-    const id = crypto.randomUUID();
+    if (!this.view().capabilities?.snapshots) throw Error('Remote file upload is unavailable.');
+    const snapshot = selectedSnapshot(directory, files),
+      id = crypto.randomUUID();
     this.reviews.set(id, {
       directory: fs.realpathSync(directory),
       domain,
@@ -355,8 +776,8 @@ class RemoteSettings {
       identity: this.identity(),
       expires: Date.now() + 300000,
     });
-    for (const [key, review] of this.reviews)
-      if (review.expires < Date.now()) this.reviews.delete(key);
+    for (const [key, value] of this.reviews)
+      if (value.expires < Date.now()) this.reviews.delete(key);
     return {
       id,
       destination: this.configuration().url,
@@ -375,7 +796,7 @@ class RemoteSettings {
       review.expires < Date.now() ||
       review.identity !== this.identity()
     )
-      throw Error('File sync review expired. Review the selection again.');
+      throw Error('File upload review expired. Review the selection again.');
     if (this.locks.has(key)) throw Error('Remote project settings are busy.');
     this.assertTaskIdle(directory, domain);
     this.locks.add(key);
@@ -383,59 +804,44 @@ class RemoteSettings {
       const snapshot = selectedSnapshot(directory, review.files);
       if (snapshot.digest !== review.digest)
         throw Error('Selected files changed. Review them again before uploading.');
-      let binding = this.project(directory, domain);
-      const client = this.client();
-      if (!binding.remoteProjectId) {
-        const project = await client.createProject(domain);
-        uuid(project.id);
-        if (project.domain !== domain || !/^[a-f0-9]{64}$/.test(project.canonicalProjectId))
-          throw Error('Invalid remote project.');
-        binding = this.update(directory, domain, {
-          remoteProjectId: project.id,
-          canonicalProjectId: project.canonicalProjectId,
-          serviceIdentity: this.identity(),
+      const binding = await this.bind(directory, domain);
+      const client = this.client({ remoteProjectId: binding.remoteProjectId, domain });
+      try {
+        const uploaded =
+          binding.gatewayContract === 'mcp-v1'
+            ? await client.uploadSnapshot(snapshot, binding.snapshotId || null)
+            : await client.sync(snapshot, binding.snapshotId || null);
+        const snapshotId = uploaded.snapshotId || uploaded.id;
+        uuid(snapshotId);
+        return this.update(directory, domain, {
+          location: 'remote',
+          files: review.files,
+          manifestDigest: snapshot.digest,
+          snapshotId,
+          syncedAt: new Date().toISOString(),
         });
+      } finally {
+        await client.close();
       }
-      if (binding.serviceIdentity !== this.identity())
-        throw Error('Project belongs to another service.');
-      const result = await client.sync(
-        binding.remoteProjectId,
-        snapshot,
-        binding.snapshotId || null,
-      );
-      return this.update(directory, domain, {
-        location: 'remote',
-        files: review.files,
-        manifestDigest: snapshot.digest,
-        snapshotId: result.snapshot.id,
-        syncedAt: new Date().toISOString(),
-      });
     } finally {
       this.locks.delete(key);
     }
   }
   async ensureSynced(directory, domain) {
-    let binding = this.project(directory, domain);
-    if (!binding.remoteProjectId || !binding.files?.length || !binding.snapshotId)
-      throw Error(
-        'Choose and confirm files in Project execution settings before running remotely.',
-      );
+    const binding = this.project(directory, domain);
+    if (
+      binding.protocol !== REMOTE_PROTOCOL_VERSION ||
+      !binding.remoteProjectId ||
+      !binding.snapshotId ||
+      !binding.files?.length
+    )
+      throw Error('Choose and upload project files before running remotely.');
     if (binding.serviceIdentity !== this.identity())
-      throw Error('Project belongs to another service.');
-    const snapshot = selectedSnapshot(directory, binding.files);
-    if (snapshot.digest !== binding.manifestDigest) {
-      // Only the exact, previously approved path set may sync automatically. New paths need a new review.
-      const result = await this.client().sync(
-        binding.remoteProjectId,
-        snapshot,
-        binding.snapshotId,
+      throw Error('Project belongs to another service or credential.');
+    if (selectedSnapshot(directory, binding.files).digest !== binding.manifestDigest)
+      throw Error(
+        'Local inputs changed. Review and upload the changed project files before running remotely.',
       );
-      binding = this.update(directory, domain, {
-        manifestDigest: snapshot.digest,
-        snapshotId: result.snapshot.id,
-        syncedAt: new Date().toISOString(),
-      });
-    }
     return binding;
   }
 }

@@ -3,14 +3,16 @@ const assert = require('node:assert/strict');
 const os = require('node:os');
 const fs = require('node:fs');
 const path = require('node:path');
-const { RemoteClient } = require('@industrial-agent-harness/domain-runtime');
+const { RemoteGatewayClient } = require('@industrial-agent-harness/domain-runtime');
 const { RemoteSettings } = require('../src/remote-settings.cjs');
 test('remote read retries invalid_token once with current credentials; mutations never replay', async () => {
   let calls = 0;
   const tokens = [];
-  const client = new RemoteClient({
+  const client = new RemoteGatewayClient({
     url: 'https://remote.example',
     credentialProvider: async options => (options?.rejectedToken ? 'new-token' : 'old-token'),
+    // Provider mode requires an explicit stable key for session isolation.
+    credentialKey: 'a'.repeat(64),
     fetch: async (_url, options) => {
       tokens.push(options.headers.Authorization);
       calls++;

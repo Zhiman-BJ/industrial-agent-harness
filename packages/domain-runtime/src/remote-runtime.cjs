@@ -12,13 +12,13 @@ const {
   RunRecordSchema,
   IndustrialVerificationResultSchema,
   ArtifactRefSchema,
+  // Single source of truth for the session gateway protocol version (#199 P0).
+  REMOTE_PROTOCOL_VERSION,
 } = require('@industrial-agent-harness/contracts');
 const { hash, writePrivateJson } = require('./remote-client.cjs');
-const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
-const active = new Set(['queued', 'provisioning', 'running', 'collecting']);
 
-// Remote canonical facts retain their server identities. Local workspace edits
-// use the same ProjectRef, but cannot invoke a local professional toolchain.
+// The project owns one canonical cache; chats own disposable transports and durable
+// remote reconnect identities. No professional software is loaded on this host.
 class RemoteRuntime {
   constructor({ settings, projectDir, domain, directory, registry, onStatus = () => {} }) {
     this.settings = settings;
@@ -27,35 +27,30 @@ class RemoteRuntime {
     this.binding = settings.project(projectDir, domain);
     this.configuration = settings.identity();
     if (
+      this.binding.protocol !== REMOTE_PROTOCOL_VERSION ||
       !this.binding.canonicalProjectId ||
       !this.binding.snapshotId ||
       this.binding.serviceIdentity !== this.configuration
     )
-      throw Error(
-        'Choose and confirm files in Project execution settings before running remotely.',
-      );
-    this.client = settings.client();
+      throw Error('Choose and confirm files to upload before running remotely.');
     this.registry = registry;
     this.remoteTools = [];
+    this.contexts = new Map();
     this.hostOnlyEnv = [settings.configuration().credentialEnv].filter(Boolean);
     this.hostRuntimeOnly = true;
     this.onStatus = onStatus;
     this.closed = false;
-    this.statusFile = path.join(
-      settings.directory,
-      'remote-jobs',
-      hash(this.projectDir + '\0' + domain) + '.json',
-    );
     const workspace = createWorkspacePlugin({
       domain,
       protectedPaths: [directory, settings.directory].filter(Boolean),
       environment: settings.environment,
     });
     workspace.tools = workspace.tools.filter(tool => tool.descriptor.id !== 'project.task.run');
-    this.capabilities = workspace.capabilities.map(item => ({
+    this.workspaceCapabilities = workspace.capabilities.map(item => ({
       ...item,
       tools: item.tools.filter(tool => workspace.tools.some(t => t.descriptor.id === tool.id)),
     }));
+    this.capabilities = this.workspaceCapabilities;
     this.workspace = new IndustrialRuntime(projectDir, domain, {
       directory: path.join(directory || path.join(settings.directory, 'core'), 'remote-workspaces'),
       projectRef: { schemaVersion: '1', projectId: this.binding.canonicalProjectId, domain },
@@ -64,14 +59,17 @@ class RemoteRuntime {
       verifiers: workspace.verifiers,
     });
     this.project = this.workspace.project;
+    this.diagnosticsRuntime = this.workspace;
+    this.control = settings.client({ remoteProjectId: this.binding.remoteProjectId, domain });
   }
   current() {
     const binding = this.settings.project(this.projectDir, this.domain);
     return (
+      !this.closed &&
       this.settings.identity() === this.configuration &&
       binding.location === 'remote' &&
       binding.remoteProjectId === this.binding.remoteProjectId &&
-      JSON.stringify(binding.files) === JSON.stringify(this.binding.files)
+      binding.snapshotId === this.binding.snapshotId
     );
   }
   compatibilityKey() {
@@ -85,56 +83,141 @@ class RemoteRuntime {
       ]),
     );
   }
-  status() {
-    try {
-      return JSON.parse(fs.readFileSync(this.statusFile, 'utf8'));
-    } catch (error) {
-      if (error.code === 'ENOENT') return null;
-      throw Error('Cannot read remote task status.');
-    }
-  }
-  publish(status) {
-    writePrivateJson(this.statusFile, status);
-    this.onStatus(status);
-  }
   assertCurrent() {
-    if (this.closed || !this.current())
-      throw Error('Remote project configuration changed; start a new session.');
+    if (!this.current()) throw Error('Remote project configuration changed. Refresh this chat.');
     this.workspace.assertProjectBound();
   }
-  async inspect() {
-    this.assertCurrent();
-    const pending = this.status();
-    if (
-      pending &&
-      (pending.needsImport || ['submitting', 'unknown', ...active].includes(pending.status))
-    ) {
-      const job = pending.jobId
-        ? await this.client.job(this.binding.remoteProjectId, pending.jobId)
-        : await this.client.byRequest(this.binding.remoteProjectId, pending.requestId);
-      if (
-        job.requestId !== pending.requestId ||
-        (pending.jobId && job.jobId !== pending.jobId) ||
-        (job.project && job.project !== this.binding.remoteProjectId)
-      )
-        throw Error('Saved remote job identity changed.');
-      if (active.has(job.status))
-        throw Error(
-          'A remote project task is still active. Check its status before starting another.',
-        );
-      if (job.result) await this.importResult(job.result);
-      this.publish({
-        ...pending,
-        jobId: job.jobId,
-        status: job.status,
-        queuePosition: null,
-        needsImport: false,
-      });
+  context(chatId) {
+    if (this.closed) throw Error('Remote runtime is closed.');
+    if (typeof chatId !== 'string' || !/^[a-f0-9-]{36}$/i.test(chatId))
+      throw Error('Remote execution requires a persistent chat identity.');
+    let context = this.contexts.get(chatId);
+    if (context?.releasing)
+      throw Error('Remote chat transport is closing. Wait before reconnecting.');
+    if (!context) {
+      context = {
+        chatId,
+        client: this.settings.sessionClient(this.projectDir, this.domain, chatId),
+        executing: false,
+      };
+      this.contexts.set(chatId, context);
     }
-    this.binding = await this.settings.ensureSynced(this.projectDir, this.domain);
+    return context;
+  }
+  forSession(chatId) {
+    const context = this.context(chatId);
+    if (context.facade) return context.facade;
+    const release = async () => {
+      const current = this.contexts.get(chatId);
+      if (!current) return;
+      if (current.executing) throw Error('Cannot close a running remote chat transport.');
+      if (current.releasing) return current.releasing;
+      current.releasing = (async () => {
+        await current.client.close();
+        if (this.contexts.get(chatId) === current) this.contexts.delete(chatId);
+      })();
+      try {
+        await current.releasing;
+      } finally {
+        if (this.contexts.get(chatId) === current) current.releasing = null;
+      }
+    };
+    context.facade = new Proxy(this, {
+      get: (target, property) => {
+        if (property === 'inspect') return () => target.inspect(target.context(chatId));
+        if (property === 'execute')
+          return (request, policy) => target.execute(request, policy, target.context(chatId));
+        if (property === 'describeTool')
+          return (id, scope) => target.describeTool(id, scope, target.context(chatId));
+        if (property === 'cancel') return () => target.cancel(target.contexts.get(chatId));
+        if (property === 'status') return () => target.status({ chatId });
+        if (property === 'close' || property === 'releaseOwner') return release;
+        if (property === 'waitForIdle')
+          return () => target.contexts.get(chatId)?.execution || Promise.resolve();
+        if (property === 'compatibilityKey') return () => hash(target.compatibilityKey() + chatId);
+        const value = Reflect.get(target, property);
+        return typeof value === 'function' ? value.bind(target) : value;
+      },
+    });
+    return context.facade;
+  }
+  status(context) {
+    return context ? this.settings.task(this.projectDir, this.domain, context.chatId) : null;
+  }
+  publish(context, value) {
+    const status = {
+      ...value,
+      chatId: context.chatId,
+      remoteProjectId: this.binding.remoteProjectId,
+      serviceIdentity: this.configuration,
+    };
+    writePrivateJson(this.settings.taskFile(this.projectDir, this.domain, context.chatId), status);
+    this.onStatus(status);
+  }
+  async recover(context) {
+    const pending = this.status(context);
+    if (
+      !pending ||
+      (!pending.needsImport && !['submitting', 'running', 'unknown'].includes(pending.status))
+    )
+      return;
+    const unknown = message => {
+      this.publish(context, { ...pending, status: 'unknown', outcome: 'unknown' });
+      throw Error(message);
+    };
+    let invocation;
+    try {
+      invocation = await context.client.invocation(pending.invocationId);
+    } catch (error) {
+      if (error.status === 404)
+        return unknown('The previous remote invocation outcome is unknown. Do not replay it.');
+      throw error;
+    }
+    if (!invocation || invocation.id !== pending.invocationId)
+      return unknown('Saved remote invocation identity changed; its outcome is unknown.');
+    if (['running', 'unknown'].includes(invocation.status))
+      return unknown('The previous remote invocation is still running or its outcome is unknown.');
+    const completed =
+      invocation.status === 'completed' &&
+      invocation.outcome === 'completed' &&
+      invocation.result &&
+      typeof invocation.result === 'object' &&
+      !Array.isArray(invocation.result);
+    const notSubmitted =
+      invocation.status === 'failed' &&
+      invocation.outcome === 'not_submitted' &&
+      (invocation.result === undefined || invocation.result === null);
+    if (!completed && !notSubmitted)
+      return unknown(
+        'Remote invocation returned an invalid terminal result; its outcome is unknown.',
+      );
+    if (completed) {
+      try {
+        await this.importResult(invocation.result, context, pending.action, pending.inputHashes);
+      } catch (error) {
+        this.publish(context, {
+          ...pending,
+          status: 'unknown',
+          outcome: 'unknown',
+          needsImport: true,
+        });
+        throw error;
+      }
+    }
+    this.publish(context, {
+      ...pending,
+      status: invocation.status,
+      outcome: invocation.outcome,
+      needsImport: false,
+    });
+    return true;
+  }
+  async inspect(context) {
+    this.assertCurrent();
+    await this.settings.ensureSynced(this.projectDir, this.domain);
     const [response, inventory] = await Promise.all([
-      this.client.state(this.binding.remoteProjectId),
-      this.client.capabilities(this.binding.remoteProjectId),
+      this.control.state(),
+      this.control.capabilities(),
     ]);
     const state = DomainStateSchema.parse(response.state);
     if (
@@ -142,96 +225,89 @@ class RemoteRuntime {
       state.domain !== this.domain ||
       response.snapshotId !== this.binding.snapshotId
     )
-      throw Error('Remote state differs from the approved project snapshot.');
-    const local = this.settings.snapshot(this.projectDir, this.binding.files);
-    const expected = Object.fromEntries(local.manifest.files.map(file => [file.path, file.sha256]));
-    if (
-      JSON.stringify(Object.entries(state.inputHashes).sort()) !==
-      JSON.stringify(Object.entries(expected).sort())
-    )
-      throw Error('Remote state input hashes differ from approved local files.');
+      throw Error('Remote state differs from the uploaded project snapshot.');
+    const expected = Object.fromEntries(
+      this.settings
+        .snapshot(this.projectDir, this.binding.files)
+        .manifest.files.map(f => [f.path, f.sha256]),
+    );
+    // Runtime identity hashes may be added by the server; every uploaded file must match.
+    if (Object.entries(expected).some(([key, digest]) => state.inputHashes[key] !== digest))
+      throw Error('Remote state input hashes differ from the uploaded files.');
     if (
       inventory.domain !== this.domain ||
       !/^[a-f0-9]{64}$/.test(inventory.capabilitySnapshotHash) ||
       !Array.isArray(inventory.tools) ||
       inventory.tools.length > 128
     )
-      throw Error('Invalid remote capability snapshot.');
-    this.remoteTools = inventory.tools.map(tool => ToolDescriptorSchema.parse(tool));
+      throw Error('Invalid remote capability catalog.');
+    this.remoteTools = inventory.tools.map(tool =>
+      ToolDescriptorSchema.parse(tool.descriptor || tool),
+    );
     this.inventory = inventory;
     this.state = state;
-    const described = new Set(
-      this.registry.capabilities
-        .filter(item => item.domain === this.domain)
-        .flatMap(item => item.tools.map(tool => tool.id)),
-    );
-    const deferred = this.remoteTools.filter(tool => !described.has(tool.id));
+    const trusted = (this.registry.capabilities || [])
+      .filter(item => item.domain === this.domain)
+      .map(item => ({
+        ...item,
+        tools: item.tools.filter(tool => this.remoteTools.some(remote => remote.id === tool.id)),
+      }))
+      .filter(item => item.tools.length);
+    const described = new Set(trusted.flatMap(item => item.tools.map(tool => tool.id)));
+    const tools = this.remoteTools
+      .filter(tool => !described.has(tool.id))
+      .map(tool => ({
+        id: tool.id,
+        summary:
+          'Execute this remote software tool in the bound sandbox. Describe its inputs before calling.',
+      }));
     this.capabilities = [
-      ...this.capabilities.filter(item => item.id === 'project.workspace'),
-      ...this.registry.capabilities
-        .filter(item => item.domain === this.domain)
-        .map(item => ({
-          ...item,
-          tools: item.tools.filter(tool => this.remoteTools.some(remote => remote.id === tool.id)),
-        }))
-        .filter(item => item.tools.length),
-      ...(deferred.length
+      ...this.workspaceCapabilities,
+      ...trusted,
+      ...(tools.length
         ? [
             {
-              id: 'remote.qualified-profile',
+              id: 'remote.software',
               domain: this.domain,
-              title: 'Remote domain verification',
+              title: 'Remote software and sandbox',
               stages: [],
               alwaysAvailable: true,
               priority: 0,
               keywords: [],
               skills: [],
-              tools: deferred.map(tool => ({
-                id: tool.id,
-                summary:
-                  'Run the qualified remote profile against the confirmed input snapshot. Describe this tool before calling it.',
-              })),
-              verification: [...new Set(deferred.flatMap(tool => tool.verification))],
+              tools,
+              verification: [...new Set(this.remoteTools.flatMap(tool => tool.verification))],
             },
           ]
         : []),
     ];
     this.workspace.put('state', state.id, state);
-    const { checkpoints } = await this.client.checkpoints(this.binding.remoteProjectId);
-    const checkpoint = checkpoints?.at(-1);
-    if (checkpoint) {
-      const parsed = IndustrialCheckpointSchema.parse(checkpoint);
-      if (
-        parsed.state.projectId !== this.project.projectId ||
-        parsed.state.domain !== this.domain ||
-        hash(JSON.stringify(parsed.state)) !== parsed.stateHash
-      )
-        throw Error('Invalid remote checkpoint.');
-      this.workspace.put('checkpoint', parsed.id, parsed);
-      this.checkpoint = parsed;
-    }
-    return state;
+    // Recovery imports immutable history. Another chat may already have advanced
+    // the project, so fetch the authoritative head again after importing it.
+    if (context && (await this.recover(context))) return this.inspect();
+    return this.state;
   }
   descriptors(scope) {
     return [...this.workspace.descriptors(), ...this.remoteTools].filter(
       tool => !scope || scope.tools.includes(tool.id),
     );
   }
-  describeTool(id, scope) {
+  async describeTool(id, scope, context) {
     if (!scope?.tools.includes(id)) throw Error('Tool is outside the current Broker scope.');
     const descriptor = this.remoteTools.find(tool => tool.id === id);
-    return descriptor
-      ? {
-          descriptor,
-          guide: {
-            inputs: {},
-            description:
-              'This remote service profile accepts an empty inputs object. Inputs come only from the confirmed project snapshot.',
-          },
-        }
-      : this.workspace.describeTool(id, scope);
+    if (!descriptor) return this.workspace.describeTool(id, scope);
+    if (!context) throw Error('Remote tool discovery requires a chat binding.');
+    const detail = await context.client.describeTool(id);
+    if (detail.tool?.id && detail.tool.id !== id) throw Error('Remote tool identity changed.');
+    return {
+      descriptor,
+      guide: {
+        description: detail.description || detail.tool?.description || '',
+        inputs: detail.inputs || detail.inputSchema || detail.guide?.inputs || {},
+      },
+    };
   }
-  async importResult(result) {
+  async importResult(result, context, expectedAction, expectedInputHashes) {
     // Canonical parsers and immutable store writes run before facts become visible.
     result = {
       ...result,
@@ -246,12 +322,22 @@ class RemoteRuntime {
       state.projectId !== this.project.projectId ||
       state.domain !== this.domain ||
       checkpoint.state.id !== state.id ||
+      JSON.stringify(checkpoint.state) !== JSON.stringify(state) ||
       hash(JSON.stringify(checkpoint.state)) !== checkpoint.stateHash ||
       result.action.projectId !== this.project.projectId ||
       result.action.domain !== this.domain ||
       result.run.domain !== this.domain ||
       result.run.projectId !== this.project.projectId ||
       result.run.id !== result.action.runId ||
+      JSON.stringify(result.run.actionIds) !== JSON.stringify([result.action.id]) ||
+      checkpoint.runId !== result.run.id ||
+      JSON.stringify(checkpoint.actionIds) !== JSON.stringify([result.action.id]) ||
+      JSON.stringify([...checkpoint.artifactIds].sort()) !==
+        JSON.stringify(state.artifacts.map(ref => ref.id).sort()) ||
+      result.run.status !== result.action.status ||
+      result.run.status === 'running' ||
+      !result.action.endedAt ||
+      !result.run.endedAt ||
       result.action.stateId !== result.run.stateId ||
       result.verification.id !== result.action.verification.id ||
       JSON.stringify(result.verification) !== JSON.stringify(result.action.verification) ||
@@ -261,24 +347,32 @@ class RemoteRuntime {
         JSON.stringify([...result.action.artifactIds].sort()) ||
       JSON.stringify(Object.entries(result.verification.evidence.inputHashes).sort()) !==
         JSON.stringify(Object.entries(result.action.inputHashes).sort()) ||
+      !expectedInputHashes ||
+      JSON.stringify(Object.entries(result.action.inputHashes).sort()) !==
+        JSON.stringify(Object.entries(expectedInputHashes).sort()) ||
       (result.verification.status === 'passed' &&
         (result.action.status !== 'completed' ||
           !state.verificationIds.includes(result.verification.id) ||
           !this.remoteTools
             .find(tool => tool.id === result.action.toolId)
             ?.verification.includes(result.verification.verifierId))) ||
-      (result.action.toolId !== this.pendingTool && this.pendingTool) ||
+      (expectedAction &&
+        (result.action.toolId !== expectedAction.toolId ||
+          result.action.stateId !== expectedAction.expectedStateId ||
+          JSON.stringify(result.action.inputs) !== JSON.stringify(expectedAction.inputs))) ||
       result.artifacts.some(
         ref =>
           ref.projectId !== this.project.projectId ||
           ref.runId !== result.run.id ||
-          ref.actionId !== result.action.id,
+          ref.actionId !== result.action.id ||
+          JSON.stringify(Object.entries(ref.inputHashes).sort()) !==
+            JSON.stringify(Object.entries(result.action.inputHashes).sort()),
       )
     )
       throw Error('Remote result identity differs from this project action.');
     const objects = [];
     for (const ref of result.artifacts) {
-      const artifact = await this.client.artifact(this.binding.remoteProjectId, ref.id);
+      const artifact = await context.client.artifact(ref.id, ref);
       if (JSON.stringify(artifact.ref) !== JSON.stringify(ref))
         throw Error('Remote artifact metadata changed.');
       objects.push(artifact);
@@ -304,15 +398,17 @@ class RemoteRuntime {
     this.checkpoint = checkpoint;
     return result;
   }
-  async execute(request, { scope, approval = false } = {}) {
-    if (this.executing) throw Error('A project action is already running.');
-    this.executing = true;
-    this.cancelled = false;
-    this.cancellation = null;
-    this.activeExecution = this.executeOne(request, { scope, approval });
+  async execute(request, { scope, approval = false } = {}, context) {
+    if (!context) throw Error('Remote execution requires a chat binding.');
+    if (context.executing) throw Error('This remote chat already has a running invocation.');
+    context.executing = true;
+    context.controller = new AbortController();
+    context.execution = this.executeOne(request, { scope, approval }, context);
     try {
-      return await this.activeExecution;
+      return await context.execution;
     } catch (error) {
+      // This is a local forwarding/rejection record. The separate invocation journal
+      // retains unknown remote outcomes; no transport failure establishes acceptance.
       const local = await this.workspace.inspect();
       const failed = await this.workspace.execute(
         { ...request, expectedStateId: local.id },
@@ -326,7 +422,6 @@ class RemoteRuntime {
           approval: false,
         },
       );
-      // A failed transport attempt does not claim an uncertain remote job failed.
       const verification = {
         ...failed.verification,
         id: crypto.randomUUID(),
@@ -337,19 +432,18 @@ class RemoteRuntime {
         this.workspace.put('verification', verification.id, verification);
         this.workspace.put('action', action.id, action, true);
       });
-      const current = await this.inspect().catch(() => local);
+      const current = this.state || local;
       const checkpoint = this.workspace.createCheckpoint(current, failed.run, action);
       this.checkpoint = checkpoint;
       return { ...failed, action, verification, state: current, checkpoint };
     } finally {
-      this.executing = false;
-      this.activeExecution = null;
-      this.jobId = null;
-      this.pendingTool = null;
+      context.executing = false;
+      context.execution = null;
+      context.controller = null;
     }
   }
-  async executeOne(request, policy) {
-    const state = await this.inspect();
+  async executeOne(request, policy, context) {
+    const state = await this.inspect(context);
     const action = ActionRequestSchema.parse({ ...this.project, ...request });
     if (
       action.projectId !== state.projectId ||
@@ -366,102 +460,108 @@ class RemoteRuntime {
     if (descriptor.risk === 'mutating' && policy.approval !== true)
       throw Error('Remote action requires approval in this chat.');
     if (!this.remoteTools.some(tool => tool.id === action.toolId)) {
-      const localState = await this.workspace.inspect();
-      const result = await this.workspace.execute(
-        { ...action, expectedStateId: localState.id },
-        { ...policy, scope: { ...policy.scope, stateId: localState.id } },
+      const local = await this.workspace.inspect();
+      return this.workspace.execute(
+        { ...action, expectedStateId: local.id },
+        { ...policy, scope: { ...policy.scope, stateId: local.id }, ownerId: context.chatId },
       );
-      const next = await this.inspect();
-      const checkpoint = this.workspace.createCheckpoint(next, result.run, result.action);
-      this.checkpoint = checkpoint;
-      return { ...result, state: next, checkpoint };
     }
-    if (Object.keys(action.inputs).length)
-      throw Error('This remote profile accepts no execution overrides.');
-    const intent = {
-      requestId: crypto.randomUUID(),
+    const invocation = {
+      invocationId: crypto.randomUUID(),
       snapshotId: this.binding.snapshotId,
       capabilitySnapshotHash: this.inventory.capabilitySnapshotHash,
       action,
     };
     const pending = {
-      requestId: intent.requestId,
-      jobId: null,
+      invocationId: invocation.invocationId,
+      toolId: action.toolId,
+      action,
+      inputHashes: state.inputHashes,
       status: 'submitting',
-      queuePosition: null,
-      remoteProjectId: this.binding.remoteProjectId,
-      serviceIdentity: this.configuration,
+      outcome: 'unknown',
     };
-    this.pendingTool = action.toolId;
-    this.publish(pending);
-    let job;
+    // Durable identity precedes grant issuance and the MCP mutation. Reopening queries it.
+    this.publish(context, pending);
+    let dispatched = false;
     try {
-      if (this.cancelled)
-        throw Object.assign(Error('Remote task was cancelled before submission.'), {
-          knownNotSubmitted: true,
+      if (context.controller.signal.aborted)
+        throw Object.assign(Error('Remote call stopped before dispatch.'), {
+          outcome: 'not_submitted',
         });
-      job = await this.client.submit(this.binding.remoteProjectId, intent);
-      this.jobId = job.jobId;
-      const deadline = Date.now() + 300000;
-      while (true) {
-        if (
-          job.requestId !== intent.requestId ||
-          (job.project && job.project !== this.binding.remoteProjectId)
-        )
-          throw Error('Remote job identity differs from its submission.');
-        this.publish({
-          ...pending,
-          jobId: job.jobId,
-          status: job.status,
-          queuePosition: job.queuePosition,
+      const grant = await context.client.grant({
+        ...invocation,
+        scope: {
+          projectId: policy.scope.projectId,
+          domain: policy.scope.domain,
+          stateId: policy.scope.stateId,
+          tools: policy.scope.tools.filter(id => this.remoteTools.some(tool => tool.id === id)),
+        },
+        approval: { decision: 'approved', source: 'harness-host' },
+      });
+      invocation.invocationGrantId = grant.invocationGrantId;
+      if (context.controller.signal.aborted)
+        throw Object.assign(Error('Remote call stopped before dispatch.'), {
+          outcome: 'not_submitted',
         });
-        if (!active.has(job.status)) break;
-        if (this.cancelled) {
-          this.cancellation ||= this.client.cancel(this.binding.remoteProjectId, job.jobId);
-          await this.cancellation;
-        }
-        if (Date.now() > deadline)
-          throw Error('Remote task is still pending. Check the saved task status later.');
-        await sleep(500);
-        job = await this.client.job(this.binding.remoteProjectId, job.jobId);
-      }
-      if (!job.result) throw Error('Remote task ended without canonical results.');
-      const result = await this.importResult(job.result);
-      const current = await this.inspect();
-      return { ...result, state: current, checkpoint: this.latestCheckpoint() };
-    } catch (error) {
-      this.publish({
-        ...pending,
-        jobId: this.jobId,
-        status: job?.result
-          ? 'unknown'
-          : job && !active.has(job.status)
-            ? job.status
-            : error.knownNotSubmitted || (error.status && error.status < 500 && !this.jobId)
-              ? 'failed'
+      this.publish(context, { ...pending, status: 'running' });
+      dispatched = true;
+      const response = await context.client.callTool(action.toolId, action.inputs, {
+        invocation,
+        signal: context.controller.signal,
+      });
+      if (response.invocationId !== invocation.invocationId || !response.result)
+        throw Object.assign(Error('Remote invocation returned no matching canonical result.'), {
+          outcome:
+            response.invocationId === invocation.invocationId &&
+            response.outcome === 'not_submitted'
+              ? 'not_submitted'
               : 'unknown',
-        queuePosition: null,
-        needsImport: Boolean(job?.result),
+        });
+      // Preserve the recoverable result before downloading/verifying its artifacts.
+      this.publish(context, { ...pending, status: response.status, needsImport: true });
+      const result = await this.importResult(response.result, context, action, state.inputHashes);
+      this.publish(context, {
+        ...pending,
+        status: response.status,
+        outcome: 'completed',
+        needsImport: false,
+      });
+      return result;
+    } catch (error) {
+      const safe = !dispatched || error.outcome === 'not_submitted';
+      this.publish(context, {
+        ...pending,
+        status: safe ? 'failed' : 'unknown',
+        outcome: safe ? 'not_submitted' : 'unknown',
+        code: error.code || 'REMOTE_EXECUTION_ERROR',
       });
       throw error;
     }
   }
-  cancel() {
-    this.cancelled = true;
-    this.workspace.cancel();
-    if (this.jobId && !this.cancellation) {
-      this.cancellation = this.client.cancel(this.binding.remoteProjectId, this.jobId);
-      this.cancellation.catch(() => {});
-    }
+  cancel(context) {
+    // Cancellation stops the local wait. Only the service can confirm computation stopped.
+    context?.controller?.abort();
+    if (context && this.status(context)?.status === 'running')
+      this.publish(context, { ...this.status(context), status: 'unknown', outcome: 'unknown' });
   }
   async waitForIdle() {
-    if (this.activeExecution) await this.activeExecution;
+    await Promise.allSettled([...this.contexts.values()].map(context => context.execution));
+  }
+  get(kind, id) {
+    return this.workspace.get(kind, id);
+  }
+  assertProjectBound() {
+    return this.workspace.assertProjectBound();
   }
   readArtifact(id) {
     return this.workspace.readArtifact(id);
   }
   latestCheckpoint() {
-    return this.checkpoint || this.workspace.latestCheckpoint();
+    if (!this.state) return null;
+    if (this.checkpoint?.state.id === this.state.id) return this.checkpoint;
+    return (
+      this.workspace.listCheckpoints().findLast(item => item.state.id === this.state.id) || null
+    );
   }
   listRuns() {
     return this.workspace.listRuns();
@@ -475,14 +575,20 @@ class RemoteRuntime {
   listCheckpoints() {
     return this.workspace.listCheckpoints();
   }
-  close() {
-    if (this.executing) throw Error('Cannot close a running remote action.');
-    this.workspace.close();
+  async close() {
+    if ([...this.contexts.values()].some(c => c.executing))
+      throw Error('Cannot close a running remote action.');
     this.closed = true;
+    await Promise.all([...this.contexts.values()].map(context => context.client.close()));
+    await this.control.close();
+    await this.workspace.close();
   }
 }
 function createRemoteRuntime(options) {
-  const runtime = new RemoteRuntime(options);
+  const runtime =
+    options.settings.project(options.projectDir, options.domain).gatewayContract === 'mcp-v1'
+      ? require('./current-remote-runtime.cjs').createCurrentRemoteRuntime(options, RemoteRuntime)
+      : new RemoteRuntime(options);
   return {
     runtime,
     configurationCurrent: () => runtime.current(),
@@ -492,7 +598,7 @@ function createRemoteRuntime(options) {
     },
     protectedPaths: [runtime.workspace.directory, options.settings.directory],
     packId: 'builtin-remote',
-    packVersion: '0.2',
+    packVersion: REMOTE_PROTOCOL_VERSION,
   };
 }
-module.exports = { RemoteRuntime, createRemoteRuntime };
+module.exports = { RemoteRuntime, createRemoteRuntime, REMOTE_PROTOCOL_VERSION };

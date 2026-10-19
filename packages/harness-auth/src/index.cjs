@@ -397,10 +397,22 @@ class AuthManager extends EventEmitter {
           : '';
     if (!endpoint || trustedUrl(target) !== endpoint)
       throw Error('This service is not bound to the platform account.');
+    const audience = service === 'model' ? 'obol-api' : this.config.remoteAudience;
+    // Some native registrations issue the service audience directly. Refresh
+    // that token normally; resource exchange is only needed across audiences.
+    if (audience === this.config.audience) {
+      const epoch = this.epoch,
+        subject = this.user?.sub;
+      if (!subject) throw authError('login_required');
+      const token = await this.accessToken(options);
+      await this.verifyServiceToken(token, audience, subject);
+      if (epoch !== this.epoch || this.user?.sub !== subject) throw authError('cancelled');
+      return token;
+    }
     return this.tokenFor(
       {
         resource: endpoint,
-        audience: service === 'model' ? 'obol-api' : this.config.remoteAudience,
+        audience,
       },
       options,
     );

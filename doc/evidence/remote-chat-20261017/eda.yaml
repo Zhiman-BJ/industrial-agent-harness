@@ -1,0 +1,13 @@
+name: harness-remote-smoke
+top: smoke_tb
+inputs:
+  rtl: [smoke_tb.sv]
+actions:
+  rtl.simulate:
+    parameters:
+      operation: simulate
+      top: smoke_tb
+      trace: true
+      sources:
+        - path: smoke_tb.sv
+required_verification: [rtl.simulate]
