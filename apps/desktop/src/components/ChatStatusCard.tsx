@@ -108,8 +108,10 @@ export function ChatStatusCard({
           onReady(
             state.service.status === 'connected' &&
               Boolean(state.syncedAt) &&
-              state.service.executableDomains?.includes(domain) === true &&
+              (state.service.executableDomains?.includes(domain) === true ||
+                state.service.capabilities?.runtimeDiscovery === true) &&
               !['stopped', 'expired', 'failed'].includes(remoteSession?.status || '') &&
+              !value?.needsImport &&
               !['submitting', 'running', 'unknown'].includes(value?.status || ''),
           );
         }

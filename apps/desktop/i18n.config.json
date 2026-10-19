@@ -3988,6 +3988,10 @@
       "en": "Remote outcome unknown",
       "zh-CN": "远程执行结果尚未确认"
     },
+    "Remote results need recovery before continuing.": {
+      "en": "Remote results need recovery before continuing.",
+      "zh-CN": "远程结果需要恢复后才能继续。"
+    },
     "Remote outcome unknown; checking without replaying…": {
       "en": "Remote outcome unknown; checking without replaying…",
       "zh-CN": "远程执行结果尚未确认，正在查询，不会重复执行…"

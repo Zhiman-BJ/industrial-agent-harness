@@ -333,3 +333,23 @@ test('model proxy never replays an ambiguous disconnected generation', async t =
   assert.equal(issuer.calls.model, 1);
   assert.equal(issuer.calls.refresh, 1);
 });
+
+test('native registration with matching service audience uses and refreshes its login token without resource exchange', async t => {
+  const { issuer, manager } = await setup(t);
+  const auth = manager({ ...issuer.config, remoteAudience: issuer.config.audience });
+  await auth.login({
+    openBrowser: async url => {
+      await fetch(await issuer.authorize(url));
+    },
+  });
+  const first = await auth.serviceToken('remote', issuer.config.remoteOrigin);
+  assert.equal(claims(first).aud, issuer.config.audience);
+  assert.equal(issuer.calls.refresh, 0);
+  const second = await auth.serviceToken('remote', issuer.config.remoteOrigin, {
+    rejectedToken: first,
+  });
+  assert.notEqual(second, first);
+  assert.equal(issuer.calls.refresh, 1);
+  assert.deepEqual(issuer.calls.resources, [null]);
+  await assert.rejects(auth.serviceToken('remote', 'https://unbound.example'), /not bound/);
+});

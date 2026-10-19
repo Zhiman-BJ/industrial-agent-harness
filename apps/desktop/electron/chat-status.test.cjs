@@ -124,7 +124,22 @@ test('status-card summaries and accessible progress text have both UI translatio
     '{0} of {1} tasks completed',
     '{0} files synced',
     'Ending remote session…',
+    'Remote results need recovery before continuing.',
   ];
   for (const key of labels)
     for (const locale of ['en', 'zh-CN']) assert.ok(messages[key]?.[locale], `${key}: ${locale}`);
+});
+
+test('unimported remote results never appear completed or suggest starting another chat', async () => {
+  const { summarizeRemote } = await model;
+  for (const status of ['completed', 'failed', 'unknown'])
+    for (const session of [null, { id: 's', status: 'stopped' }])
+      assert.deepEqual(
+        summarizeRemote({
+          ...ready,
+          session,
+          task: { invocationId: 'i', status, needsImport: true },
+        }),
+        { label: 'Remote results need recovery before continuing.', tone: 'idle' },
+      );
 });
