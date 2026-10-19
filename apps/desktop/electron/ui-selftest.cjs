@@ -170,8 +170,19 @@ async function run(window, dialog) {
     true,
     'Outside dismissal must not steal focus from the chosen control',
   );
+  await click('.ia-settings-button');
+  await wait(`document.activeElement === document.querySelector('.ia-settings-title button')`);
+  await evaluate(`(() => {
+    document.querySelector('.ia-settings-title button').click();
+    document.querySelector('.ia-welcome-create').focus();
+  })()`);
   await evaluate(
-    `window.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', bubbles: true}))`,
+    `new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))`,
+  );
+  assert.equal(
+    await evaluate(`document.activeElement === document.querySelector('.ia-welcome-create')`),
+    true,
+    'Closing Settings must not overwrite a subsequent focus move',
   );
 
   await click('.ia-settings-button');

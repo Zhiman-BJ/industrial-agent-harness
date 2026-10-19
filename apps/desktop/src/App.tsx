@@ -230,7 +230,8 @@ export function App() {
   }, [settingsOpen]);
   function closeSettings() {
     setSettingsOpen(false);
-    requestAnimationFrame(() => settingsTrigger.current?.focus({ preventScroll: true }));
+    // A deferred restore can steal focus from the user's next control.
+    settingsTrigger.current?.focus({ preventScroll: true });
   }
   const [accountOpen, setAccountOpen] = useState(false);
   const [modelSettingsOpen, setModelSettingsOpen] = useState(false);
