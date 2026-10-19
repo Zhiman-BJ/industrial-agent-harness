@@ -1,0 +1,41 @@
+{
+  "invocationId": "4b988ce1-eb86-4bf0-86ed-c8194f37ad38",
+  "requestId": "4b988ce1-eb86-4bf0-86ed-c8194f37ad38",
+  "snapshotId": "90961567-7eec-4345-91e8-b57de7332d72",
+  "toolId": "chip.rtl.verify",
+  "actionId": "f6ac009f-35a1-41cb-9753-b3beee8552c8",
+  "runId": "6145c20e-a07f-4f7d-b583-e3239b3fcc75",
+  "expectedStateId": null,
+  "inputHashes": {
+    "eda.yaml": "3f443071a1acea375d5c86328fb1b5719d5ce1c34bf05a2a820ef5dea3fd1a00",
+    "smoke_tb.sv": "4d87257501bdf363b8c9a30538e724bb8cdc0dc0f6cb94cf9fb556552a6595ff"
+  },
+  "status": "completed",
+  "outcome": "completed",
+  "producedArtifacts": [
+    {
+      "id": "a98062cb-59f5-4f2c-87a4-84b7fb9082d2",
+      "kind": "log.tool",
+      "sha256": "0c389442e53aec1e4a9799a83967f6bc14c9cd0312ce910e69885c3ff22501f8",
+      "sizeBytes": 4270,
+      "relativePath": "remote-results/4b988ce1-eb86-4bf0-86ed-c8194f37ad38/0-log.tool.log"
+    },
+    {
+      "id": "195adefc-434e-4516-a6c5-b227d2b00dec",
+      "kind": "report.simulation",
+      "sha256": "8ac9714f71ffa197a680b48a8978036e1b02c2a5782b7d5c8fb93bd80cdf6151",
+      "sizeBytes": 615,
+      "relativePath": "remote-results/4b988ce1-eb86-4bf0-86ed-c8194f37ad38/1-report.simulation.json"
+    },
+    {
+      "id": "363f0af5-eac5-49a9-b6b8-c33f4cc252fc",
+      "kind": "waveform.vcd",
+      "sha256": "a373b895c7d8122b63f1dfb1b71042a4d68d9388b4a4cb74a970b22becdbd343",
+      "sizeBytes": 360,
+      "relativePath": "remote-results/4b988ce1-eb86-4bf0-86ed-c8194f37ad38/2-waveform.vcd.vcd"
+    }
+  ],
+  "needsImport": false,
+  "chatId": "b5e46166-06f7-48f0-aed4-923cecda97a1",
+  "remoteProjectId": "70c59b8a-159d-4da0-866d-745488ade85f"
+}

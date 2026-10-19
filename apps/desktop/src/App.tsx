@@ -55,7 +55,7 @@ import {
 import { AgentLogPanel } from './components/AgentLogPanel';
 import { AgentFlow } from './components/AgentFlow';
 import { BrokerCall } from './components/BrokerCall';
-import { TodoList } from './components/TodoList';
+import { ChatStatusCard } from './components/ChatStatusCard';
 import { DomainManager } from './components/DomainManager';
 import { CapabilityCenter, type CapabilitySection } from './components/CapabilityCenter';
 import { MessageRail } from './components/MessageRail';
@@ -64,7 +64,6 @@ import { CoreUpdatePanel } from './components/CoreUpdatePanel';
 import { ComputerUseSettings } from './components/ComputerUseSettings';
 import { AccountSettings } from './components/AccountSettings';
 import { ModelSettings } from './components/ModelSettings';
-import { RemoteTaskStatus } from './components/RemoteExecution';
 import { ProjectDetails } from './components/ProjectDetails';
 import { CreateProjectModal } from './components/CreateProjectModal';
 import { WorkspaceDivider } from './components/WorkspaceDivider';
@@ -164,6 +163,27 @@ export function App() {
   const [viewerFullscreen, setViewerFullscreen] = useState(false);
   const [fullscreenError, setFullscreenError] = useState('');
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const settingsTrigger = useRef<HTMLButtonElement>(null);
+  const settingsPopover = useRef<HTMLDivElement>(null);
+  const settingsClose = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!settingsOpen) return;
+    settingsClose.current?.focus({ preventScroll: true });
+    const closeOutside = (event: PointerEvent) => {
+      if (
+        event.target instanceof Node &&
+        !settingsPopover.current?.contains(event.target) &&
+        !settingsTrigger.current?.contains(event.target)
+      )
+        setSettingsOpen(false);
+    };
+    document.addEventListener('pointerdown', closeOutside);
+    return () => document.removeEventListener('pointerdown', closeOutside);
+  }, [settingsOpen]);
+  function closeSettings() {
+    setSettingsOpen(false);
+    requestAnimationFrame(() => settingsTrigger.current?.focus({ preventScroll: true }));
+  }
   const [accountOpen, setAccountOpen] = useState(false);
   const [modelSettingsOpen, setModelSettingsOpen] = useState(false);
   const [capabilitySection, setCapabilitySection] = useState<CapabilitySection>('packs');
@@ -197,9 +217,15 @@ export function App() {
   }>();
   const [agentEvents, setAgentEvents] = useState<AgentEvent[]>([]);
   const [agentBusy, setAgentBusy] = useState(false);
-  const [remoteExecution, setRemoteExecution] = useState<{ projectId: string; ready: boolean }>();
-  const remoteExecutionReady =
-    remoteExecution?.projectId === activeProjectId && remoteExecution.ready;
+  const [remoteExecution, setRemoteExecution] = useState<{
+    projectId: string;
+    chatId: string | null;
+    ready: boolean;
+  }>();
+  // Tool ids the bound remote service executes in its sandbox; used to badge
+  // tool calls in the chat flow so remote work is visually distinct.
+  const [remoteToolIds, setRemoteToolIds] = useState<string[]>([]);
+  const remoteToolSet = useMemo(() => new Set(remoteToolIds), [remoteToolIds]);
   const [approvalMode, setApprovalMode] = useState<'ask' | 'auto'>('ask');
   const [approvalModeBusy, setApprovalModeBusy] = useState(false);
   const [agentOwned, setAgentOwned] = useState(false);
@@ -234,6 +260,12 @@ export function App() {
   const projectIdRef = useRef<string | null>(null);
   projectIdRef.current = activeProjectId;
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
+  const remoteExecutionReady =
+    remoteExecution?.projectId === activeProjectId &&
+    remoteExecution?.chatId === activeChatId &&
+    remoteExecution.ready;
+  // Tool identities belong to the bound service; drop them with the project.
+  useEffect(() => setRemoteToolIds([]), [activeProjectId]);
   const chatIdRef = useRef<string | null>(null);
   const [turns, setTurns] = useState<ChatTurn[]>([]);
   const [historyBefore, setHistoryBefore] = useState<string | null>(null);
@@ -720,6 +752,10 @@ export function App() {
   const isViewerReady = Boolean(activeViewState?.ready);
   const viewNavigation = activeViewState?.navigation;
   const activeProject = projects.find(item => item.id === activeProjectId);
+  const remoteInputBlocked = activeProject?.executionLocation === 'remote' && !remoteExecutionReady;
+  const showRemoteSetupHint = Boolean(
+    activeProject && agentStatus?.available && remoteInputBlocked,
+  );
   const projectName = activeProject?.name || t('No project selected');
   const fixedDomain = activeProject?.domain || null;
   const selectedDomain = fixedDomain;
@@ -1143,11 +1179,7 @@ export function App() {
       <div className="ia-columns">
         {sidebarVisible && (
           <aside className="ia-tree ia-sidebar" aria-label={t('Project navigation')}>
-            <div className="ia-sidebar-brand">
-              <span className="ia-product-mark">
-                <img src="./product-mark.png" width={28} height={28} alt="" />
-              </span>
-              <b>Industrial Harness</b>
+            <div className="ia-sidebar-chrome">
               <button
                 className="ia-icon"
                 onClick={() => {
@@ -1159,6 +1191,12 @@ export function App() {
               >
                 <PanelLeftClose size={16} />
               </button>
+            </div>
+            <div className="ia-sidebar-brand">
+              <span className="ia-product-mark">
+                <img src="./product-mark.png" width={28} height={28} alt="" />
+              </span>
+              <b>Micius Harness</b>
             </div>
             <div className="ia-projects-heading">
               <span>{t('PROJECTS')}</span>
@@ -1355,116 +1393,141 @@ export function App() {
             <div className="ia-sidebar-spacer" />
             <div className="ia-tree-bottom">
               <button
+                ref={settingsTrigger}
                 className="ia-settings-button"
                 onClick={() => setSettingsOpen(value => !value)}
                 aria-expanded={settingsOpen}
+                aria-haspopup="dialog"
+                aria-controls={settingsOpen ? 'ia-settings-popover' : undefined}
               >
                 <Settings2 size={16} />
                 {t('Settings')} <ChevronRight size={14} />
               </button>
             </div>
             {settingsOpen && (
-              <div className="ia-settings-popover">
+              <div
+                ref={settingsPopover}
+                id="ia-settings-popover"
+                className="ia-settings-popover"
+                role="dialog"
+                aria-label={t('Settings')}
+                onKeyDown={event => {
+                  if (event.key === 'Escape') {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    closeSettings();
+                  }
+                }}
+              >
                 <div className="ia-settings-title">
                   <b>{t('Settings')}</b>
                   <button
+                    ref={settingsClose}
                     className="ia-icon"
-                    onClick={() => setSettingsOpen(false)}
+                    onClick={closeSettings}
                     aria-label={t('Close settings')}
                   >
                     <X size={16} />
                   </button>
                 </div>
-                <div className="ia-settings-row">
-                  <label htmlFor="ia-language">{t('Language')}</label>
-                  <select
-                    id="ia-language"
-                    aria-label={t('Language')}
-                    value={preference}
-                    onChange={event => setPreference(normalizePreference(event.target.value))}
-                  >
-                    <option value="system">{t('Follow system')}</option>
-                    {languageOptions.map(({ value, label }) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
+                <div className="ia-settings-group" role="group" aria-label={t('Appearance')}>
+                  <div className="ia-settings-row">
+                    <label htmlFor="ia-language">{t('Language')}</label>
+                    <select
+                      id="ia-language"
+                      aria-label={t('Language')}
+                      value={preference}
+                      onChange={event => setPreference(normalizePreference(event.target.value))}
+                    >
+                      <option value="system">{t('Follow system')}</option>
+                      {languageOptions.map(({ value, label }) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="ia-settings-row">
+                    <span>{t('Appearance')}</span>
+                    <button
+                      onClick={() => setTheme(value => (value === 'light' ? 'dark' : 'light'))}
+                    >
+                      {theme === 'light' ? <Sun size={14} /> : <Moon size={14} />}{' '}
+                      {theme === 'light' ? t('Light') : t('Dark')}
+                    </button>
+                  </div>
+                  <div className="ia-settings-row">
+                    <span>{t('Debug logs')}</span>
+                    <button onClick={() => setDebug(value => !value)}>
+                      <Bug size={14} /> {debug ? t('On') : t('Off')}
+                    </button>
+                  </div>
                 </div>
-                <div className="ia-settings-row">
-                  <span>{t('Appearance')}</span>
-                  <button onClick={() => setTheme(value => (value === 'light' ? 'dark' : 'light'))}>
-                    {theme === 'light' ? <Sun size={14} /> : <Moon size={14} />}{' '}
-                    {theme === 'light' ? t('Light') : t('Dark')}
-                  </button>
+                <div className="ia-settings-group" role="group" aria-label={t('Agent settings')}>
+                  <div className="ia-settings-row">
+                    <span>{t('Platform account')}</span>
+                    <button
+                      onClick={() => {
+                        setSettingsOpen(false);
+                        setAccountOpen(true);
+                      }}
+                    >
+                      {t('Manage')}
+                    </button>
+                  </div>
+                  <ComputerUseSettings />
+                  <div className="ia-settings-row">
+                    <span>{t('Model API')}</span>
+                    <button
+                      onClick={() => {
+                        setSettingsOpen(false);
+                        setModelSettingsOpen(true);
+                      }}
+                    >
+                      {t('Configure')}
+                    </button>
+                  </div>
                 </div>
-                <div className="ia-settings-row">
-                  <span>{t('Debug logs')}</span>
-                  <button onClick={() => setDebug(value => !value)}>
-                    <Bug size={14} /> {debug ? t('On') : t('Off')}
-                  </button>
-                </div>
-                <div className="ia-settings-row">
-                  <span>{t('Platform account')}</span>
-                  <button
-                    onClick={() => {
-                      setSettingsOpen(false);
-                      setAccountOpen(true);
-                    }}
-                  >
-                    {t('Manage')}
-                  </button>
-                </div>
-                <ComputerUseSettings />
-                <div className="ia-settings-row">
-                  <span>{t('Model API')}</span>
-                  <button
-                    onClick={() => {
-                      setSettingsOpen(false);
-                      setModelSettingsOpen(true);
-                    }}
-                  >
-                    {t('Configure')}
-                  </button>
-                </div>
-                <div className="ia-settings-row">
-                  <span>{t('MCP & Skills')}</span>
-                  <button
-                    onClick={() => {
-                      setSettingsOpen(false);
-                      showCapabilities('mcp');
-                    }}
-                  >
-                    {t('Configure')}
-                  </button>
-                </div>
-                <div className="ia-settings-row">
-                  <span>{t('Domains')}</span>
-                  <button
-                    onClick={() => {
-                      setSettingsOpen(false);
-                      showCapabilities('packs');
-                    }}
-                  >
-                    {t('Manage')}
-                  </button>
-                </div>
-                <div className="ia-settings-row">
-                  <span>{t('Application')}</span>
-                  <button
-                    onClick={() => {
-                      setSettingsOpen(false);
-                      setCoreUpdateOpen(true);
-                    }}
-                  >
-                    {t('Check updates')}
-                  </button>
-                </div>
-                <div className="ia-settings-note">
-                  {t('Kimi CLI:')}{' '}
-                  {agentStatus?.available
-                    ? agentStatus.version || t('available')
-                    : t('unavailable')}
+                <div className="ia-settings-group" role="group" aria-label={t('Application')}>
+                  <div className="ia-settings-row">
+                    <span>{t('MCP & Skills')}</span>
+                    <button
+                      onClick={() => {
+                        setSettingsOpen(false);
+                        showCapabilities('mcp');
+                      }}
+                    >
+                      {t('Configure')}
+                    </button>
+                  </div>
+                  <div className="ia-settings-row">
+                    <span>{t('Domains')}</span>
+                    <button
+                      onClick={() => {
+                        setSettingsOpen(false);
+                        showCapabilities('packs');
+                      }}
+                    >
+                      {t('Manage')}
+                    </button>
+                  </div>
+                  <div className="ia-settings-row">
+                    <span>{t('Application')}</span>
+                    <button
+                      onClick={() => {
+                        setSettingsOpen(false);
+                        setCoreUpdateOpen(true);
+                      }}
+                    >
+                      {t('Check updates')}
+                    </button>
+                  </div>
+                  <div className="ia-settings-note">
+                    {t('Kimi CLI:')}{' '}
+                    {agentStatus?.available
+                      ? agentStatus.version || t('available')
+                      : t('unavailable')}
+                  </div>
                 </div>
               </div>
             )}
@@ -1626,6 +1689,28 @@ export function App() {
                   </div>
                 </header>
               )}
+              <ChatStatusCard
+                hidden={page === 'project' || page === 'capabilities'}
+                remote={
+                  activeProject?.executionLocation === 'remote'
+                    ? {
+                        projectId: activeProject.id,
+                        domain: activeProject.domain || '',
+                        chatId: activeChatId,
+                        onReady: ready =>
+                          setRemoteExecution({
+                            projectId: activeProject.id,
+                            chatId: activeChatId,
+                            ready,
+                          }),
+                        onTools: setRemoteToolIds,
+                        onConfigure: () => showPage('project'),
+                      }
+                    : null
+                }
+                todo={todo?.type === 'todo' ? todo.items : null}
+                running={agentBusy}
+              />
               {page === 'capabilities' ? (
                 <CapabilityCenter
                   project={activeProject || undefined}
@@ -1736,6 +1821,11 @@ export function App() {
                               debug={debug}
                               approve={approveAgent}
                               answer={answerAgent}
+                              remoteTools={
+                                activeProject?.executionLocation === 'remote'
+                                  ? remoteToolSet
+                                  : undefined
+                              }
                             />
                           )}
                         </div>
@@ -1757,21 +1847,12 @@ export function App() {
                       </button>
                     </div>
                   )}
-                  {todo?.type === 'todo' && <TodoList items={todo.items} running={agentBusy} />}
                   {agentBusy && !agentOwned && (
                     <p role="status" className="ia-composer-hint">
                       {t(
                         'This chat is running in another window. Open a new chat to work in parallel.',
                       )}
                     </p>
-                  )}
-                  {activeProject?.executionLocation === 'remote' && (
-                    <RemoteTaskStatus
-                      key={activeProject.id}
-                      projectId={activeProject.id}
-                      onReady={ready => setRemoteExecution({ projectId: activeProject.id, ready })}
-                      onConfigure={() => showPage('project')}
-                    />
                   )}
                   <div className="ia-composer-wrap">
                     <div
@@ -1831,7 +1912,7 @@ export function App() {
                         )}
                         <textarea
                           aria-label={t('Engineering task')}
-                          aria-describedby="ia-composer-help"
+                          aria-describedby="ia-composer-help ia-composer-status"
                           placeholder={
                             activeProject
                               ? t('Ask about your project…')
@@ -1952,18 +2033,35 @@ export function App() {
                     <p id="ia-composer-help" className="ia-sr-only">
                       {t('Press Enter to send. Press Shift+Enter for a new line.')}
                     </p>
-                    <div className="ia-composer-hint">
-                      <span role="status">
-                        {!activeProject
-                          ? t('Choose a project to run Kimi')
-                          : !agentStatus?.available
-                            ? t('Kimi CLI is required to run Agent tasks')
-                            : !agentStatus.configured
-                              ? t('Configure the Model API in Settings to run Kimi')
-                              : !agentStatus.projectDir
-                                ? t('Choose a project to run Kimi')
-                                : t('Kimi ready')}
-                      </span>
+                    <div className={`ia-composer-hint${showRemoteSetupHint ? ' is-blocked' : ''}`}>
+                      <div className="ia-composer-status">
+                        <span id="ia-composer-status" role="status">
+                          {!activeProject
+                            ? t('Choose a project to run Kimi')
+                            : !agentStatus?.available
+                              ? t('Kimi CLI is required to run Agent tasks')
+                              : remoteInputBlocked
+                                ? t(
+                                    'Remote environment is not ready. Check project execution settings.',
+                                  )
+                                : !agentStatus.configured
+                                  ? t('Configure the Model API in Settings to run Kimi')
+                                  : !agentStatus.projectDir
+                                    ? t('Choose a project to run Kimi')
+                                    : t('Kimi ready')}
+                        </span>
+                        {showRemoteSetupHint && (
+                          <button
+                            className="ia-composer-status-action"
+                            type="button"
+                            disabled={navigating || submitting.current}
+                            onClick={() => showPage('project')}
+                          >
+                            {t('Execution settings')}
+                            <ChevronRight size={12} aria-hidden="true" />
+                          </button>
+                        )}
+                      </div>
                       <span className="ia-composer-shortcuts" aria-hidden="true">
                         <kbd>Enter</kbd> {t('Send')}
                         <span>·</span>

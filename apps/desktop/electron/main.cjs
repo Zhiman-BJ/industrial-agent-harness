@@ -139,6 +139,7 @@ protocol.registerSchemesAsPrivileged([
 if (
   [
     '--account-selftest',
+    '--remote-ui-selftest',
     '--task-results-selftest',
     '--viewer-selftest',
     '--kicad-selftest',
@@ -1203,6 +1204,7 @@ function registerHandlers() {
       location: binding.location,
       files: binding.files || [],
       syncedAt: binding.syncedAt || null,
+      hasRemoteProject: Boolean(binding.remoteProjectId),
       task: remoteSettings.task(project.path, project.domain),
       service: remoteSettings.view(),
     };
@@ -1210,6 +1212,29 @@ function registerHandlers() {
   ipcMain.handle('remote:files', (event, request) => {
     const project = executionProject(event, request);
     return remoteSettings.candidates(project.path);
+  });
+  ipcMain.handle('remote:tools', async (event, request) => {
+    const project = executionProject(event, request);
+    const binding = remoteSettings.project(project.path, project.domain);
+    if (
+      binding.location !== 'remote' ||
+      !binding.remoteProjectId ||
+      remoteSettings.view().status !== 'connected'
+    )
+      return [];
+    const client = remoteSettings.client({
+      remoteProjectId: binding.remoteProjectId,
+      domain: project.domain,
+    });
+    try {
+      const inventory = await client.capabilities();
+      const tools = Array.isArray(inventory?.tools) ? inventory.tools : [];
+      return tools.map(tool => (tool?.descriptor || tool)?.id).filter(id => typeof id === 'string');
+    } catch {
+      return [];
+    } finally {
+      await client.close();
+    }
   });
   async function executionChange(event, request, operation) {
     const project = executionProject(event, request);
@@ -1243,13 +1268,50 @@ function registerHandlers() {
       return projectSnapshot();
     }),
   );
+  ipcMain.handle('remote:rebind', (event, request) =>
+    executionChange(event, request, async project => {
+      sessions.assertIdle();
+      await remoteSettings.rebind(project.path, project.domain);
+      return projectSnapshot();
+    }),
+  );
+  function executionChat(event, request) {
+    const project = executionProject(event, request);
+    chats.get(request.chatId, project.path, project.domain);
+    return project;
+  }
   ipcMain.handle('remote:task', async (event, request) => {
-    const project = executionProject(event, request);
-    return remoteSettings.refreshTask(project.path, project.domain);
+    const project = executionChat(event, request);
+    return remoteSettings.refreshTask(project.path, project.domain, request.chatId);
   });
-  ipcMain.handle('remote:cancel', async (event, request) => {
+  ipcMain.handle('remote:session', async (event, request) => {
+    const project = executionChat(event, request);
+    return remoteSettings.session(project.path, project.domain, request.chatId);
+  });
+  ipcMain.handle('remote:terminate', async (event, request) => {
+    const project = executionChat(event, request);
+    if (sessions.busy(sessions.find(request.chatId)))
+      throw Error('Wait for this chat to finish before ending its remote session.');
+    return remoteSettings.terminateSession(
+      project.path,
+      project.domain,
+      request.chatId,
+      request.applicationSessionId,
+    );
+  });
+  ipcMain.handle('remote:artifacts', async (event, request) => {
     const project = executionProject(event, request);
-    return remoteSettings.cancelTask(project.path, project.domain, request);
+    return remoteSettings.artifacts(project.path, project.domain);
+  });
+  ipcMain.handle('remote:download', async (event, request) => {
+    const project = executionProject(event, request);
+    sessions.assertIdle(project.id);
+    return remoteSettings.download(
+      project.path,
+      project.domain,
+      request.artifactId,
+      request.relativePath,
+    );
   });
   ipcMain.handle('resource:get', (event, request) => {
     const project = resourceProject(event, request);
@@ -1610,6 +1672,8 @@ async function createWindow() {
     require('./gui-settings-selftest.cjs').prepare();
   if (process.argv.includes('--ui-selftest'))
     require('./ui-selftest.cjs').prepare(projectConfigDir(), chats);
+  if (process.argv.includes('--remote-ui-selftest'))
+    require('./remote-ui-selftest.cjs').prepare(projectConfigDir(), chats);
   if (process.argv.includes('--replay-selftest')) {
     const config = projectConfigDir();
     const project = path.join(config, 'sobel-project');
@@ -1991,6 +2055,11 @@ async function createWindow() {
     app.quit();
     return;
   }
+  if (process.argv.includes('--remote-ui-selftest')) {
+    await require('./remote-ui-selftest.cjs').run(window);
+    app.quit();
+    return;
+  }
   if (process.argv.includes('--messages-selftest')) {
     await require('./messages-selftest.cjs').run(window);
     app.quit();
@@ -2366,7 +2435,7 @@ async function createWindow() {
     await waitFor(`Boolean(document.querySelector('.ia-model-modal'))`);
     screenshots.push(await shot('settings'));
     await window.webContents.executeJavaScript(
-      `document.querySelector('.ia-model-modal header button').click(); document.querySelector('.ia-sidebar-brand .ia-icon').click(); document.querySelector('.ia-chat-actions button:last-child').click()`,
+      `document.querySelector('.ia-model-modal header button').click(); document.querySelector('.ia-sidebar-chrome .ia-icon').click(); document.querySelector('.ia-chat-actions button:last-child').click()`,
     );
     await waitFor(
       `!document.querySelector('.ia-sidebar') && !document.querySelector('.ia-workspace')`,

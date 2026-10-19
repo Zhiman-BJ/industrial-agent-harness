@@ -1,0 +1,79 @@
+{
+  "schemaVersion": "1",
+  "testedCommit": "08523a4",
+  "testedAtUtc": "2026-10-17T00:10:02.486Z",
+  "environment": {
+    "host": "macOS",
+    "app": "Harness Live Gateway",
+    "kernel": "@moonshot-ai/kimi-code@2.1.1",
+    "model": "MiniMax-M3",
+    "modelEndpoint": "https://api.minimaxi.com/v1",
+    "modelProtocol": "openai_legacy"
+  },
+  "chatId": "b5e46166-06f7-48f0-aed4-923cecda97a1",
+  "turnId": "a5fe98a2-cc70-4f30-8a1b-43855b435b2f",
+  "turnStatus": "finished",
+  "task": "请对当前已审核上传的 eda.yaml 和 smoke_tb.sv 执行一次真实远程 RTL 验证。先发现并描述可用的 chip.rtl.verify 工具，然后通过 Harness 受保护的领域工具入口调用它，等待执行和 Verifier 结果。不要修改输入，不要使用 Shell，也不要重复执行。完成后用中文报告实际 request/action 标识、验证状态和产物路径；如失败如实说明，不能根据旧产物宣称本次通过。",
+  "remoteRequestCount": 1,
+  "modelRemoteToolCallCount": 1,
+  "checks": {
+    "inputBytesUnchanged": true,
+    "outputsSizeAndSha256MatchReceipt": true,
+    "canonicalRecordsReopenedReadOnly": true,
+    "canonicalRecordsMatchChatToolResult": true,
+    "finalReplyIdentitiesMatch": true,
+    "remoteStateNullPreserved": true,
+    "runtimeApprovalRecorded": true,
+    "shellRejected": true
+  },
+  "files": [
+    {
+      "kind": "input",
+      "file": "eda.yaml",
+      "sha256": "3f443071a1acea375d5c86328fb1b5719d5ce1c34bf05a2a820ef5dea3fd1a00",
+      "sizeBytes": 256,
+      "matched": true
+    },
+    {
+      "kind": "input",
+      "file": "smoke_tb.sv",
+      "sha256": "4d87257501bdf363b8c9a30538e724bb8cdc0dc0f6cb94cf9fb556552a6595ff",
+      "sizeBytes": 358,
+      "matched": true
+    },
+    {
+      "kind": "output",
+      "file": "0-log.tool.log",
+      "localArtifactId": "13731205-291c-4d5f-8cc2-dfbb33b53489",
+      "remoteArtifactId": "a98062cb-59f5-4f2c-87a4-84b7fb9082d2",
+      "sha256": "0c389442e53aec1e4a9799a83967f6bc14c9cd0312ce910e69885c3ff22501f8",
+      "sizeBytes": 4270,
+      "matched": true
+    },
+    {
+      "kind": "output",
+      "file": "1-report.simulation.json",
+      "localArtifactId": "14bf7fbb-0e23-4868-be3c-ba6aa86d3978",
+      "remoteArtifactId": "195adefc-434e-4516-a6c5-b227d2b00dec",
+      "sha256": "8ac9714f71ffa197a680b48a8978036e1b02c2a5782b7d5c8fb93bd80cdf6151",
+      "sizeBytes": 615,
+      "matched": true
+    },
+    {
+      "kind": "output",
+      "file": "2-waveform.vcd.vcd",
+      "localArtifactId": "8ff1d66d-b2d3-465d-acf4-b36134d8c954",
+      "remoteArtifactId": "363f0af5-eac5-49a9-b6b8-c33f4cc252fc",
+      "sha256": "a373b895c7d8122b63f1dfb1b71042a4d68d9388b4a4cb74a970b22becdbd343",
+      "sizeBytes": 360,
+      "matched": true
+    }
+  ],
+  "limits": [
+    "Operator approvals were used; this is not an unattended run.",
+    "One host file-read call failed schema validation and was corrected.",
+    "Model final prose says remote.simulate once; actual tool is chip.rtl.verify and report action is rtl.simulate.",
+    "Local verified State wraps the source verifier report; the server returned state:null.",
+    "Only this Chip smoke input/profile was qualified; CLI live model execution and other domains were not tested."
+  ]
+}

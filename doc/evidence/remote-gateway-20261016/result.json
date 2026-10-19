@@ -1,0 +1,369 @@
+{
+  "testedAt": "2026-10-16T23:50:20.514Z",
+  "mode": "shared-harness-runtime-no-model-inference",
+  "endpoint": "https://industrial-mcp-remote-test.pvg1s1-cloud.internal.zhiman.tech",
+  "chatId": "64938a3a-62d8-4db6-9ef6-71b5e001bff5",
+  "binding": {
+    "location": "remote",
+    "protocol": "1.1",
+    "remoteProjectId": "71c9cca7-7db5-420e-85f2-9ba7ad9d6838",
+    "canonicalProjectId": "6a4884f1ef670e5d934b06b4965752f55c71c2c6dd05224d7d9fec1d1aed702e",
+    "gatewayContract": "mcp-v1",
+    "files": [
+      "eda.yaml",
+      "smoke_tb.sv"
+    ],
+    "manifestDigest": "697bc282a35eed3cf98900f48664b709d72c6e41c39ffe2772dbfa2c7958f128",
+    "snapshotId": "dad30b9d-5780-4860-a86e-352b13b1e219",
+    "syncedAt": "2026-10-16T23:46:29.482Z"
+  },
+  "session": {
+    "id": "09ff814d-e60f-4140-af9d-125380595dda",
+    "clientSessionId": "df9cedde-7228-49ef-845a-58bf5e053914",
+    "domain": "chip",
+    "projectId": "71c9cca7-7db5-420e-85f2-9ba7ad9d6838",
+    "sandboxId": "fc395809-098d-4201-9861-a7bd4367c536",
+    "sandboxGeneration": 1,
+    "status": "active",
+    "createdAt": "2026-10-16T23:46:29.655Z",
+    "lastUsedAt": "2026-10-16T23:50:00.441Z",
+    "lastHeartbeatAt": "2026-10-16T23:49:55.773Z",
+    "idleExpiresAt": "2026-10-17T00:04:55.773Z",
+    "expiresAt": "2026-11-15T23:46:29.655Z",
+    "terminatedAt": null,
+    "callLocked": false
+  },
+  "task": {
+    "invocationId": "55246107-90eb-4746-a1d3-631994c2587f",
+    "requestId": "55246107-90eb-4746-a1d3-631994c2587f",
+    "snapshotId": "dad30b9d-5780-4860-a86e-352b13b1e219",
+    "toolId": "chip.rtl.verify",
+    "actionId": "2973efdd-c0d5-4d58-834c-9263667b580a",
+    "runId": "6a976d80-aaa0-4266-a41f-ab2511246cbc",
+    "expectedStateId": null,
+    "inputHashes": {
+      "eda.yaml": "3f443071a1acea375d5c86328fb1b5719d5ce1c34bf05a2a820ef5dea3fd1a00",
+      "smoke_tb.sv": "4d87257501bdf363b8c9a30538e724bb8cdc0dc0f6cb94cf9fb556552a6595ff"
+    },
+    "status": "completed",
+    "outcome": "completed",
+    "producedArtifacts": [
+      {
+        "id": "72079acd-ec60-4491-af63-625e8ad86a0b",
+        "kind": "log.tool",
+        "sha256": "42cb33631db5206ed8cd6142ddc6b373c191838fa979463723b4679c2b715122",
+        "sizeBytes": 4270,
+        "relativePath": "remote-results/55246107-90eb-4746-a1d3-631994c2587f/0-log.tool.log"
+      },
+      {
+        "id": "42645ed8-9af7-4fbd-b335-4481faa914bc",
+        "kind": "report.simulation",
+        "sha256": "0cdba1d251a42de2a13a3c03070c9d35cf7d2dfd340a9a02901d8dd0df631b8a",
+        "sizeBytes": 615,
+        "relativePath": "remote-results/55246107-90eb-4746-a1d3-631994c2587f/1-report.simulation.json"
+      },
+      {
+        "id": "a51ac223-6901-44ee-a4cc-a3b96a0db0f2",
+        "kind": "waveform.vcd",
+        "sha256": "a373b895c7d8122b63f1dfb1b71042a4d68d9388b4a4cb74a970b22becdbd343",
+        "sizeBytes": 360,
+        "relativePath": "remote-results/55246107-90eb-4746-a1d3-631994c2587f/2-waveform.vcd.vcd"
+      }
+    ],
+    "needsImport": false,
+    "chatId": "64938a3a-62d8-4db6-9ef6-71b5e001bff5",
+    "remoteProjectId": "71c9cca7-7db5-420e-85f2-9ba7ad9d6838"
+  },
+  "result": {
+    "presentation": {
+      "schemaVersion": "1",
+      "actionId": "2973efdd-c0d5-4d58-834c-9263667b580a",
+      "groups": [],
+      "checks": [],
+      "diagnostics": []
+    },
+    "run": {
+      "schemaVersion": "1",
+      "id": "6a976d80-aaa0-4266-a41f-ab2511246cbc",
+      "projectId": "6a4884f1ef670e5d934b06b4965752f55c71c2c6dd05224d7d9fec1d1aed702e",
+      "domain": "chip",
+      "stateId": "6e7f49c2-be95-4373-afff-d8fdaadc452d",
+      "startedAt": "2026-10-16T23:49:55.614Z",
+      "endedAt": "2026-10-16T23:50:20.446Z",
+      "status": "completed",
+      "actionIds": [
+        "2973efdd-c0d5-4d58-834c-9263667b580a"
+      ]
+    },
+    "action": {
+      "id": "2973efdd-c0d5-4d58-834c-9263667b580a",
+      "runId": "6a976d80-aaa0-4266-a41f-ab2511246cbc",
+      "projectId": "6a4884f1ef670e5d934b06b4965752f55c71c2c6dd05224d7d9fec1d1aed702e",
+      "domain": "chip",
+      "toolId": "chip.rtl.verify",
+      "schemaVersion": "1",
+      "toolVersion": "0.6.1-core.2",
+      "stateId": "6e7f49c2-be95-4373-afff-d8fdaadc452d",
+      "inputHashes": {
+        "eda.yaml": "3f443071a1acea375d5c86328fb1b5719d5ce1c34bf05a2a820ef5dea3fd1a00",
+        "smoke_tb.sv": "4d87257501bdf363b8c9a30538e724bb8cdc0dc0f6cb94cf9fb556552a6595ff"
+      },
+      "inputs": {},
+      "startedAt": "2026-10-16T23:49:55.614Z",
+      "endedAt": "2026-10-16T23:50:20.446Z",
+      "status": "completed",
+      "diagnostics": [
+        "Remote request 55246107-90eb-4746-a1d3-631994c2587f; source verifier 805062d1-54d8-47fd-bf51-4ca024b51f52."
+      ],
+      "artifactIds": [
+        "6ffe8d3d-f870-47d8-885b-0c1cf44e35a3",
+        "610d3d6c-33b7-42c3-8cd0-bbff22b21765",
+        "366e54f1-c662-4ddb-a6b2-c890b59622bf"
+      ],
+      "verification": {
+        "schemaVersion": "1",
+        "id": "89e5ed30-195b-4a1a-a48b-0446ead52a3f",
+        "status": "passed",
+        "verifierId": "remote.reported",
+        "reason": "Remote verifier chip.rtl.assertions: Assertions enabled; testbench reached $finish and produced a real VCD. Functional coverage remains testbench-defined.",
+        "metrics": {
+          "completed": true,
+          "waveformPresent": true,
+          "assertionFailure": false
+        },
+        "evidence": {
+          "artifactIds": [
+            "6ffe8d3d-f870-47d8-885b-0c1cf44e35a3",
+            "610d3d6c-33b7-42c3-8cd0-bbff22b21765",
+            "366e54f1-c662-4ddb-a6b2-c890b59622bf"
+          ],
+          "inputHashes": {
+            "eda.yaml": "3f443071a1acea375d5c86328fb1b5719d5ce1c34bf05a2a820ef5dea3fd1a00",
+            "smoke_tb.sv": "4d87257501bdf363b8c9a30538e724bb8cdc0dc0f6cb94cf9fb556552a6595ff"
+          }
+        }
+      }
+    },
+    "artifacts": [
+      {
+        "schemaVersion": "1",
+        "id": "6ffe8d3d-f870-47d8-885b-0c1cf44e35a3",
+        "projectId": "6a4884f1ef670e5d934b06b4965752f55c71c2c6dd05224d7d9fec1d1aed702e",
+        "runId": "6a976d80-aaa0-4266-a41f-ab2511246cbc",
+        "actionId": "2973efdd-c0d5-4d58-834c-9263667b580a",
+        "kind": "log.tool",
+        "relativePath": "remote-results/55246107-90eb-4746-a1d3-631994c2587f/0-log.tool.log",
+        "sha256": "42cb33631db5206ed8cd6142ddc6b373c191838fa979463723b4679c2b715122",
+        "sizeBytes": 4270,
+        "source": "domain-tool",
+        "inputHashes": {
+          "eda.yaml": "3f443071a1acea375d5c86328fb1b5719d5ce1c34bf05a2a820ef5dea3fd1a00",
+          "smoke_tb.sv": "4d87257501bdf363b8c9a30538e724bb8cdc0dc0f6cb94cf9fb556552a6595ff"
+        }
+      },
+      {
+        "schemaVersion": "1",
+        "id": "610d3d6c-33b7-42c3-8cd0-bbff22b21765",
+        "projectId": "6a4884f1ef670e5d934b06b4965752f55c71c2c6dd05224d7d9fec1d1aed702e",
+        "runId": "6a976d80-aaa0-4266-a41f-ab2511246cbc",
+        "actionId": "2973efdd-c0d5-4d58-834c-9263667b580a",
+        "kind": "report.simulation",
+        "relativePath": "remote-results/55246107-90eb-4746-a1d3-631994c2587f/1-report.simulation.json",
+        "sha256": "0cdba1d251a42de2a13a3c03070c9d35cf7d2dfd340a9a02901d8dd0df631b8a",
+        "sizeBytes": 615,
+        "source": "domain-tool",
+        "inputHashes": {
+          "eda.yaml": "3f443071a1acea375d5c86328fb1b5719d5ce1c34bf05a2a820ef5dea3fd1a00",
+          "smoke_tb.sv": "4d87257501bdf363b8c9a30538e724bb8cdc0dc0f6cb94cf9fb556552a6595ff"
+        }
+      },
+      {
+        "schemaVersion": "1",
+        "id": "366e54f1-c662-4ddb-a6b2-c890b59622bf",
+        "projectId": "6a4884f1ef670e5d934b06b4965752f55c71c2c6dd05224d7d9fec1d1aed702e",
+        "runId": "6a976d80-aaa0-4266-a41f-ab2511246cbc",
+        "actionId": "2973efdd-c0d5-4d58-834c-9263667b580a",
+        "kind": "waveform.vcd",
+        "relativePath": "remote-results/55246107-90eb-4746-a1d3-631994c2587f/2-waveform.vcd.vcd",
+        "sha256": "a373b895c7d8122b63f1dfb1b71042a4d68d9388b4a4cb74a970b22becdbd343",
+        "sizeBytes": 360,
+        "source": "domain-tool",
+        "inputHashes": {
+          "eda.yaml": "3f443071a1acea375d5c86328fb1b5719d5ce1c34bf05a2a820ef5dea3fd1a00",
+          "smoke_tb.sv": "4d87257501bdf363b8c9a30538e724bb8cdc0dc0f6cb94cf9fb556552a6595ff"
+        }
+      }
+    ],
+    "verification": {
+      "schemaVersion": "1",
+      "id": "89e5ed30-195b-4a1a-a48b-0446ead52a3f",
+      "status": "passed",
+      "verifierId": "remote.reported",
+      "reason": "Remote verifier chip.rtl.assertions: Assertions enabled; testbench reached $finish and produced a real VCD. Functional coverage remains testbench-defined.",
+      "metrics": {
+        "completed": true,
+        "waveformPresent": true,
+        "assertionFailure": false
+      },
+      "evidence": {
+        "artifactIds": [
+          "6ffe8d3d-f870-47d8-885b-0c1cf44e35a3",
+          "610d3d6c-33b7-42c3-8cd0-bbff22b21765",
+          "366e54f1-c662-4ddb-a6b2-c890b59622bf"
+        ],
+        "inputHashes": {
+          "eda.yaml": "3f443071a1acea375d5c86328fb1b5719d5ce1c34bf05a2a820ef5dea3fd1a00",
+          "smoke_tb.sv": "4d87257501bdf363b8c9a30538e724bb8cdc0dc0f6cb94cf9fb556552a6595ff"
+        }
+      }
+    },
+    "state": {
+      "schemaVersion": "1",
+      "id": "54af081a-ab97-47f5-9bb6-5b5d3801bf7a",
+      "projectId": "6a4884f1ef670e5d934b06b4965752f55c71c2c6dd05224d7d9fec1d1aed702e",
+      "domain": "chip",
+      "stage": null,
+      "status": "verified",
+      "artifacts": [
+        {
+          "schemaVersion": "1",
+          "id": "6ffe8d3d-f870-47d8-885b-0c1cf44e35a3",
+          "projectId": "6a4884f1ef670e5d934b06b4965752f55c71c2c6dd05224d7d9fec1d1aed702e",
+          "runId": "6a976d80-aaa0-4266-a41f-ab2511246cbc",
+          "actionId": "2973efdd-c0d5-4d58-834c-9263667b580a",
+          "kind": "log.tool",
+          "relativePath": "remote-results/55246107-90eb-4746-a1d3-631994c2587f/0-log.tool.log",
+          "sha256": "42cb33631db5206ed8cd6142ddc6b373c191838fa979463723b4679c2b715122",
+          "sizeBytes": 4270,
+          "source": "domain-tool",
+          "inputHashes": {
+            "eda.yaml": "3f443071a1acea375d5c86328fb1b5719d5ce1c34bf05a2a820ef5dea3fd1a00",
+            "smoke_tb.sv": "4d87257501bdf363b8c9a30538e724bb8cdc0dc0f6cb94cf9fb556552a6595ff"
+          }
+        },
+        {
+          "schemaVersion": "1",
+          "id": "610d3d6c-33b7-42c3-8cd0-bbff22b21765",
+          "projectId": "6a4884f1ef670e5d934b06b4965752f55c71c2c6dd05224d7d9fec1d1aed702e",
+          "runId": "6a976d80-aaa0-4266-a41f-ab2511246cbc",
+          "actionId": "2973efdd-c0d5-4d58-834c-9263667b580a",
+          "kind": "report.simulation",
+          "relativePath": "remote-results/55246107-90eb-4746-a1d3-631994c2587f/1-report.simulation.json",
+          "sha256": "0cdba1d251a42de2a13a3c03070c9d35cf7d2dfd340a9a02901d8dd0df631b8a",
+          "sizeBytes": 615,
+          "source": "domain-tool",
+          "inputHashes": {
+            "eda.yaml": "3f443071a1acea375d5c86328fb1b5719d5ce1c34bf05a2a820ef5dea3fd1a00",
+            "smoke_tb.sv": "4d87257501bdf363b8c9a30538e724bb8cdc0dc0f6cb94cf9fb556552a6595ff"
+          }
+        },
+        {
+          "schemaVersion": "1",
+          "id": "366e54f1-c662-4ddb-a6b2-c890b59622bf",
+          "projectId": "6a4884f1ef670e5d934b06b4965752f55c71c2c6dd05224d7d9fec1d1aed702e",
+          "runId": "6a976d80-aaa0-4266-a41f-ab2511246cbc",
+          "actionId": "2973efdd-c0d5-4d58-834c-9263667b580a",
+          "kind": "waveform.vcd",
+          "relativePath": "remote-results/55246107-90eb-4746-a1d3-631994c2587f/2-waveform.vcd.vcd",
+          "sha256": "a373b895c7d8122b63f1dfb1b71042a4d68d9388b4a4cb74a970b22becdbd343",
+          "sizeBytes": 360,
+          "source": "domain-tool",
+          "inputHashes": {
+            "eda.yaml": "3f443071a1acea375d5c86328fb1b5719d5ce1c34bf05a2a820ef5dea3fd1a00",
+            "smoke_tb.sv": "4d87257501bdf363b8c9a30538e724bb8cdc0dc0f6cb94cf9fb556552a6595ff"
+          }
+        }
+      ],
+      "inputHashes": {
+        "eda.yaml": "3f443071a1acea375d5c86328fb1b5719d5ce1c34bf05a2a820ef5dea3fd1a00",
+        "smoke_tb.sv": "4d87257501bdf363b8c9a30538e724bb8cdc0dc0f6cb94cf9fb556552a6595ff"
+      },
+      "verificationIds": [
+        "89e5ed30-195b-4a1a-a48b-0446ead52a3f"
+      ],
+      "createdAt": "2026-10-16T23:50:20.446Z"
+    },
+    "checkpoint": {
+      "schemaVersion": "1",
+      "id": "77540672-fff2-485b-9924-b94e4063d6c1",
+      "parentId": "3311de4d-1637-4769-ad71-f9580509f590",
+      "stateHash": "7eb2302038f64cb8f2d653785419963f059b0ab98f8f38013968491261340577",
+      "createdAt": "2026-10-16T23:50:20.448Z",
+      "state": {
+        "schemaVersion": "1",
+        "id": "54af081a-ab97-47f5-9bb6-5b5d3801bf7a",
+        "projectId": "6a4884f1ef670e5d934b06b4965752f55c71c2c6dd05224d7d9fec1d1aed702e",
+        "domain": "chip",
+        "stage": null,
+        "status": "verified",
+        "artifacts": [
+          {
+            "schemaVersion": "1",
+            "id": "6ffe8d3d-f870-47d8-885b-0c1cf44e35a3",
+            "projectId": "6a4884f1ef670e5d934b06b4965752f55c71c2c6dd05224d7d9fec1d1aed702e",
+            "runId": "6a976d80-aaa0-4266-a41f-ab2511246cbc",
+            "actionId": "2973efdd-c0d5-4d58-834c-9263667b580a",
+            "kind": "log.tool",
+            "relativePath": "remote-results/55246107-90eb-4746-a1d3-631994c2587f/0-log.tool.log",
+            "sha256": "42cb33631db5206ed8cd6142ddc6b373c191838fa979463723b4679c2b715122",
+            "sizeBytes": 4270,
+            "source": "domain-tool",
+            "inputHashes": {
+              "eda.yaml": "3f443071a1acea375d5c86328fb1b5719d5ce1c34bf05a2a820ef5dea3fd1a00",
+              "smoke_tb.sv": "4d87257501bdf363b8c9a30538e724bb8cdc0dc0f6cb94cf9fb556552a6595ff"
+            }
+          },
+          {
+            "schemaVersion": "1",
+            "id": "610d3d6c-33b7-42c3-8cd0-bbff22b21765",
+            "projectId": "6a4884f1ef670e5d934b06b4965752f55c71c2c6dd05224d7d9fec1d1aed702e",
+            "runId": "6a976d80-aaa0-4266-a41f-ab2511246cbc",
+            "actionId": "2973efdd-c0d5-4d58-834c-9263667b580a",
+            "kind": "report.simulation",
+            "relativePath": "remote-results/55246107-90eb-4746-a1d3-631994c2587f/1-report.simulation.json",
+            "sha256": "0cdba1d251a42de2a13a3c03070c9d35cf7d2dfd340a9a02901d8dd0df631b8a",
+            "sizeBytes": 615,
+            "source": "domain-tool",
+            "inputHashes": {
+              "eda.yaml": "3f443071a1acea375d5c86328fb1b5719d5ce1c34bf05a2a820ef5dea3fd1a00",
+              "smoke_tb.sv": "4d87257501bdf363b8c9a30538e724bb8cdc0dc0f6cb94cf9fb556552a6595ff"
+            }
+          },
+          {
+            "schemaVersion": "1",
+            "id": "366e54f1-c662-4ddb-a6b2-c890b59622bf",
+            "projectId": "6a4884f1ef670e5d934b06b4965752f55c71c2c6dd05224d7d9fec1d1aed702e",
+            "runId": "6a976d80-aaa0-4266-a41f-ab2511246cbc",
+            "actionId": "2973efdd-c0d5-4d58-834c-9263667b580a",
+            "kind": "waveform.vcd",
+            "relativePath": "remote-results/55246107-90eb-4746-a1d3-631994c2587f/2-waveform.vcd.vcd",
+            "sha256": "a373b895c7d8122b63f1dfb1b71042a4d68d9388b4a4cb74a970b22becdbd343",
+            "sizeBytes": 360,
+            "source": "domain-tool",
+            "inputHashes": {
+              "eda.yaml": "3f443071a1acea375d5c86328fb1b5719d5ce1c34bf05a2a820ef5dea3fd1a00",
+              "smoke_tb.sv": "4d87257501bdf363b8c9a30538e724bb8cdc0dc0f6cb94cf9fb556552a6595ff"
+            }
+          }
+        ],
+        "inputHashes": {
+          "eda.yaml": "3f443071a1acea375d5c86328fb1b5719d5ce1c34bf05a2a820ef5dea3fd1a00",
+          "smoke_tb.sv": "4d87257501bdf363b8c9a30538e724bb8cdc0dc0f6cb94cf9fb556552a6595ff"
+        },
+        "verificationIds": [
+          "89e5ed30-195b-4a1a-a48b-0446ead52a3f"
+        ],
+        "createdAt": "2026-10-16T23:50:20.446Z"
+      },
+      "runId": "6a976d80-aaa0-4266-a41f-ab2511246cbc",
+      "actionIds": [
+        "2973efdd-c0d5-4d58-834c-9263667b580a"
+      ],
+      "artifactIds": [
+        "6ffe8d3d-f870-47d8-885b-0c1cf44e35a3",
+        "610d3d6c-33b7-42c3-8cd0-bbff22b21765",
+        "366e54f1-c662-4ddb-a6b2-c890b59622bf"
+      ]
+    }
+  }
+}
