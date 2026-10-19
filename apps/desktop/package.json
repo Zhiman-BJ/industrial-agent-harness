@@ -1,6 +1,6 @@
 {
   "name": "@industrial-agent-harness/desktop",
-  "version": "1.0.1-beta.2",
+  "version": "1.0.1-beta.5",
   "private": true,
   "main": "electron/main.cjs",
   "scripts": {
@@ -14,6 +14,7 @@
     "test:kicad": "electron . --kicad-selftest",
     "test:godot": "electron . --godot-selftest",
     "test:documents": "electron . --documents-selftest",
+    "test:browser": "electron . --browser-selftest",
     "test:language": "electron . --language-selftest",
     "test:ui": "electron . --ui-selftest",
     "test:messages": "electron . --messages-selftest",
@@ -28,7 +29,8 @@
     "test:subagents": "electron . --subagent-selftest",
     "test:gui-settings": "electron . --gui-settings-selftest",
     "test:model-sync": "electron . --model-sync-selftest",
-    "test:results": "electron . --task-results-selftest"
+    "test:results": "electron . --task-results-selftest",
+    "test:account": "electron . --account-selftest"
   },
   "dependencies": {
     "@industrial-agent-harness/agent-kimi": "workspace:*",
@@ -47,7 +49,8 @@
     "react-markdown": "10.1.0",
     "remark-gfm": "4.0.1",
     "@industrial-agent-harness/harness-application": "workspace:*",
-    "@zhiman-bj/industrial-domain-packs": "https://codeload.github.com/Zhiman-BJ/industrial-domain-packs/tar.gz/f8d0185db5ad668de7e5e3a5bc664dd580dd543c"
+    "@zhiman-bj/industrial-domain-packs": "https://codeload.github.com/Zhiman-BJ/industrial-domain-packs/tar.gz/df0ac91ee5619952be9c511b73f715a11c8dd01b",
+    "@industrial-agent-harness/harness-auth": "workspace:*"
   },
   "devDependencies": {
     "@types/react": "19.2.18",

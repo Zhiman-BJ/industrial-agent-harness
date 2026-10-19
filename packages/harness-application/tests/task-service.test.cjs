@@ -239,3 +239,128 @@ test('background tasks retain leases until their native completion; cancel and a
   assert.equal(tasks.sessions.busy(entry), false);
   assert.equal(tasks.history(project, entry.id).turns[0].status, 'completed');
 });
+
+test('Runtime resource settings reach the shared task service and execution boundary', async t => {
+  const { tasks, entry, project, root } = fixture(t);
+  const directory = path.join(root, 'fixture-pack');
+  fs.mkdirSync(directory);
+  fs.writeFileSync(
+    path.join(directory, 'runtime.cjs'),
+    `
+    module.exports.createRuntimePlugin = () => ({
+      tools: [{descriptor: {schemaVersion: '1', id: 'fixture.inspect', version: '1.0.0', risk: 'read-only', verification: []},
+        execute() { return {executionSucceeded: true, artifacts: [], diagnostics: []}; }}],
+      capabilities: [{id: 'fixture.inspect', domain: 'chip', title: 'Fixture inspection',
+        stages: [], keywords: ['inspect'], priority: 100, skills: [],
+        tools: [{id: 'fixture.inspect', summary: 'Inspect fixture'}], verification: []}]
+    });`,
+  );
+  const registry = {
+    domains: [{ id: 'chip' }],
+    skills: [],
+    capabilities: [],
+    providerPacks: [
+      {
+        id: 'fixture-pack',
+        domain: 'chip',
+        provider: {
+          id: 'fixture.runtime',
+          domain: 'chip',
+          transport: 'runtime',
+          title: 'Fixture Runtime',
+          tools: [],
+        },
+      },
+    ],
+    runtimePacks: [
+      {
+        id: 'fixture-pack',
+        domain: 'chip',
+        version: '1',
+        directory,
+        runtime: { entry: 'runtime.cjs' },
+      },
+    ],
+  };
+  tasks.options.getRegistry = () => registry;
+  const catalog = require('@industrial-agent-harness/harness-core').resourceCatalog('chip', [], {
+    registry,
+  });
+  const enabled = await tasks.prepare(entry, { task: 'inspect fixture' }, { persist: false });
+  assert.ok(enabled.scope.tools.includes('fixture.inspect'));
+  tasks.settings.set(catalog, { kind: 'mcp', id: 'fixture.runtime', mode: 'disabled' });
+  const disabled = await tasks.prepare(entry, { task: 'inspect fixture' }, { persist: false });
+  assert.ok(!disabled.scope.tools.includes('fixture.inspect'));
+  const runtime = entry.runtimeBundle.runtime;
+  const state = await runtime.inspect();
+  const rejected = await runtime.execute(
+    { toolId: 'fixture.inspect', inputs: {}, expectedStateId: state.id },
+    { scope: disabled.scope },
+  );
+  assert.equal(rejected.action.status, 'failed');
+  assert.match(rejected.action.diagnostics.join('\n'), /outside the current Broker scope/);
+  tasks.settings.set(
+    catalog,
+    { kind: 'mcp', id: 'fixture.runtime', mode: 'enabled' },
+    project.path,
+  );
+  const overridden = await tasks.prepare(entry, { task: 'inspect fixture' }, { persist: false });
+  assert.ok(overridden.scope.tools.includes('fixture.inspect'));
+  const currentState = await runtime.inspect();
+  const result = await runtime.execute(
+    { toolId: 'fixture.inspect', inputs: {}, expectedStateId: currentState.id },
+    { scope: overridden.scope },
+  );
+  assert.equal(result.action.status, 'completed');
+});
+
+test('agent artifact lookup reads run evidence from the runtime store and falls back to observed files', async t => {
+  const crypto = require('node:crypto');
+  const desktop = fixture(t);
+  await desktop.tasks.prepare(desktop.entry, { task: 'create and edit project files' });
+  const runtime = desktop.entry.runtimeBundle?.runtime;
+  assert.ok(runtime, 'industrial runtime should be bound after prepare');
+
+  // Run evidence (e.g. a verified simulation VCD) is collected into the
+  // industrial runtime store, not the observed project-file table. The agent
+  // metadata tools must still resolve it (issue #150).
+  const evidence = {
+    schemaVersion: '1',
+    id: crypto.randomUUID(),
+    projectId: 'a'.repeat(64),
+    runId: crypto.randomUUID(),
+    actionId: crypto.randomUUID(),
+    kind: 'waveform.vcd',
+    relativePath: '.eda/runs/R1/01-rtl.simulate/work/wave.vcd',
+    sha256: 'b'.repeat(64),
+    sizeBytes: 632,
+    source: 'domain-tool',
+    inputHashes: {},
+  };
+  runtime.put('artifact', evidence.id, evidence);
+
+  const meta = await desktop.tasks.lookupAgentArtifact(desktop.entry, evidence.id);
+  assert.equal(meta.id, evidence.id);
+  assert.equal(meta.kind, 'waveform.vcd');
+  assert.equal(meta.name, 'wave.vcd');
+  assert.equal(meta.relativePath, evidence.relativePath);
+  assert.equal(meta.sha256, evidence.sha256);
+  assert.equal(meta.content, undefined, 'metadata lookup must not drag blob content along');
+
+  // Observed project files still resolve through the context store fallback.
+  fs.writeFileSync(path.join(desktop.project.path, 'note.txt'), 'observed\n');
+  const observed = await desktop.tasks.context(desktop.entry).observeArtifact({
+    id: crypto.randomUUID(),
+    kind: 'text',
+    file: path.join(desktop.project.path, 'note.txt'),
+  });
+  const fallback = await desktop.tasks.lookupAgentArtifact(desktop.entry, observed.id);
+  assert.equal(fallback.id, observed.id);
+  assert.equal(fallback.kind, 'text');
+
+  // Unknown ids keep the original honest error.
+  await assert.rejects(
+    () => desktop.tasks.lookupAgentArtifact(desktop.entry, crypto.randomUUID()),
+    /Artifact is unavailable/,
+  );
+});

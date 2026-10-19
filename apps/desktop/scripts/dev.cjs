@@ -12,9 +12,18 @@ try {
 } catch {
   // No .env.local is fine; the app then uses its regular keychain profile.
 }
-const vite = spawn('pnpm', ['exec', 'vite', '--host', '127.0.0.1'], {
+// Spawn the JS entry points directly: on Windows, pnpm/vite shims are .cmd
+// files which Node cannot spawn without a shell wrapper. vite's exports map
+// hides ./bin/vite.js, so resolve the package root and join the path instead.
+const vitePkg = require.resolve('vite/package.json', { paths: [root] });
+const viteBin = path.join(path.dirname(vitePkg), 'bin', 'vite.js');
+const vite = spawn(process.execPath, [viteBin, '--host', '127.0.0.1'], {
   cwd: root,
   stdio: 'inherit',
+});
+vite.on('error', error => {
+  console.error(error);
+  process.exitCode = 1;
 });
 let electron;
 async function ready() {
@@ -38,10 +47,16 @@ async function ready() {
 }
 ready()
   .then(() => {
-    electron = spawn('pnpm', ['exec', 'electron', '.'], {
+    const electronBin = require('electron');
+    electron = spawn(electronBin, ['.'], {
       cwd: root,
       stdio: 'inherit',
       env: { ...process.env, INDUSTRIAL_DEV_URL: 'http://127.0.0.1:5173/' },
+    });
+    electron.on('error', error => {
+      console.error(error);
+      vite.kill();
+      process.exitCode = 1;
     });
     electron.on('exit', code => {
       vite.kill();

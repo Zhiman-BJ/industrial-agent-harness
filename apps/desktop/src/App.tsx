@@ -7,11 +7,13 @@ import {
   ArrowUp,
   Bug,
   ChevronDown,
+  Cpu,
   ChevronRight,
   File,
   FilePlus2,
   Folder,
   FolderOpen,
+  Globe,
   Maximize,
   PanelsTopLeft,
   Pin,
@@ -26,6 +28,7 @@ import {
   Pencil,
   Play,
   Plus,
+  RefreshCw,
   Settings2,
   Square,
   Sun,
@@ -53,15 +56,15 @@ import {
 import { AgentLogPanel } from './components/AgentLogPanel';
 import { AgentFlow } from './components/AgentFlow';
 import { BrokerCall } from './components/BrokerCall';
-import { TodoList } from './components/TodoList';
+import { ChatStatusCard } from './components/ChatStatusCard';
 import { DomainManager } from './components/DomainManager';
 import { CapabilityCenter, type CapabilitySection } from './components/CapabilityCenter';
 import { MessageRail } from './components/MessageRail';
 import { WindowControls } from './components/WindowControls';
 import { CoreUpdatePanel } from './components/CoreUpdatePanel';
 import { ComputerUseSettings } from './components/ComputerUseSettings';
+import { AccountSettings } from './components/AccountSettings';
 import { ModelSettings } from './components/ModelSettings';
-import { RemoteTaskStatus } from './components/RemoteExecution';
 import { ProjectDetails } from './components/ProjectDetails';
 import { CreateProjectModal } from './components/CreateProjectModal';
 import { WorkspaceDivider } from './components/WorkspaceDivider';
@@ -81,10 +84,59 @@ import { languageOptions, normalizePreference } from './i18n/core';
 
 type Theme = 'light' | 'dark';
 type ProjectFile = { path: string; name: string; depth: number; directory: boolean };
+type ModelSummary = { model: string; contextSize: number };
+type ContextUsageInfo = { fraction: number; usedTokens: number | null };
+
+// Kimi-style token counts: 25k means 25 × 1024 tokens.
+function formatContextTokens(value: number) {
+  if (value >= 10240) return `${Math.round(value / 1024)}k`;
+  if (value >= 1024) return `${(value / 1024).toFixed(1).replace(/\.0$/, '')}k`;
+  return String(value);
+}
+
+function contextUsageTitle(
+  t: ReturnType<typeof useDisplayText>['t'],
+  modelProfile: ModelSummary | null,
+  usage: ContextUsageInfo | null,
+) {
+  const name = modelProfile?.model || '';
+  if (!usage) return name;
+  const percent = Math.min(100, Math.round(usage.fraction * 100));
+  const used = usage.usedTokens != null ? formatContextTokens(usage.usedTokens) : '—';
+  const total = modelProfile ? formatContextTokens(modelProfile.contextSize) : '—';
+  const detail = t('Context {percent}% used ({used} / {total})', { percent, used, total });
+  return name ? `${name} · ${detail}` : detail;
+}
+
+function latestContextUsage(
+  turns: ChatTurn[],
+  contextSize: number | undefined,
+): ContextUsageInfo | null {
+  for (let turn = turns.length - 1; turn >= 0; turn--) {
+    const events = turns[turn].events;
+    for (let index = events.length - 1; index >= 0; index--) {
+      const event = events[index];
+      if (event.type !== 'status') continue;
+      const tokenUsage = event.tokenUsage;
+      const usedTokens = tokenUsage
+        ? tokenUsage.input_other + tokenUsage.input_cache_read + tokenUsage.input_cache_creation
+        : null;
+      const fraction =
+        event.contextUsage ??
+        (usedTokens != null && usedTokens > 0 && contextSize ? usedTokens / contextSize : null);
+      if (fraction != null && Number.isFinite(fraction) && fraction > 0)
+        return { fraction, usedTokens };
+    }
+  }
+  return null;
+}
 
 export function App() {
   const { t, locale } = useDisplayText();
   const { preference, setPreference } = useLanguage();
+  // Untitled chats keep the English sentinel in the store (rename/refine logic
+  // depends on it); translate it only at display time.
+  const chatDisplayTitle = (title: string) => (title === 'New chat' ? t('New chat') : title);
   const [projectFiles, setProjectFiles] = useState<ProjectFile[]>([]);
   const [collapsedDirs, setCollapsedDirs] = useState<Set<string>>(() => new Set());
   const [projects, setProjects] = useState<ProjectBinding[]>([]);
@@ -92,6 +144,7 @@ export function App() {
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const attachments = useImageAttachments(activeProjectId);
   const [modelImageInput, setModelImageInput] = useState(false);
+  const [modelProfile, setModelProfile] = useState<ModelSummary | null>(null);
   const sentImages = useRef(new Map<string, PromptImage[]>());
   const sentTasks = useRef(new Map<string, string>());
   const [page, setPage] = useState<'chat' | 'project' | 'capabilities'>('chat');
@@ -158,6 +211,29 @@ export function App() {
   const [viewerFullscreen, setViewerFullscreen] = useState(false);
   const [fullscreenError, setFullscreenError] = useState('');
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const settingsTrigger = useRef<HTMLButtonElement>(null);
+  const settingsPopover = useRef<HTMLDivElement>(null);
+  const settingsClose = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!settingsOpen) return;
+    settingsClose.current?.focus({ preventScroll: true });
+    const closeOutside = (event: PointerEvent) => {
+      if (
+        event.target instanceof Node &&
+        !settingsPopover.current?.contains(event.target) &&
+        !settingsTrigger.current?.contains(event.target)
+      )
+        setSettingsOpen(false);
+    };
+    document.addEventListener('pointerdown', closeOutside);
+    return () => document.removeEventListener('pointerdown', closeOutside);
+  }, [settingsOpen]);
+  function closeSettings() {
+    setSettingsOpen(false);
+    // A deferred restore can steal focus from the user's next control.
+    settingsTrigger.current?.focus({ preventScroll: true });
+  }
+  const [accountOpen, setAccountOpen] = useState(false);
   const [modelSettingsOpen, setModelSettingsOpen] = useState(false);
   const [capabilitySection, setCapabilitySection] = useState<CapabilitySection>('packs');
   const [capabilityReturn, setCapabilityReturn] = useState<'chat' | 'project'>('chat');
@@ -176,6 +252,22 @@ export function App() {
     setLogOpen(true);
   }, []);
   const [task, setTask] = useState('');
+  // Unsent drafts survive navigation (project details, chat/project switches):
+  // stash under the leaving chat id, restore when it is opened again.
+  const taskRef = useRef('');
+  const chatDrafts = useRef(new Map<string, string>());
+  useEffect(() => {
+    taskRef.current = task;
+  }, [task]);
+  function stashDraft() {
+    const id = chatIdRef.current;
+    if (!id) return;
+    if (taskRef.current.trim()) chatDrafts.current.set(id, taskRef.current);
+    else chatDrafts.current.delete(id);
+  }
+  function draftFor(id: string | null) {
+    return (id && chatDrafts.current.get(id)) || '';
+  }
   const [submittedTask, setSubmittedTask] = useState('');
   const [broker, setBroker] = useState<BrokerResult>();
   const [capabilityDetail, setCapabilityDetail] = useState<CapabilityDetail>();
@@ -190,14 +282,23 @@ export function App() {
   }>();
   const [agentEvents, setAgentEvents] = useState<AgentEvent[]>([]);
   const [agentBusy, setAgentBusy] = useState(false);
-  const [remoteExecution, setRemoteExecution] = useState<{ projectId: string; ready: boolean }>();
-  const remoteExecutionReady =
-    remoteExecution?.projectId === activeProjectId && remoteExecution.ready;
+  const [remoteExecution, setRemoteExecution] = useState<{
+    projectId: string;
+    chatId: string | null;
+    ready: boolean;
+  }>();
+  // Tool ids the bound remote service executes in its sandbox; used to badge
+  // tool calls in the chat flow so remote work is visually distinct.
+  const [remoteToolIds, setRemoteToolIds] = useState<string[]>([]);
+  const remoteToolSet = useMemo(() => new Set(remoteToolIds), [remoteToolIds]);
   const [approvalMode, setApprovalMode] = useState<'ask' | 'auto'>('ask');
   const [approvalModeBusy, setApprovalModeBusy] = useState(false);
   const [agentOwned, setAgentOwned] = useState(false);
   const [chatList, setChatList] = useState<ChatSummary[]>([]);
   const [chatMenuId, setChatMenuId] = useState<string | null>(null);
+  // Pop the menu upward when the wrap sits too close to the list's visible
+  // bottom edge; the scroll container clips anything overflowing downward.
+  const [chatMenuUp, setChatMenuUp] = useState(false);
   const [chatRename, setChatRename] = useState<{ id: string; value: string } | null>(null);
   // Synchronous mirror: Enter and blur can both fire for one edit, and only the
   // first may commit.
@@ -224,6 +325,12 @@ export function App() {
   const projectIdRef = useRef<string | null>(null);
   projectIdRef.current = activeProjectId;
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
+  const remoteExecutionReady =
+    remoteExecution?.projectId === activeProjectId &&
+    remoteExecution?.chatId === activeChatId &&
+    remoteExecution.ready;
+  // Tool identities belong to the bound service; drop them with the project.
+  useEffect(() => setRemoteToolIds([]), [activeProjectId]);
   const chatIdRef = useRef<string | null>(null);
   const [turns, setTurns] = useState<ChatTurn[]>([]);
   const [historyBefore, setHistoryBefore] = useState<string | null>(null);
@@ -265,6 +372,14 @@ export function App() {
         ? Promise.reject(Error('Wait for the chat to open.'))
         : window.viewerHost!.answerAgentQuestion(id, answers, activeChatId || undefined),
     [activeChatId],
+  );
+  const openModelSettings = useCallback(() => setModelSettingsOpen(true), []);
+  const retryTurn = useCallback(
+    (prompt: string) => {
+      if (agentBusy || !prompt) return;
+      void resolveTask(undefined, prompt);
+    },
+    [agentBusy],
   );
   async function readHistory(read: () => Promise<ChatHistory>): Promise<ChatHistory> {
     const pending = { events: [] as AgentEvent[], overflow: false };
@@ -387,7 +502,8 @@ export function App() {
     fileOpenRevision.current++;
     try {
       const history = await readHistory(() => window.viewerHost!.selectChat(id));
-      setTask('');
+      stashDraft();
+      setTask(draftFor(id));
       applyHistory(history);
       showPage('chat');
       setBrokerError('');
@@ -463,12 +579,18 @@ export function App() {
     localStorage.setItem('ia-theme', theme);
   }, [theme]);
   useEffect(() => {
-    const changed = () =>
+    const changed = () => {
       setViewerFullscreen(
         Boolean(workspace.current && document.fullscreenElement === workspace.current),
       );
+      setFullscreenError('');
+    };
     const escape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && document.fullscreenElement === workspace.current) {
+      if (
+        event.key === 'Escape' &&
+        workspace.current &&
+        document.fullscreenElement === workspace.current
+      ) {
         void document
           .exitFullscreen()
           .catch(() =>
@@ -499,7 +621,10 @@ export function App() {
     }
     void window.viewerHost
       .modelGet()
-      .then(profile => setModelImageInput(profile.imageInput))
+      .then(profile => {
+        setModelImageInput(profile.imageInput);
+        setModelProfile({ model: profile.model, contextSize: profile.contextSize });
+      })
       .catch(reason => setError(String(reason)));
     void window.viewerHost
       .domains()
@@ -656,7 +781,9 @@ export function App() {
       void window
         .viewerHost!.modelGet()
         .then(profile => {
-          if (!disposed) setModelImageInput(profile.imageInput);
+          if (disposed) return;
+          setModelImageInput(profile.imageInput);
+          setModelProfile({ model: profile.model, contextSize: profile.contextSize });
         })
         .catch(reason => setError(String(reason)));
     };
@@ -683,6 +810,9 @@ export function App() {
       refreshModelProfile();
     });
     const removeProjectsChanged = window.viewerHost.onProjectsChanged(applyProjectBindings);
+    // The workbench-browser plugin asks the main process to open the browser
+    // tab when an agent tool call needs one; the request lands here.
+    const removeBrowserOpen = window.viewerHost.onBrowserOpen(() => openBrowser());
     const refreshOnWindowFocus = () => {
       refreshAgentStatus();
       applyProjectBindings();
@@ -695,6 +825,7 @@ export function App() {
       removeUpdated();
       removeModelChanged();
       removeProjectsChanged();
+      removeBrowserOpen();
       window.removeEventListener('focus', refreshOnWindowFocus);
     };
   }, []);
@@ -706,9 +837,14 @@ export function App() {
   const isViewerReady = Boolean(activeViewState?.ready);
   const viewNavigation = activeViewState?.navigation;
   const activeProject = projects.find(item => item.id === activeProjectId);
+  const remoteInputBlocked = activeProject?.executionLocation === 'remote' && !remoteExecutionReady;
+  const showRemoteSetupHint = Boolean(
+    activeProject && agentStatus?.available && remoteInputBlocked,
+  );
   const projectName = activeProject?.name || t('No project selected');
   const fixedDomain = activeProject?.domain || null;
   const selectedDomain = fixedDomain;
+  const contextUsage = latestContextUsage(turns, modelProfile?.contextSize);
   const domainFor = (id?: string | null) => domains.find(item => item.id === id);
   const activeFileName = activeFile?.name;
   const todo = latestEvent(agentEvents, 'todo');
@@ -757,6 +893,21 @@ export function App() {
   function browseFiles() {
     setRightOpen(true);
     setFileTreeOpen(true);
+    setWorkbenchFocus('workspace');
+  }
+  // The embedded browser is a workspace tab like any file, just without an
+  // artifact: pinned so file previews never replace it, and reused on repeat
+  // clicks so there is exactly one browser at a time.
+  function openBrowser() {
+    const existing = openFilesRef.current.find(file => file.browser);
+    const id = existing?.id || `browser-${Date.now()}`;
+    if (!existing)
+      setOpenFiles(current => [
+        ...current,
+        { id, path: 'about:browser', name: t('Browser'), browser: true, preview: false },
+      ]);
+    setActiveFileId(id);
+    setRightOpen(true);
     setWorkbenchFocus('workspace');
   }
   function closeFile(id: string) {
@@ -815,6 +966,15 @@ export function App() {
       );
     } catch (reason) {
       setProjectError(String(reason));
+    }
+  }
+  // Manual refresh for the file tree: agent-driven events already trigger a
+  // reload, but edits made outside the app never reach the renderer (#165).
+  async function refreshFileTree() {
+    try {
+      setProjectFiles(await window.viewerHost!.projectFiles());
+    } catch (reason) {
+      setError(String(reason));
     }
   }
   // Full renderer-side adoption of new project bindings: refresh the file
@@ -941,6 +1101,13 @@ export function App() {
         showPage('project');
         return;
       }
+      // Sitting in a chat that never sent anything: it already is the "new"
+      // chat — keep it (and its draft) instead of stacking another empty one.
+      if (chatIdRef.current && !turns.length) {
+        showPage('chat');
+        return;
+      }
+      stashDraft();
       const history = await readHistory(() => window.viewerHost!.newChat());
       if (history.chat.id !== chatIdRef.current) {
         applyHistory(history);
@@ -1021,6 +1188,7 @@ export function App() {
       setBroker(result);
       liveResultTurn.current = result.turnId || null;
       await refreshChats(true);
+      chatDrafts.current.delete(chatIdRef.current || '');
       setTask('');
       if (agentStatus?.available && agentStatus.configured && agentStatus.projectDir)
         await runAgent(prompt, images);
@@ -1105,11 +1273,7 @@ export function App() {
       <div className="ia-columns">
         {sidebarVisible && (
           <aside className="ia-tree ia-sidebar" aria-label={t('Project navigation')}>
-            <div className="ia-sidebar-brand">
-              <span className="ia-product-mark">
-                <img src="./product-mark.png" width={28} height={28} alt="" />
-              </span>
-              <b>Industrial Harness</b>
+            <div className="ia-sidebar-chrome">
               <button
                 className="ia-icon"
                 onClick={() => {
@@ -1121,6 +1285,12 @@ export function App() {
               >
                 <PanelLeftClose size={16} />
               </button>
+            </div>
+            <div className="ia-sidebar-brand">
+              <span className="ia-product-mark">
+                <img src="./product-mark.png" width={28} height={28} alt="" />
+              </span>
+              <b title="Industrial Harness">Industrial Harness</b>
             </div>
             <div className="ia-projects-heading">
               <span>{t('PROJECTS')}</span>
@@ -1211,7 +1381,7 @@ export function App() {
                             ) : (
                               <button
                                 className="ia-sidebar-chat"
-                                title={chat.title}
+                                title={chatDisplayTitle(chat.title)}
                                 disabled={navigating || submitting.current}
                                 aria-current={
                                   page === 'chat' && activeChatId === chat.id ? 'page' : undefined
@@ -1219,7 +1389,7 @@ export function App() {
                                 onClick={() => void openChat(chat.id)}
                               >
                                 <Activity size={14} />
-                                <span>{chat.title}</span>
+                                <span>{chatDisplayTitle(chat.title)}</span>
                                 {chat.running && (
                                   <small
                                     className={`ia-session-running ${chat.awaitingApproval || chat.awaitingQuestion ? 'awaiting-approval' : ''}`}
@@ -1247,19 +1417,36 @@ export function App() {
                             >
                               <button
                                 className="ia-chat-menu-button"
-                                aria-label={t('Chat actions for {0}', { '0': chat.title })}
+                                aria-label={t('Chat actions for {0}', {
+                                  '0': chatDisplayTitle(chat.title),
+                                })}
                                 aria-haspopup="menu"
                                 aria-expanded={chatMenuId === chat.id}
                                 title={t('Chat actions')}
                                 disabled={navigating || submitting.current}
-                                onClick={() =>
-                                  setChatMenuId(current => (current === chat.id ? null : chat.id))
-                                }
+                                onClick={event => {
+                                  const opening = chatMenuId !== chat.id;
+                                  setChatMenuId(opening ? chat.id : null);
+                                  if (opening) {
+                                    const wrap = event.currentTarget.closest('.ia-chat-menu-wrap');
+                                    const list = event.currentTarget.closest('.ia-project-list');
+                                    if (wrap && list)
+                                      // Menu is ~88px tall; flip upward without enough room.
+                                      setChatMenuUp(
+                                        list.getBoundingClientRect().bottom -
+                                          wrap.getBoundingClientRect().bottom <
+                                          96,
+                                      );
+                                  }
+                                }}
                               >
                                 <MoreHorizontal size={14} />
                               </button>
                               {chatMenuId === chat.id && (
-                                <div className="ia-chat-menu" role="menu">
+                                <div
+                                  className={`ia-chat-menu ${chatMenuUp ? 'up' : ''}`}
+                                  role="menu"
+                                >
                                   <button
                                     role="menuitem"
                                     onClick={() => {
@@ -1273,7 +1460,9 @@ export function App() {
                                   <button
                                     role="menuitem"
                                     className="ia-chat-menu-danger"
-                                    aria-label={t('Delete chat {0}', { '0': chat.title })}
+                                    aria-label={t('Delete chat {0}', {
+                                      '0': chatDisplayTitle(chat.title),
+                                    })}
                                     disabled={chat.running || navigating || submitting.current}
                                     onClick={() => {
                                       setChatMenuId(null);
@@ -1298,105 +1487,141 @@ export function App() {
             <div className="ia-sidebar-spacer" />
             <div className="ia-tree-bottom">
               <button
+                ref={settingsTrigger}
                 className="ia-settings-button"
                 onClick={() => setSettingsOpen(value => !value)}
                 aria-expanded={settingsOpen}
+                aria-haspopup="dialog"
+                aria-controls={settingsOpen ? 'ia-settings-popover' : undefined}
               >
                 <Settings2 size={16} />
                 {t('Settings')} <ChevronRight size={14} />
               </button>
             </div>
             {settingsOpen && (
-              <div className="ia-settings-popover">
+              <div
+                ref={settingsPopover}
+                id="ia-settings-popover"
+                className="ia-settings-popover"
+                role="dialog"
+                aria-label={t('Settings')}
+                onKeyDown={event => {
+                  if (event.key === 'Escape') {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    closeSettings();
+                  }
+                }}
+              >
                 <div className="ia-settings-title">
                   <b>{t('Settings')}</b>
                   <button
+                    ref={settingsClose}
                     className="ia-icon"
-                    onClick={() => setSettingsOpen(false)}
+                    onClick={closeSettings}
                     aria-label={t('Close settings')}
                   >
                     <X size={16} />
                   </button>
                 </div>
-                <div className="ia-settings-row">
-                  <label htmlFor="ia-language">{t('Language')}</label>
-                  <select
-                    id="ia-language"
-                    aria-label={t('Language')}
-                    value={preference}
-                    onChange={event => setPreference(normalizePreference(event.target.value))}
-                  >
-                    <option value="system">{t('Follow system')}</option>
-                    {languageOptions.map(({ value, label }) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
+                <div className="ia-settings-group" role="group" aria-label={t('Appearance')}>
+                  <div className="ia-settings-row">
+                    <label htmlFor="ia-language">{t('Language')}</label>
+                    <select
+                      id="ia-language"
+                      aria-label={t('Language')}
+                      value={preference}
+                      onChange={event => setPreference(normalizePreference(event.target.value))}
+                    >
+                      <option value="system">{t('Follow system')}</option>
+                      {languageOptions.map(({ value, label }) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="ia-settings-row">
+                    <span>{t('Appearance')}</span>
+                    <button
+                      onClick={() => setTheme(value => (value === 'light' ? 'dark' : 'light'))}
+                    >
+                      {theme === 'light' ? <Sun size={14} /> : <Moon size={14} />}{' '}
+                      {theme === 'light' ? t('Light') : t('Dark')}
+                    </button>
+                  </div>
+                  <div className="ia-settings-row">
+                    <span>{t('Debug logs')}</span>
+                    <button onClick={() => setDebug(value => !value)}>
+                      <Bug size={14} /> {debug ? t('On') : t('Off')}
+                    </button>
+                  </div>
                 </div>
-                <div className="ia-settings-row">
-                  <span>{t('Appearance')}</span>
-                  <button onClick={() => setTheme(value => (value === 'light' ? 'dark' : 'light'))}>
-                    {theme === 'light' ? <Sun size={14} /> : <Moon size={14} />}{' '}
-                    {theme === 'light' ? t('Light') : t('Dark')}
-                  </button>
+                <div className="ia-settings-group" role="group" aria-label={t('Agent settings')}>
+                  <div className="ia-settings-row">
+                    <span>{t('Platform account')}</span>
+                    <button
+                      onClick={() => {
+                        setSettingsOpen(false);
+                        setAccountOpen(true);
+                      }}
+                    >
+                      {t('Manage')}
+                    </button>
+                  </div>
+                  <ComputerUseSettings />
+                  <div className="ia-settings-row">
+                    <span>{t('Model API')}</span>
+                    <button
+                      onClick={() => {
+                        setSettingsOpen(false);
+                        setModelSettingsOpen(true);
+                      }}
+                    >
+                      {t('Configure')}
+                    </button>
+                  </div>
                 </div>
-                <div className="ia-settings-row">
-                  <span>{t('Debug logs')}</span>
-                  <button onClick={() => setDebug(value => !value)}>
-                    <Bug size={14} /> {debug ? t('On') : t('Off')}
-                  </button>
-                </div>
-                <ComputerUseSettings />
-                <div className="ia-settings-row">
-                  <span>{t('Model API')}</span>
-                  <button
-                    onClick={() => {
-                      setSettingsOpen(false);
-                      setModelSettingsOpen(true);
-                    }}
-                  >
-                    {t('Configure')}
-                  </button>
-                </div>
-                <div className="ia-settings-row">
-                  <span>{t('MCP & Skills')}</span>
-                  <button
-                    onClick={() => {
-                      setSettingsOpen(false);
-                      showCapabilities('mcp');
-                    }}
-                  >
-                    {t('Configure')}
-                  </button>
-                </div>
-                <div className="ia-settings-row">
-                  <span>{t('Domains')}</span>
-                  <button
-                    onClick={() => {
-                      setSettingsOpen(false);
-                      showCapabilities('packs');
-                    }}
-                  >
-                    {t('Manage')}
-                  </button>
-                </div>
-                <div className="ia-settings-row">
-                  <span>{t('Application')}</span>
-                  <button
-                    onClick={() => {
-                      setSettingsOpen(false);
-                      setCoreUpdateOpen(true);
-                    }}
-                  >
-                    {t('Check updates')}
-                  </button>
-                </div>
-                <div className="ia-settings-note">
-                  {t('Kimi CLI:')}{' '}
-                  {agentStatus?.available
-                    ? agentStatus.version || t('available')
-                    : t('unavailable')}
+                <div className="ia-settings-group" role="group" aria-label={t('Application')}>
+                  <div className="ia-settings-row">
+                    <span>{t('MCP & Skills')}</span>
+                    <button
+                      onClick={() => {
+                        setSettingsOpen(false);
+                        showCapabilities('mcp');
+                      }}
+                    >
+                      {t('Configure')}
+                    </button>
+                  </div>
+                  <div className="ia-settings-row">
+                    <span>{t('Domains')}</span>
+                    <button
+                      onClick={() => {
+                        setSettingsOpen(false);
+                        showCapabilities('packs');
+                      }}
+                    >
+                      {t('Manage')}
+                    </button>
+                  </div>
+                  <div className="ia-settings-row">
+                    <span>{t('Application')}</span>
+                    <button
+                      onClick={() => {
+                        setSettingsOpen(false);
+                        setCoreUpdateOpen(true);
+                      }}
+                    >
+                      {t('Check updates')}
+                    </button>
+                  </div>
+                  <div className="ia-settings-note">
+                    {t('Kimi CLI:')}{' '}
+                    {agentStatus?.available
+                      ? agentStatus.version || t('available')
+                      : t('unavailable')}
+                  </div>
                 </div>
               </div>
             )}
@@ -1437,7 +1662,9 @@ export function App() {
                         ? t('Capability center')
                         : page === 'project'
                           ? projectName
-                          : chatList.find(chat => chat.id === activeChatId)?.title || t('Chat'),
+                          : chatDisplayTitle(
+                              chatList.find(chat => chat.id === activeChatId)?.title || '',
+                            ) || t('Chat'),
                     status: chatList.find(chat => chat.id === activeChatId)?.awaitingQuestion
                       ? t('Awaiting answer')
                       : chatList.find(chat => chat.id === activeChatId)?.awaitingApproval
@@ -1556,6 +1783,28 @@ export function App() {
                   </div>
                 </header>
               )}
+              <ChatStatusCard
+                hidden={page === 'project' || page === 'capabilities'}
+                remote={
+                  activeProject?.executionLocation === 'remote'
+                    ? {
+                        projectId: activeProject.id,
+                        domain: activeProject.domain || '',
+                        chatId: activeChatId,
+                        onReady: ready =>
+                          setRemoteExecution({
+                            projectId: activeProject.id,
+                            chatId: activeChatId,
+                            ready,
+                          }),
+                        onTools: setRemoteToolIds,
+                        onConfigure: () => showPage('project'),
+                      }
+                    : null
+                }
+                todo={todo?.type === 'todo' ? todo.items : null}
+                running={agentBusy}
+              />
               {page === 'capabilities' ? (
                 <CapabilityCenter
                   project={activeProject || undefined}
@@ -1666,6 +1915,17 @@ export function App() {
                               debug={debug}
                               approve={approveAgent}
                               answer={answerAgent}
+                              onRetry={
+                                turn.events.some(event => event.type === 'error')
+                                  ? () => retryTurn(turn.task)
+                                  : undefined
+                              }
+                              onOpenModelSettings={openModelSettings}
+                              remoteTools={
+                                activeProject?.executionLocation === 'remote'
+                                  ? remoteToolSet
+                                  : undefined
+                              }
                             />
                           )}
                         </div>
@@ -1687,21 +1947,12 @@ export function App() {
                       </button>
                     </div>
                   )}
-                  {todo?.type === 'todo' && <TodoList items={todo.items} running={agentBusy} />}
                   {agentBusy && !agentOwned && (
                     <p role="status" className="ia-composer-hint">
                       {t(
                         'This chat is running in another window. Open a new chat to work in parallel.',
                       )}
                     </p>
-                  )}
-                  {activeProject?.executionLocation === 'remote' && (
-                    <RemoteTaskStatus
-                      key={activeProject.id}
-                      projectId={activeProject.id}
-                      onReady={ready => setRemoteExecution({ projectId: activeProject.id, ready })}
-                      onConfigure={() => showPage('project')}
-                    />
                   )}
                   <div className="ia-composer-wrap">
                     <div
@@ -1761,7 +2012,7 @@ export function App() {
                         )}
                         <textarea
                           aria-label={t('Engineering task')}
-                          aria-describedby="ia-composer-help"
+                          aria-describedby="ia-composer-help ia-composer-status"
                           placeholder={
                             activeProject
                               ? t('Ask about your project…')
@@ -1816,6 +2067,35 @@ export function App() {
                               <option value="ask">{t('Request approval')}</option>
                               <option value="auto">{t('Auto approve')}</option>
                             </select>
+                            <button
+                              type="button"
+                              className="ia-model-pill"
+                              onClick={() => setModelSettingsOpen(true)}
+                              title={contextUsageTitle(t, modelProfile, contextUsage)}
+                              aria-label={contextUsageTitle(t, modelProfile, contextUsage)}
+                            >
+                              <Cpu size={13} />
+                              <span className="ia-model-pill-name">
+                                {modelProfile?.model || t('Model')}
+                              </span>
+                              {contextUsage && (
+                                <span
+                                  className={`ia-model-pill-ctx${
+                                    contextUsage.fraction >= 0.8 ? ' high' : ''
+                                  }`}
+                                  aria-hidden="true"
+                                >
+                                  <span className="ia-model-pill-bar">
+                                    <span
+                                      style={{
+                                        width: `${Math.min(100, Math.round(contextUsage.fraction * 100))}%`,
+                                      }}
+                                    />
+                                  </span>
+                                  {Math.min(100, Math.round(contextUsage.fraction * 100))}%
+                                </span>
+                              )}
+                            </button>
                           </div>
                           <div className="ia-send-actions">
                             <ImageAttachButton
@@ -1882,18 +2162,35 @@ export function App() {
                     <p id="ia-composer-help" className="ia-sr-only">
                       {t('Press Enter to send. Press Shift+Enter for a new line.')}
                     </p>
-                    <div className="ia-composer-hint">
-                      <span role="status">
-                        {!activeProject
-                          ? t('Choose a project to run Kimi')
-                          : !agentStatus?.available
-                            ? t('Kimi CLI is required to run Agent tasks')
-                            : !agentStatus.configured
-                              ? t('Configure the Model API in Settings to run Kimi')
-                              : !agentStatus.projectDir
-                                ? t('Choose a project to run Kimi')
-                                : t('Kimi ready')}
-                      </span>
+                    <div className={`ia-composer-hint${showRemoteSetupHint ? ' is-blocked' : ''}`}>
+                      <div className="ia-composer-status">
+                        <span id="ia-composer-status" role="status">
+                          {!activeProject
+                            ? t('Choose a project to run Kimi')
+                            : !agentStatus?.available
+                              ? t('Kimi CLI is required to run Agent tasks')
+                              : remoteInputBlocked
+                                ? t(
+                                    'Remote environment is not ready. Check project execution settings.',
+                                  )
+                                : !agentStatus.configured
+                                  ? t('Configure the Model API in Settings to run Kimi')
+                                  : !agentStatus.projectDir
+                                    ? t('Choose a project to run Kimi')
+                                    : t('Kimi ready')}
+                        </span>
+                        {showRemoteSetupHint && (
+                          <button
+                            className="ia-composer-status-action"
+                            type="button"
+                            disabled={navigating || submitting.current}
+                            onClick={() => showPage('project')}
+                          >
+                            {t('Execution settings')}
+                            <ChevronRight size={12} aria-hidden="true" />
+                          </button>
+                        )}
+                      </div>
                       <span className="ia-composer-shortcuts" aria-hidden="true">
                         <kbd>Enter</kbd> {t('Send')}
                         <span>·</span>
@@ -2024,6 +2321,14 @@ export function App() {
                       {viewerFullscreen ? <Minimize size={15} /> : <Maximize size={15} />}
                     </button>
                     <button
+                      className="ia-browser-toggle"
+                      onClick={openBrowser}
+                      title={t('Open browser')}
+                      aria-label={t('Open browser')}
+                    >
+                      <Globe size={15} />
+                    </button>
+                    <button
                       className="ia-file-tree-toggle"
                       onClick={() => setFileTreeOpen(value => !value)}
                       title={fileTreeOpen ? t('Hide file tree') : t('Show file tree')}
@@ -2063,7 +2368,7 @@ export function App() {
                 <div className="ia-workspace-body">
                   <div className="ia-workspace-content">
                     <div className="ia-workspace-breadcrumb">
-                      {selectedProjectFile || projectName}
+                      {activeFile?.browser ? t('Browser') : selectedProjectFile || projectName}
                     </div>
                     {openFiles.map(file => (
                       <WorkspaceFileView
@@ -2075,7 +2380,13 @@ export function App() {
                     ))}
                     {!activeFile && (
                       <div className="ia-workspace-empty">
-                        {t(error) || t('Open the file tree to browse this project.')}
+                        {error
+                          ? t(error)
+                          : activeProject && fileTreeOpen && !projectFiles.length
+                            ? t(
+                                'This project has no files yet. Run a task or add files to the directory.',
+                              )
+                            : t('Open the file tree to browse this project.')}
                       </div>
                     )}
                     {selectedArtifact && (
@@ -2092,7 +2403,17 @@ export function App() {
                   </div>
                   {fileTreeOpen && (
                     <aside className="ia-workspace-tree">
-                      <div className="ia-file-search">{t('FILES')}</div>
+                      <div className="ia-file-search">
+                        {t('FILES')}
+                        <button
+                          className="ia-file-refresh"
+                          onClick={() => void refreshFileTree()}
+                          title={t('Refresh file list')}
+                          aria-label={t('Refresh file list')}
+                        >
+                          <RefreshCw size={11} />
+                        </button>
+                      </div>
                       <button className="ia-file-root" onClick={() => setPage('project')}>
                         <ChevronDown size={13} />
                         <FolderOpen size={14} />
@@ -2128,7 +2449,11 @@ export function App() {
                         ))}
                         {!projectFiles.length && (
                           <p className="ia-file-hint">
-                            {t('Choose a project to browse its files.')}
+                            {activeProject
+                              ? t(
+                                  'This project has no files yet. Run a task or add files to the directory.',
+                                )
+                              : t('Choose a project to browse its files.')}
                           </p>
                         )}
                       </div>
@@ -2190,6 +2515,7 @@ export function App() {
           onClose={() => setCoreUpdateOpen(false)}
         />
       )}
+      {accountOpen && <AccountSettings onClose={() => setAccountOpen(false)} />}
       {modelSettingsOpen && (
         <ModelSettings
           onClose={() => setModelSettingsOpen(false)}

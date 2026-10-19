@@ -20,7 +20,7 @@
     "test:industrial-core": "node --test tests/integration/industrial-core*.test.cjs",
     "test:ci": "node scripts/ci-tests.cjs",
     "smoke:ci-packages": "node scripts/ci-package-smoke.cjs",
-    "test": "pnpm --filter @industrial-agent-harness/contracts test && pnpm --filter @industrial-agent-harness/domain-runtime test && pnpm --filter @industrial-agent-harness/domain-skills test && pnpm --filter @industrial-agent-harness/domain-mcp test && pnpm --filter @industrial-agent-harness/pack-manager test && pnpm --filter @industrial-agent-harness/capability-broker test && pnpm --filter @industrial-agent-harness/computer-use-bridge test && pnpm --filter @industrial-agent-harness/harness-core test && pnpm --filter @industrial-agent-harness/agent-kimi test && pnpm --filter @industrial-agent-harness/harness-application test && pnpm --filter @industrial-agent-harness/cli test && pnpm --filter @industrial-agent-harness/viewer-core test && pnpm --filter @industrial-agent-harness/viewer-builtin test && pnpm --filter @industrial-agent-harness/desktop test && pnpm --filter @industrial-agent-harness/sdk test",
+    "test": "pnpm --filter @industrial-agent-harness/harness-auth test && pnpm --filter @industrial-agent-harness/contracts test && pnpm --filter @industrial-agent-harness/domain-runtime test && pnpm --filter @industrial-agent-harness/domain-skills test && pnpm --filter @industrial-agent-harness/domain-mcp test && pnpm --filter @industrial-agent-harness/pack-manager test && pnpm --filter @industrial-agent-harness/capability-broker test && pnpm --filter @industrial-agent-harness/computer-use-bridge test && pnpm --filter @industrial-agent-harness/harness-core test && pnpm --filter @industrial-agent-harness/agent-kimi test && pnpm --filter @industrial-agent-harness/harness-application test && pnpm --filter @industrial-agent-harness/cli test && pnpm --filter @industrial-agent-harness/viewer-core test && pnpm --filter @industrial-agent-harness/viewer-builtin test && pnpm --filter @industrial-agent-harness/desktop test && pnpm --filter @industrial-agent-harness/sdk test",
     "test:chat-resume": "node --test tests/integration/chat-resume.test.cjs",
     "test:compaction-compat": "node --test tests/integration/compaction-compat-kimi.test.cjs",
     "test:mcp": "node --test tests/integration/domain-mcp*.test.cjs tests/integration/pcb-mcp*.test.cjs tests/integration/chip-runtime-reliability.test.cjs",
@@ -49,6 +49,6 @@
     "typescript-eslint": "^8.71.1"
   },
   "dependencies": {
-    "@zhiman-bj/industrial-domain-packs": "https://codeload.github.com/Zhiman-BJ/industrial-domain-packs/tar.gz/f8d0185db5ad668de7e5e3a5bc664dd580dd543c"
+    "@zhiman-bj/industrial-domain-packs": "https://codeload.github.com/Zhiman-BJ/industrial-domain-packs/tar.gz/df0ac91ee5619952be9c511b73f715a11c8dd01b"
   }
 }

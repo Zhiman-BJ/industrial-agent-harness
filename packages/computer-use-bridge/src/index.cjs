@@ -111,6 +111,11 @@ function createGuiPlugin({
 
   return {
     name: 'computer-use',
+    // Allowed inside protected industrial sessions: the tools execute
+    // host-side (never inside the sandboxed agent process), enabling the
+    // plugin is the user's authorization, and every call is recorded through
+    // the per-session diagnostics log sink.
+    protectedSafe: true,
     clientLike,
     enabled: isEnabled,
     toolNames: GUI_TOOLS.map(item => item.name),
@@ -131,4 +136,11 @@ function createGuiPlugin({
   };
 }
 
-module.exports = { createGuiPlugin, GUI_TOOLS, GUI_TOOL_NAMES, ...installer };
+module.exports = {
+  createGuiPlugin,
+  GUI_TOOLS,
+  GUI_TOOL_NAMES,
+  ...installer,
+  ...require('./workbench-browser.cjs'),
+  ...require('./skill.cjs'),
+};

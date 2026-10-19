@@ -1,3 +1,4 @@
+import { useModalFocus } from '../use-modal-focus';
 import { DomainIcon } from '@industrial-agent-harness/viewer-builtin/domain-icon';
 import { useDisplayText } from '@industrial-agent-harness/viewer-builtin/text';
 import { useState } from 'react';
@@ -5,6 +6,14 @@ import { FolderOpen, X } from 'lucide-react';
 import type { DomainOption } from '@industrial-agent-harness/viewer-builtin/api';
 
 type Draft = { directory: string; name: string; domain: string };
+
+const DOMAIN_DESCRIPTIONS: Record<string, string> = {
+  chip: 'Chip design: RTL, synthesis, netlist, GDS layout and waveform review.',
+  pcb: 'PCB design: schematics, layout, fabrication outputs (KiCad).',
+  cad: 'Mechanical CAD: 3D models and drawings (FreeCAD).',
+  cuda: 'GPU compute: CUDA kernels and performance work.',
+  godot: 'Game/simulation engineering with the Godot engine.',
+};
 
 export function CreateProjectModal({
   draft,
@@ -24,6 +33,7 @@ export function CreateProjectModal({
   onCreate: (request: Draft) => Promise<void>;
 }) {
   const { t } = useDisplayText();
+  const dialog = useModalFocus(onClose);
   const [saving, setSaving] = useState(false);
   async function create() {
     setSaving(true);
@@ -42,6 +52,8 @@ export function CreateProjectModal({
     >
       <section
         className="ia-model-modal ia-create-project"
+        ref={dialog}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-label={t('Create project')}
@@ -71,6 +83,11 @@ export function CreateProjectModal({
               <FolderOpen size={15} />
               <span>{draft.directory || t('Choose folder…')}</span>
             </button>
+            <small className="ia-create-hint">
+              {t(
+                'Existing files are kept as-is; the agent only writes after you approve an action.',
+              )}
+            </small>
           </div>
           <div className="ia-create-field">
             <span>{t('Domain')}</span>
@@ -81,6 +98,7 @@ export function CreateProjectModal({
                   type="button"
                   className="ia-domain-choice"
                   aria-pressed={draft.domain === item.id}
+                  title={t(DOMAIN_DESCRIPTIONS[item.id] || item.label)}
                   onClick={() => onChange({ ...draft, domain: item.id })}
                 >
                   <DomainIcon domain={item.id} />
@@ -88,6 +106,9 @@ export function CreateProjectModal({
                 </button>
               ))}
             </div>
+            {draft.domain && DOMAIN_DESCRIPTIONS[draft.domain] && (
+              <small className="ia-create-hint">{t(DOMAIN_DESCRIPTIONS[draft.domain])}</small>
+            )}
           </div>
           {error && <p className="ia-model-error">{t(error)}</p>}
         </div>

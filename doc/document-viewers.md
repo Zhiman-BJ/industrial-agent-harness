@@ -1,6 +1,6 @@
 # 通用文件 Viewer
 
-CSV/TSV、JSON、JSON Lines、Markdown 与 TXT/LOG 通过 `packages/viewer-builtin/src/documents` 的只读插件接入。它们不声明 Domain、Capability、Skill 或 MCP 工具，在各领域项目里都可从普通文件树打开。专用 Viewer 优先：Yosys 网表继续进入网表视图，`.sprite.json` 继续进入图集；普通配置文件中的 `modules` 字段不会单独触发网表。
+CSV/TSV、JSON、JSON Lines、Markdown、TXT/LOG 与 HTML/HTM 通过 `packages/viewer-builtin/src/documents` 的只读插件接入。它们不声明 Domain、Capability、Skill 或 MCP 工具，在各领域项目里都可从普通文件树打开。专用 Viewer 优先：Yosys 网表继续进入网表视图，`.sprite.json` 继续进入图集；普通配置文件中的 `modules` 字段不会单独触发网表。
 
 ## 当前范围
 
@@ -11,14 +11,15 @@ CSV/TSV、JSON、JSON Lines、Markdown 与 TXT/LOG 通过 `packages/viewer-built
 | JSON Lines | `.jsonl`、`.ndjson` | 按源行号查看记录，每页 20 条，沿用 JSON 结构视图和原文入口；忽略空行，解析失败指出真实行号 |
 | Markdown | `.md`、`.markdown` | 标题、列表、引用、代码块、GFM 表格与任务列表，原文入口；HTML 不执行，链接显示为文本，图片显示说明，不加载本地或远程嵌入资源 |
 | Text | `.txt`、`.log` | 行号、换行开关、全文行筛选、每页 200 行 |
+| HTML | `.html`、`.htm` | 在沙箱 iframe（`sandbox="allow-scripts"`，隔离源）中渲染页面，内联脚本可运行但与宿主页面完全隔离；iframe CSP 阻断一切远程/网络加载（图片、脚本、fetch），相对路径的本地资源不解析；原文入口可切换 |
 
-源码、配置文件和其他格式继续使用已有源码预览。此批不解析 YAML/TOML/XML、不预览任意 HTML/SVG、不加载 PDF/Office/音视频文件，也不引入编辑和保存动作。
+源码、配置文件和其他格式继续使用已有源码预览。此批不解析 YAML/TOML/XML、不预览任意 SVG、不加载 PDF/Office/音视频文件，也不引入编辑和保存动作。HTML 预览替代了此前“不预览任意 HTML”的范围限制（见产品决策记录）。
 
 CSV/TSV 第一行默认作为表头，可取消该选项查看无表头数据。列数不一致会提示，缺失单元格显示为 `—`；不推断数据类型、不执行公式。JSON 结构视图采用 JavaScript 数值表示；发现无法精确表示的数字时提示并默认显示原文。结构视图中超过 500 字符的单个值缩略展示，完整值保留在原文中。无效 CSV/JSON/JSONL 不展示部分解析结果，明确报错并提供完整原文；Markdown 解析树超限或渲染器加载失败也会提示并切回原文。
 
 ## 统一导航
 
-五种通用 Viewer 复用 `ViewNavigation`，支持工作区的放大、缩小、Fit、全屏和 Esc 退出。文档缩放为 50%–300% 阅读比例；Fit 恢复 100% 并回到左上角。画布内滚轮或触控板捏合缩放，Shift+滚轮及滚动条用于滚动。全屏不卸载 Viewer，保留筛选、分页、折叠、模式和缩放状态。切换文件或项目后清理旧导航；加载和读取失败时不提供有效缩放控制器。
+五种通用 Viewer 复用 `ViewNavigation`，支持工作区的放大、缩小、Fit、全屏和 Esc 退出（HTML 预览同样复用该导航，缩放作用于预览容器）。文档缩放为 50%–300% 阅读比例；Fit 恢复 100% 并回到左上角。画布内滚轮或触控板捏合缩放，Shift+滚轮及滚动条用于滚动。全屏不卸载 Viewer，保留筛选、分页、折叠、模式和缩放状态。切换文件或项目后清理旧导航；加载和读取失败时不提供有效缩放控制器。
 
 ## 文件与性能边界
 
@@ -37,6 +38,6 @@ pnpm --filter @industrial-agent-harness/desktop build
 pnpm --filter @industrial-agent-harness/desktop test:documents
 ```
 
-模块测试覆盖真实文件快照、CSV 转义、JSON/JSONL 错误与资源上限、编码、哈希变化、项目和符号链接边界，以及专用 JSON 优先级。桌面自测使用隔离应用数据和临时项目，经生产文件树、IPC、Registry 与实际 DOM 验证五种 Viewer 的导航、筛选分页、全屏状态、Markdown 隔离和超限原文回退、错误原文与项目切换；测试不调用模型、不修改用户项目或配置。2026-09-28 已完成 macOS Electron 实测：按钮和实际内容尺寸、滚轮/捏合、Fit、全屏及 Esc、JSON 折叠状态和精度提示、CSV 表头与筛选、文本换行与分页、JSONL 记录、Markdown 的 BOM/GFM 和零外部请求均通过。完整模块测试为 88 通过、4 项可选环境跳过，10 项架构检查及桌面构建通过；Linux、Windows 与打包发行流程尚未验证。
+模块测试覆盖真实文件快照、CSV 转义、JSON/JSONL 错误与资源上限、编码、哈希变化、项目和符号链接边界、HTML/HTM 注册，以及专用 JSON 优先级。桌面自测使用隔离应用数据和临时项目，经生产文件树、IPC、Registry 与实际 DOM 验证六种 Viewer 的导航、筛选分页、全屏状态、Markdown 隔离和超限原文回退、HTML 沙箱隔离（宿主页面不可被预览脚本访问、远程加载被阻断）与原文切换、错误原文与项目切换；测试不调用模型、不修改用户项目或配置。2026-09-28 已完成 macOS Electron 实测：按钮和实际内容尺寸、滚轮/捏合、Fit、全屏及 Esc、JSON 折叠状态和精度提示、CSV 表头与筛选、文本换行与分页、JSONL 记录、Markdown 的 BOM/GFM 和零外部请求均通过。完整模块测试为 88 通过、4 项可选环境跳过，10 项架构检查及桌面构建通过；Linux、Windows 与打包发行流程尚未验证。
 
 可直接绑定的原创示例见 [通用文件 Viewer 示例](../examples/document-viewers/README.md)。

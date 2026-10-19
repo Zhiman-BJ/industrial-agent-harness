@@ -50,7 +50,7 @@ export function MessageActions({ text, recordedAt }: { text: string; recordedAt?
         aria-label={label}
         title={label}
       >
-        {status === 'copied' ? <Check size={16} /> : <Copy size={16} />}
+        {status === 'copied' ? <Check size={14} /> : <Copy size={14} />}
       </button>
       <span className="ia-sr-only" role="status">
         {status === 'copied'

@@ -10,21 +10,24 @@ const {
 const usage = `industrial-harness domains list [--store DIR]
 industrial-harness domains available --catalog HTTPS_URL --keys-file FILE [--store DIR]
 industrial-harness domains install DOMAIN --catalog HTTPS_URL --keys-file FILE [--store DIR]
+industrial-harness domains import DOMAIN --file PATH --catalog HTTPS_URL --keys-file FILE [--asset ID] [--store DIR]
 industrial-harness domains update --catalog HTTPS_URL --keys-file FILE [--store DIR]
 industrial-harness domains remove DOMAIN [--store DIR]
 industrial-harness domains repair DOMAIN [--store DIR]
 Use a trusted public-key JSON file: {"key-id":"-----BEGIN PUBLIC KEY-----..."}.
+Runtime archives are never downloaded by this tool: download the pinned official
+release yourself, then register it with domains import.
 Set INDUSTRIAL_HARNESS_PACK_STORE to the same store for run and bench.\n`;
 
 function parse(argv) {
   if (!argv.length || argv.includes('--help')) return { help: true };
   const command = argv[0];
-  if (!['list', 'available', 'install', 'update', 'remove', 'repair'].includes(command))
+  if (!['list', 'available', 'install', 'import', 'update', 'remove', 'repair'].includes(command))
     throw Error('Unknown domains command.');
   const options = { command };
   for (let index = 1; index < argv.length; index++) {
     const token = argv[index];
-    if (['--store', '--catalog', '--keys-file'].includes(token)) {
+    if (['--store', '--catalog', '--keys-file', '--file', '--asset'].includes(token)) {
       const value = argv[++index];
       if (!value || value.startsWith('--')) throw Error(`Missing ${token} value.`);
       const key = token.slice(2).replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
@@ -33,13 +36,14 @@ function parse(argv) {
     } else if (!options.domain && !token.startsWith('--')) options.domain = token;
     else throw Error(`Unknown domains option: ${token}`);
   }
-  if (['install', 'remove', 'repair'].includes(command) !== Boolean(options.domain))
-    throw Error('Specify one Domain ID for install or remove.');
+  if (['install', 'import', 'remove', 'repair'].includes(command) !== Boolean(options.domain))
+    throw Error('Specify one Domain ID for install, import or remove.');
   if (
-    ['available', 'install', 'update'].includes(command) &&
+    ['available', 'install', 'import', 'update'].includes(command) &&
     (!options.catalog || !options.keysFile)
   )
     throw Error('Provide --catalog and --keys-file.');
+  if (command === 'import' && !options.file) throw Error('Provide --file for the archive import.');
   return options;
 }
 
@@ -94,7 +98,7 @@ async function runDomains(argv, output = process.stdout) {
       journal.begin([options.domain], 'repair');
       const bundle = manager.list().find(item => item.domain === options.domain);
       if (!bundle) throw Error('Domain is not installed.');
-      await manager.runtimeAssets.ensure(bundle.runtimeAssets, {
+      await manager.prepareRuntime(bundle, {
         recheck: true,
         onProgress,
         signal: controller.signal,
@@ -109,6 +113,25 @@ async function runDomains(argv, output = process.stdout) {
       output.write(
         `${JSON.stringify({ channel: manager.channel, catalog: catalog.snapshot(), packs: catalog.summaries(available) }, null, 2)}\n`,
       );
+      return 0;
+    }
+    if (options.command === 'import') {
+      const item = available.find(pack => pack.domain === options.domain);
+      if (!item) throw Error('Domain is unavailable for this platform.');
+      const assets = item.runtimeAssets || [];
+      const asset = options.asset
+        ? assets.find(entry => entry.id === options.asset)
+        : assets.length === 1
+          ? assets[0]
+          : undefined;
+      if (!asset)
+        throw Error(
+          assets.length
+            ? `Specify --asset as one of: ${assets.map(entry => entry.id).join(', ')}.`
+            : `Domain ${item.domain} declares no runtime archives.`,
+        );
+      const result = await manager.importRuntimeArchive(asset, path.resolve(options.file));
+      output.write(`${JSON.stringify({ imported: item.domain, ...result })}\n`);
       return 0;
     }
     if (options.command === 'install') {

@@ -98,6 +98,7 @@ function portableFiles() {
       'tests/ci/native-evidence.test.cjs',
       'tests/ci/runtime-archives.test.cjs',
       'tests/ci/qa-cleanup.test.cjs',
+      'tests/ci/smoke-packaged-cad-fixture.test.cjs',
     ]),
   ]
     .filter(
@@ -120,6 +121,8 @@ function allowedSkips(suite, platform = process.platform) {
     skips.push(
       'timeout and cancellation kill descendants and close the result promise',
       'natural parent exit also cleans up orphaned tools before close',
+      'a real login shell reports its PATH between the markers',
+      'a hanging login shell is abandoned after the timeout',
     );
   }
   return skips;

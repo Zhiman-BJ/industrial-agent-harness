@@ -10,11 +10,17 @@ const {
   screen,
   systemPreferences,
 } = require('electron');
+const { DesktopAccount, registerAccountHandlers } = require('./account.cjs');
+const { authDirectory } = require('@industrial-agent-harness/harness-auth');
+let account;
+let accountModelIdentity = null;
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const os = require('node:os');
 const languageConfig = require('../i18n.config.json');
+const { packagedAppName } = require('./app-identity.cjs');
+if (app.isPackaged) app.setName(packagedAppName());
 const { guiPermissions, guiPermissionSettingsUrl } = require('./gui-permissions.cjs');
 const { PackManager, defaultPackDirectory } = require('@industrial-agent-harness/pack-manager');
 const {
@@ -92,7 +98,7 @@ const {
   ResourceSettings,
   RemoteSettings,
   defaultChatDirectory,
-  deriveChatTitle,
+  sanitizeGeneratedTitle,
   ExternalMcpRegistry,
 } = require('@industrial-agent-harness/harness-core');
 const { loadRegistry } = require('@industrial-agent-harness/domain-skills');
@@ -115,6 +121,7 @@ const {
   status: guiBridgeStatus,
 } = require('@industrial-agent-harness/computer-use-bridge');
 const { readSettings, saveSettings } = require('./harness-settings.cjs');
+const { registerGuest, createWorkbenchBrowserPlugin } = require('./browser-driver.cjs');
 const {
   readProfile,
   saveProfile,
@@ -133,11 +140,14 @@ protocol.registerSchemesAsPrivileged([
 ]);
 if (
   [
+    '--account-selftest',
+    '--remote-ui-selftest',
     '--task-results-selftest',
     '--viewer-selftest',
     '--kicad-selftest',
     '--godot-selftest',
     '--documents-selftest',
+    '--browser-selftest',
     '--language-selftest',
     '--ui-selftest',
     '--messages-selftest',
@@ -153,8 +163,10 @@ if (
     '--parallel-selftest',
     '--image-input-selftest',
     '--model-sync-selftest',
+    '--replay-selftest',
     '--packaged-smoke',
     '--install-experience-selftest',
+    '--container-install-selftest',
   ].some(flag => process.argv.includes(flag))
 )
   app.setPath('userData', fs.mkdtempSync(path.join(os.tmpdir(), 'industrial-harness-selftest-')));
@@ -225,7 +237,7 @@ const kicadRuntime = new KiCadRuntimeManager();
 // the chat still carries the derived title, so a user rename always wins.
 const titleRefinements = new Set();
 async function generateChatTitle(task) {
-  const profile = readProfile(configDir());
+  const profile = effectiveModelProfile();
   const apiKey = readApiKey();
   if (!apiKey || !/^https?:/.test(profile.endpoint)) return null;
   let response;
@@ -251,13 +263,7 @@ async function generateChatTitle(task) {
   }
   if (!response.ok) return null;
   const data = await response.json().catch(() => null);
-  const text = data?.choices?.[0]?.message?.content;
-  if (typeof text !== 'string') return null;
-  const cleaned = deriveChatTitle(text.replace(/<think>[\s\S]*?(<\/think>|$)/g, ''))
-    .replace(/^["'`「『【]+|["'`」』】]+$/g, '')
-    .replace(/(?:会话|session|chat)$/i, '')
-    .trim();
-  return cleaned || null;
+  return sanitizeGeneratedTitle(data?.choices?.[0]?.message?.content);
 }
 async function refineChatTitle(chatId) {
   if (!chatId || titleRefinements.has(chatId)) return;
@@ -277,6 +283,9 @@ async function refineChatTitle(chatId) {
   }
 }
 const tasks = new TaskService({
+  ...(process.argv.includes('--replay-selftest')
+    ? { Session: require('./replay-session.cjs').ReplaySession }
+    : {}),
   chatDirectory: process.argv.some(flag => flag.endsWith('-selftest'))
     ? path.join(app.getPath('userData'), 'chats')
     : defaultChatDirectory(),
@@ -295,10 +304,10 @@ const tasks = new TaskService({
   },
   packManager: managedPacks ? packManager : null,
   getRegistry: currentRegistry,
-  resourcePolicy: project => projectResourcePolicy(project),
+  resourcePolicy: (project, catalog) => projectResourcePolicy(project, catalog),
   getConfig: entry => runtimeConfig(entry.project, entry.externalServers, entry.id),
   logDirectory: diagnosticDirectory(),
-  plugins: () => [guiPlugin()],
+  plugins: () => [guiPlugin(), browserPlugin()],
   createSession: process.argv.includes('--parallel-selftest')
     ? require('./parallel-selftest.cjs').createSession
     : process.argv.includes('--image-input-selftest')
@@ -333,8 +342,21 @@ const coreUpdater = new CoreUpdater({
 });
 let sessionApiKey = '';
 let modelRevision = 0;
-let appSettings = { guiPluginEnabled: false };
+let appSettings = { guiPluginEnabled: false, browserAutomationEnabled: false };
 let guiBridge;
+let browserAutomation;
+// The workspace browser driver needs no download and no OS permission: the
+// enable toggle alone authorizes it, and the guest is located lazily (the
+// browser tab may not exist yet when the first tool call arrives).
+function browserPlugin() {
+  if (!browserAutomation) {
+    browserAutomation = createWorkbenchBrowserPlugin({
+      enabled: () => appSettings.browserAutomationEnabled,
+      getWindow: () => mainWindow,
+    });
+  }
+  return browserAutomation;
+}
 const chats = tasks.chats;
 let activeChatId;
 function chatList() {
@@ -411,11 +433,17 @@ const externalRegistry = new ExternalMcpRegistry(path.dirname(resourceSettings.f
 const remoteSettings = new RemoteSettings({ directory: path.dirname(resourceSettings.file) });
 const projectRuntimes = tasks.projects;
 function resourceCatalog(domain) {
-  return baseResourceCatalog(domain, externalRegistry.records());
+  return baseResourceCatalog(domain, externalRegistry.records(), {
+    registry: currentRegistry(),
+    environment: tasks.projects.options.environment,
+  });
 }
 let changingResources = false;
-function projectResourcePolicy(project = activeProject()) {
-  return resourceSettings.snapshot(resourceCatalog(project?.domain), project?.path).effective;
+function projectResourcePolicy(
+  project = activeProject(),
+  catalog = resourceCatalog(project?.domain),
+) {
+  return resourceSettings.snapshot(catalog, project?.path).effective;
 }
 
 function configDir() {
@@ -466,7 +494,12 @@ function canPersistKey() {
     (process.platform !== 'linux' || safeStorage.getSelectedStorageBackend() !== 'basic_text')
   );
 }
+function effectiveModelProfile() {
+  const profile = readProfile(configDir());
+  return account?.proxy ? { ...profile, endpoint: account.proxy.endpoint } : profile;
+}
 function readApiKey() {
+  if (account?.modelEnabled) return account.proxy?.apiKey || '';
   // Local development and selftests can inject a key without the keychain.
   if (process.env.INDUSTRIAL_MODEL_API_KEY) return process.env.INDUSTRIAL_MODEL_API_KEY;
   if (
@@ -581,7 +614,7 @@ function startGuiInstall() {
   return guiInstallPromise;
 }
 function runtimeConfig(project, externalServers, chatId) {
-  const profile = readProfile(configDir());
+  const profile = effectiveModelProfile();
   const apiKey = readApiKey();
   return {
     profile,
@@ -724,10 +757,16 @@ const viewerRegistry = createViewerRegistry([
     }),
   },
   // Generic formats are fallbacks; preserve specialized JSON/HTML detection.
-  ...createDocumentPlugins({ projectRoot: () => projectDir }),
+  // HTML previews are served through the viewer protocol so the sandboxed
+  // frame gets its own origin and CSP instead of inheriting the workbench's.
+  ...createDocumentPlugins({
+    projectRoot: () => projectDir,
+    serveHtml: file => viewerProtocol.registerHtml(file),
+  }),
 ]);
 
 function registerHandlers() {
+  registerAccountHandlers({ ipcMain, getWindow: () => mainWindow, account });
   ipcMain.on('window:minimize', event => {
     if (event.sender === mainWindow?.webContents) mainWindow?.minimize();
   });
@@ -797,6 +836,50 @@ function registerHandlers() {
     if (!managedPacks) return [];
     const { packs, catalog } = await availablePacks();
     return catalog.summaries(packs);
+  });
+  function runtimeArchiveAsset(packs, request) {
+    const pack = packs.find(item => item.domain === request?.domain);
+    const asset = pack?.runtimeAssets?.find(item => item.id === request?.asset);
+    if (!asset) throw Error('Runtime archive is not offered by the current catalog.');
+    return asset;
+  }
+  ipcMain.handle('domains:runtime-archives', async (_event, request) => {
+    if (!managedPacks || !Array.isArray(request?.domains))
+      throw Error('Invalid runtime archive request.');
+    const { manager, packs } = await availablePacks();
+    return request.domains.flatMap(id => {
+      const pack = packs.find(item => item.domain === id);
+      return pack ? manager.runtimeArchives(pack).map(item => ({ domain: id, ...item })) : [];
+    });
+  });
+  ipcMain.handle('domains:import-runtime-archive', async (_event, request) => {
+    if (!managedPacks || typeof request?.domain !== 'string' || typeof request?.asset !== 'string')
+      throw Error('Invalid runtime archive import.');
+    const { manager, packs } = await availablePacks();
+    const asset = runtimeArchiveAsset(packs, request);
+    const picked = await dialog.showOpenDialog({
+      title: `Import ${asset.label} ${asset.version}`,
+      properties: ['openFile'],
+      filters: [
+        {
+          name: `${asset.label} ${asset.version}`,
+          extensions: asset.type === 'macos-app-zip' ? ['zip'] : ['dmg'],
+        },
+      ],
+    });
+    if (picked.canceled || !picked.filePaths.length) return { imported: false };
+    const result = await manager.importRuntimeArchive(asset, picked.filePaths[0]);
+    return { imported: true, ...result };
+  });
+  ipcMain.handle('domains:open-runtime-archive', async (_event, request) => {
+    if (!managedPacks || typeof request?.domain !== 'string' || typeof request?.asset !== 'string')
+      throw Error('Invalid runtime archive download.');
+    const { packs } = await availablePacks();
+    const asset = runtimeArchiveAsset(packs, request);
+    // Only URLs pinned by the signed catalog may be opened, never renderer input.
+    if (!asset.url.startsWith('https://')) throw Error('Runtime archive URL is not trusted.');
+    await shell.openExternal(asset.url);
+    return { opened: true };
   });
   ipcMain.handle('domains:cancel', async () => {
     const cancelled = Boolean(domainController);
@@ -883,7 +966,7 @@ function registerHandlers() {
       packManager.assertIdle(request.domain);
       const bundle = packManager.list().find(item => item.domain === request.domain);
       if (!bundle) throw Error('Domain is not installed.');
-      await packManager.runtimeAssets.ensure(bundle.runtimeAssets, {
+      await packManager.prepareRuntime(bundle, {
         recheck: true,
         signal: domainController.signal,
         onProgress: progress => {
@@ -968,6 +1051,22 @@ function registerHandlers() {
   ipcMain.handle('broker:trace', () => selectedSession().trace);
   ipcMain.handle('model:get', () => modelStatus());
   ipcMain.handle('settings:gui-state', () => guiBridgeState());
+  ipcMain.handle('settings:browser-automation-state', () => ({
+    enabled: Boolean(appSettings.browserAutomationEnabled),
+  }));
+  ipcMain.handle('settings:set-browser-automation', (event, { enabled }) => {
+    if (
+      event.sender !== mainWindow?.webContents ||
+      event.senderFrame !== mainWindow.webContents.mainFrame
+    )
+      throw Error('Settings require the main app window.');
+    if (typeof enabled !== 'boolean') throw Error('Invalid browser automation setting.');
+    appSettings = { ...appSettings, browserAutomationEnabled: enabled };
+    saveSettings(configDir(), appSettings);
+    // Enabling is the authorization. KimiSession detects the changed plugin
+    // set (plugins_changed) and rebuilds on the next run of each chat.
+    return { enabled: appSettings.browserAutomationEnabled };
+  });
   ipcMain.handle('settings:gui-permission-settings', async (event, permission) => {
     if (
       event.sender !== mainWindow?.webContents ||
@@ -1034,6 +1133,7 @@ function registerHandlers() {
         '--chat-selftest',
         '--parallel-selftest',
         '--image-input-selftest',
+        '--replay-selftest',
       ].some(flag => process.argv.includes(flag))
     )
       return { available: true, version: 'SDK seam selftest', projectDir, configured: true };
@@ -1106,6 +1206,7 @@ function registerHandlers() {
       location: binding.location,
       files: binding.files || [],
       syncedAt: binding.syncedAt || null,
+      hasRemoteProject: Boolean(binding.remoteProjectId),
       task: remoteSettings.task(project.path, project.domain),
       service: remoteSettings.view(),
     };
@@ -1113,6 +1214,29 @@ function registerHandlers() {
   ipcMain.handle('remote:files', (event, request) => {
     const project = executionProject(event, request);
     return remoteSettings.candidates(project.path);
+  });
+  ipcMain.handle('remote:tools', async (event, request) => {
+    const project = executionProject(event, request);
+    const binding = remoteSettings.project(project.path, project.domain);
+    if (
+      binding.location !== 'remote' ||
+      !binding.remoteProjectId ||
+      remoteSettings.view().status !== 'connected'
+    )
+      return [];
+    const client = remoteSettings.client({
+      remoteProjectId: binding.remoteProjectId,
+      domain: project.domain,
+    });
+    try {
+      const inventory = await client.capabilities();
+      const tools = Array.isArray(inventory?.tools) ? inventory.tools : [];
+      return tools.map(tool => (tool?.descriptor || tool)?.id).filter(id => typeof id === 'string');
+    } catch {
+      return [];
+    } finally {
+      await client.close();
+    }
   });
   async function executionChange(event, request, operation) {
     const project = executionProject(event, request);
@@ -1146,13 +1270,50 @@ function registerHandlers() {
       return projectSnapshot();
     }),
   );
+  ipcMain.handle('remote:rebind', (event, request) =>
+    executionChange(event, request, async project => {
+      sessions.assertIdle();
+      await remoteSettings.rebind(project.path, project.domain);
+      return projectSnapshot();
+    }),
+  );
+  function executionChat(event, request) {
+    const project = executionProject(event, request);
+    chats.get(request.chatId, project.path, project.domain);
+    return project;
+  }
   ipcMain.handle('remote:task', async (event, request) => {
-    const project = executionProject(event, request);
-    return remoteSettings.refreshTask(project.path, project.domain);
+    const project = executionChat(event, request);
+    return remoteSettings.refreshTask(project.path, project.domain, request.chatId);
   });
-  ipcMain.handle('remote:cancel', async (event, request) => {
+  ipcMain.handle('remote:session', async (event, request) => {
+    const project = executionChat(event, request);
+    return remoteSettings.session(project.path, project.domain, request.chatId);
+  });
+  ipcMain.handle('remote:terminate', async (event, request) => {
+    const project = executionChat(event, request);
+    if (sessions.busy(sessions.find(request.chatId)))
+      throw Error('Wait for this chat to finish before ending its remote session.');
+    return remoteSettings.terminateSession(
+      project.path,
+      project.domain,
+      request.chatId,
+      request.applicationSessionId,
+    );
+  });
+  ipcMain.handle('remote:artifacts', async (event, request) => {
     const project = executionProject(event, request);
-    return remoteSettings.cancelTask(project.path, project.domain, request);
+    return remoteSettings.artifacts(project.path, project.domain);
+  });
+  ipcMain.handle('remote:download', async (event, request) => {
+    const project = executionProject(event, request);
+    sessions.assertIdle(project.id);
+    return remoteSettings.download(
+      project.path,
+      project.domain,
+      request.artifactId,
+      request.relativePath,
+    );
   });
   ipcMain.handle('resource:get', (event, request) => {
     const project = resourceProject(event, request);
@@ -1410,7 +1571,7 @@ function registerHandlers() {
       typeof request === 'string' || request?.images === undefined
         ? []
         : imageRequest(event, request);
-    if (images.length && !readProfile(configDir()).imageInput)
+    if (images.length && !effectiveModelProfile().imageInput)
       throw Error('Enable Image input in Model API settings for a model that supports images.');
     if (typeof task !== 'string' || !task.trim() || Buffer.byteLength(task, 'utf8') > 128 * 1024)
       throw Error('Describe the task first.');
@@ -1483,10 +1644,58 @@ function registerHandlers() {
 }
 
 async function createWindow() {
+  const accountFixture = process.argv.includes('--account-selftest')
+    ? await require('./account-selftest.cjs').prepare(path.join(app.getPath('userData'), 'account'))
+    : null;
+  account = new DesktopAccount({
+    directory: process.argv.some(flag => flag.endsWith('-selftest'))
+      ? path.join(app.getPath('userData'), 'account')
+      : authDirectory(),
+    safeStorage,
+    shell: accountFixture ? { openExternal: accountFixture.openBrowser } : shell,
+    assertIdle: () => sessions.assertIdle(),
+    onChange: view => {
+      remoteSettings.account = account.auth;
+      if (mainWindow && !mainWindow.isDestroyed())
+        mainWindow.webContents.send('account:changed', view);
+      const identity =
+        account.proxy?.endpoint || (account.modelEnabled ? 'platform-signed-out' : 'api-key');
+      if (accountModelIdentity !== identity) {
+        accountModelIdentity = identity;
+        modelRevision++;
+        notifyModelChanged();
+      }
+    },
+  });
+  remoteSettings.account = account.auth;
+  tasks.projects.options.remoteSettings = remoteSettings;
+  await account.restore();
   if (process.argv.includes('--gui-settings-selftest'))
     require('./gui-settings-selftest.cjs').prepare();
   if (process.argv.includes('--ui-selftest'))
     require('./ui-selftest.cjs').prepare(projectConfigDir(), chats);
+  if (process.argv.includes('--remote-ui-selftest'))
+    require('./remote-ui-selftest.cjs').prepare(projectConfigDir(), chats);
+  if (process.argv.includes('--replay-selftest')) {
+    const config = projectConfigDir();
+    const project = path.join(config, 'sobel-project');
+    fs.mkdirSync(project, { recursive: true });
+    fs.writeFileSync(
+      path.join(project, 'sobel_filter.v'),
+      '// Sobel filter demo project for trajectory replay\nmodule sobel_filter;\nendmodule\n',
+    );
+    saveBindings(config, {
+      activeId: 'sobel-demo',
+      projects: [
+        {
+          id: 'sobel-demo',
+          name: 'Sobel 布局检查',
+          path: fs.realpathSync(project),
+          domain: 'chip',
+        },
+      ],
+    });
+  }
   if (process.argv.includes('--messages-selftest'))
     require('./messages-selftest.cjs').prepare(projectConfigDir(), chats);
   if (process.argv.includes('--task-results-selftest'))
@@ -1513,6 +1722,8 @@ async function createWindow() {
     void startGuiInstall();
   if (process.argv.includes('--documents-selftest'))
     require('./documents-selftest.cjs').prepare(projectConfigDir());
+  if (process.argv.includes('--browser-selftest'))
+    require('./browser-selftest.cjs').prepare(projectConfigDir());
   if (process.argv.includes('--language-selftest'))
     require('./language-selftest.cjs').prepare(projectConfigDir());
   if (process.argv.includes('--engineering-selftest'))
@@ -1546,6 +1757,20 @@ async function createWindow() {
     return viewerProtocol.handle(request);
   });
   registerHandlers();
+  // Webview guests (the workspace browser tab) never spawn native windows;
+  // a popup request just navigates the same guest frame instead. The load is
+  // deferred: called synchronously inside the open handler it gets aborted
+  // together with the denied popup.
+  app.on('web-contents-created', (_event, contents) => {
+    if (contents.getType() !== 'webview') return;
+    // Every webview guest in this app is a workspace browser tab; register it
+    // so the workbench-browser plugin's driver can find and drive it.
+    registerGuest(contents);
+    contents.setWindowOpenHandler(({ url }) => {
+      if (/^https?:\/\//.test(url)) setImmediate(() => void contents.loadURL(url));
+      return { action: 'deny' };
+    });
+  });
   const productIcon = path.join(desktopRoot, 'dist', 'app-icon.png');
   if (fs.existsSync(productIcon)) app.dock?.setIcon(productIcon);
   const window = new BrowserWindow({
@@ -1564,6 +1789,9 @@ async function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      // The workspace browser tab embeds web content in a guest process with
+      // no preload and no Node integration; the host window stays sandboxed.
+      webviewTag: true,
       // Pixel assertions must keep receiving frames when another test app or
       // a hosted desktop temporarily covers this window.
       backgroundThrottling: !process.argv.some(
@@ -1595,6 +1823,11 @@ async function createWindow() {
   });
   if (process.env.INDUSTRIAL_DEV_URL) await window.loadURL(process.env.INDUSTRIAL_DEV_URL);
   else await window.loadURL('app://viewer/index.html');
+  if (process.argv.includes('--container-install-selftest')) {
+    await require('./container-install-selftest.cjs').run(window, { manager: packManager });
+    app.quit();
+    return;
+  }
   if (process.argv.includes('--cad-install-selftest')) {
     await require('./selftest-language.cjs').setLanguage(window, 'en');
     await require('./cad-install-selftest.cjs').run(window, {
@@ -1659,8 +1892,38 @@ async function createWindow() {
     );
     if (process.env.HARNESS_PACKAGED_SMOKE_FEED_DIR) {
       const planned = JSON.parse(process.env.HARNESS_PACKAGED_SMOKE_DOMAINS || '[]');
-      if (!planned.length || planned.some(item => !item.id || !item.label))
+      const dockerFailures = JSON.parse(process.env.HARNESS_PACKAGED_SMOKE_DOCKER_FAILURES || '[]');
+      if (
+        (!planned.length && !dockerFailures.length) ||
+        [...planned, ...dockerFailures].some(item => !item.id || !item.label)
+      )
         throw Error('Packaged smoke requires an explicit platform-qualified install plan.');
+      // Container preparation is now part of activation. Hosted Desktop runners
+      // without a Linux engine must exercise the visible failure and rollback,
+      // rather than count registration alone as a successful container install.
+      if (!planned.length) window.hide();
+      for (const item of dockerFailures) {
+        const selector = JSON.stringify(`.ia-domain-install-row[data-domain="${item.id}"] input`);
+        await waitFor(`Boolean(document.querySelector(${selector}))`);
+        await click(`document.querySelector(${selector}).click()`);
+        await waitFor(`!document.querySelector('.ia-domains-primary').disabled`);
+        await click(`document.querySelector('.ia-domains-primary').click()`);
+        await waitFor(`window.viewerHost.domainStatus().then(status =>
+          status.lastOperation?.outcome === 'failed' && /docker/i.test(status.lastOperation.error || '')
+          && !status.installed.some(pack => pack.domain === ${JSON.stringify(item.id)})
+          && Boolean(document.querySelector('[role="alert"]'))
+          && !document.querySelector('.ia-domains-primary').disabled)`);
+        if (
+          fs.existsSync(packManager.containerImages.directory) &&
+          fs
+            .readdirSync(packManager.containerImages.directory)
+            .some(name => name.startsWith('industrial-image-'))
+        )
+          throw Error('Failed engine prerequisite left a temporary image archive.');
+        await click(
+          `if (document.querySelector(${selector}).checked) document.querySelector(${selector}).click()`,
+        );
+      }
       await waitFor(
         `document.querySelectorAll('.ia-domain-install-row').length >= ${planned.length}`,
       );
@@ -1682,7 +1945,12 @@ async function createWindow() {
         await click(`document.querySelector('.ia-domain-setup [data-action="done"]').click()`);
         await waitFor(`!document.querySelector('.ia-domains-modal')`);
       }
-      await installInitial(initial);
+      if (initial.length) await installInitial(initial);
+      else {
+        await click(`document.querySelectorAll('.ia-domains-actions button')[1].click()`);
+        await waitFor(`!document.querySelector('.ia-domains-modal')`);
+        window.showInactive();
+      }
       for (const item of planned.slice(initial.length)) {
         if (
           !(await window.webContents.executeJavaScript(
@@ -1725,7 +1993,8 @@ async function createWindow() {
   }
   if (
     process.argv.some(flag => flag.endsWith('-selftest')) &&
-    !process.argv.includes('--language-selftest')
+    !process.argv.includes('--language-selftest') &&
+    !process.argv.includes('--replay-selftest')
   )
     await require('./selftest-language.cjs').setLanguage(window, 'en');
   if (process.argv.includes('--subagent-selftest')) {
@@ -1749,6 +2018,20 @@ async function createWindow() {
     app.quit();
     return;
   }
+  if (process.argv.includes('--browser-selftest')) {
+    await require('./browser-selftest.cjs').run(window);
+    app.quit();
+    return;
+  }
+  if (accountFixture) {
+    try {
+      await require('./account-selftest.cjs').run(window, account, accountFixture);
+    } finally {
+      accountFixture.close();
+    }
+    app.quit();
+    return;
+  }
   if (process.argv.includes('--language-selftest')) {
     await require('./language-selftest.cjs').run(window, dialog);
     app.quit();
@@ -1759,6 +2042,11 @@ async function createWindow() {
     app.quit();
     return;
   }
+  if (process.argv.includes('--replay-selftest')) {
+    // 演示模式：驱动两轮重放后不退出，窗口留给用户继续体验。
+    await require('./replay-demo.cjs').run(window);
+    return;
+  }
   if (process.argv.includes('--model-sync-selftest')) {
     await require('./model-sync-selftest.cjs').run(window);
     app.quit();
@@ -1766,6 +2054,11 @@ async function createWindow() {
   }
   if (process.argv.includes('--ui-selftest')) {
     await require('./ui-selftest.cjs').run(window, dialog);
+    app.quit();
+    return;
+  }
+  if (process.argv.includes('--remote-ui-selftest')) {
+    await require('./remote-ui-selftest.cjs').run(window);
     app.quit();
     return;
   }
@@ -2144,7 +2437,7 @@ async function createWindow() {
     await waitFor(`Boolean(document.querySelector('.ia-model-modal'))`);
     screenshots.push(await shot('settings'));
     await window.webContents.executeJavaScript(
-      `document.querySelector('.ia-model-modal header button').click(); document.querySelector('.ia-sidebar-brand .ia-icon').click(); document.querySelector('.ia-chat-actions button:last-child').click()`,
+      `document.querySelector('.ia-model-modal header button').click(); document.querySelector('.ia-sidebar-chrome .ia-icon').click(); document.querySelector('.ia-chat-actions button:last-child').click()`,
     );
     await waitFor(
       `!document.querySelector('.ia-sidebar') && !document.querySelector('.ia-workspace')`,
@@ -2171,6 +2464,7 @@ app.on('before-quit', event => {
   event.preventDefault();
   domainController?.abort(Error('Application is shutting down.'));
   if (shutdownPromise) return;
+  account?.close();
   raster?.close();
   viewerProtocol?.close();
   godotRuntime.close();

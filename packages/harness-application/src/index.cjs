@@ -70,9 +70,14 @@ class TaskService {
     return entry;
   }
   policy(entry, registry) {
-    const catalog = resourceCatalog(entry.project.domain, entry.externalServers);
+    const catalog = resourceCatalog(entry.project.domain, entry.externalServers, {
+      registry,
+      runtimeBundle: entry.runtimeBundle,
+      environment: this.environment,
+    });
+    entry.resourceCatalog = catalog;
     const saved =
-      this.options.resourcePolicy?.(entry.project) ||
+      this.options.resourcePolicy?.(entry.project, catalog) ||
       this.settings.snapshot(catalog, entry.project.path).effective;
     const disabled = {
       skills: [...new Set([...saved.skills, ...(entry.overrides?.skills || [])])],
@@ -88,6 +93,16 @@ class TaskService {
     if (!registry.domains.some(item => item.id === entry.project.domain))
       throw Error('Choose a valid project domain.');
     entry.runtimeBundle = preview ? undefined : this.projects.get(entry.project, registry);
+    if (entry.runtimeBundle?.runtime.forSession) {
+      const bundle = entry.runtimeBundle;
+      entry.runtimeBundle = {
+        ...bundle,
+        runtime: bundle.runtime.forSession(entry.id),
+        get capabilities() {
+          return bundle.capabilities;
+        },
+      };
+    }
     entry.externalServers = entry.runtimeBundle?.runtime.hostRuntimeOnly
       ? []
       : this.external.records();
@@ -101,13 +116,15 @@ class TaskService {
       entry.disabled,
       entry.externalServers,
       registry.domains,
+      entry.resourceCatalog.mcpServers,
     );
   }
   async diagnose(project) {
     const bundle = this.projects.get(project, this.registry());
-    const state = await bundle.runtime.inspect(),
+    const runtime = bundle.runtime.diagnosticsRuntime || bundle.runtime;
+    const state = await runtime.inspect(),
       toolId = 'project.environment.inspect';
-    const result = await bundle.runtime.execute(
+    const result = await runtime.execute(
       { toolId, inputs: {}, expectedStateId: state.id },
       {
         scope: {
@@ -120,7 +137,7 @@ class TaskService {
     );
     if (result.action.status !== 'completed') throw Error(result.action.diagnostics.join('\n'));
     return {
-      report: JSON.parse(bundle.runtime.readArtifact(result.artifacts[0].id).content),
+      report: JSON.parse(runtime.readArtifact(result.artifacts[0].id).content),
       actionId: result.action.id,
     };
   }
@@ -254,8 +271,10 @@ class TaskService {
           turnId,
           eventRevision: entry.eventRevision,
         };
-        const displayed = ['results-changed', 'results-ready'].includes(recorded.type)
-          ? {
+        let displayed = recorded;
+        if (['results-changed', 'results-ready'].includes(recorded.type)) {
+          try {
+            displayed = {
               ...recorded,
               results:
                 entry.resultContext?.turnId === turnId
@@ -267,10 +286,20 @@ class TaskService {
                       entry.runtimeBundle?.runtime,
                       () => {},
                     ).view(recorded.results),
-            }
-          : recorded;
-        this.options.onEvent?.(displayed, metadata);
-        options.onEvent?.(displayed, metadata);
+            };
+          } catch (error) {
+            // The event is already durable; a failed view can be rebuilt later.
+            console.error('Industrial result view failed:', error.message);
+            return;
+          }
+        }
+        for (const consumer of [this.options.onEvent, options.onEvent]) {
+          try {
+            consumer?.(displayed, metadata);
+          } catch (error) {
+            console.error('Task event consumer failed:', error.message);
+          }
+        }
         if (
           [
             'background-state',
@@ -294,7 +323,16 @@ class TaskService {
       );
       entry.resultContext = resultContext;
       resultContext.onIndustrialResult = async result => {
-        resultContext.register(result);
+        // Result display (register/view) is a presentation concern. The
+        // mutation already committed in the Runtime, so a display failure
+        // must never block scope synchronization — the caller needs the
+        // fresh state identity either way.
+        let displayError = null;
+        try {
+          resultContext.register(result);
+        } catch (error) {
+          displayError = error;
+        }
         if (entry.resultContext === resultContext) {
           const refreshed = resolveProjectTask(
             entry.project.domain,
@@ -304,12 +342,22 @@ class TaskService {
             entry.disabled,
             entry.externalServers,
             this.registry().domains,
+            entry.resourceCatalog.mcpServers,
           );
           Object.assign(entry.scope, refreshed.scope);
           entry.trace.push(...refreshed.trace);
         }
         emit({ type: 'industrial-result', ...result });
-        return resultContext.view();
+        if (displayError) {
+          console.error('Industrial result display failed:', displayError.message);
+          return undefined;
+        }
+        try {
+          return resultContext.view();
+        } catch (error) {
+          console.error('Industrial result view failed:', error.message);
+          return undefined;
+        }
       };
       for (const [id, artifact] of options.artifacts || [])
         await this.context(entry).observeArtifact({
@@ -322,7 +370,7 @@ class TaskService {
       entry.agent ||= new this.Session(
         entry.project.path,
         () => entry.scope,
-        id => this.context(entry).readArtifact(id),
+        id => this.lookupAgentArtifact(entry, id),
         id => this.detail(entry, id),
         emit,
         () => (options.getConfig || this.options.getConfig)(entry),
@@ -376,14 +424,24 @@ class TaskService {
               : outcome?.type === 'done'
                 ? outcome.result.status
                 : 'incomplete');
-          resultContext.settle(status, Boolean(entry.agent?.backgroundTasks));
-          finishTurn(
-            entry,
-            () => this.chats.finish(turnId, status),
-            () => this.options.onChanged?.(),
-          );
+          try {
+            resultContext.settle(status, Boolean(entry.agent?.backgroundTasks));
+          } finally {
+            // Presentation failures must not strand the durable turn or leases.
+            finishTurn(
+              entry,
+              () => this.chats.finish(turnId, status),
+              () => this.options.onChanged?.(),
+            );
+          }
         }
         const state = entry.runtimeBundle ? await entry.runtimeBundle.runtime.inspect() : null;
+        let results;
+        try {
+          results = resultContext.view();
+        } catch (error) {
+          console.error('Industrial result view failed:', error.message);
+        }
         return {
           status:
             entry.cancelReason ||
@@ -394,7 +452,7 @@ class TaskService {
                 : 'incomplete'),
           chatId: entry.id,
           turnId,
-          results: resultContext.view(),
+          results,
           ...(state
             ? {
                 engineering: {
@@ -466,48 +524,73 @@ class TaskService {
     this.chats.get(entry.id, entry.project.path, entry.project.domain);
     if (!this.chats.turnBelongsTo(entry.id, turnId))
       throw Error('Result request belongs to another chat.');
-    const runtime =
-      entry.runtimeBundle?.runtime || this.projects.get(entry.project, this.registry())?.runtime;
-    return new TaskResults(this.chats, entry, turnId, runtime, () => {}).view();
+    const records = this.projects.read(entry.project);
+    try {
+      return new TaskResults(this.chats, entry, turnId, records, () => {}).view();
+    } finally {
+      records?.close();
+    }
   }
   async openResult(entry, request) {
     if (request.chatId && request.chatId !== entry.id)
       throw Error('Result request belongs to another chat.');
     this.chats.get(entry.id, entry.project.path, entry.project.domain);
     const events = this.chats.turnEvents(entry.id, request.turnId);
-    const runtime =
-      entry.runtimeBundle?.runtime || this.projects.get(entry.project, this.registry())?.runtime;
-    let group;
-    if (request.groupId) {
-      const view = this.results(entry, request.turnId);
-      group = view.groups.find(group => group.id === request.groupId);
-      if (!group || !group.artifacts.some(artifact => artifact.id === request.artifactId))
-        throw Error('Output is outside this recorded result group.');
-    } else if (
-      !events.some(
-        event => event.type === 'industrial-result' && event.action?.id === request.actionId,
+    // Viewing committed evidence must not create an execution runtime, acquire a
+    // remote session, or require the service's current credentials/configuration.
+    const records = this.projects.read(entry.project);
+    try {
+      if (!records) throw Error('Recorded output is unavailable for this project.');
+      let group;
+      if (request.groupId) {
+        const view = new TaskResults(this.chats, entry, request.turnId, records, () => {}).view();
+        group = view.groups.find(group => group.id === request.groupId);
+        if (!group || !group.artifacts.some(artifact => artifact.id === request.artifactId))
+          throw Error('Output is outside this recorded result group.');
+      } else if (
+        !events.some(
+          event => event.type === 'industrial-result' && event.action?.id === request.actionId,
+        )
       )
-    )
-      throw Error('Output Action is outside this request.');
-    const artifact = runtime.get('artifact', request.artifactId);
-    const resolved = await resolveResultArtifact(runtime, {
-      actionId: group ? artifact?.actionId : request.actionId,
-      artifactId: request.artifactId,
-    });
-    const companions = [];
-    if (
-      group &&
-      !request.revealOnly &&
-      [group.primaryArtifactId, group.previewArtifactId].includes(request.artifactId)
-    )
-      for (const id of group.companionArtifactIds)
-        companions.push(
-          await resolveResultArtifact(runtime, { actionId: group.actionId, artifactId: id }),
-        );
-    return { ...resolved, companions };
+        throw Error('Output Action is outside this request.');
+      const artifact = records.get('artifact', request.artifactId);
+      const resolved = await resolveResultArtifact(records, {
+        actionId: group ? artifact?.actionId : request.actionId,
+        artifactId: request.artifactId,
+      });
+      const companions = [];
+      if (
+        group &&
+        !request.revealOnly &&
+        [group.primaryArtifactId, group.previewArtifactId].includes(request.artifactId)
+      )
+        for (const id of group.companionArtifactIds)
+          companions.push(
+            await resolveResultArtifact(records, { actionId: group.actionId, artifactId: id }),
+          );
+      return { ...resolved, companions };
+    } finally {
+      records?.close();
+    }
   }
   evidence(entry, id) {
     return entry.runtimeBundle?.runtime.readArtifact(id) || this.context(entry).readArtifact(id);
+  }
+  // Agent artifact metadata tools receive ids from verification evidence, which
+  // live in the industrial runtime store; observed project files live in the
+  // context store. Check the runtime store first so evidence stays readable.
+  async lookupAgentArtifact(entry, id) {
+    const recorded = entry.runtimeBundle?.runtime?.get('artifact', id);
+    if (recorded)
+      return {
+        id: recorded.id,
+        kind: recorded.kind,
+        name: recorded.relativePath.split('/').pop(),
+        relativePath: recorded.relativePath,
+        sizeBytes: recorded.sizeBytes,
+        sha256: recorded.sha256,
+      };
+    return this.context(entry).readArtifact(id);
   }
   async close() {
     if (this.closing) return this.closing;

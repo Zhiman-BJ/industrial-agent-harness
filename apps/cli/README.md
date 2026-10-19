@@ -55,6 +55,10 @@ pnpm cli run --project-dir ./examples/chip-sobel --domain chip --task 'Inspect t
 
 模型 API 端点默认要求 HTTPS（localhost 除外）。自托管明文 HTTP 端点需在 `HARNESS_TRUSTED_PLAINTEXT_HOSTS` 中显式声明，逗号分隔，条目为 `host` 或 `host:port`（host 与 port 都匹配、只有 host 匹配时任意端口有效），例如 `HARNESS_TRUSTED_PLAINTEXT_HOSTS=192.168.1.50:48000`。桌面端与 CLI 共用同一校验。
 
+## 平台账号
+
+`account login|status|logout` 与桌面共用 OIDC/PKCE 协议实现，CLI 会话独立保存。默认仅内存保存；需要后续命令使用时，在账号命令显式传入 `--allow-file-store`，使用 0600 明文凭证文件。完成登录后，`run --platform-account` 使用平台模型代理，`remote ... --platform-account` 使用平台账号访问远程环境。两者均需要真实登记的 native client、应用 audience 和明确的服务地址，详见[配置与安全存储边界](../../packages/harness-auth/README.md)。不使用平台账号时保留现有 API Key 流程。
+
 ## Computer Use 插件（`--enable-gui`）
 
 `--enable-gui` 启用横切的 computer-use 插件：让 Kimi 在授权下操作桌面 GUI 应用。首次启用时自动从 [munim-computer-use](https://github.com/munimtechnologies/munim-computer-use) 的钉定 release（`v0.4.3`，见 `packages/computer-use-bridge`）下载对应平台二进制，校验 `SHA256SUMS.txt` 后安装到 `~/.industrial-agent-harness/gui-bridge/`（`GUI_BRIDGE_DIR` 可覆盖），已装则跳过；安装过程以 `gui_install` 事件输出（checking/downloading/verified/ready/error）。安装失败会使本次运行报错退出，不写入任何半成品。启用即授权：GUI 工具审批由 Harness 自动以 `approve_for_session` 应答，`--approval` 策略只作用于非插件工具。
@@ -116,10 +120,16 @@ Managed runtime dependencies declared by a Pack are prepared by `domains install
 
 ## 内置远程体验
 
-`remote status|connect|use|sync|task|cancel` 与桌面共用项目运行配置。用户无需手填服务名或 URL，首次上传需选择文件并显式传入 `--confirm-upload`。公网与登录配置留空时显示尚未配置；内部连接、原生检查验收和当前限制见[内置远程运行](../../doc/remote-execution.md)。
+`remote status|connect|use|rebind|sync|session|task|terminate|artifacts|download` 与桌面共用 Gateway v1.1 项目/聊天配置。Kimi/Agent 留本地，专业软件、领域 MCP 和执行沙箱由远端服务提供；用户无需手填服务名或 URL。`sync` 默认仅预览，每次实际上传都需 `--confirm-upload`，本地文件变化后须重新上传。`session` / `task` 需要 `--chat-id`；`terminate` 另需查询所得的 `--session-id`。`artifacts` 列出远端产物；`download --artifact-id UUID --destination project-relative/path` 核验大小和摘要并拒绝覆盖本地文件。
+
+`rebind --project-dir DIR --domain DOMAIN` 默认只预览；显式增加 `--confirm-new-project` 后检查当前服务并创建新远端项目，保留当前项目的旧绑定历史，不改其他项目，不迁移旧 job/工程事实。存在旧运行中或未知调用时拒绝重绑；新绑定必须重新确认上传文件。
+
+旧 `remote cancel` 已移除；中断 CLI 仅停止本地等待，不承诺远端软件已退出。未知调用按持久 invocation ID 查询，不自动重放。连接成功不表示领域/worker 已通过资格，旧 0.2 项目/job 绑定也不自动迁移。完整命令、历史证据及待验范围见[远程运行](../../doc/remote-execution.md)。
 
 任务生命周期已由共享 `harness-application` TaskService 负责；领域源码、声明与 Skill 来自固定 Domain Packs 消费包，原生版本和平台限制见[迁移说明](../../doc/shared-task-and-pack-consumption.md)。独立叶子工具的历史 Release 保持其原有安装路径。
 
 ## 任务成果
 
 `results_changed` 和 `results_ready` JSONL 行提供共享 TaskService 的请求归属、稳定成果组 ID、展示 revision、selection 与实际文件引用；终态记录含 `results`。分组不依赖 Agent 调用选择工具。普通文件无工程 Verifier 时保留 `not_run`，部分失败不移除已产生文件；历史检查不会随展示选择变成新版本验收。CLI 不加载 Electron／Viewer UI。[契约、可选工具和验收](../../doc/task-results.md)。
+
+`account login --no-browser --allow-file-store` 可在 SSH/无浏览器场景使用：在任意设备打开输出的 `paste-code` 链接，把账号中心提供的完整 `code#state` 粘贴到当前终端。输入不回显、不写入历史；关闭 stdin 或 Ctrl+C 会取消纯粘贴登录。普通登录同时接受本机回调和粘贴授权码。

@@ -7,6 +7,7 @@ import type { ResultOpenRequest } from '@industrial-agent-harness/viewer-builtin
 import { AnswerMarkdown } from './AnswerMarkdown';
 import { ThinkingPreview } from './ThinkingPreview';
 import { MessageActions } from './MessageActions';
+import { Cloud } from 'lucide-react';
 import { splitLeadingThinking } from '../message-content';
 import { memo, useRef, useState } from 'react';
 
@@ -15,10 +16,12 @@ type ToolResult = Extract<AgentEvent, { type: 'tool-result' }>;
 function ApprovalCard({
   event,
   decision,
+  resolutionOrigin,
   approve,
 }: {
   event: Extract<AgentEvent, { type: 'approval' }>;
   decision?: string;
+  resolutionOrigin?: 'user' | 'runtime';
   approve: (id: string, decision: 'approve' | 'reject') => Promise<void>;
 }) {
   const { t, locale } = useDisplayText();
@@ -39,16 +42,36 @@ function ApprovalCard({
       setBusy(false);
     }
   }
+  // A 'reject' that the user in this window never clicked is a system
+  // cancellation (turn interrupted, session replaced), not a user decision.
+  const userRejected = decision === 'reject' && (!resolutionOrigin || resolutionOrigin === 'user');
+  const resolvedLabel =
+    decision === 'reject'
+      ? userRejected
+        ? t('Rejected')
+        : t('Cancelled without running')
+      : decision === 'expired'
+        ? t('Approval expired')
+        : t('Approved');
+  let structured: { command: string; cwd: string; language?: string } | null = null;
+  if (event.preview) {
+    try {
+      const parsed = JSON.parse(event.preview.text);
+      if (parsed && typeof parsed.command === 'string')
+        structured = {
+          command: parsed.command,
+          cwd: typeof parsed.cwd === 'string' ? parsed.cwd : '',
+          language: typeof parsed.language === 'string' ? parsed.language : undefined,
+        };
+    } catch {
+      structured = null;
+    }
+  }
   if (decision)
     return (
       <details className="ia-agent-tool ia-approval-resolved">
         <summary>
-          {decision === 'reject'
-            ? t('Rejected')
-            : decision === 'expired'
-              ? t('Approval expired')
-              : t('Approved')}{' '}
-          · {event.action}
+          {resolvedLabel} · {event.action}
         </summary>
         <p>{event.description}</p>
         {event.preview && <pre className="ia-approval-preview">{event.preview.text}</pre>}
@@ -66,11 +89,44 @@ function ApprovalCard({
       )}
       <p>{event.description}</p>
       {event.agentId && event.agentId !== 'main' && <p>{event.agentId}</p>}
-      {event.preview && (
+      {event.preview && structured ? (
         <div className="ia-approval-operation">
           <b>{event.preview.title}</b>
-          <pre className="ia-approval-preview">{event.preview.text}</pre>
+          <dl className="ia-approval-fields">
+            <div>
+              <dt>{t('Command')}</dt>
+              <dd>
+                <code>{structured.command}</code>
+              </dd>
+            </div>
+            {structured.cwd && (
+              <div>
+                <dt>{t('Working directory')}</dt>
+                <dd>
+                  <code>{structured.cwd}</code>
+                  <small>
+                    {t('Isolated session workspace; project files are read via project/.')}
+                  </small>
+                </dd>
+              </div>
+            )}
+            {structured.language && (
+              <div>
+                <dt>{t('Language')}</dt>
+                <dd>
+                  <code>{structured.language}</code>
+                </dd>
+              </div>
+            )}
+          </dl>
         </div>
+      ) : (
+        event.preview && (
+          <div className="ia-approval-operation">
+            <b>{event.preview.title}</b>
+            <pre className="ia-approval-preview">{event.preview.text}</pre>
+          </div>
+        )
       )}
       <button disabled={busy} onClick={() => void respond('approve')}>
         {busy ? t('Submitting…') : t('Approve')}
@@ -258,8 +314,11 @@ export const AgentFlow = memo(function AgentFlow({
   answer,
   onLog,
   onOpenResult,
+  onRetry,
+  onOpenModelSettings,
   turnId,
   chatId,
+  remoteTools,
 }: {
   events: AgentEvent[];
   running: boolean;
@@ -268,15 +327,18 @@ export const AgentFlow = memo(function AgentFlow({
   answer: (id: string, answers: Record<string, string>) => Promise<void>;
   onLog?: (traceId?: string) => void;
   onOpenResult?: (request: ResultOpenRequest) => Promise<void>;
+  onRetry?: () => void;
+  onOpenModelSettings?: () => void;
   turnId?: string;
   chatId?: string;
+  remoteTools?: ReadonlySet<string>;
 }) {
   const { t, locale } = useDisplayText();
   const results = new Map<string, ToolResult>();
   const children = new Map<string, Extract<AgentEvent, { type: 'subagent-state' }>>();
   const firstChildIndex = new Map<string, number>();
   const toolIds = new Set<string>();
-  const decisions = new Map<string, string>();
+  const decisions = new Map<string, Extract<AgentEvent, { type: 'approval-resolved' }>>();
   const answered = new Map<string, Extract<AgentEvent, { type: 'question-resolved' }>>();
   // A tool call can emit more than one 'tool' event under the same id: the
   // initial frame has empty arguments, then a later frame arrives once the
@@ -293,7 +355,7 @@ export const AgentFlow = memo(function AgentFlow({
       lastToolIndex.set(event.id, index);
     }
     if (event.type === 'tool-result') results.set(event.id, event);
-    if (event.type === 'approval-resolved') decisions.set(event.id, event.decision);
+    if (event.type === 'approval-resolved') decisions.set(event.id, event);
     if (event.type === 'question-resolved') answered.set(event.id, event);
   }
   let latestResults = -1;
@@ -349,7 +411,7 @@ export const AgentFlow = memo(function AgentFlow({
         if (event.type === 'context-reset')
           return (
             <div className="ia-agent-minor" key={index}>
-              {event.message}
+              {t(event.message)}
             </div>
           );
         if (event.type === 'resources-filtered') {
@@ -389,8 +451,10 @@ export const AgentFlow = memo(function AgentFlow({
               key={index}
               event={event}
               decision={
-                decisions.get(event.id) || (!running && !event.background ? 'expired' : undefined)
+                decisions.get(event.id)?.decision ||
+                (!running && !event.background ? 'expired' : undefined)
               }
+              resolutionOrigin={decisions.get(event.id)?.origin}
               approve={approve}
             />
           );
@@ -420,6 +484,12 @@ export const AgentFlow = memo(function AgentFlow({
                 ))}
                 {result?.error ? t('Tool failed') : result ? t('Tool finished') : t('Using tool')} ·{' '}
                 {event.name}
+                {remoteTools?.has(event.name) && (
+                  <span className="ia-remote-badge">
+                    <Cloud size={11} />
+                    {t('Remote sandbox')}
+                  </span>
+                )}
               </summary>
               <div className="ia-tool-detail">
                 <small>{t('Input')}</small>
@@ -472,12 +542,26 @@ export const AgentFlow = memo(function AgentFlow({
               </div>
             </details>
           );
-        if (event.type === 'error')
+        if (event.type === 'error') {
+          const authFailure =
+            /(^|\W)(401|unauthorized|invalid authentication|authorization failed)/i.test(
+              event.message,
+            );
           return (
-            <p className="ia-flow-error" key={index}>
-              {event.message}
-            </p>
+            <div className="ia-flow-error-card" role="alert" key={index}>
+              {authFailure && <b>{t('The model service rejected this API key.')}</b>}
+              <span className="ia-flow-error">{event.message}</span>
+              {(onRetry || onOpenModelSettings) && authFailure && (
+                <div className="ia-flow-error-actions">
+                  {onOpenModelSettings && (
+                    <button onClick={onOpenModelSettings}>{t('Open model settings')}</button>
+                  )}
+                  {onRetry && <button onClick={onRetry}>{t('Retry task')}</button>}
+                </div>
+              )}
+            </div>
           );
+        }
         if (event.type === 'compaction')
           return (
             <div className="ia-agent-minor" key={index}>

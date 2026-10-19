@@ -54,7 +54,7 @@ try {
     assert.equal(rows.at(-1).status, 'scoped');
     assert.ok(
       rows[0].trace.find(row => row.event === 'domain.index').detail.count ===
-        (domain === 'chip' ? 8 : domain === 'cad' ? 4 : domain === 'pcb' ? 8 : 1),
+        (domain === 'chip' ? 8 : domain === 'cad' ? 4 : domain === 'pcb' ? 8 : 3),
     );
     const denied = domain === 'chip' ? 'pcb' : 'chip';
     assert.throws(
@@ -101,7 +101,7 @@ try {
       assert.deepEqual(run(['--disable-mcp', 'chip-pack.eda'])[0].scope.tools, []);
     } else assert.equal(fs.existsSync(path.join(path.dirname(entry), 'domain-packs/chip')), false);
     if (domain === 'pcb') {
-      // project.work (domain-agnostic) + the three pcb skills; the bench
+      // project.work (domain-agnostic) + the three pcb skills; the design
       // alignment added pcb.design.e2e.
       assert.equal(catalog.skills.length, 4);
       assert.equal(fs.existsSync(path.join(packageRoot, 'domain-packs/pcb/uv.lock')), true);
@@ -119,15 +119,17 @@ try {
           .split('\n')
           .map(JSON.parse)[0].scope;
       assert.deepEqual(pcbScope([]).tools, ['pcb.kicad.edit', 'pcb.kicad.verify']);
+      assert.deepEqual(pcbScope(['--disable-mcp', 'pcb-design.tools']).tools, []);
       assert.throws(
-        () => pcbScope(['--disable-mcp', 'pcb-bench.tools']),
+        () => pcbScope(['--disable-mcp', 'unknown-provider']),
         error => error.stdout.includes('Unknown project MCP'),
       );
       assert.ok(fs.existsSync(path.join(packageRoot, 'domain-packs/pcb/runtime/index.cjs')));
       assert.ok(!pcbScope(['--disable-skill', 'pcb.design.e2e']).skills.includes('pcb.design.e2e'));
     }
     if (domain === 'godot') {
-      assert.equal(catalog.skills.length, 3);
+      // 2 legacy + 20 vendored community skills (consumer registry) + project.work
+      assert.equal(catalog.skills.length, 23);
       assert.equal(catalog.packs.length, 1);
       assert.equal(
         fs.existsSync(path.join(packageRoot, 'domain-packs/godot/runtime/index.cjs')),
@@ -156,8 +158,12 @@ try {
         'godot.scene.edit',
         'godot.scene.verify',
       ]);
+      assert.deepEqual(
+        godotScope('Develop a Godot game', ['--disable-mcp', 'godot.local']).tools,
+        [],
+      );
       assert.throws(
-        () => godotScope('Develop a Godot game', ['--disable-mcp', 'godot.local']),
+        () => godotScope('Develop a Godot game', ['--disable-mcp', 'unknown-provider']),
         error => error.stdout.includes('Unknown project MCP'),
       );
       assert.ok(

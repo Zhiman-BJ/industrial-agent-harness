@@ -78,16 +78,34 @@ if (process.argv.includes('--domains')) {
     expected.map(item => item.id).sort(),
     'Signed feed must exactly match owner-qualified platform declarations.',
   );
+  const planned = expected.filter(item => ['chip', 'pcb', 'godot'].includes(item.id));
+  const engine = spawnSync('docker', ['info', '--format', '{{.OSType}}'], {
+    encoding: 'utf8',
+    timeout: 10000,
+    windowsHide: true,
+  });
+  const missingEngine = engine.status !== 0 || engine.stdout.trim() !== 'linux';
+  const requiresEngine = new Set(
+    catalog.packs.filter(item => item.containerDownloadSize > 0).map(item => item.domain),
+  );
+  const failures = planned.filter(item => missingEngine && requiresEngine.has(item.id));
+  environment.HARNESS_PACKAGED_SMOKE_DOCKER_FAILURES = JSON.stringify(
+    failures.map(({ id, label }) => ({ id, label })),
+  );
   environment.HARNESS_PACKAGED_SMOKE_DOMAINS = JSON.stringify(
-    expected
-      .filter(item => ['chip', 'pcb', 'godot'].includes(item.id))
-      .map(({ id, label }) => ({ id, label })),
+    planned.filter(item => !failures.includes(item)).map(({ id, label }) => ({ id, label })),
   );
   environment.HARNESS_PACKAGED_SMOKE_STORE = path.join(fixture, 'store');
-  require('./runtime-archive-cache.cjs').stageRuntimeArchiveCache(
+  const runtimeAssets = catalog.packs.flatMap(item => item.runtimeAssets || []);
+  const staged = require('./runtime-archive-cache.cjs').stageRuntimeArchiveCache(
     environment.HARNESS_PACKAGED_SMOKE_STORE,
-    catalog.packs.flatMap(item => item.runtimeAssets || []),
+    runtimeAssets,
   );
+  const unstaged = runtimeAssets.filter(asset => !staged.some(item => item.id === asset.id));
+  if (unstaged.length)
+    throw Error(
+      `Runtime archives are imported from official releases, never downloaded by the installer. Stage them first (node scripts/prepare-ci-runtime-archives.cjs --download, or set HARNESS_RUNTIME_ARCHIVES). Missing: ${unstaged.map(item => item.id).join(', ')}`,
+    );
   const config = path.join(fixture, 'pack-feed.json');
   fs.writeFileSync(
     config,
@@ -139,8 +157,20 @@ fs.writeFileSync(
     reports,
     process.argv.includes('--domains') ? 'desktop-domain-install.json' : 'desktop-first-run.json',
   ),
-  JSON.stringify({ ...firstRun, screenshot, executable, passed: true }, null, 2),
+  JSON.stringify(
+    {
+      ...firstRun,
+      screenshot,
+      executable,
+      passed: true,
+      expectedDockerFailures: JSON.parse(
+        environment.HARNESS_PACKAGED_SMOKE_DOCKER_FAILURES || '[]',
+      ),
+    },
+    null,
+    2,
+  ),
 );
 process.stdout.write(
-  `${process.argv.includes('--domains') ? 'Platform-qualified Domain installation passed' : 'First-run Domain selection passed'}: ${screenshot}\n`,
+  `${process.argv.includes('--domains') ? 'Domain installation and prerequisite checks passed' : 'First-run Domain selection passed'}: ${screenshot}\n`,
 );

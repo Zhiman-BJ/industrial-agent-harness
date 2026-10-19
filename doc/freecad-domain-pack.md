@@ -1,5 +1,7 @@
 # FreeCAD CAD Pack V1
 
+2026-10-19 远程接入：共享 Harness Runtime 已发现 `freecad-linux-cpu` 的 build/inspect/export/edit 四个工具，并通过真实远程 `cad.freecad.build` 的几何验证、产物下载和 macOS Desktop FCStd/STEP 显示。远程执行与本机安装资格分开；本轮没有模型推理，也未实际执行远程 inspect/export/edit。详情见[远程 CAD 验收](evidence/remote-cad-20261019/README.md)。
+
 2026-10-04：首批面向 3D 零件建模。实际执行依赖官方 **FreeCAD 1.1.4 macOS arm64**；Windows/Linux 原生 CAD 执行尚未验收。Pack 包含 Harness 自有桥接代码、Skill 和固定依赖声明，不捆绑 FreeCAD 二进制。2026-10-06 起，Apple Silicon 桌面安装包内置可选 CAD Pack，选择后自动下载官方 DMG 并准备用户私有运行时；设置内可检查／修复，无需手动配置命令路径。开发源代码模式仍支持显式命令环境变量。见[分发说明](macos-cad-distribution.md)。上游来源和许可证见 [FreeCAD 1.1.4](https://github.com/FreeCAD/FreeCAD/releases/tag/1.1.4) 与 [FreeCAD license](https://github.com/FreeCAD/FreeCAD/blob/1.1.4/LICENSE)。
 
 ## 工具与执行
@@ -46,6 +48,8 @@ Desktop 和 CLI 均通过 `createProjectRuntime` 加载 `freecad-local` Pack。B
 输入限 16 MiB，源目录清单限 100 文件/64 MiB，FCStd 解压限 64 MiB/2000 项。FCStd 只允许本批原生特征及其基准对象，拒绝 Python 代理、Python 属性和表达式；任意插件、装配工作台及复杂既有 FCStd 不在首批范围。STEP 走 Part 原生导入。原生进程固定超时 90 秒，限制输出，取消后终止所拥有的进程组；运行目录之外禁止原生写入和网络访问。输入模型不在 Viewer 中执行。
 
 ## CAD Viewer
+
+远程下载保留服务回执中的原始字节，以通用文件名保存。邻接的 `artifact-bundle.json` 只索引已校验产物的名称、kind、大小和 SHA-256；Viewer 先匹配模型摘要，再校验原 preview manifest 与同目录 BREP/STL/草图摘要，恢复只读预览关联。拒绝重复索引、路径穿越、跨目录符号链接和摘要不符，不改写 manifest 或伪造工程验证。
 
 项目文件树经 Viewer Registry 选择 CAD Viewer。直接打开二进制/ASCII STL；Pack 输出的 FCStd/STEP 使用同名 BREP/STL 与 `*.cad-preview.json`，同时校验模型、曲面和网格 SHA-256。不含配套预览的 FCStd 会明确要求先运行 inspect/export；不含配套预览的 STEP 保留现有受限 STEP 预览。
 

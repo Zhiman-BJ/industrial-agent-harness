@@ -2,6 +2,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { spawn, spawnSync } = require('node:child_process');
 const { hash } = require('./workspace-files.cjs');
+const { resolveDockerCli } = require('./docker-cli.cjs');
 const os = require('node:os');
 
 function executable(command, environment, preservePath = false) {
@@ -32,6 +33,43 @@ function taskEnvironment(environment, input, work) {
     PYTHONNOUSERSITE: '1',
     CMAKE_BUILD_PARALLEL_LEVEL: '1',
   };
+}
+// Resolve the Docker endpoint the same way a user would expect the CLI to:
+// explicit DOCKER_HOST wins; otherwise ask the CLI for the active context's
+// endpoint (covers Docker Desktop / colima / lima / Rancher), then probe
+// well-known socket locations. Task envs get a sandboxed HOME, so the CLI
+// cannot find the user's context config on its own — without this, macOS
+// Docker Desktop users hit "dial unix /var/run/docker.sock" even though
+// preflight (which sees the real HOME) reports Docker as ready.
+function resolveDockerHost(docker, environment) {
+  if (environment.DOCKER_HOST) return environment.DOCKER_HOST;
+  const home = environment.HOME || os.homedir();
+  try {
+    const probe = spawnSync(
+      docker,
+      ['context', 'inspect', '--format', '{{.Endpoints.docker.Host}}'],
+      {
+        env: {
+          PATH: environment.PATH || process.env.PATH || '',
+          HOME: home,
+          ...(environment.SystemRoot ? { SystemRoot: environment.SystemRoot } : {}),
+          ...(environment.DOCKER_CONTEXT ? { DOCKER_CONTEXT: environment.DOCKER_CONTEXT } : {}),
+        },
+        encoding: 'utf8',
+        timeout: 5000,
+      },
+    );
+    const host = (probe.stdout || '').trim();
+    if (/^[a-z][a-z0-9+.-]*:\/\/.+/i.test(host)) return host;
+  } catch {}
+  for (const socket of [
+    '/var/run/docker.sock',
+    path.join(home, '.docker/run/docker.sock'),
+    path.join(home, '.docker/desktop/docker.sock'),
+    path.join(home, '.colima/default/docker.sock'),
+  ])
+    if (fs.existsSync(socket)) return 'unix://' + socket;
+  return null;
 }
 function filter() {
   if (process.arch !== 'x64')
@@ -262,15 +300,22 @@ async function executeTask(task, { directory, input, work, actionId, environment
   if (container) {
     if ([input, work].some(file => file.includes(',')))
       throw Error('Docker bind paths cannot contain commas.');
-    const docker = executable('docker', environment);
+    const resolved = await resolveDockerCli(environment);
+    if (!resolved) throw Error('Task executable is unavailable: docker');
+    const docker = resolved.docker;
+    const dockerHost = resolveDockerHost(docker, resolved.environment);
+    const dockerEnv = {
+      ...env,
+      ...(dockerHost ? { DOCKER_HOST: dockerHost } : {}),
+      ...(dockerHost || !environment.DOCKER_CONTEXT
+        ? {}
+        : { DOCKER_CONTEXT: environment.DOCKER_CONTEXT }),
+    };
     const inspection = spawnSync(
       docker,
       ['image', 'inspect', '--format', '{{.Id}}', task.runtime.image],
       {
-        env: {
-          ...env,
-          ...(environment.DOCKER_HOST ? { DOCKER_HOST: environment.DOCKER_HOST } : {}),
-        },
+        env: dockerEnv,
         encoding: 'utf8',
         timeout: 10000,
       },
@@ -325,7 +370,7 @@ async function executeTask(task, { directory, input, work, actionId, environment
       identity.imageId,
       ...argv.slice(1),
     ];
-    if (environment.DOCKER_HOST) env.DOCKER_HOST = environment.DOCKER_HOST;
+    if (dockerHost) env.DOCKER_HOST = dockerHost;
     cleanup = () =>
       spawnSync(docker, ['rm', '--force', name], { env, timeout: 10000, stdio: 'ignore' });
   } else {
@@ -347,4 +392,4 @@ async function executeTask(task, { directory, input, work, actionId, environment
     cleanup?.();
   }
 }
-module.exports = { executeTask };
+module.exports = { executeTask, resolveDockerHost };

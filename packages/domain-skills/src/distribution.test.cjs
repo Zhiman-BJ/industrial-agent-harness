@@ -326,11 +326,32 @@ test('public built-in Pack releases retain owned resources and keep the public P
   );
   assert.equal(result.status, 0, result.stderr);
   const catalog = JSON.parse(fs.readFileSync(path.join(output, 'catalog.unsigned.json')));
+  const owner = require('@zhiman-bj/industrial-domain-packs');
+  const distributionBytes = fs.readFileSync(
+    path.join(owner.root, 'provenance/runtime-distribution.json'),
+  );
+  const distribution = JSON.parse(distributionBytes);
   assert.deepEqual(catalog.packs.map(pack => pack.domain).sort(), ['cad', 'chip', 'godot', 'pcb']);
   for (const item of catalog.packs) {
     const bytes = fs.readFileSync(path.join(output, item.url));
     assert.equal(digest(bytes), item.sha256);
     const { bundle, files } = decodeArchive(bytes);
+    assert.deepEqual(
+      files.find(file => file.path === 'provenance/runtime-distribution.json')?.bytes,
+      distributionBytes,
+      'The authenticated Pack must preserve the pinned owner lock byte for byte.',
+    );
+    const released = distribution.images.filter(
+      image => image.pack === item.domain && image.current != null,
+    );
+    assert.deepEqual(
+      bundle.containerImages,
+      released.map(image => image.id),
+    );
+    assert.equal(
+      item.containerDownloadSize,
+      released.reduce((total, image) => total + image.current.ociArchiveBytes, 0),
+    );
     assert.ok(files.some(file => file.path === 'LICENSE'));
     assert.ok(files.some(file => file.path === 'THIRD_PARTY_NOTICES.md'));
     if (item.domain === 'cad')
@@ -340,7 +361,7 @@ test('public built-in Pack releases retain owned resources and keep the public P
       assert.equal(skill.external, undefined);
       assert.ok(files.some(file => file.path === 'domain-packs/pcb/runtime/index.cjs'));
       assert.ok(files.some(file => file.path === 'domain-packs/pcb/runtime/verifier.cjs'));
-      // The vendored PCB-bench surface ships with the pack: skill references
+      // The vendored design surface ships with the pack: skill references
       // and assets, the actor sources, the pinned snapshot and the gateway.
       assert.ok(
         files.some(file => file.path === 'skills/pcb.design.e2e/references/tools.md') ||
@@ -355,8 +376,10 @@ test('public built-in Pack releases retain owned resources and keep the public P
       );
       assert.ok(files.some(file => file.path.startsWith('domain-packs/pcb/pcb-agent/tools/')));
       assert.ok(files.some(file => file.path === 'domain-packs/pcb/pcb-agent/tools/workspace.py'));
-      assert.ok(files.some(file => file.path === 'domain-packs/pcb/runtime/bench-upstream.json'));
-      assert.ok(files.some(file => file.path === 'domain-packs/pcb/runtime/bench-gateway.cjs'));
+      assert.ok(
+        files.some(file => file.path === 'domain-packs/pcb/runtime/upstream-snapshot.json'),
+      );
+      assert.ok(files.some(file => file.path === 'domain-packs/pcb/runtime/gateway.cjs'));
       assert.ok(
         files.some(file => file.path === 'skills/pcb.kicad.native/SKILL.md') ||
           files.some(file => file.path === 'skills/pcb-kicad-native/SKILL.md'),

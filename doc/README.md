@@ -26,9 +26,11 @@ Godot/PCB 的源工程文件另有[受限只读预览](engineering-file-viewers.
 
 | 文档 | 内容 |
 | --- | --- |
+| [平台账号登录](platform-account.md) | Obol 标准 OIDC、Desktop/CLI、凭证轮换、云端消费者与待完成的真实联调 |
 | [Kimi Code 迁移](kimi-code-migration.md) | 固定 2.1.1、认证 Server API、身份映射与外壳兼容验收 |
 | [Kimi 后台兼容](kimi-background-compatibility.md) | 原生后台 Bash、WaitFor、自动续答与 Headless 生命周期 |
 | [系统架构](architecture.md) | Kimi Code、桌面端、Broker、工业运行时与领域包的职责和数据流 |
+| [容器镜像安装](container-image-installation.md) | release tarball 主通道、共享 Desktop／CLI 安装与修复、身份校验及真实验证 |
 | [Capability Broker](capability-broker.md) | Capability 解析、skill 与 MCP 工具的渐进式披露、Scope 和 Trace |
 | [任务成果](task-results.md) | 自动成果卡、确切版本关联、可选选择、CLI/Desktop 与原生验收 |
 | [全领域成果声明与扩展计划（Owner）](https://github.com/Zhiman-BJ/industrial-domain-packs/blob/cf72a46b6b4ba927b091ded71b2d52d227db0351/docs/result-presentation-plan.md) | 五领域、六 Pack 的声明草案、生产缺口、跨仓顺序与待实施测试矩阵 |
@@ -38,6 +40,7 @@ Godot/PCB 的源工程文件另有[受限只读预览](engineering-file-viewers.
 | [KiCad Viewer V1](kicad-viewer.md) | PCB domain 的本地板图/原理图查看、文件边界与运行时来源 |
 | [Godot/PCB 工程文件预览](engineering-file-viewers.md) | 场景、脚本、库、制造文件与 3D 素材的只读查看、格式边界和验证 |
 | [Godot Viewer V1](godot-viewer.md) | Web Export 准备、Scene Tree 与 Viewer Bridge 的当前接入边界 |
+| [领域工具与 MCP 资源](domain-tool-resources.md) | 实际 Runtime 工具清单、独立 MCP、全局默认/项目覆盖与 UI 验证 |
 | [共享 Chip Pack MCP](domain-mcp-integration.md) | Desktop/CLI 注册、Scope 网关、项目绑定、审批与实测 |
 | [PCB／Godot 专业 Runtime](pcb-godot-runtime.md) | 公开首批任务、精确依赖、独立验证、安装路径与失败／恢复验收 |
 | [领域安装体验](install-experience.md) | 1.0.1-beta.1 五域展示、四域安装、官方依赖准备、取消恢复、旧版数据保留验收及正式发行边界 |
@@ -46,6 +49,7 @@ Godot/PCB 的源工程文件另有[受限只读预览](engineering-file-viewers.
 | [Godot 与 PCB Viewer 文件优先级](game-pcb-viewer-priorities.md) | 现有支持及值得增加的工程文件查看能力 |
 | [PCB-bench 本地六题诊断](pcb-bench-local-trial-2026-09-30.md) | 六个开发集任务的原生试跑、独立验收与 Harness 缺口 |
 | [内置远程运行](remote-execution.md) | 项目运行位置、上传确认、任务状态、共享 Runtime 与空配置边界 |
+| [远程沙箱同步契约](remote-sync-contract.md) | #199 P0 冻结：能力协商、SourceChangeSet、调用恢复与同步状态机 |
 | [外部 MCP](external-mcp.md) | UI/CLI 共用的 stdio/HTTP/SSE 注册、渐进披露、审批、截图与配置边界 |
 | [Domain Pack](domain-pack.md) | 芯片与 PCB 等领域的扩展方式和最小契约 |
 | [Pack 作者教程](pack-authoring.md) | 独立构建、安装和验证外部 Pack，资源与升级兼容 |
@@ -55,7 +59,7 @@ Godot/PCB 的源工程文件另有[受限只读预览](engineering-file-viewers.
 | [FreeCAD CAD Pack](freecad-domain-pack.md) | 参数化 3D 零件建模、持久 Runtime、独立几何回读、实体 Viewer 与 macOS arm64 原生 CI |
 | [Kimi 原生机制兼容性审计](kimi-native-compatibility-audit.md) | 项目发现、输入命令、配置、会话、环境和执行边界的实际差异及修复 |
 | [CI 回归与托管环境](ci-regression.md) | 四种原生 OS/架构环境、分层门禁、测试证据与覆盖缺口 |
-| [QA 测试用例与自动执行手册](qa-runbook.md) | T0–T6 分层用例目录、命令与通过判据；Agent 自动执行整个 QA 流程的唯一入口 |
+| [QA 测试用例与自动执行手册](qa-runbook.md) | 兼容总入口；[执行协议](qa-runbook/protocol.md)、[T0–T6 命令/CI](qa-runbook/tiers.md)与[七模块验收矩阵](qa-runbook/modules.md)，覆盖工作台/聊天、模型账号、领域/MCP、远程、Viewer/成果、诊断打包及[性能/崩溃恢复](qa-runbook/performance-recovery.md) |
 | [Node SDK](sdk.md) | 项目绑定、聊天恢复、流事件、取消和 stdio RPC |
 | [配对评测基线](benchmark-baseline.md) | 原生 Kimi/Harness、冻结输入、独立验收与正式结果边界 |
 | [早期开发计划](development-plan.md) | 两份原始 Plan 的阶段性整理；里程碑顺序以新的实施路线图为准 |

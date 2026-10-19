@@ -118,3 +118,103 @@ test('MCP effective policy feeds scope filtering and still withholds out-of-scop
     [],
   );
 });
+
+test('Runtime provider global defaults and project inheritance filter actual Broker tool scope', t => {
+  const { store, a, b } = fixture(t);
+  const descriptor = { id: 'fixture.live', risk: 'read-only' };
+  const registry = {
+    skills: [],
+    providerPacks: [
+      {
+        id: 'fixture-pack',
+        domain: 'fixture-domain',
+        provider: {
+          id: 'fixture.runtime',
+          domain: 'fixture-domain',
+          title: 'Fixture Runtime',
+          transport: 'runtime',
+          tools: [{ id: descriptor.id, summary: 'Live tool' }, { id: 'fixture.retired' }],
+        },
+      },
+    ],
+  };
+  const runtimeBundle = { packId: 'fixture-pack', runtime: {}, domainTools: [{ descriptor }] };
+  const catalog = resourceCatalog('fixture-domain', [], { registry, runtimeBundle });
+  const capabilities = [
+    {
+      id: 'fixture.capability',
+      domain: 'fixture-domain',
+      title: 'Fixture capability',
+      stages: [],
+      keywords: ['fixture'],
+      priority: 1,
+      skills: [],
+      tools: [{ id: descriptor.id, summary: 'Live tool' }],
+      verification: [],
+    },
+  ];
+  const resolve = directory =>
+    resolveProjectTask(
+      'fixture-domain',
+      { task: 'fixture' },
+      undefined,
+      capabilities,
+      store.snapshot(catalog, directory).effective,
+      [],
+      [{ id: 'fixture-domain' }],
+      catalog.mcpServers,
+    ).scope.tools;
+  assert.deepEqual(catalog.mcpServers[0].toolIds, [descriptor.id]);
+  assert.deepEqual(resolve(a), [descriptor.id]);
+  store.set(catalog, { kind: 'mcp', id: 'fixture.runtime', mode: 'disabled' });
+  assert.deepEqual(
+    resolveProjectTask(
+      'fixture-domain',
+      { task: 'fixture' },
+      undefined,
+      [
+        {
+          ...capabilities[0],
+          tools: [{ id: 'fixture.retired', summary: 'Unavailable profile declaration' }],
+        },
+      ],
+      store.snapshot(catalog, a).effective,
+      [],
+      [{ id: 'fixture-domain' }],
+      catalog.mcpServers,
+    ).scope.tools,
+    [],
+    'disabled providers also withhold declarations absent from the current Runtime profile',
+  );
+  assert.deepEqual(resolve(a), []);
+  assert.deepEqual(resolve(b), []);
+  store.set(catalog, { kind: 'mcp', id: 'fixture.runtime', mode: 'enabled' }, a);
+  assert.deepEqual(resolve(a), [descriptor.id]);
+  assert.deepEqual(resolve(b), []);
+  store.set(catalog, { kind: 'mcp', id: 'fixture.runtime', mode: 'inherit' }, a);
+  assert.deepEqual(resolve(a), []);
+  store.set(catalog, { kind: 'mcp', id: 'fixture.runtime', mode: 'enabled' });
+  assert.deepEqual(resolve(a), [descriptor.id]);
+  // A new remote profile descriptor obeys the same provider policy.
+  const remoteDescriptor = { id: 'fixture.remote', risk: 'mutating' };
+  const remoteCatalog = resourceCatalog('fixture-domain', [], {
+    registry,
+    runtimeBundle: {
+      runtime: { domain: 'fixture-domain', hostRuntimeOnly: true, remoteTools: [remoteDescriptor] },
+    },
+  });
+  store.set(remoteCatalog, { kind: 'mcp', id: 'fixture.runtime', mode: 'disabled' }, a);
+  assert.deepEqual(
+    resolveProjectTask(
+      'fixture-domain',
+      { task: 'fixture' },
+      undefined,
+      [{ ...capabilities[0], tools: [{ id: remoteDescriptor.id }] }],
+      store.snapshot(remoteCatalog, a).effective,
+      [],
+      [{ id: 'fixture-domain' }],
+      remoteCatalog.mcpServers,
+    ).scope.tools,
+    [],
+  );
+});

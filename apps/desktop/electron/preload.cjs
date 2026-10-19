@@ -11,6 +11,10 @@ const api = {
   domainAvailable: () => ipcRenderer.invoke('domains:available'),
   domainCancel: () => ipcRenderer.invoke('domains:cancel'),
   domainInstall: domains => ipcRenderer.invoke('domains:install', { domains }),
+  domainRuntimeArchives: domains => ipcRenderer.invoke('domains:runtime-archives', { domains }),
+  domainImportRuntimeArchive: request =>
+    ipcRenderer.invoke('domains:import-runtime-archive', request),
+  domainOpenRuntimeArchive: request => ipcRenderer.invoke('domains:open-runtime-archive', request),
   domainRemove: domain => ipcRenderer.invoke('domains:remove', { domain }),
   domainRepair: domain => ipcRenderer.invoke('domains:repair', { domain }),
   onDomainProgress: callback => {
@@ -33,11 +37,16 @@ const api = {
   remoteCheck: () => ipcRenderer.invoke('remote:check'),
   remoteProject: request => ipcRenderer.invoke('remote:project', request),
   remoteFiles: request => ipcRenderer.invoke('remote:files', request),
+  remoteTools: request => ipcRenderer.invoke('remote:tools', request),
   remoteSetLocation: request => ipcRenderer.invoke('remote:set-location', request),
   remoteReview: request => ipcRenderer.invoke('remote:review', request),
   remoteSync: request => ipcRenderer.invoke('remote:sync', request),
+  remoteRebind: request => ipcRenderer.invoke('remote:rebind', request),
   remoteTask: request => ipcRenderer.invoke('remote:task', request),
-  remoteCancel: request => ipcRenderer.invoke('remote:cancel', request),
+  remoteSession: request => ipcRenderer.invoke('remote:session', request),
+  remoteTerminate: request => ipcRenderer.invoke('remote:terminate', request),
+  remoteArtifacts: request => ipcRenderer.invoke('remote:artifacts', request),
+  remoteDownload: request => ipcRenderer.invoke('remote:download', request),
   externalMcpList: () => ipcRenderer.invoke('external-mcp:list'),
   externalMcpAdd: request => ipcRenderer.invoke('external-mcp:add', request),
   externalMcpRefresh: id => ipcRenderer.invoke('external-mcp:refresh', { id }),
@@ -54,6 +63,14 @@ const api = {
   openGuiPermissionSettings: permission =>
     ipcRenderer.invoke('settings:gui-permission-settings', permission),
   setGuiPlugin: enabled => ipcRenderer.invoke('settings:set-gui', { enabled }),
+  browserAutomationState: () => ipcRenderer.invoke('settings:browser-automation-state'),
+  setBrowserAutomation: enabled =>
+    ipcRenderer.invoke('settings:set-browser-automation', { enabled }),
+  onBrowserOpen: callback => {
+    const listener = () => callback();
+    ipcRenderer.on('browser:open', listener);
+    return () => ipcRenderer.removeListener('browser:open', listener);
+  },
   setChatApprovalMode: request => ipcRenderer.invoke('chat:set-approval-mode', request),
   onGuiProgress: callback => {
     const listener = (_event, value) => callback(value);
@@ -116,3 +133,19 @@ const api = {
   platform: process.platform,
 };
 contextBridge.exposeInMainWorld('viewerHost', api);
+
+contextBridge.exposeInMainWorld('harnessAccount', {
+  get: () => ipcRenderer.invoke('account:get'),
+  configure: config => ipcRenderer.invoke('account:configure', config),
+  login: () => ipcRenderer.invoke('account:login'),
+  openManual: () => ipcRenderer.invoke('account:open-manual'),
+  submitCode: value => ipcRenderer.invoke('account:submit-code', value),
+  cancel: () => ipcRenderer.invoke('account:cancel'),
+  logout: () => ipcRenderer.invoke('account:logout'),
+  useModel: enabled => ipcRenderer.invoke('account:use-model', enabled),
+  onChanged: callback => {
+    const listener = (_event, view) => callback(view);
+    ipcRenderer.on('account:changed', listener);
+    return () => ipcRenderer.removeListener('account:changed', listener);
+  },
+});

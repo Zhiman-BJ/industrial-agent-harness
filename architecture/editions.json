@@ -45,6 +45,17 @@
       "decisionStatus": "decided"
     },
     {
+      "id": "root.agent-instructions",
+      "edition": "public",
+      "kind": "meta",
+      "paths": ["AGENTS.md", "AGENT.md"],
+      "dependencyClass": "meta",
+      "publicStatementSource": "README.md#Development and contributions",
+      "requiredTests": ["tests/architecture/editions-manifest.test.cjs"],
+      "decisionStatus": "decided",
+      "decisionNote": "用户 2026-10-12 决定：根 agent 指令随公开面发布，与 #119 分层 AGENTS.md（公共包路径下天然公开）保持一致；PD-069 修订记录见 doc/product-decisions.md。CLAUDE.md/PRODUCT.md 及其余治理机械仍属内部。"
+    },
+    {
       "id": "architecture.editions-manifest",
       "edition": "public",
       "kind": "meta",
@@ -83,6 +94,18 @@
         "packages/contracts/tests/context-contract.test.cjs"
       ],
       "decisionStatus": "decided"
+    },
+    {
+      "id": "packages.harness-auth",
+      "edition": "public",
+      "kind": "package",
+      "paths": ["packages/harness-auth"],
+      "entry": "packages/harness-auth/src/index.cjs",
+      "dependencyClass": "cross-cutting-plugin",
+      "publicStatementSource": "packages/harness-auth/README.md",
+      "requiredTests": ["packages/harness-auth/tests/auth.test.cjs", "packages/harness-auth/tests/store.test.cjs"],
+      "decisionStatus": "decided",
+      "decisionNote": "Optional standard platform sign-in, explicitly requested for the open-source client on 2026-10-14."
     },
     {
       "id": "packages.harness-core",
@@ -258,6 +281,7 @@
       "kind": "workflow",
       "paths": [
         ".github/workflows/ci.yml",
+        ".github/workflows/account-login.yml",
         ".github/workflows/structure.yml",
         ".github/workflows/industrial-core.yml",
         ".github/workflows/industrial-linux.yml",
@@ -278,7 +302,7 @@
       "requiredTests": ["apps/cli/tests/cli.test.cjs", "apps/cli/tests/doctor.test.cjs"],
       "decisionStatus": "decided",
       "isolation": { "status": "planned", "legacyReferences": 2, "trackingIssue": 102 },
-      "decisionNote": "PD-071：CLI 及其 headless 打包/安装器链为内部交付面，不进入公开导出（原 apps.cli 公开条目与 inspect-log 覆盖条目并入本条）。公开代码残留引用（scripts/qualify-cad-tasks.cjs、packages/harness-application/tests/task-service.test.cjs）记入 #102 只减不增台账。"
+      "decisionNote": "PD-083：CLI 及其 headless 打包/安装器链为内部交付面，不进入公开导出（原 apps.cli 公开条目与 inspect-log 覆盖条目并入本条）。公开代码残留引用（scripts/qualify-cad-tasks.cjs、packages/harness-application/tests/task-service.test.cjs）记入 #102 只减不增台账。"
     },
     {
       "id": "internal.packages.sdk",
@@ -290,7 +314,7 @@
       "requiredTests": ["packages/sdk/tests/client.test.cjs", "packages/sdk/tests/process.test.cjs"],
       "decisionStatus": "decided",
       "isolation": { "status": "planned", "legacyReferences": 3, "trackingIssue": 102 },
-      "decisionNote": "PD-071：SDK 的运行契约是驱动内部打包的 headless CLI，随 CLI 一并转入内部版本。benchmark 脚本（benchmark-harness.cjs、benchmark-paired.cjs）的静态引用记入 #102 只减不增台账。"
+      "decisionNote": "PD-083：SDK 的运行契约是驱动内部打包的 headless CLI，随 CLI 一并转入内部版本。benchmark 脚本（benchmark-harness.cjs、benchmark-paired.cjs）的静态引用记入 #102 只减不增台账。"
     },
     {
       "id": "internal.diagnostics.agent-kimi-log",
@@ -348,8 +372,6 @@
       "edition": "internal",
       "kind": "meta",
       "paths": [
-        "AGENTS.md",
-        "AGENT.md",
         "CLAUDE.md",
         "PRODUCT.md",
         "architecture/policy.json",

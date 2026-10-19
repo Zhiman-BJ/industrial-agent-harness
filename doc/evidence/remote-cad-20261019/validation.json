@@ -1,0 +1,31 @@
+{
+  "date": "2026-10-19",
+  "platform": "macOS arm64 source Electron; remote Linux FreeCAD",
+  "mainBase": "4e8cc44b9a0dcb3d8d801558a10fea7b55027e8b",
+  "tests": {
+    "targeted": 46,
+    "regression": 46,
+    "failures": 0
+  },
+  "architecture": "IH-ARCH-001 passed",
+  "desktopBuild": "passed; existing chunk-size warning",
+  "eslint": "0 errors, 0 warnings",
+  "sameChat": true,
+  "distinctReleasedSessions": true,
+  "artifactHashesMatched": 22,
+  "viewer": {
+    "fcstd": "7 BREP faces",
+    "step": "7 BREP faces",
+    "toolbarZoom": "100% -> 125%",
+    "wheelZoom": "100% -> 182%",
+    "fullscreenRetainsZoom": "182% on entry and exit",
+    "fit": "returns to 100%",
+    "trackpadPinch": "not separately repeated in this run; existing navigation unchanged"
+  },
+  "notQualified": [
+    "model-driven remote CAD conversation",
+    "remote inspect/export/edit execution",
+    "packaged desktop release",
+    "other client platforms"
+  ]
+}

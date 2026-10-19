@@ -129,10 +129,16 @@ class TaskResults {
   settle(status, background = false) {
     const value = this.snapshot();
     const phase = background ? 'background' : 'settled';
-    if (value.phase === phase && value.requestStatus === status) return this.view(value);
+    if (value.phase === phase && value.requestStatus === status) return;
     value.phase = phase;
     value.requestStatus = status;
-    const view = this.save(value, `results-phase:${this.turnId}:${value.revision + 1}`);
+    // Settlement persists metadata and readiness without depending on rendering.
+    value.revision++;
+    this.emit({
+      type: 'results-changed',
+      eventId: `results-phase:${this.turnId}:${value.revision}`,
+      results: value,
+    });
     if (!background)
       this.emit({
         type: 'results-ready',
@@ -141,7 +147,6 @@ class TaskResults {
         autoPreviewEligible: ['completed', 'finished'].includes(status) && !this.wasBackground,
       });
     this.wasBackground ||= background;
-    return view;
   }
   view(value = this.snapshot(), contentStatuses = new Map()) {
     const all = this.all();

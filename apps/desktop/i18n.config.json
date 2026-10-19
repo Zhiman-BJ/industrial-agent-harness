@@ -16,6 +16,54 @@
     }
   },
   "messages": {
+    "Agent settings": {
+      "en": "Agent settings",
+      "zh-CN": "Agent 设置"
+    },
+    "Remote environment is not ready. Check project execution settings.": {
+      "en": "Remote environment is not ready. Check project execution settings.",
+      "zh-CN": "远程环境尚未就绪，请检查项目执行设置。"
+    },
+    "Execution settings": {
+      "en": "Execution settings",
+      "zh-CN": "执行设置"
+    },
+    "Remote ready": {
+      "en": "Remote ready",
+      "zh-CN": "远程就绪"
+    },
+    "Remote request failed": {
+      "en": "Remote request failed",
+      "zh-CN": "远程请求失败"
+    },
+    "Could not update the remote status. Try again shortly.": {
+      "en": "Could not update the remote status. Try again shortly.",
+      "zh-CN": "暂时无法更新远程状态，请稍后重试。"
+    },
+    "Error details": {
+      "en": "Error details",
+      "zh-CN": "错误详情"
+    },
+    "In progress": {
+      "en": "In progress",
+      "zh-CN": "进行中"
+    },
+    "Not completed": {
+      "en": "Not completed",
+      "zh-CN": "未完成"
+    },
+    "{0} of {1} tasks completed": {
+      "en": "{0} of {1} tasks completed",
+      "zh-CN": "已完成 {0}/{1} 项任务"
+    },
+    "{0} files synced": {
+      "en": "{0} files synced",
+      "zh-CN": "已同步 {0} 个文件"
+    },
+    "Ending remote session…": {
+      "en": "Ending remote session…",
+      "zh-CN": "正在结束远程会话…"
+    },
     "Copy message": {
       "en": "Copy message",
       "zh-CN": "复制消息"
@@ -43,6 +91,14 @@
     "Computer Use": {
       "en": "Computer Use",
       "zh-CN": "桌面操作"
+    },
+    "Browser Automation": {
+      "en": "Browser Automation",
+      "zh-CN": "浏览器自动操作"
+    },
+    "Let the agent drive the workspace browser tab. No download or system permission needed.": {
+      "en": "Let the agent drive the workspace browser tab. No download or system permission needed.",
+      "zh-CN": "允许 Agent 操作工作区浏览器标签页。无需下载组件，也不需要系统权限。"
     },
     "Language": {
       "en": "Language",
@@ -286,7 +342,7 @@
     },
     "Kimi ready": {
       "en": "Kimi ready",
-      "zh-CN": "Kimi 已就绪"
+      "zh-CN": "模型已配置"
     },
     "Workspace": {
       "en": "Workspace",
@@ -615,6 +671,10 @@
     "Refresh agent logs": {
       "en": "Refresh agent logs",
       "zh-CN": "刷新 Agent 日志"
+    },
+    "Refresh file list": {
+      "en": "Refresh file list",
+      "zh-CN": "刷新文件列表"
     },
     "Agent run": {
       "en": "Agent run",
@@ -1027,6 +1087,10 @@
     "Context size": {
       "en": "Context size",
       "zh-CN": "上下文长度"
+    },
+    "Context {percent}% used ({used} / {total})": {
+      "en": "Context {percent}% used ({used} / {total})",
+      "zh-CN": "已用上下文 {percent}%（{used} / {total}）"
     },
     "Thinking": {
       "en": "Thinking",
@@ -1494,7 +1558,19 @@
     },
     "error": {
       "en": "error",
-      "zh-CN": "错误"
+      "zh-CN": "出错"
+    },
+    "finished": {
+      "en": "finished",
+      "zh-CN": "已完成"
+    },
+    "incomplete": {
+      "en": "incomplete",
+      "zh-CN": "未完成"
+    },
+    "success": {
+      "en": "success",
+      "zh-CN": "成功"
     },
     "needs_input": {
       "en": "needs input",
@@ -1964,6 +2040,54 @@
       "en": "Text",
       "zh-CN": "文本"
     },
+    "HTML": {
+      "en": "HTML",
+      "zh-CN": "HTML"
+    },
+    "HTML Preview": {
+      "en": "HTML Preview",
+      "zh-CN": "HTML 预览"
+    },
+    "Browser": {
+      "en": "Browser",
+      "zh-CN": "浏览器"
+    },
+    "Open browser": {
+      "en": "Open browser",
+      "zh-CN": "打开浏览器"
+    },
+    "Back": {
+      "en": "Back",
+      "zh-CN": "返回"
+    },
+    "Forward": {
+      "en": "Forward",
+      "zh-CN": "前进"
+    },
+    "Reload": {
+      "en": "Reload",
+      "zh-CN": "刷新"
+    },
+    "Stop": {
+      "en": "Stop",
+      "zh-CN": "停止"
+    },
+    "Go": {
+      "en": "Go",
+      "zh-CN": "前往"
+    },
+    "Address": {
+      "en": "Address",
+      "zh-CN": "地址栏"
+    },
+    "Enter an address or search": {
+      "en": "Enter an address or search",
+      "zh-CN": "输入地址或搜索内容"
+    },
+    "Cannot load this page:": {
+      "en": "Cannot load this page:",
+      "zh-CN": "无法加载页面："
+    },
     "{0}… (see Source)": {
       "en": "{0}… (see Source)",
       "zh-CN": "{0}…（查看原文）"
@@ -2039,10 +2163,6 @@
     "Scene:": {
       "en": "Scene:",
       "zh-CN": "场景："
-    },
-    "Stop": {
-      "en": "Stop",
-      "zh-CN": "停止"
     },
     "Step frame": {
       "en": "Step frame",
@@ -2600,6 +2720,30 @@
       "en": "Expand task list",
       "zh-CN": "展开任务列表"
     },
+    "Remote environment": {
+      "en": "Remote environment",
+      "zh-CN": "远程环境"
+    },
+    "Execution status": {
+      "en": "Execution status",
+      "zh-CN": "执行状态"
+    },
+    "Collapse remote status": {
+      "en": "Collapse remote status",
+      "zh-CN": "收起远程状态"
+    },
+    "Expand remote status": {
+      "en": "Expand remote status",
+      "zh-CN": "展开远程状态"
+    },
+    "Expand status card": {
+      "en": "Expand status card",
+      "zh-CN": "展开状态卡"
+    },
+    "Collapse status card": {
+      "en": "Collapse status card",
+      "zh-CN": "收起状态卡"
+    },
     "Tasks": {
       "en": "Tasks",
       "zh-CN": "任务"
@@ -2863,10 +3007,6 @@
     "Syncing…": {
       "en": "Syncing…",
       "zh-CN": "正在同步…"
-    },
-    "Back": {
-      "en": "Back",
-      "zh-CN": "返回"
     },
     "Self-hosted services and other MCP servers": {
       "en": "Self-hosted services and other MCP servers",
@@ -3495,6 +3635,478 @@
     "Supporting results ({0})": {
       "en": "Supporting results ({0})",
       "zh-CN": "附件与报告（{0}）"
+    },
+    "Platform account": {
+      "en": "Platform account",
+      "zh-CN": "平台账号"
+    },
+    "Manage your sign-in and platform connection.": {
+      "en": "Manage your sign-in and platform connection.",
+      "zh-CN": "管理登录状态与平台连接。"
+    },
+    "Your account": {
+      "en": "Your account",
+      "zh-CN": "你的账号"
+    },
+    "Sign-in is saved securely on this device.": {
+      "en": "Sign-in is saved securely on this device.",
+      "zh-CN": "登录凭据已安全保存在此设备。"
+    },
+    "Sign out to change the platform connection.": {
+      "en": "Sign out to change the platform connection.",
+      "zh-CN": "退出登录后可修改平台连接。"
+    },
+    "Sign in to use cloud APIs and remote environments.": {
+      "en": "Sign in to use cloud APIs and remote environments.",
+      "zh-CN": "登录后使用云端 API 和远程环境。"
+    },
+    "Account setup required": {
+      "en": "Account setup required",
+      "zh-CN": "尚未配置账号接入"
+    },
+    "Signed out": {
+      "en": "Signed out",
+      "zh-CN": "未登录"
+    },
+    "Waiting for browser sign-in…": {
+      "en": "Waiting for browser sign-in…",
+      "zh-CN": "等待浏览器完成登录…"
+    },
+    "Signed in": {
+      "en": "Signed in",
+      "zh-CN": "已登录"
+    },
+    "Renewing session…": {
+      "en": "Renewing session…",
+      "zh-CN": "正在续期登录…"
+    },
+    "Sign in again": {
+      "en": "Sign in again",
+      "zh-CN": "重新登录"
+    },
+    "Secure storage is unavailable. This sign-in lasts only until the app closes.": {
+      "en": "Secure storage is unavailable. This sign-in lasts only until the app closes.",
+      "zh-CN": "安全存储不可用。本次登录仅在应用关闭前有效。"
+    },
+    "Use platform account for model API": {
+      "en": "Use platform account for model API",
+      "zh-CN": "使用平台账号调用模型 API"
+    },
+    "Local features and your own API keys remain available without signing in.": {
+      "en": "Local features and your own API keys remain available without signing in.",
+      "zh-CN": "未登录时仍可使用本地功能和自带 API Key。"
+    },
+    "Platform connection": {
+      "en": "Platform connection",
+      "zh-CN": "平台连接配置"
+    },
+    "Account issuer": {
+      "en": "Account issuer",
+      "zh-CN": "账号服务地址"
+    },
+    "Native client ID": {
+      "en": "Native client ID",
+      "zh-CN": "原生客户端 ID"
+    },
+    "Application audience": {
+      "en": "Application audience",
+      "zh-CN": "应用标识（Audience）"
+    },
+    "Remote service origin": {
+      "en": "Remote service origin",
+      "zh-CN": "远程服务地址"
+    },
+    "Model API base URL": {
+      "en": "Model API base URL",
+      "zh-CN": "模型 API 基础地址"
+    },
+    "Save connection": {
+      "en": "Save connection",
+      "zh-CN": "保存连接配置"
+    },
+    "Cancel sign-in": {
+      "en": "Cancel sign-in",
+      "zh-CN": "取消登录"
+    },
+    "Sign out": {
+      "en": "Sign out",
+      "zh-CN": "退出登录"
+    },
+    "Sign in with browser": {
+      "en": "Sign in with browser",
+      "zh-CN": "在浏览器中登录"
+    },
+    "Signing out does not stop submitted remote tasks.": {
+      "en": "Signing out does not stop submitted remote tasks.",
+      "zh-CN": "退出登录不会停止已提交的远程任务。"
+    },
+    "Signed out locally. The server session could not be revoked; retry from the account center.": {
+      "en": "Signed out locally. The server session could not be revoked; retry from the account center.",
+      "zh-CN": "本机已退出登录。服务端会话未能撤销，请前往账号中心处理。"
+    },
+    "Unable to load account settings.": {
+      "en": "Unable to load account settings.",
+      "zh-CN": "无法加载账号设置。"
+    },
+    "Account operation failed.": {
+      "en": "Account operation failed.",
+      "zh-CN": "账号操作失败。"
+    },
+    "Sign-in cancelled.": {
+      "en": "Sign-in cancelled.",
+      "zh-CN": "已取消登录。"
+    },
+    "Sign-in timed out. Try again.": {
+      "en": "Sign-in timed out. Try again.",
+      "zh-CN": "登录超时，请重试。"
+    },
+    "This account cannot access the application. Contact your administrator.": {
+      "en": "This account cannot access the application. Contact your administrator.",
+      "zh-CN": "该账号无权访问此应用，请联系管理员。"
+    },
+    "This account cannot use this service. Contact your administrator.": {
+      "en": "This account cannot use this service. Contact your administrator.",
+      "zh-CN": "该账号无权使用此服务，请联系管理员。"
+    },
+    "Your session has expired. Sign in again.": {
+      "en": "Your session has expired. Sign in again.",
+      "zh-CN": "登录已失效，请重新登录。"
+    },
+    "Platform sign-in could not be verified. Check the account configuration.": {
+      "en": "Platform sign-in could not be verified. Check the account configuration.",
+      "zh-CN": "平台登录校验失败，请检查接入配置。"
+    },
+    "The account service is unavailable. Try again.": {
+      "en": "The account service is unavailable. Try again.",
+      "zh-CN": "账号服务暂不可用，请稍后重试。"
+    },
+    "Session renewal could not be confirmed. Sign in again.": {
+      "en": "Session renewal could not be confirmed. Sign in again.",
+      "zh-CN": "无法确认登录续期结果，请重新登录。"
+    },
+    "Cannot unlock saved account credentials.": {
+      "en": "Cannot unlock saved account credentials.",
+      "zh-CN": "无法解锁已保存的账号凭证。"
+    },
+    "Cannot read platform account configuration.": {
+      "en": "Cannot read platform account configuration.",
+      "zh-CN": "无法读取平台账号配置。"
+    },
+    "Sign out before changing the account platform.": {
+      "en": "Sign out before changing the account platform.",
+      "zh-CN": "修改账号平台前请先退出登录。"
+    },
+    "This account setting is managed by the application operator.": {
+      "en": "This account setting is managed by the application operator.",
+      "zh-CN": "此账号配置由应用运营方管理。"
+    },
+    "Configure a registered native client ID first.": {
+      "en": "Configure a registered native client ID first.",
+      "zh-CN": "请先配置已注册的原生客户端 ID。"
+    },
+    "Sign-in is already in progress.": {
+      "en": "Sign-in is already in progress.",
+      "zh-CN": "正在登录，请稍候。"
+    },
+    "Use an HTTPS platform URL (loopback HTTP is allowed for local development).": {
+      "en": "Use an HTTPS platform URL (loopback HTTP is allowed for local development).",
+      "zh-CN": "请使用 HTTPS 平台地址，本机开发可使用回环 HTTP 地址。"
+    },
+    "Obol issuer must be an origin.": {
+      "en": "Obol issuer must be an origin.",
+      "zh-CN": "Obol 账号地址不能包含路径。"
+    },
+    "Invalid platform application identifier.": {
+      "en": "Invalid platform application identifier.",
+      "zh-CN": "平台应用标识无效。"
+    },
+    "Client ID must differ from the application audience.": {
+      "en": "Client ID must differ from the application audience.",
+      "zh-CN": "客户端 ID 不能与应用标识相同。"
+    },
+    "Remote service must be an origin.": {
+      "en": "Remote service must be an origin.",
+      "zh-CN": "远程服务地址不能包含路径。"
+    },
+    "Configure the platform application audience before connecting a service.": {
+      "en": "Configure the platform application audience before connecting a service.",
+      "zh-CN": "连接服务前请配置应用标识。"
+    },
+    "This service is not bound to the platform account.": {
+      "en": "This service is not bound to the platform account.",
+      "zh-CN": "该服务尚未绑定到平台账号。"
+    },
+    "Sign in and configure the platform model service first.": {
+      "en": "Sign in and configure the platform model service first.",
+      "zh-CN": "请先登录并配置平台模型服务。"
+    },
+    "Sign in with your platform account. Cloud services require separate setup.": {
+      "en": "Sign in with your platform account. Cloud services require separate setup.",
+      "zh-CN": "使用平台账号登录。云端服务需另行配置。"
+    },
+    "If the browser does not return, open code sign-in and paste the complete authorization code below.": {
+      "en": "If the browser does not return, open code sign-in and paste the complete authorization code below.",
+      "zh-CN": "如果浏览器未自动返回，请打开授权码登录页面，并在下方粘贴完整授权码。"
+    },
+    "Open code sign-in": {
+      "en": "Open code sign-in",
+      "zh-CN": "打开授权码登录"
+    },
+    "Authorization code (code#state)": {
+      "en": "Authorization code (code#state)",
+      "zh-CN": "授权码（code#state）"
+    },
+    "Complete sign-in": {
+      "en": "Complete sign-in",
+      "zh-CN": "完成登录"
+    },
+    "Sign-in link (opens on any device)": {
+      "en": "Sign-in link (opens on any device)",
+      "zh-CN": "登录链接（可在任意设备打开）"
+    },
+    "Paste the complete code#state from the account center.": {
+      "en": "Paste the complete code#state from the account center.",
+      "zh-CN": "请粘贴账号中心提供的完整 code#state。"
+    },
+    "Start sign-in before submitting an authorization code.": {
+      "en": "Start sign-in before submitting an authorization code.",
+      "zh-CN": "请先开始登录，再提交授权码。"
+    },
+    "Sign-in is already being completed.": {
+      "en": "Sign-in is already being completed.",
+      "zh-CN": "正在完成登录，请稍候。"
+    },
+    "Tools & MCP": {
+      "en": "Tools & MCP",
+      "zh-CN": "领域工具与 MCP"
+    },
+    "Search providers and tools": {
+      "en": "Search providers and tools",
+      "zh-CN": "搜索工具提供方和工具"
+    },
+    "Domain Runtime": {
+      "en": "Domain Runtime",
+      "zh-CN": "领域运行工具"
+    },
+    "External MCP": {
+      "en": "External MCP",
+      "zh-CN": "外部 MCP"
+    },
+    "Standalone MCP": {
+      "en": "Standalone MCP",
+      "zh-CN": "独立 MCP 服务"
+    },
+    "{0} registered tools": {
+      "en": "{0} registered tools",
+      "zh-CN": "已注册 {0} 个工具"
+    },
+    "Registered tools ({0})": {
+      "en": "Registered tools ({0})",
+      "zh-CN": "工具清单（{0}）"
+    },
+    "Standalone MCP tools ({0})": {
+      "en": "Standalone MCP tools ({0})",
+      "zh-CN": "独立 MCP 工具（{0}）"
+    },
+    "Separate MCP transport. These declarations are not the current Runtime tool list.": {
+      "en": "Separate MCP transport. These declarations are not the current Runtime tool list.",
+      "zh-CN": "独立 MCP 接入通道。此清单与当前任务的领域运行工具分别注册。"
+    },
+    "Tool list": {
+      "en": "Tool list",
+      "zh-CN": "工具清单"
+    },
+    "Read only": {
+      "en": "Read only",
+      "zh-CN": "只读"
+    },
+    "Changes require approval": {
+      "en": "Changes require approval",
+      "zh-CN": "修改需审批"
+    },
+    "Enable access here. Check software and service readiness in Runtime diagnostics.": {
+      "en": "Enable access here. Check software and service readiness in Runtime diagnostics.",
+      "zh-CN": "此处控制工具是否启用；软件与服务的就绪状态请查看运行诊断。"
+    },
+    "No active tools are registered. Check the domain setup in Domain packs and Runtime diagnostics.": {
+      "en": "No active tools are registered. Check the domain setup in Domain packs and Runtime diagnostics.",
+      "zh-CN": "当前未注册可用的运行工具。请在领域包和运行诊断中检查配置。"
+    },
+    "No resources match your search.": {
+      "en": "No resources match your search.",
+      "zh-CN": "没有匹配的资源。"
+    },
+    "No tool providers are registered for this domain. Install a domain pack or add an external MCP service.": {
+      "en": "No tool providers are registered for this domain. Install a domain pack or add an external MCP service.",
+      "zh-CN": "此领域尚未注册工具提供方。请安装领域包或添加外部 MCP 服务。"
+    },
+    "Could not load this tool provider. Check Runtime diagnostics.": {
+      "en": "Could not load this tool provider. Check Runtime diagnostics.",
+      "zh-CN": "无法加载此工具提供方，请查看运行诊断。"
+    },
+    "Download runtime files from the official site": {
+      "en": "Download runtime files from the official site",
+      "zh-CN": "从官网下载运行时文件"
+    },
+    "These large files are published by their official projects. Download each file in your browser, then import it here. Every file is verified against the pinned official release before installation.": {
+      "en": "These large files are published by their official projects. Download each file in your browser, then import it here. Every file is verified against the pinned official release before installation.",
+      "zh-CN": "这些大文件由官方项目发布。请在浏览器中下载对应文件，然后在这里导入。每个文件都会按锁定的官方发布校验后才会用于安装。"
+    },
+    "Official download": {
+      "en": "Official download",
+      "zh-CN": "前往官网下载"
+    },
+    "Import downloaded file": {
+      "en": "Import downloaded file",
+      "zh-CN": "导入已下载的文件"
+    },
+    "Continue installation": {
+      "en": "Continue installation",
+      "zh-CN": "继续安装"
+    },
+    "Tools or model changed. A new context started; earlier messages remain available above.": {
+      "en": "Tools or model changed. A new context started; earlier messages remain available above.",
+      "zh-CN": "工具或模型已变更，已开始新的上下文；之前的消息仍保留在上方。"
+    },
+    "Cancelled without running": {
+      "en": "Cancelled without running",
+      "zh-CN": "已取消，命令未执行"
+    },
+    "Working directory": {
+      "en": "Working directory",
+      "zh-CN": "工作目录"
+    },
+    "Isolated session workspace; project files are read via project/.": {
+      "en": "Isolated session workspace; project files are read via project/.",
+      "zh-CN": "隔离的会话工作区；工程文件通过 project/ 只读访问。"
+    },
+    "Retry task": {
+      "en": "Retry task",
+      "zh-CN": "重试任务"
+    },
+    "The model service rejected this API key.": {
+      "en": "The model service rejected this API key.",
+      "zh-CN": "模型服务拒绝了当前 API 密钥（认证失败）。"
+    },
+    "Enter an API key before saving; tasks cannot run without one.": {
+      "en": "Enter an API key before saving; tasks cannot run without one.",
+      "zh-CN": "请先填写 API 密钥再保存；没有密钥任务无法运行。"
+    },
+    "This project has no files yet. Run a task or add files to the directory.": {
+      "en": "This project has no files yet. Run a task or add files to the directory.",
+      "zh-CN": "这个项目还没有文件。可以先运行任务生成文件，或直接在目录中添加。"
+    },
+    "Existing files are kept as-is; the agent only writes after you approve an action.": {
+      "en": "Existing files are kept as-is; the agent only writes after you approve an action.",
+      "zh-CN": "目录中的现有文件保持原样；Agent 仅在你批准操作后才会写入。"
+    },
+    "Chip design: RTL, synthesis, netlist, GDS layout and waveform review.": {
+      "en": "Chip design: RTL, synthesis, netlist, GDS layout and waveform review.",
+      "zh-CN": "芯片设计：RTL、综合、网表、GDS 版图与波形审查。"
+    },
+    "PCB design: schematics, layout, fabrication outputs (KiCad).": {
+      "en": "PCB design: schematics, layout, fabrication outputs (KiCad).",
+      "zh-CN": "PCB 设计：原理图、布局与生产文件（KiCad）。"
+    },
+    "Mechanical CAD: 3D models and drawings (FreeCAD).": {
+      "en": "Mechanical CAD: 3D models and drawings (FreeCAD).",
+      "zh-CN": "机械 CAD：三维模型与工程图（FreeCAD）。"
+    },
+    "GPU compute: CUDA kernels and performance work.": {
+      "en": "GPU compute: CUDA kernels and performance work.",
+      "zh-CN": "GPU 计算：CUDA 核函数与性能优化。"
+    },
+    "Game/simulation engineering with the Godot engine.": {
+      "en": "Game/simulation engineering with the Godot engine.",
+      "zh-CN": "基于 Godot 引擎的游戏/仿真工程。"
+    },
+    "Install and start Docker before preparing the container image.": {
+      "en": "Install and start Docker before preparing the container image.",
+      "zh-CN": "准备容器镜像前，请先安装并启动 Docker。"
+    },
+    "Only reviewed files are uploaded. Review and upload changed files before the next remote task.": {
+      "en": "Only reviewed files are uploaded. Review and upload changed files before the next remote task.",
+      "zh-CN": "只上传确认过的文件。文件修改后，请在下次远程任务前重新确认并上传。"
+    },
+    "Remote files": {
+      "en": "Remote files",
+      "zh-CN": "远程文件"
+    },
+    "Browse remote results": {
+      "en": "Browse remote results",
+      "zh-CN": "浏览远程产物"
+    },
+    "Download to project": {
+      "en": "Download to project",
+      "zh-CN": "下载到项目"
+    },
+    "Downloaded to {0}": {
+      "en": "Downloaded to {0}",
+      "zh-CN": "已下载到 {0}"
+    },
+    "Remote session ended. Start a new chat.": {
+      "en": "Remote session ended. Start a new chat.",
+      "zh-CN": "远程会话已结束，请新建聊天。"
+    },
+    "Remote software and sandbox": {
+      "en": "Remote software and sandbox",
+      "zh-CN": "远程软件与沙箱"
+    },
+    "End remote session": {
+      "en": "End remote session",
+      "zh-CN": "结束远程会话"
+    },
+    "Files and execution settings": {
+      "en": "Files and execution settings",
+      "zh-CN": "文件与执行设置"
+    },
+    "Remote outcome unknown": {
+      "en": "Remote outcome unknown",
+      "zh-CN": "远程执行结果尚未确认"
+    },
+    "Remote results need recovery before continuing.": {
+      "en": "Remote results need recovery before continuing.",
+      "zh-CN": "远程结果需要恢复后才能继续。"
+    },
+    "Remote outcome unknown; checking without replaying…": {
+      "en": "Remote outcome unknown; checking without replaying…",
+      "zh-CN": "远程执行结果尚未确认，正在查询，不会重复执行…"
+    },
+    "This remote domain is available for testing only.": {
+      "en": "This remote domain is available for testing only.",
+      "zh-CN": "此远程领域仅供测试，尚未完成工程执行验收。"
+    },
+    "No remote artifacts yet.": {
+      "en": "No remote artifacts yet.",
+      "zh-CN": "暂无远程产物。"
+    },
+    "Connect to a new remote project": {
+      "en": "Connect to a new remote project",
+      "zh-CN": "连接新的远程项目"
+    },
+    "Creates a new project on the configured service. Previous remote files and results stay in the old project. Review and upload files before running again.": {
+      "en": "Creates a new project on the configured service. Previous remote files and results stay in the old project. Review and upload files before running again.",
+      "zh-CN": "将在已配置的服务中创建新项目。原有远程文件和结果保留在旧项目中。再次执行前，请重新确认并上传文件。"
+    },
+    "Create new remote project": {
+      "en": "Create new remote project",
+      "zh-CN": "创建新的远程项目"
+    },
+    "Remote sandbox": {
+      "en": "Remote sandbox",
+      "zh-CN": "远程沙箱"
+    },
+    "Remote result saved; sandbox release pending": {
+      "en": "Remote result saved; sandbox release pending",
+      "zh-CN": "远程结果已保存，沙箱尚待释放"
+    },
+    "Remote task failed; sandbox released": {
+      "en": "Remote task failed; sandbox released",
+      "zh-CN": "远程任务失败，沙箱已释放"
+    },
+    "Remote task completed; sandbox released": {
+      "en": "Remote task completed; sandbox released",
+      "zh-CN": "远程任务完成，沙箱已释放"
     }
   }
 }

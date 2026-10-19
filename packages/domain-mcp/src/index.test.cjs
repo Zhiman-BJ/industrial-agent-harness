@@ -30,17 +30,21 @@ test('a server is withheld unless every declared tool is in scope and it is enab
 });
 
 test('registered gateway intersects the current scope while direct providers retain all-or-nothing disclosure', () => {
-  const { listMcpServers } = require('./index.cjs');
-  const providers = listMcpServers('chip');
-  assert.equal(providers.length, 1);
-  assert.equal(providers[0].id, 'chip-pack.eda');
-  assert.equal(providers[0].toolIds.length, 25);
-  assert.deepEqual(listMcpServers('pcb'), []);
-  assert.deepEqual(listMcpServers('godot'), []);
-  assert.deepEqual(selectMcpServers({ domain: 'pcb', tools: ['pcb.bench.add_track'] }), []);
-  const scope = { domain: 'chip', tools: ['eda.harness.get_server_info'] };
-  assert.deepEqual(selectMcpServers(scope)[0].allowedToolIds, scope.tools);
-  assert.deepEqual(selectMcpServers(scope, ['chip-pack.eda']), []);
-  assert.deepEqual(selectMcpServers({ ...scope, domain: 'pcb' }), []);
-  assert.deepEqual(selectMcpServers({ domain: 'chip', tools: ['unknown'] }), []);
+  const gateway = {
+    id: 'fixture.gateway',
+    domain: 'fixture-domain',
+    transport: 'gateway',
+    toolIds: ['fixture.read', 'fixture.write'],
+  };
+  const direct = { ...gateway, id: 'fixture.direct', transport: 'stdio' };
+  const scope = { domain: 'fixture-domain', tools: ['fixture.read'] };
+  assert.deepEqual(selectMcpServers(scope, [], [gateway, direct]), [
+    { ...gateway, allowedToolIds: scope.tools },
+  ]);
+  assert.deepEqual(selectMcpServers(scope, [gateway.id], [gateway, direct]), []);
+  assert.deepEqual(
+    selectMcpServers({ ...scope, domain: 'another-domain' }, [], [gateway, direct]),
+    [],
+  );
+  assert.deepEqual(selectMcpServers({ ...scope, tools: ['unknown'] }, [], [gateway, direct]), []);
 });

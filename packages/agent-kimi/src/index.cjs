@@ -239,9 +239,14 @@ function externalTools(getScope, lookupArtifact, disclose, readContextPage) {
           if (!getScope()?.tools.includes(canonicalId))
             throw Error('Tool is outside the current Broker scope.');
           const artifact = await lookupArtifact(artifactId);
+          // Collected artifacts carry typed kinds like "waveform.vcd"; accept the
+          // exact category and its typed sub-kinds.
+          const expectedKind = canonicalId.split('.')[1];
           if (
             !artifact ||
-            (canonicalId.startsWith('eda.') && artifact.kind !== canonicalId.split('.')[1])
+            (canonicalId.startsWith('eda.') &&
+              artifact.kind !== expectedKind &&
+              !artifact.kind.startsWith(`${expectedKind}.`))
           )
             throw Error('Artifact is unavailable for this tool.');
           return {
@@ -514,15 +519,17 @@ class KimiSession {
         if (this.sessionFactory === createSession) {
           // Native child MCP gateways stay outside the industrial boundary.
           // Registered services instead use the audited host Runtime.
+          // Application plugins already filtered by executionPolicy (only
+          // protectedSafe plugins survive here) run host-side and are allowed.
           const externalSelected = selectMcpServers(
             scope,
             runtime.disabledMcpServers,
             undefined,
             runtime.externalServers,
           ).some(provider => provider.transport === 'external');
-          if ((externalSelected && !runtime.hostRuntimeExternal) || enabledPlugins(plugins).length)
+          if (externalSelected && !runtime.hostRuntimeExternal)
             throw Error(
-              '当前工业执行隔离不支持外部 MCP 服务或应用控制插件。请在本次项目资源设置中停用这些服务后重试；工业修改仅能通过已接入的 Domain Runtime。',
+              '当前工业执行隔离不支持外部 MCP 服务。请在本次项目资源设置中停用这些服务后重试；工业修改仅能通过已接入的 Domain Runtime。',
             );
           this.processSandbox = createProcessSandbox({
             executable:
@@ -988,11 +995,11 @@ class KimiSession {
       this.emitAgent({ type: 'compaction', state: 'begin' });
     } else if (event.type === 'CompactionEnd') this.emitAgent({ type: 'compaction', state: 'end' });
   }
-  resolveApproval(id, decision) {
+  resolveApproval(id, decision, origin = 'runtime') {
     if (!this.pendingApprovals.has(id)) return;
     this.pendingApprovals.delete(id);
     this.backgroundApprovals?.delete(id);
-    this.emitAgent({ type: 'approval-resolved', id, decision });
+    this.emitAgent({ type: 'approval-resolved', id, decision, origin });
   }
   resolveQuestion(id, decision, answers) {
     if (!this.pendingQuestions.has(id)) return;
@@ -1057,7 +1064,7 @@ class KimiSession {
     if (this.runtimeApprovals.has(id)) {
       this.runtimeApprovals.get(id)(response !== 'reject');
       this.runtimeApprovals.delete(id);
-      this.resolveApproval(id, response);
+      this.resolveApproval(id, response, 'user');
       return;
     }
     if (
@@ -1069,7 +1076,7 @@ class KimiSession {
     try {
       await (this.turn || this.controlTurn).approve(id, response);
       this.log?.record('approval.response', { id, response });
-      this.resolveApproval(id, response);
+      this.resolveApproval(id, response, 'user');
     } catch (error) {
       if (this.pendingApprovals.has(id)) this.pendingApprovals.set(id, 'pending');
       throw error;
@@ -1079,7 +1086,9 @@ class KimiSession {
     this.diagnostics.industrialRuntime?.cancel(this.resourceId);
     for (const [id, resolve] of this.runtimeApprovals) {
       resolve(false);
-      this.resolveApproval(id, 'reject');
+      // The runtime denies the command because the turn is stopping; the user
+      // never chose to reject it, so resolve as expired, not rejected.
+      this.resolveApproval(id, 'expired');
     }
     this.runtimeApprovals.clear();
     if (this.running) this.interruptRequested = true;

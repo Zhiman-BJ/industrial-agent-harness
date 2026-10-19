@@ -167,7 +167,7 @@ export interface EngineeringData {
   animation?: AssetData;
   mode: 'structure' | 'source' | 'metadata' | 'media' | 'geometry';
 }
-export type DocumentKind = 'table' | 'json' | 'jsonl' | 'markdown' | 'text';
+export type DocumentKind = 'table' | 'json' | 'jsonl' | 'markdown' | 'text' | 'html';
 export interface DocumentData {
   text: string;
   rows?: string[][];
@@ -176,6 +176,8 @@ export interface DocumentData {
   records?: number;
   error?: string;
   warning?: string;
+  /** Registered app://html preview URL; present only for the HTML kind. */
+  url?: string;
 }
 
 export type OpenedViewer =
@@ -214,6 +216,15 @@ export interface ViewerHostApi {
   domainAvailable(): Promise<AvailableDomainPack[]>;
   domainCancel(): Promise<{ cancelled: boolean }>;
   domainInstall(domains: string[]): Promise<{ installed: DomainOption[] }>;
+  domainRuntimeArchives(domains: string[]): Promise<RuntimeArchiveRequirement[]>;
+  domainImportRuntimeArchive(request: {
+    domain: string;
+    asset: string;
+  }): Promise<{ imported: boolean; id?: string; label?: string; reused?: boolean }>;
+  domainOpenRuntimeArchive(request: {
+    domain: string;
+    asset: string;
+  }): Promise<{ opened: boolean }>;
   domainRemove(domain: string): Promise<{ installed: DomainOption[] }>;
   domainRepair(domain: string): Promise<{ installed: DomainOption[] }>;
   onDomainProgress(callback: (progress: DomainInstallProgress) => void): () => void;
@@ -233,6 +244,8 @@ export interface ViewerHostApi {
   remoteCheck(): Promise<RemoteServiceState>;
   remoteProject(request: { projectId: string }): Promise<RemoteProjectState>;
   remoteFiles(request: { projectId: string }): Promise<string[]>;
+  remoteTools(request: { projectId: string }): Promise<string[]>;
+  remoteRebind(request: { projectId: string }): ReturnType<ViewerHostApi['projectBindings']>;
   remoteSetLocation(request: {
     projectId: string;
     location: 'local' | 'remote';
@@ -242,12 +255,19 @@ export interface ViewerHostApi {
     projectId: string;
     reviewId: string;
   }): ReturnType<ViewerHostApi['projectBindings']>;
-  remoteTask(request: { projectId: string }): Promise<RemoteTaskState | null>;
-  remoteCancel(request: {
+  remoteTask(request: { projectId: string; chatId: string }): Promise<RemoteTaskState | null>;
+  remoteSession(request: { projectId: string; chatId: string }): Promise<RemoteSessionState | null>;
+  remoteTerminate(request: {
     projectId: string;
-    requestId: string;
-    jobId: string;
-  }): Promise<RemoteTaskState | null>;
+    chatId: string;
+    applicationSessionId: string;
+  }): Promise<RemoteSessionState>;
+  remoteArtifacts(request: { projectId: string }): Promise<RemoteArtifact[]>;
+  remoteDownload(request: {
+    projectId: string;
+    artifactId: string;
+    relativePath: string;
+  }): Promise<unknown>;
   externalMcpList(): Promise<ExternalMcpSummary[]>;
   externalMcpAdd(request: { configuration: string }): Promise<ExternalMcpSummary[]>;
   externalMcpRefresh(id: string): Promise<ExternalMcpSummary[]>;
@@ -294,6 +314,9 @@ export interface ViewerHostApi {
   guiState(): Promise<GuiPluginState>;
   openGuiPermissionSettings(permission: 'screen' | 'accessibility'): Promise<void>;
   setGuiPlugin(enabled: boolean): Promise<GuiPluginState>;
+  browserAutomationState(): Promise<{ enabled: boolean }>;
+  setBrowserAutomation(enabled: boolean): Promise<{ enabled: boolean }>;
+  onBrowserOpen(callback: () => void): () => void;
   onGuiProgress(
     callback: (event: { phase: string; tag?: string; cached?: boolean; error?: string }) => void,
   ): () => void;
@@ -440,6 +463,16 @@ export interface InstalledDomainPack {
   prerequisites?: string[];
   runtimeState?: 'ready' | 'needs-preparation' | 'external-dependencies' | 'installed' | null;
 }
+export interface RuntimeArchiveRequirement {
+  domain: string;
+  id: string;
+  label: string;
+  version: string;
+  url: string;
+  size: number;
+  sha256: string;
+  present: boolean;
+}
 export interface AvailableDomainPack {
   domain: string;
   version: string;
@@ -510,7 +543,24 @@ export interface CoreUpdateState {
 }
 export interface ResourceCatalog {
   skills: Array<{ id: string; domain: string; title: string; enabledByDefault: boolean }>;
-  mcpServers: Array<{ id: string; domain: string; title: string; enabledByDefault: boolean }>;
+  mcpServers: Array<{
+    id: string;
+    domain: string;
+    title: string;
+    enabledByDefault: boolean;
+    version?: string;
+    transport?: string;
+    external?: boolean;
+    catalogSource?: 'runtime-descriptors' | 'provider-manifest' | 'external-discovery';
+    toolIds?: string[];
+    declaredToolIds?: string[];
+    tools?: Array<{ id: string; title?: string; description?: string; risk?: string }>;
+    standaloneMcp?: {
+      transport: string;
+      tools: Array<{ id: string; title?: string; description?: string; risk?: string }>;
+    };
+    catalogError?: string;
+  }>;
 }
 
 export type ResourceMode = 'inherit' | 'enabled' | 'disabled';
@@ -634,6 +684,8 @@ export type AgentEvent = {
       type: 'approval-resolved';
       id: string;
       decision: 'approve' | 'approve_for_session' | 'reject' | 'expired';
+      /** Who resolved it: the user through the UI, or the runtime cancelling. */
+      origin?: 'user' | 'runtime';
     }
   | {
       type: 'question';
@@ -879,17 +931,50 @@ export interface DiagnosticViewPage {
 export interface RemoteServiceState {
   status: 'not_configured' | 'credentials_missing' | 'unchecked' | 'connected' | 'unavailable';
   domains: string[];
+  executableDomains?: string[];
+  protocol?: string;
+  reason?: string;
+  capabilities?: {
+    snapshots?: boolean;
+    artifacts?: boolean;
+    protectedExecution?: boolean;
+    runtimeDiscovery?: boolean;
+  };
+  profiles?: Array<{
+    domain: string;
+    qualification: string;
+    software?: Array<{ name: string; version: string }>;
+  }>;
 }
 export interface RemoteTaskState {
-  requestId: string;
-  jobId: string | null;
+  invocationId: string;
   status: string;
-  queuePosition: number | null;
+  outcome?: string;
+  needsImport?: boolean;
+  sessionRelease?: {
+    status: 'releasing' | 'released' | 'pending';
+    sessionId?: string;
+    code?: string;
+  };
+}
+export interface RemoteSessionState {
+  id: string;
+  status: string;
+  callLocked?: boolean;
+  sandboxId?: string | null;
+}
+export interface RemoteArtifact {
+  id: string;
+  relativePath: string;
+  kind: string;
+  sha256: string;
+  sizeBytes: number;
 }
 export interface RemoteProjectState {
   location: 'local' | 'remote';
   files: string[];
   syncedAt: string | null;
+  hasRemoteProject?: boolean;
   service: RemoteServiceState;
   task: RemoteTaskState | null;
 }
