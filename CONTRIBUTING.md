@@ -34,7 +34,7 @@ read it before changing module boundaries.
 | `pnpm test:ci -- <layer>` | CI layer: `portable`, `benchmark`, `transport`, `native*` |
 
 Package-specific commands and constraints live in each package's README and
-`AGENTS.md` (`apps/desktop`, `apps/cli`, `packages/agent-kimi`,
+`AGENTS.md` where present (`apps/desktop`, `packages/agent-kimi`,
 `packages/viewer-builtin` today).
 
 ## Pull requests

@@ -8,7 +8,7 @@
 
 **面向工程项目的 AI 工作台：按范围使用专业工具，保留可核验的结果。**
 
-Industrial Agent Harness 通过桌面工作台和无界面 CLI，将本地工程、Kimi Code、专业软件与工程证据连接起来。各领域通过 Domain Pack 提供知识、工具和验证方法。
+Industrial Agent Harness 通过桌面工作台，将本地工程、Kimi Code、专业软件与工程证据连接起来。各领域通过 Domain Pack 提供知识、工具和验证方法。
 
 > [!IMPORTANT]
 > **开发者预览版（Developer Preview）。** 当前处于 Workbench MVP 阶段，已接入持久化、受范围约束的工程运行时。API、Pack 接口和运行时行为仍在迭代。本页描述当前源码；已发布的预览归档以各自版本说明为准。
@@ -22,7 +22,7 @@ Industrial Agent Harness 通过桌面工作台和无界面 CLI，将本地工程
 - **使用项目指导。** 自动发现 `.skill/`、`.skills/` 与标准项目技能目录，通过 Kimi 原生机制加载项目 `AGENTS.md`。剩余限制见[兼容性审计](doc/kimi-native-compatibility-audit.md)。
 - **保留工程证据。** 领域运行时记录输入、动作、产物、验证和检查点；输入变化使当前证据失效，中断记录在重启后仍可追踪。
 - **在工作台内查看产物。** 查看波形、网表、版图、KiCad 设计、Godot 素材和通用工程文件。
-- **接入自动化与扩展。** 使用 CLI 的 JSON Lines 事件、Node SDK 或 stdio JSON-RPC；独立构建 Domain Pack，保留完整 Skill 资源并检查安装完整性。
+- **以 Domain Pack 扩展。** 独立构建 Domain Pack，保留完整 Skill 资源并检查安装完整性。
 
 Kimi Code 负责 Agent 循环、对话历史和上下文压缩；Harness 负责工程上下文、工具范围和证据。Agent 回合结束或进程退出成功，均不能直接判定工程验收通过。
 
@@ -49,19 +49,7 @@ npm install --global pnpm@11.1.3
 pnpm install --frozen-lockfile
 ```
 
-### 1. 无模型体验 CLI
-
-```sh
-pnpm cli run \
-  --project-dir ./examples/chip-sobel \
-  --domain chip \
-  --task "Inspect netlist signals" \
-  --scope-only
-```
-
-该命令输出已注册的能力范围和披露过程，无需 API Key 或原生工程工具，不执行工程动作，也不验证设计。
-
-### 2. 启动桌面工作台
+### 1. 启动桌面工作台
 
 ```sh
 pnpm --filter @industrial-agent-harness/desktop setup:kimi
@@ -78,9 +66,9 @@ pnpm dev
 
 **API 格式**按模型服务选择，与 Kimi Agent 内核分开。官方 MiniMax Chat Completions 使用兼容 OpenAI 配置；思考开关和档位因模型、协议而异，当前实测与缺口见[模型 API 兼容说明](doc/model-api-compatibility.md)。
 
-准备脚本检查随包 **Kimi Code 2.1.1**，桌面和 CLI 共用认证 Server API 接入，不需要单独安装 Python Kimi。历史、诊断与兼容性边界见[迁移记录](doc/kimi-code-migration.md)。版图查看另需 KLayout Python，可运行 `pnpm --filter @industrial-agent-harness/desktop setup:layout`，或设置 `KLAYOUT_PYTHON`。
+准备脚本检查随包 **Kimi Code 2.1.1**，不需要单独安装 Python Kimi。历史、诊断与兼容性边界见[迁移记录](doc/kimi-code-migration.md)。版图查看另需 KLayout Python，可运行 `pnpm --filter @industrial-agent-harness/desktop setup:layout`，或设置 `KLAYOUT_PYTHON`。
 
-### 3. 维护者在 macOS Apple Silicon 运行原生回归
+### 2. 维护者在 macOS Apple Silicon 运行原生回归
 
 以下历史全套源码入口包含兼容性测试，维护者需准备宿主 Verilator、C++ 工具链、uv 和 Python 3.13。普通已安装 Chip 使用预构建 EDA 镜像，无需这些宿主 Python 步骤；当前托管和安装态测试还需运行中的 Docker：
 
@@ -94,7 +82,7 @@ HARNESS_REQUIRE_CORE_NATIVE=1 pnpm run test:industrial-core
 
 当前托管 Chip profile 已在 macOS ARM64 和 Linux x86-64 搭配 Docker 验收。历史 Linux [一键安装](releases/chip-linux-installer-v0.1.0-preview.3.md)保留各自版本的运行时与安装说明。
 
-需要下载包时，请查看 [GitHub Releases](https://github.com/Zhiman-BJ/industrial-agent-harness/releases)，并按对应版本说明安装。[无界面安装](apps/cli/README.md#github-release-安装)和[领域 CLI 分包](doc/domain-cli-downloads.md)提供校验与外部依赖说明。历史归档不会自动获得当前源码的新功能。
+需要下载包时，请查看 [GitHub Releases](https://github.com/Zhiman-BJ/industrial-agent-harness/releases)，并按对应版本说明安装。历史归档不会自动获得当前源码的新功能。
 
 当前源码消费 **Domain Packs 0.7.0**，owner 固定为 `1eae41d583bc526c36ae8a8f6c08343504949928`。安装 Pack 只安装可信能力、Skills 与适配器；原生依赖由用户在外部安装，容器准备和远程配置分开操作。在能力中心或项目详情中选择已验证的本机、容器或远程 Profile，可关联兼容的现有软件，或在用户已安装并启动 Docker 后显式准备容器镜像。原生 Profile 不提供 Harness 下载／安装入口。本机 FreeCAD、Godot 与隔离 DXF Runtime 不要求 Docker；Chip、PCB 设计与 DXF 容器路径仍需 Docker。产品提供 Chip、PCB、Godot、CAD 四个领域；新目录和历史已装条目均撤下 CUDA，独立实现保留。领域卡片有清晰边框、一行用途与折叠依赖说明；绿色就绪、黄色缺失、红色检查失败、中性色未检查，并明确依赖名称。最近检查失败覆盖旧 Ready 显示。Go 平台组件执行固定环境检测，本轮未将所有领域 MCP 重写为 Go。详见[分发 v2](doc/runtime-distribution-v2.md)、[安装体验](doc/install-experience.md)和[本轮验收证据](doc/qa-runtime-distribution-v2-20261012.md)。模型配置、环境就绪与工程验收是不同状态。本次源码改动不代表新的签名公众安装包、Core OTA、新增 Mac CI runner 或更广的平台资格。
 
@@ -115,7 +103,7 @@ HARNESS_REQUIRE_CORE_NATIVE=1 pnpm run test:industrial-core
 
 ### 任务成果
 
-工具产生文件后，共享任务服务自动登记紧凑成果条目，辅助报告收在“附件与报告”中，文件和检查详情按需展开；CLI 输出同一分组和文件引用。主入口查看成果，原生文件／导出入口取走文件，检查摘要只对应记录版本。明确替代关系保留历史，并列方案全部可见。当前前台请求结束、只有一个支持的只读预览且未手动换文件／标签／聊天时，最多自动打开一次；历史、后台、失败和多方案不抢焦点。部分结果和文件变化明确提示，Agent 的 `select_result` 可选。FreeCAD 生成→连续修改→检查→卡片→OCCT 已在 macOS arm64 源码态验证，并另行记录真实模型演示；未扩大安装包或平台支持。[行为、契约和验收](doc/task-results.md)。
+工具产生文件后，共享任务服务自动登记紧凑成果条目，辅助报告收在“附件与报告”中，文件和检查详情按需展开。主入口查看成果，原生文件／导出入口取走文件，检查摘要只对应记录版本。明确替代关系保留历史，并列方案全部可见。当前前台请求结束、只有一个支持的只读预览且未手动换文件／标签／聊天时，最多自动打开一次；历史、后台、失败和多方案不抢焦点。部分结果和文件变化明确提示，Agent 的 `select_result` 可选。FreeCAD 生成→连续修改→检查→卡片→OCCT 已在 macOS arm64 源码态验证，并另行记录真实模型演示；未扩大安装包或平台支持。[行为、契约和验收](doc/task-results.md)。
 
 读取聊天历史不要求执行配置完成，远程项目也可直接新建／读取聊天。已有成果从记录库只读查询，不加载 Pack；单次读取复用文件校验，下次读取及打开文件重新检查内容。
 
@@ -151,7 +139,6 @@ Harness 自有 Viewer 控件跟随 **设置 → 语言**（简体中文 / Englis
 | 阅读入口                                                                       | 内容                                                                           |
 | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ |
 | [文档索引](doc/README.md)                                                      | 架构、产品决策与模块说明，详细文档目前以中文为主。                             |
-| [CLI](apps/cli/README.md) · [Node SDK](doc/sdk.md)                             | 任务、流事件、聊天恢复、取消与 stdio JSON-RPC。                                |
 | [Pack 开发](doc/pack-authoring.md) · [版本化契约](doc/contracts-versioning.md) | 独立开发、资源、兼容性与规范工业事实。                                         |
 | [当前交付与验证](doc/harness-quality-three-tracks.md)                          | 已实现范围、验证记录与剩余工作；历史架构提案不代表实现承诺。                   |
 | [配对评测基线](doc/benchmark-baseline.md)                                      | 原生 Kimi/Harness 对比、冻结输入与独立验收，正式模型成功率和成本结果尚待运行。 |
@@ -192,7 +179,7 @@ pnpm run format:check
 
 ### 内置远程运行（内部体验）
 
-远程执行重构为会话式 Gateway v1.1：Kimi/Agent 留在本地，远端提供领域 MCP、专业软件和执行沙箱。Desktop/CLI 共用持久聊天绑定、显式不可变文件上传、规范工程证据导入与核验后的产物下载，下载不覆盖既有文件。本地输入变化须再次审核上传；停止本地等待不表示远端计算已取消。服务连接可用与软件/worker 已获资格分别显示。显式重绑创建新远端项目并保留旧绑定历史，不迁移旧 0.2 job 或工程事实。公网与登录配置仍留空；此次重构不构成 KiCad 或生产 Linux worker 资格，历史 H200 RTL 记录仅属于旧协议。见[远程执行与 CLI 命令](doc/remote-execution.md)。
+远程执行重构为会话式 Gateway v1.1：Kimi/Agent 留在本地，远端提供领域 MCP、专业软件和执行沙箱。Desktop 与内部无界面适配器共用持久聊天绑定、显式不可变文件上传、规范工程证据导入与核验后的产物下载，下载不覆盖既有文件。本地输入变化须再次审核上传；停止本地等待不表示远端计算已取消。服务连接可用与软件/worker 已获资格分别显示。显式重绑创建新远端项目并保留旧绑定历史，不迁移旧 0.2 job 或工程事实。公网与登录配置仍留空；此次重构不构成 KiCad 或生产 Linux worker 资格，历史 H200 RTL 记录仅属于旧协议。见[远程执行与 CLI 命令](doc/remote-execution.md)。
 
 桌面聊天将远程与任务状态合并为可折叠执行卡。聊天栏至少 960 px 宽时为展开卡预留侧边空间，更窄时在消息上方占位并限制滚动高度。任务进度、未完成工作与远程失败分别呈现；项目/设置页隐藏卡片但保留后台轮询。远程未就绪阻塞输入时，输入区显示原因并提供项目执行设置入口；Kimi 运行时缺失仍保留更高优先级提示。展示调整不改变上传确认、任务审批或既有就绪门禁。
 
@@ -206,6 +193,6 @@ MOCK_REMOTE_TOKEN=mock-token node scripts/remote-ui-fixture.cjs
 
 启动测试客户端时设置 `INDUSTRIAL_REMOTE_SERVICE_URL=http://127.0.0.1:8787`、`INDUSTRIAL_REMOTE_CREDENTIAL_ENV=MOCK_REMOTE_TOKEN` 和相同的 `MOCK_REMOTE_TOKEN`。文件上传仍需明确审核与确认。该 fixture 只验证 UI 协议行为，不构成生产远程执行或工程验收。
 
-CLI 和 Desktop 现共用 Harness 任务服务；领域声明、Skill 和实现来自一个固定版本的 Domain Packs。见[消费迁移与验收](doc/shared-task-and-pack-consumption.md)。
+Harness 任务服务由 Desktop 与内部无界面入口共用；领域声明、Skill 和实现来自一个固定版本的 Domain Packs。见[消费迁移与验收](doc/shared-task-and-pack-consumption.md)。
 
 此前托管版本以不可变提交固定 Domain Packs 0.6.0，由通用 Pack Manager 准备声明中的 Harbor 产物。以下为该版本历史证据。macOS ARM64 验收涵盖声明的 CAD、PCB、Godot profile 与 CUDA 远程客户端；托管 Chip 另已通过 Linux x86-64 安装和原生检查。具体证据与边界见[安装体验](doc/install-experience.md)及各领域验收记录。历史预览归档保留其原有依赖与范围。
