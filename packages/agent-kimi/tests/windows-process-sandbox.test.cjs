@@ -10,7 +10,7 @@ const systemBinary = name =>
 
 function windowsOnly(t) {
   if (process.platform === 'win32') return true;
-  t.diagnostic('Windows native boundary requires a Windows runner; no native qualification here.');
+  t.diagnostic('Windows native execution requires a Windows runner; no native qualification here.');
   return false;
 }
 
@@ -86,7 +86,7 @@ function alive(pid) {
   }
 }
 
-test('Windows token supports null-device I/O and headless subprocess primitives', async t => {
+test('Windows current-user launch supports null-device I/O and headless subprocess primitives', async t => {
   if (!windowsOnly(t)) return;
   const dirs = fixture(t);
   const sandbox = createBoundary(dirs);
@@ -143,23 +143,15 @@ test('Windows token supports null-device I/O and headless subprocess primitives'
 });
 
 test(
-  'Windows restricted descendants preserve argv and pipes, allow session writes and deny protected or foreign writes',
+  'Windows current-user descendants preserve argv and pipes and retain normal user file permissions',
   { timeout: 60000 },
   async t => {
     if (!windowsOnly(t)) return;
     const dirs = fixture(t);
-    execFileSync(
-      systemBinary('icacls.exe'),
-      [dirs['foreign-low'], '/setintegritylevel', '(OI)(CI)L'],
-      {
-        windowsHide: true,
-        stdio: 'pipe',
-      },
-    );
     const projectFile = path.join(dirs.project, 'source.txt');
     fs.writeFileSync(projectFile, 'original project');
     // Per-user installers and nvm place executables behind user-private ACLs.
-    // Exercise that path without adding Users/Everyone to the restricting list.
+    // The launch must use the existing user token without additional ACL setup.
     const privateRuntime = path.join(dirs.state, 'private-runtime');
     fs.mkdirSync(privateRuntime);
     const userSid = execFileSync(systemBinary('whoami.exe'), ['/user', '/fo', 'csv', '/nh'], {
@@ -247,46 +239,26 @@ test(
     assert.equal(output.input, 'PIPE_INPUT_OK\n');
     assert.deepEqual(
       output.writes,
-      forbidden.map(() => false),
+      forbidden.map(() => true),
     );
     assert.equal(output.temp, 'TEMP_WRITE_OK');
-    assert.equal(output.inherited, 0, output.inheritedError);
+    assert.equal(output.inherited, 9, output.inheritedError);
     assert.equal(output.privateChild, 0, output.privateError);
     assert.equal(output.privateOutput, 'PRIVATE_RUNTIME_OK');
     assert.equal(output.hostSecret, null);
     assert.equal(fs.readFileSync(allowed, 'utf8'), 'SESSION_WRITE_OK');
-    assert.equal(fs.readFileSync(projectFile, 'utf8'), 'original project');
-
-    for (const kind of ['junction', 'hardlink']) {
-      const linked = fixture(t);
-      if (kind === 'junction')
-        fs.symlinkSync(linked.project, path.join(linked.share, 'linked-project'), 'junction');
-      else {
-        const source = path.join(linked.project, 'source.txt');
-        fs.writeFileSync(source, 'protected hard link');
-        fs.linkSync(source, path.join(linked.share, 'linked-source.txt'));
-      }
-      const rejectedBoundary = createBoundary(linked);
-      linked.defer(() => rejectedBoundary.close());
-      const rejected = await capture(
-        rejectedBoundary.spawn(process.execPath, ['-e', 'process.exit(0)'], {
-          cwd: rejectedBoundary.workDir,
-          env: rejectedBoundary.env,
-          stdio: ['pipe', 'pipe', 'pipe'],
-        }),
-      );
-      assert.notEqual(rejected.code, 0, 'linked storage must fail before the target starts');
-      assert.match(rejected.stderr, /reparse|junction|hard.?link|linked|link/i);
-    }
+    assert.equal(fs.readFileSync(projectFile, 'utf8'), 'bypass');
+    assert.equal(sandbox.boundary.projectWritable, true);
+    assert.equal(sandbox.boundary.osIsolation, false);
   },
 );
 
 test(
-  'Windows Job Object kills descendants on cancellation and natural target exit',
+  'Windows current-user cancellation stops the live process tree',
   { timeout: 60000 },
   async t => {
     if (!windowsOnly(t)) return;
-    for (const naturalExit of [false, true]) {
+    {
       const dirs = fixture(t);
       const sandbox = createBoundary(dirs);
       dirs.defer(() => sandbox.close());
@@ -297,7 +269,7 @@ test(
         ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore', detached: true, windowsHide: true });
       fs.writeFileSync(${JSON.stringify(pidFile)}, String(child.pid));
       child.unref();
-      ${naturalExit ? '' : 'setInterval(() => {}, 1000);'}
+      setInterval(() => {}, 1000);
     `;
       const child = sandbox.spawn(process.execPath, ['-e', code], {
         cwd: sandbox.workDir,
@@ -320,16 +292,15 @@ test(
             stdio: 'ignore',
           });
       });
-      if (!naturalExit) child.kill();
-      const result = await completed;
-      if (naturalExit) assert.equal(result.code, 0, result.stderr);
-      await waitFor(() => !alive(descendantPid), 'Job Object descendant cleanup');
+      child.kill();
+      await completed;
+      await waitFor(() => !alive(descendantPid), 'cancelled descendant cleanup');
     }
   },
 );
 
 test(
-  'Windows native boundary runs pinned Kimi tools and resumes the same real conversation',
+  'Windows current-user execution runs pinned Kimi tools and resumes the same real conversation',
   { timeout: 90000 },
   async t => {
     if (!windowsOnly(t)) return;
@@ -442,5 +413,73 @@ test(
     const snapshot = await resumed.diagnosticSnapshot();
     assert.equal(snapshot[0].format, 'kimi-code-server-v1');
     assert.match(JSON.stringify(snapshot), /WINDOWS_SECOND/);
+  },
+);
+
+test(
+  'Windows shared Agent starts a chat with nested settings storage and reports current-user permissions',
+  { timeout: 60000 },
+  async t => {
+    if (!windowsOnly(t)) return;
+    const { KimiSession } = require('../src/index.cjs');
+    const { bundledExecutable } = require('../src/code-session.cjs');
+    const { validateProfile, writeCliConfig, sessionEnv } = require('../src/model-config.cjs');
+    const { startModel } = require('../../../tests/integration/fixtures/domain-mcp-model.cjs');
+    const dirs = fixture(t);
+    const model = await startModel({ calls: [], success: 'WINDOWS_CHAT_OK' });
+    dirs.defer(() => model.close());
+    const profile = validateProfile({
+      provider: 'openai_legacy',
+      endpoint: model.endpoint,
+      model: 'windows-chat-controlled',
+      contextSize: 32768,
+      thinking: false,
+    });
+    const runtime = {
+      profile,
+      apiKey: 'windows-chat-fixture',
+      shareDir: writeCliConfig(path.join(dirs.state, 'model'), profile),
+      executable: bundledExecutable(),
+      env: sessionEnv(profile, 'windows-chat-fixture'),
+      revision: 0,
+    };
+    const events = [];
+    const session = new KimiSession(
+      dirs.project,
+      () => ({ domain: 'test', stage: 'test', capabilityIds: [], skills: [], tools: [] }),
+      () => null,
+      () => null,
+      event => events.push(event),
+      () => runtime,
+      undefined,
+      {
+        directory: path.join(dirs.state, 'logs'),
+        protectedPaths: [dirs.state],
+        resolveSession: () => ({
+          id: 'windows-chat-session',
+          shareDir: path.join(dirs.state, 'chats', 'sessions', 'windows-chat-session'),
+          initialized: false,
+        }),
+      },
+    );
+    dirs.defer(() => session.close());
+    await session.run('WINDOWS_CURRENT_USER_CHAT');
+    assert.deepEqual(
+      events.filter(event => event.type === 'error'),
+      [],
+    );
+    assert.ok(
+      events.some(
+        event =>
+          event.type === 'execution-boundary' &&
+          event.mechanism === 'windows-current-user' &&
+          event.osIsolation === false &&
+          event.projectWritable === true,
+      ),
+    );
+    assert.ok(model.requests.length > 0);
+    const messages = JSON.stringify(model.requests[0].messages);
+    assert.match(messages, /there is no OS write isolation/);
+    assert.doesNotMatch(messages, /Native working directory is isolated session scratch/);
   },
 );

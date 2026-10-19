@@ -3,14 +3,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const {
-  windowsEnvironment,
-  inside,
-  quoteWindowsArgument,
-  buildMxcPolicy,
-  assertMxcProbe,
-  hostReadRoots,
-} = require('../src/windows-sandbox.cjs');
+const vm = require('node:vm');
+const { once } = require('node:events');
+const { windowsEnvironment, inside } = require('../src/windows-sandbox.cjs');
 const { createSession } = require('../src/code-session.cjs');
 
 test('Windows credential exclusions are case insensitive and environment keys have one effective value', () => {
@@ -38,234 +33,7 @@ test('Windows storage comparisons distinguish sibling prefixes, volumes and path
   assert.equal(inside('C:\\Session', 'D:\\Session\\workspace'), false);
 });
 
-test('Windows MXC command lines preserve literal CRT arguments without a shell', () => {
-  const cases = [
-    ['', '""'],
-    ['plain', '"plain"'],
-    ['two words', '"two words"'],
-    ['a"quoted"value', String.raw`"a\"quoted\"value"`],
-    ['C:\\directory with spaces\\', '"C:\\directory with spaces\\\\"'],
-    ['\\"quoted', String.raw`"\\\"quoted"`],
-    ['尾部 Unicode', '"尾部 Unicode"'],
-    ['& | < > ^ % !', '"& | < > ^ % !"'],
-    ['line\tbreak\n', '"line\tbreak\n"'],
-  ];
-  for (const [input, expected] of cases)
-    assert.equal(quoteWindowsArgument(input), expected, JSON.stringify(input));
-  for (const input of [undefined, null, 1, {}, ['argument'], 'embedded\0nul'])
-    assert.throws(() => quoteWindowsArgument(input), /argument|NUL|string/i);
-});
-
-function mxcLaunch(overrides = {}) {
-  return {
-    executable: 'C:\\Program Files\\Node\\node.exe',
-    args: ['C:\\runtime\\main.mjs', 'web', '--port', '12345'],
-    workingDirectory: 'C:\\Sessions\\one\\workspace',
-    writableRoots: ['C:\\Sessions\\one', 'C:\\Boundary\\scratch'],
-    readonlyRoots: ['C:\\Projects\\design', 'C:\\runtime', 'C:\\HarnessState'],
-    environment: { Path: 'C:\\Windows\\System32', KIMI_CODE_HOME: 'C:\\Sessions\\one' },
-    ...overrides,
-  };
-}
-
-test('Windows MXC policies permit only declared storage and explicitly refuse DACL fallback', t => {
-  const name = 'HARNESS_TEST_MXC_HOST_ONLY';
-  const previous = process.env[name];
-  process.env[name] = 'host-only-test-credential';
-  t.after(() => {
-    if (previous === undefined) delete process.env[name];
-    else process.env[name] = previous;
-  });
-  const input = mxcLaunch();
-  const policy = buildMxcPolicy(input);
-  assert.deepEqual(policy, {
-    version: '1.0.0',
-    containment: 'processcontainer',
-    fallback: { allowDaclMutation: false },
-    lifecycle: { destroyOnExit: true, preservePolicy: false },
-    filesystem: {
-      readwritePaths: input.writableRoots,
-      readonlyPaths: input.readonlyRoots,
-    },
-    process: {
-      commandLine:
-        '"C:\\Program Files\\Node\\node.exe" "C:\\runtime\\main.mjs" "web" "--port" "12345"',
-      cwd: input.workingDirectory,
-      env: ['Path=C:\\Windows\\System32', 'KIMI_CODE_HOME=C:\\Sessions\\one'],
-      inheritDefaultEnv: false,
-    },
-    network: {
-      egress: { default: 'allow' },
-      ingress: { default: 'deny', hostLoopback: 'allow' },
-    },
-    ui: { disable: false, clipboard: 'none', injection: false },
-    processContainer: {
-      capabilities: ['registryRead'],
-      leastPrivilege: false,
-      ui: {
-        isolation: 'desktop',
-        desktopSystemControl: false,
-        systemSettings: 'none',
-        ime: false,
-      },
-    },
-    telemetry: { enabled: false },
-  });
-  assert.equal(
-    policy.process.env.some(value => value.startsWith(name + '=')),
-    false,
-  );
-  assert.deepEqual(buildMxcPolicy(mxcLaunch({ environment: {} })).process.env, []);
-});
-
-test('Windows MXC policies reject ambiguous launches before creating a command', () => {
-  for (const overrides of [
-    { executable: 'node.exe' },
-    { workingDirectory: 'workspace' },
-    { writableRoots: [] },
-    { writableRoots: ['C:\\Sessions\\one'] },
-    { writableRoots: ['C:\\Sessions\\one', 'C:\\Boundary\\scratch', 'C:\\extra'] },
-    { args: ['safe', 'embedded\0nul'] },
-  ])
-    assert.throws(() => buildMxcPolicy(mxcLaunch(overrides)), /absolute|root|argument|NUL/i);
-});
-
-function supportedMxcProbe(overrides = {}) {
-  return {
-    tier: 'base-container',
-    needsDaclAugmentation: false,
-    warnings: [],
-    probes: {
-      baseContainerApiPresent: true,
-      baseContainerSupportsIngressHostLoopbackAllow: true,
-    },
-    ...overrides,
-  };
-}
-
-test('Windows MXC requires a usable BaseContainer for the complete requested policy', () => {
-  assert.doesNotThrow(() => assertMxcProbe(supportedMxcProbe()));
-  for (const probe of [
-    undefined,
-    null,
-    {},
-    [],
-    'base-container',
-    supportedMxcProbe({ tier: 'appcontainer-dacl' }),
-    supportedMxcProbe({ tier: 'appcontainer-bfs' }),
-    supportedMxcProbe({ tier: 'unknown' }),
-    supportedMxcProbe({ tier: undefined }),
-    supportedMxcProbe({ needsDaclAugmentation: true }),
-    supportedMxcProbe({ needsDaclAugmentation: undefined }),
-    supportedMxcProbe({ needsDaclAugmentation: 'false' }),
-    supportedMxcProbe({ error: 'PSEC policy cannot be represented' }),
-    supportedMxcProbe({ probes: undefined }),
-    supportedMxcProbe({ probes: {} }),
-    supportedMxcProbe({
-      probes: {
-        baseContainerApiPresent: false,
-        baseContainerSupportsIngressHostLoopbackAllow: true,
-      },
-    }),
-    supportedMxcProbe({
-      probes: {
-        baseContainerApiPresent: true,
-        baseContainerSupportsIngressHostLoopbackAllow: false,
-      },
-    }),
-  ])
-    assert.throws(() => assertMxcProbe(probe), /MXC|PSEC|BaseContainer|probe/i);
-});
-
-test('Windows MXC refusal explains the platform requirement without exposing raw diagnostics', () => {
-  const secret = 'host-only-test-credential';
-  assert.throws(
-    () =>
-      assertMxcProbe({
-        error: secret,
-        warnings: [secret],
-        probes: {
-          baseContainerApiPresent: false,
-          baseContainerSupportsIngressHostLoopbackAllow: false,
-        },
-      }),
-    error => {
-      assert.match(error.message, /24H2: 26100\.9550/);
-      assert.match(error.message, /25H2: 26200\.9550/);
-      assert.match(error.message, /Windows Server support is not established/);
-      assert.match(error.message, /"psec":false,"hostLoopback":false/);
-      assert.equal(error.message.includes(secret), false);
-      return true;
-    },
-  );
-});
-
-test('Windows packaged read grants use physical ASAR archives instead of virtual members', () => {
-  const archive = 'C:\\Apps\\Harness\\resources\\app.asar';
-  const uppercaseArchive = 'C:\\Apps\\Other\\resources\\APP.ASAR';
-  const virtualMembers = [
-    archive + '\\node_modules\\@moonshot-ai\\kimi-code\\dist\\main.mjs',
-    archive + '\\node_modules\\@industrial-agent-harness\\agent-kimi\\src\\index.cjs',
-    uppercaseArchive + '\\electron\\main.cjs',
-  ];
-  const unpacked = archive + '.unpacked\\node_modules\\runtime\\native.exe';
-  const fileSystem = {
-    readdirSync(volume) {
-      assert.equal(volume, 'C:\\');
-      return [{ name: 'Apps' }];
-    },
-    realpathSync(file) {
-      assert.equal(file, 'C:\\Apps');
-      return file;
-    },
-  };
-  const roots = hostReadRoots([...virtualMembers, archive, unpacked], fileSystem);
-  assert.deepEqual(roots, [archive, uppercaseArchive, unpacked, 'C:\\', 'C:\\Apps']);
-  const policy = buildMxcPolicy(mxcLaunch({ readonlyRoots: roots }));
-  assert.deepEqual(policy.filesystem.readonlyPaths, roots);
-  assert.equal(
-    policy.filesystem.readonlyPaths.some(file => /\.asar\\/i.test(file)),
-    false,
-    'native filesystem grants must never contain an Electron virtual archive member',
-  );
-});
-
-test('Windows implicit read grants omit inaccessible paging files without losing explicit roots', () => {
-  const explicit = ['D:\\Projects\\design', 'D:\\Runtime\\node.exe'];
-  const errors = new Map([
-    ['D:\\DumpStack.log.tmp', 'EINVAL'],
-    ['D:\\pagefile.sys', 'EPERM'],
-  ]);
-  const fileSystem = {
-    readdirSync(volume) {
-      assert.equal(volume, 'D:\\');
-      return ['Projects', 'Runtime', 'DumpStack.log.tmp', 'pagefile.sys'].map(name => ({ name }));
-    },
-    realpathSync(file) {
-      if (errors.has(file))
-        throw Object.assign(Error('system file metadata unavailable'), { code: errors.get(file) });
-      return file;
-    },
-  };
-  assert.deepEqual(hostReadRoots(explicit, fileSystem), [
-    ...explicit,
-    'D:\\',
-    'D:\\Projects',
-    'D:\\Runtime',
-  ]);
-  assert.throws(
-    () =>
-      hostReadRoots(explicit, {
-        ...fileSystem,
-        realpathSync() {
-          throw Object.assign(Error('I/O failure'), { code: 'EIO' });
-        },
-      }),
-    /I\/O failure/,
-  );
-});
-
-test('native session dispatch uses the protected launcher and never restores a removed host credential', async t => {
+test('native session dispatch uses the supplied launcher and never restores a removed host credential', async t => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-protected-dispatch-'));
   const name = 'HARNESS_TEST_HOST_ONLY_DISPATCH';
   const previous = process.env[name];
@@ -293,4 +61,98 @@ test('native session dispatch uses the protected launcher and never restores a r
   await assert.rejects(session.initialize(), /controlled boundary launch refusal/);
   assert.equal(calls, 1, 'launcher refusal must not fall back to an unprotected spawn');
   assert.equal(session.child, undefined);
+});
+
+// Exercise the portable launch contract on every CI OS. Only the separate
+// Windows-native suite qualifies Windows stdio, taskkill and real Kimi.
+function launcherFixture(t) {
+  const directory = fs.realpathSync(
+    fs.mkdtempSync(path.join(os.tmpdir(), 'windows-launch-config-')),
+  );
+  const project = path.join(directory, 'project');
+  const state = path.join(directory, 'settings');
+  const share = path.join(state, 'chats', 'session');
+  fs.mkdirSync(project);
+  fs.mkdirSync(share, { recursive: true });
+  const sandboxModule = { exports: {} };
+  vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../src/windows-sandbox.cjs'), 'utf8'), {
+    module: sandboxModule,
+    require,
+    process: { ...process, platform: 'win32' },
+  });
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  return {
+    directory,
+    project,
+    state,
+    share,
+    create: sandboxModule.exports.createWindowsProcessSandbox,
+  };
+}
+
+test('Windows current-user launch accepts nested settings storage and reports no OS isolation', async t => {
+  const f = launcherFixture(t);
+  const launcher = f.create({
+    executable: process.execPath,
+    projectDir: f.project,
+    shareDir: f.share,
+    protectedPaths: [f.state],
+    environment: { ...process.env, SERVICE_TOKEN: 'secret' },
+    hostOnlyEnv: ['service_token'],
+  });
+  t.after(() => launcher.close());
+  assert.equal(launcher.boundary.mechanism, 'windows-current-user');
+  assert.equal(launcher.boundary.osIsolation, false);
+  assert.equal(launcher.boundary.projectWritable, true);
+  assert.equal(launcher.envIsolated, true);
+  const projectFile = path.join(f.project, 'source.txt');
+  const child = launcher.spawn(
+    process.execPath,
+    [
+      '-e',
+      'require("node:fs").writeFileSync(process.argv[1], "CURRENT_USER_WRITE"); process.stdout.write(JSON.stringify({ home: process.env.KIMI_CODE_HOME, temp: process.env.TEMP, secret: process.env.service_token ?? process.env.SERVICE_TOKEN ?? null }));',
+      projectFile,
+    ],
+    {
+      env: { service_token: 'reintroduced', kimi_code_home: 'wrong', temp: 'wrong' },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    },
+  );
+  let output = '';
+  child.stdout.on('data', value => (output += value));
+  const [code] = await once(child, 'close');
+  assert.equal(code, 0);
+  const report = JSON.parse(output);
+  assert.equal(report.secret, null);
+  assert.equal(report.home, f.share);
+  assert.equal(report.temp, path.join(launcher.directory, 'scratch'));
+  assert.equal(fs.readFileSync(projectFile, 'utf8'), 'CURRENT_USER_WRITE');
+  launcher.close();
+  assert.equal(fs.existsSync(launcher.directory), false);
+  assert.equal(fs.existsSync(f.share), true, 'closing preserves persistent conversation storage');
+  assert.throws(() => launcher.spawn(process.execPath, []), /closed/);
+});
+
+test('Windows current-user launcher preserves literal script argv and refuses shell substitution', async t => {
+  const f = launcherFixture(t);
+  const script = path.join(f.directory, 'entry with spaces.cjs');
+  fs.writeFileSync(script, 'process.stdout.write(JSON.stringify(process.argv.slice(2)))');
+  const launcher = f.create({
+    executable: script,
+    projectDir: f.project,
+    shareDir: f.share,
+    environment: process.env,
+  });
+  t.after(() => launcher.close());
+  const args = ['', 'two words', 'a"quoted"value', '尾部 Unicode', 'trailing\\', '& | < > ^ % !'];
+  const child = launcher.spawn(process.execPath, [script, ...args], {
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  let output = '';
+  child.stdout.on('data', chunk => (output += chunk));
+  assert.equal((await once(child, 'close'))[0], 0);
+  assert.deepEqual(JSON.parse(output), args);
+  assert.throws(() => launcher.spawn(process.execPath, [script], { shell: true }), /shell/);
+  assert.throws(() => launcher.spawn(process.execPath, [script], { cwd: f.project }), /workspace/);
+  assert.throws(() => launcher.spawn(script, []), /bound executable/);
 });

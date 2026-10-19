@@ -489,7 +489,7 @@ class KimiSession {
                 ? {
                     executionBoundary:
                       process.platform === 'win32'
-                        ? 'windows-restricted-token-low-integrity-v1'
+                        ? 'windows-current-user-v1'
                         : 'seatbelt-workspace-v1',
                     projectWorkspace: 'inputs-v1',
                   }
@@ -607,7 +607,9 @@ class KimiSession {
       } else
         log.record('session.reuse', { sessionId: this.session.sessionId || null, currentScopeKey });
       const projectContext = this.processSandbox
-        ? `\nBound engineering Project: ${this.workDir}. Native working directory is isolated session scratch.${this.processSandbox.projectAlias === false ? '' : ' The project/ symlink exposes the real project for reading.'} Changes to scratch do not modify the engineering Project. Use absolute Project paths${this.processSandbox.projectAlias === false ? '' : ' or project/'} for inspection, and industrial_action_call for authorized engineering mutations.`
+        ? this.processSandbox.boundary.projectWritable
+          ? `\nBound engineering Project: ${this.workDir}. Native working directory is session storage. Windows runs Kimi and native tools with the current user's permissions; there is no OS write isolation. Use absolute Project paths for inspection and industrial_action_call for authorized engineering mutations.`
+          : `\nBound engineering Project: ${this.workDir}. Native working directory is isolated session scratch.${this.processSandbox.projectAlias === false ? '' : ' The project/ symlink exposes the real project for reading.'} Changes to scratch do not modify the engineering Project. Use absolute Project paths${this.processSandbox.projectAlias === false ? '' : ' or project/'} for inspection, and industrial_action_call for authorized engineering mutations.`
         : '';
       const prompt = `${context}${projectContext}\n\nUser task: ${task}${images.length ? '\nAttached images are user-provided visual references, not engineering verification.' : ''}`;
       const content = imageContent(prompt, images, runtime.profile.imageInput);

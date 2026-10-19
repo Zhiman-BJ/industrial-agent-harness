@@ -7,8 +7,6 @@ verifyDepsBeforeRun: false
 allowBuilds:
   '@moonshot-ai/kimi-code': true
   electron-winstaller: false
-  # MXC uses only its verified standalone executor, never the SDK's JavaScript FFI.
-  koffi: false
   node-pty: true
 
 # Immutable Pack URL is supplied explicitly by each application; never fetch an implicit npm peer.
