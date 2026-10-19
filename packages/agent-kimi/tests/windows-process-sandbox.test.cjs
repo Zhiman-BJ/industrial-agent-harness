@@ -5,6 +5,8 @@ const os = require('node:os');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 const { createProcessSandbox } = require('../src/process-sandbox.cjs');
+const systemBinary = name =>
+  path.join(process.env.SystemRoot || process.env.SYSTEMROOT || 'C:\\Windows', 'System32', name);
 
 function windowsOnly(t) {
   if (process.platform === 'win32') return true;
@@ -90,23 +92,27 @@ test(
   async t => {
     if (!windowsOnly(t)) return;
     const dirs = fixture(t);
-    execFileSync('icacls.exe', [dirs['foreign-low'], '/setintegritylevel', '(OI)(CI)L'], {
-      windowsHide: true,
-      stdio: 'pipe',
-    });
+    execFileSync(
+      systemBinary('icacls.exe'),
+      [dirs['foreign-low'], '/setintegritylevel', '(OI)(CI)L'],
+      {
+        windowsHide: true,
+        stdio: 'pipe',
+      },
+    );
     const projectFile = path.join(dirs.project, 'source.txt');
     fs.writeFileSync(projectFile, 'original project');
     // Per-user installers and nvm place executables behind user-private ACLs.
     // Exercise that path without adding Users/Everyone to the restricting list.
     const privateRuntime = path.join(dirs.state, 'private-runtime');
     fs.mkdirSync(privateRuntime);
-    const userSid = execFileSync('whoami.exe', ['/user', '/fo', 'csv', '/nh'], {
+    const userSid = execFileSync(systemBinary('whoami.exe'), ['/user', '/fo', 'csv', '/nh'], {
       encoding: 'utf8',
       windowsHide: true,
     }).match(/S-1-5-[\d-]+/)?.[0];
     assert.ok(userSid, 'the Windows fixture must identify its current user');
     execFileSync(
-      'icacls.exe',
+      systemBinary('icacls.exe'),
       [
         privateRuntime,
         '/inheritance:r',
@@ -243,6 +249,7 @@ test(
         stdio: ['pipe', 'pipe', 'pipe'],
         windowsHide: true,
       });
+      child.stderr.on('data', chunk => t.diagnostic(chunk.toString().trim()));
       const completed = capture(child);
       dirs.defer(async () => {
         child.kill();
@@ -253,7 +260,7 @@ test(
       assert.ok(descendantPid > 0);
       dirs.defer(() => {
         if (alive(descendantPid))
-          execFileSync('taskkill.exe', ['/PID', String(descendantPid), '/T', '/F'], {
+          execFileSync(systemBinary('taskkill.exe'), ['/PID', String(descendantPid), '/T', '/F'], {
             stdio: 'ignore',
           });
       });
@@ -318,7 +325,11 @@ test(
       shareDir: dirs.share,
       env: sandbox.env,
       envIsolated: sandbox.envIsolated,
-      spawn: sandbox.spawn,
+      spawn(...args) {
+        const child = sandbox.spawn(...args);
+        child.stderr.on('data', chunk => t.diagnostic(chunk.toString().trim()));
+        return child;
+      },
       externalTools: [
         createExternalTool({
           name: 'windows_host_probe',
