@@ -81,12 +81,10 @@ export function ProjectExecution({
   project,
   busy,
   onChanged,
-  onReady,
 }: {
   project: ProjectBinding;
   busy: boolean;
   onChanged: () => void;
-  onReady: (ready: boolean) => void;
 }) {
   const { t } = useDisplayText();
   const [state, setState] = useState<RemoteProjectState>();
@@ -105,13 +103,6 @@ export function ProjectExecution({
         if (alive) {
           setState(value);
           setSelected(value.files);
-          onReady(
-            value.location === 'local' ||
-              (Boolean(value.syncedAt) &&
-                value.service.status === 'connected' &&
-                (value.service.executableDomains?.includes(project.domain || '') === true ||
-                  value.service.capabilities?.runtimeDiscovery === true)),
-          );
         }
       })
       .catch(reason => {
@@ -130,13 +121,6 @@ export function ProjectExecution({
       await operation();
       const next = await window.viewerHost!.remoteProject({ projectId: project.id });
       setState(next);
-      onReady(
-        next.location === 'local' ||
-          (Boolean(next.syncedAt) &&
-            next.service.status === 'connected' &&
-            (next.service.executableDomains?.includes(project.domain || '') === true ||
-              next.service.capabilities?.runtimeDiscovery === true)),
-      );
       if (changed) onChanged();
     } catch (reason) {
       setError(String(reason));

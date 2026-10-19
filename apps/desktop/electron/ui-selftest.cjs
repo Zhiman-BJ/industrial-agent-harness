@@ -266,7 +266,7 @@ async function run(window, dialog) {
   );
   await click('.ia-execution-options button:last-child');
   await wait(
-    `document.querySelector('.ia-remote-project-body')?.textContent.includes('Not configured') && document.querySelector('.ia-project-start').disabled`,
+    `document.querySelector('.ia-remote-project-body')?.textContent.includes('Not configured') && !document.querySelector('.ia-project-start').disabled`,
   );
   await wait(`!document.querySelector('.ia-project-resources')`);
   assert.equal(
@@ -278,7 +278,8 @@ async function run(window, dialog) {
   await setLanguage(window, 'zh-CN');
   await capture('remote-unconfigured-zh');
   await setLanguage(window, 'en');
-  await click('.ia-new-chat');
+  // Creating a chat is navigation; remote readiness still gates sending.
+  await click('.ia-project-start');
   await wait(`document.querySelector('.ia-status-dock')?.textContent.includes('Not configured')`);
   // The pill summary can settle before the chat page finishes mounting its
   // composer; wait for the textarea before asserting its disabled state.
@@ -336,6 +337,40 @@ async function run(window, dialog) {
     true,
     'Chat status stays mounted but does not cover project settings',
   );
+  // A project restored in remote mode must also allow both chat entry points.
+  // Reopening an empty chat keeps its identity instead of creating duplicates.
+  const remoteDraft = await evaluate(
+    `window.viewerHost.chats().then(list => ({ id: list.activeId, count: list.chats.length }))`,
+  );
+  await new Promise(resolve => {
+    window.webContents.once('did-finish-load', resolve);
+    window.webContents.reload();
+  });
+  await wait(`Boolean(document.querySelector('.ia-project-row:not(:disabled)'))`);
+  await click('.ia-project-row');
+  await wait(`Boolean(document.querySelector('.ia-project-page'))`);
+  await wait(
+    `document.querySelector('.ia-remote-project-body')?.textContent.includes('Not configured')`,
+  );
+  assert.equal(
+    await evaluate(`document.querySelector('.ia-project-start').disabled`),
+    false,
+    'Restored remote projects can open a chat before remote setup',
+  );
+  assert.equal(await evaluate(`document.querySelector('.ia-new-chat').disabled`), false);
+  await click('.ia-new-chat');
+  await wait(`Boolean(document.querySelector('.ia-composer textarea'))`);
+  assert.deepEqual(
+    await evaluate(
+      `window.viewerHost.chats().then(list => ({ id: list.activeId, count: list.chats.length }))`,
+    ),
+    remoteDraft,
+    'Both remote chat entry points reuse the same empty draft',
+  );
+  assert.equal(await evaluate(`document.querySelector('.ia-composer textarea').disabled`), true);
+  assert.equal(await evaluate(`document.querySelector('.ia-send').disabled`), true);
+  await click('.ia-composer-project');
+  await wait(`Boolean(document.querySelector('.ia-project-page'))`);
   await click('.ia-settings-button');
   await wait(
     `Array.from(document.querySelectorAll('.ia-settings-row')).some(row => row.textContent.includes('MCP & Skills'))`,

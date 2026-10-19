@@ -144,7 +144,8 @@ async function runInner(window) {
 
   // Before upload, the actual remote readiness gate blocks input. The composer
   // explains that state and takes the user back to project execution settings.
-  await click('.ia-new-chat');
+  await wait(`document.querySelector('.ia-project-start')?.disabled === false`);
+  await click('.ia-project-start');
   await wait(`document.querySelector('.ia-composer textarea')?.disabled === true`);
   const remoteAgentAvailable = await evaluate(
     `window.viewerHost.agentStatus().then(s => s.available)`,
@@ -223,7 +224,8 @@ async function runInner(window) {
 
   // 7. Chat page: status pill top-right (card collapsed, conversation centered)
   // with an enabled composer; opening the card shifts the conversation left.
-  await click('.ia-new-chat');
+  await wait(`document.querySelector('.ia-project-start')?.disabled === false`);
+  await click('.ia-project-start');
   await wait(`document.querySelector('.ia-status-dock')?.textContent.includes('远程就绪')`);
   await wait(`document.querySelector('.ia-composer textarea')?.disabled === false`);
   assert.equal(

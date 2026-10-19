@@ -33,7 +33,7 @@ node apps/cli/src/main.cjs remote cancel --project-dir /path/to/project --domain
 
 | ID | 步骤与预期 | 边界／失败恢复 | 必留证据 |
 | --- | --- | --- | --- |
-| RE-01 空配置 | 项目详情选择“知满远程（体验）”，保存后新聊天继承；尚未配置时显示原因，不能执行；切回本机可用 | 不自动填官方 URL 或上传工程；本机配置不等于远端机器/profile 选择器 | 当前配置状态、位置继承、失败提示 |
+| RE-01 空配置 | 项目详情选择“知满远程（体验）”，保存后项目详情与侧栏均可进入聊天，重启后仍可进入并复用已有空白聊天；尚未配置时输入区显示原因并禁止发送；切回本机可用 | 不自动填官方 URL 或上传工程；本机配置不等于远端机器/profile 选择器 | 当前配置状态、位置继承、失败提示 |
 | RE-02 身份连接 | 配置授权的 HTTPS 部署，检查连接并固定 serverId/远端项目/subject；在任务运行时改变设置 | URL 禁凭据和重定向，非 loopback HTTP 拒绝；绑定变化不得把现有任务发往另一服务/账号 | 脱敏 origin、固定身份一致性、拒绝记录 |
 | RE-03 上传同意 | 默认无选中，预览小文件清单后确认；确认后改 bytes、加删路径、等待超过五分钟分别再试 | 清单/目的地/摘要/过期变化须重审；>256 文件或 >8 MiB、越界/软硬链接/常见私钥凭据拒绝；不声称通用敏感识别 | 清单摘要与计数、同意时间、排除错误；不附秘密 |
 | RE-04 正常任务 | UI 和 CLI 各用相同 Pack/profile/input 走准备→排队→运行→收集→结束，核对 canonical 事实和 CAS hash | 不要求日志/本地 run ID 字节相同；执行结束不等于 Verification passed；远端本地任务/MCP组合边界保持 | request/job/Action/Artifact/Verification/Checkpoint 关联、hash |
