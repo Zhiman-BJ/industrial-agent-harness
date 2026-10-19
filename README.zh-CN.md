@@ -140,6 +140,8 @@ Harness 自有 Viewer 控件跟随 **设置 → 语言**（简体中文 / Englis
 | [CAD · OCCT](doc/freecad-domain-pack.md)    | STL；Pack 生成的 FCStd/STEP 与经哈希检查的配套 BREP/STL、可选原生草图数据      | 官方 OCCT 7.9.2 AIS/V3d WebGL2：曲面、轮廓、X/Y/Z 封口剖切、明确的“测量”按钮，分开单对象尺寸与两对象最短距离，点击面/边直接在模型上标注 BREP 边长/直径/面积/最短距离，不弹出测量侧栏；草图几何、尺寸和约束高亮。共享导航与全屏，窗口缩放保持模型比例；工作区分隔线可拖动或键盘调整、双击复位；本地 WASM，需 WebGL2。只读，测量名义几何，不含公差或工程验收。macOS arm64 Electron 实测。 |
 | [通用文档](doc/document-viewers.md)         | CSV/TSV、JSON、JSONL/NDJSON、Markdown、TXT/LOG                                 | 表格、结构、记录与文本搜索；只读受限 UTF-8 输入，不执行公式或嵌入 HTML。                                                                                                                                                                                                                                                                                                                |
 
+远程 CAD 回执同样接入此 Viewer：有界产物索引按已校验的 SHA-256 关联 FCStd/STEP 配套文件，不改写下载字节。真实远程 build、桌面查看与自动释放沙箱的证据见[远程 CAD 验收](doc/evidence/remote-cad-20261019/README.md)。
+
 完整格式清单、文件上限与渲染依赖见各 Viewer 文档。新增接入需同时更新中英文 README，并遵守 [Viewer 接入契约](AGENTS.md#viewer-integration-contract)。
 
 可先体验 [Sobel 芯片工程](examples/chip-sobel/README.md)、[LED 电路板](examples/pcb-led/README.md)、[Godot Playground](examples/godot-viewer/README.md)或[通用文档示例](examples/document-viewers/README.md)。这些用于查看演示，Godot Web Export 需单独生成，示例不作为工程验收证据。

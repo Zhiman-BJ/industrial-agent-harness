@@ -67,4 +67,6 @@ createWorkspacePlugin 提供所有领域共用的初始化、受控文件读写�
 
 The public module exposes `executeTask` and `runtimeFiles` for trusted owner plugins injected through the shared factory. Protected task lifecycle stays in this backend. Multi-phase native actions can reuse their per-action HOME/TMPDIR; creating those bounded directories is idempotent.
 
+`dockerCli` exposes the shared docker CLI discovery used by doctor, container tasks and image installation: the PATH first, then well-known installs (Docker Desktop's `~/.docker/bin`, `/usr/local/bin`, Homebrew, the Docker.app bundle, per-platform Windows locations), then a timeout-bounded login-shell PATH capture for GUI-launched processes whose environment lacks all of them.
+
 Optional producer `presentation` metadata binds only local names from the actual collected output set. Replacement/check inputs require recorded input hashes or a staged snapshot matching actual project bytes. Invalid display metadata yields diagnostics and cannot alter Action/Artifact/Verification facts. The generic file writer declares only explicitly changed nondeleted outputs. [Result contract](../../doc/task-results.md).

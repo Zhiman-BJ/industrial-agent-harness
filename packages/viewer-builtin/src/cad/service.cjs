@@ -2,6 +2,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { readBounded, utf8 } = require('../engineering/read.cjs');
 const { parseSketches } = require('./sketches.cjs');
+const { readArtifactBundle } = require('../engineering/artifact-bundle.cjs');
 const LIMIT = 100000;
 function parseStl(bytes) {
   const vertices = [];
@@ -41,7 +42,8 @@ function createCadPlugins({ projectRoot }) {
       matches: file =>
         /\.(fcstd|stl)$/i.test(file) ||
         (/\.(step|stp)$/i.test(file) &&
-          fs.existsSync(file.replace(/\.[^.]+$/, '.cad-preview.json'))),
+          (fs.existsSync(file.replace(/\.[^.]+$/, '.cad-preview.json')) ||
+            fs.existsSync(path.join(path.dirname(file), 'artifact-bundle.json')))),
       open: async ({ artifact, file }) => {
         const root = fs.realpathSync(projectRoot());
         const source = readBounded(file, root, artifact.sha256, 16 * 1024 * 1024);
@@ -50,48 +52,80 @@ function createCadPlugins({ projectRoot }) {
           brep,
           sketches;
         if (!/\.stl$/i.test(file)) {
-          const manifestFile = file.replace(/\.[^.]+$/, '.cad-preview.json');
-          if (!fs.existsSync(manifestFile))
+          let manifestFile = file.replace(/\.[^.]+$/, '.cad-preview.json');
+          const bundle = fs.existsSync(manifestFile)
+            ? null
+            : readArtifactBundle(file, root, source.sha256);
+          let manifest;
+          if (bundle) {
+            const entries = bundle.entries.filter(item => item.kind === 'display.cad.manifest');
+            if (entries.length !== 1) throw Error('CAD preview manifest is missing or ambiguous.');
+            manifest = bundle.read(entries[0], 256 * 1024);
+            manifestFile = manifest.file;
+          } else if (!fs.existsSync(manifestFile))
             throw Error(
               'Create a CAD mesh preview with the FreeCAD inspect/export tool before opening this model.',
             );
-          const manifest = readBounded(manifestFile, root, null, 256 * 1024);
+          else manifest = readBounded(manifestFile, root, null, 256 * 1024);
           const data = JSON.parse(utf8(manifest.bytes));
-          if (data.schemaVersion !== 1 || data.hashes?.[path.basename(file)] !== source.sha256)
+          let sourceName = path.basename(file);
+          if (bundle) {
+            const matches = Object.entries(data.hashes || {}).filter(
+              ([name, sha]) =>
+                sha === source.sha256 &&
+                path.extname(name).toLowerCase() === path.extname(file).toLowerCase(),
+            );
+            if (matches.length !== 1) throw Error('CAD preview source is missing or ambiguous.');
+            sourceName = matches[0][0];
+          }
+          if (
+            data.schemaVersion !== 1 ||
+            !/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,255}$/.test(sourceName) ||
+            data.hashes?.[sourceName] !== source.sha256
+          )
             throw Error('CAD preview source changed; regenerate the preview.');
-          const meshFile = file.replace(/\.[^.]+$/, '.stl');
-          const expected = data.hashes[path.basename(meshFile)];
+          const companionName = extension => sourceName.replace(/\.[^.]+$/, extension);
+          const readCompanion = (name, expected, limit) => {
+            if (!bundle)
+              return readBounded(path.join(path.dirname(file), name), root, expected, limit);
+            const entry = bundle.entries.find(item => item.sha256 === expected);
+            if (!entry) throw Error('CAD companion is missing from the artifact bundle.');
+            return bundle.read(entry, limit);
+          };
+          const meshName = companionName('.stl');
+          const expected = data.hashes[meshName];
           if (!/^[a-f0-9]{64}$/.test(expected || ''))
             throw Error('CAD mesh companion hash is missing.');
-          mesh = readBounded(meshFile, root, expected, 16 * 1024 * 1024);
+          mesh = readCompanion(meshName, expected, 16 * 1024 * 1024);
           companions = [
             { name: path.basename(manifestFile), sha256: manifest.sha256 },
-            { name: path.basename(meshFile), sha256: mesh.sha256 },
+            { name: meshName, sha256: mesh.sha256 },
           ];
-          const brepFile = file.replace(/\.[^.]+$/, '.brep');
-          const brepHash = data.hashes[path.basename(brepFile)];
+          const brepName = companionName('.brep');
+          const brepHash = data.hashes[brepName];
           if (brepHash !== undefined) {
             if (!/^[a-f0-9]{64}$/.test(brepHash))
               throw Error('CAD BREP companion hash is invalid.');
-            const shape = readBounded(brepFile, root, brepHash, 16 * 1024 * 1024);
+            const shape = readCompanion(brepName, brepHash, 16 * 1024 * 1024);
             const text = utf8(shape.bytes);
             if (!/^CASCADE Topology V[123],/m.test(text) || text.split('\n').length > 500000)
               throw Error('Unsupported or oversized CAD BREP companion.');
             brep = shape.bytes.toString('base64');
-            companions.push({ name: path.basename(brepFile), sha256: shape.sha256 });
+            companions.push({ name: brepName, sha256: shape.sha256 });
           }
-          const sketchFile = file.replace(/\.[^.]+$/, '.cad-sketches.json');
-          const sketchHash = data.hashes[path.basename(sketchFile)];
+          const sketchName = companionName('.cad-sketches.json');
+          const sketchHash = data.hashes[sketchName];
           if (sketchHash !== undefined) {
             if (!/^[a-f0-9]{64}$/.test(sketchHash))
               throw Error('CAD sketch companion hash is invalid.');
-            const preview = readBounded(sketchFile, root, sketchHash, 1024 * 1024);
-            const nativeHash = data.hashes[path.basename(file.replace(/\.[^.]+$/, '.FCStd'))];
+            const preview = readCompanion(sketchName, sketchHash, 1024 * 1024);
+            const nativeHash = data.hashes[companionName('.FCStd')];
             sketches = parseSketches(Buffer.from(utf8(preview.bytes)), nativeHash);
-            companions.push({ name: path.basename(sketchFile), sha256: preview.sha256 });
+            companions.push({ name: sketchName, sha256: preview.sha256 });
           }
           readBounded(file, root, source.sha256, 16 * 1024 * 1024);
           readBounded(manifestFile, root, manifest.sha256, 256 * 1024);
+          bundle?.assertUnchanged();
         }
         return {
           kind: 'cad',

@@ -6,5 +6,8 @@
   "scripts": {
     "test": "node --test src/*.test.cjs"
   },
+  "dependencies": {
+    "@industrial-agent-harness/domain-runtime": "workspace:*"
+  },
   "license": "MIT"
 }

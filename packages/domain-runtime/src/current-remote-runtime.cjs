@@ -25,14 +25,14 @@ function createCurrentRemoteRuntime(options, Base) {
       });
       this.workspace.verifiers['remote.reported'] = ({ result }) => result.assessment;
     }
-    async inspect(context) {
+    async inspect(context, { execution = false } = {}) {
       const signal = context?.controller?.signal;
       signal?.throwIfAborted();
       this.assertCurrent();
       await this.settings.ensureSynced(this.projectDir, this.domain);
       signal?.throwIfAborted();
       if (context) {
-        const pending = this.status(context);
+        let pending = this.status(context);
         if (pending && ['submitting', 'running', 'unknown'].includes(pending.status))
           throw Error(
             'The previous remote outcome is unknown. Its saved request must not be replayed.',
@@ -43,6 +43,24 @@ function createCurrentRemoteRuntime(options, Base) {
           );
         // Unresolved project effects cannot be bypassed by opening another chat.
         this.settings.assertTaskIdle(this.projectDir, this.domain);
+        if (['pending', 'releasing'].includes(pending?.sessionRelease?.status)) {
+          await this.releaseSession(context);
+          pending = this.status(context);
+          if (pending?.sessionRelease?.status !== 'released')
+            throw Error(
+              'The previous remote result is saved, but sandbox release is not confirmed. Retry after checking the remote session.',
+            );
+        }
+        // A post-turn refresh must not reacquire the quota just released.
+        // Revalidate the catalog over HTTP; execution still checks the live MCP.
+        if (!execution && this.inventory && pending?.sessionRelease?.status === 'released') {
+          const info = await this.control.info({ signal });
+          signal?.throwIfAborted();
+          if (info.capabilitySnapshotHash !== this.inventory.capabilitySnapshotHash)
+            throw Error('Remote capability inventory changed. Reopen this runtime.');
+          this.state = await this.workspace.inspect();
+          return this.state;
+        }
         const inventory = await context.client.listTools({}, { signal });
         signal?.throwIfAborted();
         if (
@@ -85,16 +103,23 @@ function createCurrentRemoteRuntime(options, Base) {
               : [];
           if (
             profiles?.length !== 1 ||
-            !profiles[0].descriptor ||
-            !profiles[0].worker?.toolIds?.includes(profiles[0].descriptor.id)
+            !Array.isArray(profiles[0].worker?.toolIds) ||
+            !profiles[0].worker.toolIds.length ||
+            profiles[0].worker.toolIds.length > 128 ||
+            new Set(profiles[0].worker.toolIds).size !== profiles[0].worker.toolIds.length
           )
             throw Error('No tool descriptor is bound to the active remote Pack/profile.');
-          candidates = [profiles[0].descriptor];
-          for (const candidate of candidates) {
-            const detail = await context.client.describeTool(candidate.id, { signal });
+          candidates = [];
+          for (const rawId of profiles[0].worker.toolIds) {
+            const id = boundedIdentity(rawId, 'tool');
+            const detail = await context.client.describeTool(id, { signal });
             signal?.throwIfAborted();
-            if (detail.tool?.id !== candidate.id)
+            if (detail.tool?.id !== id)
               throw Error('Remote tool description does not match the active profile.');
+            candidates.push({
+              ...(profiles[0].descriptor?.id === id ? profiles[0].descriptor : {}),
+              ...detail.tool,
+            });
           }
         }
         if (!Array.isArray(candidates) || !candidates.length || candidates.length > 128)
@@ -153,7 +178,9 @@ function createCurrentRemoteRuntime(options, Base) {
       return this.workspace.descriptors(scope);
     }
     async executeOne(request, policy, context) {
-      await this.inspect(context);
+      await this.inspect(context, {
+        execution: this.remoteTools.some(tool => tool.id === request.toolId),
+      });
       // The workspace has its own action controller, created only when execute
       // starts. A cancellation during asynchronous discovery must survive that handoff.
       context.controller.signal.throwIfAborted();
@@ -171,9 +198,25 @@ function createCurrentRemoteRuntime(options, Base) {
         pending.actionId === result.action.id &&
         pending.runId === result.run.id &&
         result.verification.verifierId === 'remote.reported'
-      )
+      ) {
         this.publish(context, { ...pending, needsImport: false });
+        await this.releaseSession(context);
+      }
       return result;
+    }
+    async releaseSession(context) {
+      const released = await this.settings.releaseCompletedSession(
+        this.projectDir,
+        this.domain,
+        context.chatId,
+      );
+      if (released?.status === 'released') {
+        // Teardown is already confirmed. A transport close error must not turn
+        // a committed engineering result into a failed action.
+        await context.client.close().catch(() => {});
+        context.client = this.settings.sessionClient(this.projectDir, this.domain, context.chatId);
+      }
+      this.onStatus(this.status(context));
     }
     async executeRemote(descriptor, { inputs, action, signal }, context) {
       this.assertCurrent();
@@ -283,13 +326,32 @@ function createCurrentRemoteRuntime(options, Base) {
           const file = safeDownload(this.projectDir, ref.relativePath, content, ref);
           artifacts.push({ file, kind: ref.kind, sha256: ref.sha256 });
         }
+        // Transport receipts need not preserve producer filenames. Keep an
+        // adjacent, bounded index so read-only viewers can resolve companions
+        // by their recorded content hashes without rewriting producer bytes.
+        const index = Buffer.from(
+          JSON.stringify({
+            schemaVersion: 1,
+            artifacts: refs.map(ref => ({
+              name: path.posix.basename(ref.relativePath),
+              kind: ref.kind,
+              sha256: ref.sha256,
+              sizeBytes: ref.sizeBytes,
+            })),
+          }),
+        );
+        safeDownload(this.projectDir, `remote-results/${requestId}/artifact-bundle.json`, index, {
+          sha256: crypto.createHash('sha256').update(index).digest('hex'),
+          sizeBytes: index.length,
+        });
         let assessment = {
           status: 'insufficient_evidence',
           reason: 'The remote service returned no engineering verification.',
           metrics: {},
         };
         if (receipt.verification) {
-          const { checks, ...value } = receipt.verification;
+          const value = { ...receipt.verification };
+          delete value.checks;
           const verified = IndustrialVerificationResultSchema.parse(value);
           if (
             verified.evidence.artifactIds.some(id => !ids.has(id)) ||

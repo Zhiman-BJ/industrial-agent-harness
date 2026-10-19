@@ -1,0 +1,44 @@
+[
+  {
+    "kind": "model.cad.fcstd",
+    "sha256": "6ed943b4be80b3497cbd25e5e10207d7c40d0b9aff62998bb499674aa0d836cf",
+    "triangles": 520,
+    "brep": true,
+    "bounds": [
+      0,
+      0,
+      0,
+      40,
+      20,
+      5
+    ]
+  },
+  {
+    "kind": "model.cad.step",
+    "sha256": "de199960cc0d22379a40508454b2eaf0fbe9b0d125e06f6b07b50a0452306001",
+    "triangles": 520,
+    "brep": true,
+    "bounds": [
+      0,
+      0,
+      0,
+      40,
+      20,
+      5
+    ]
+  },
+  {
+    "kind": "model.cad.stl",
+    "sha256": "f632d2532da29ad4989c5b9bdfe62983c474aa4edcf5fe9ba8acc5ff5979c611",
+    "triangles": 520,
+    "brep": false,
+    "bounds": [
+      0,
+      0,
+      0,
+      40,
+      20,
+      5
+    ]
+  }
+]

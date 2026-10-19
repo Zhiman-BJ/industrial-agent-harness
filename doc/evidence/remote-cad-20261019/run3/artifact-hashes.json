@@ -1,0 +1,79 @@
+[
+  {
+    "path": "remote-results/4b68f6e5-1ab4-46e1-91e4-4116315bb271/0-log.tool.log",
+    "kind": "log.tool",
+    "sha256": "33bc12d640251d37e21cdb6f33d50bd68801d7c987653f15f87f5989970da954",
+    "sizeBytes": 1034,
+    "matches": true
+  },
+  {
+    "path": "remote-results/4b68f6e5-1ab4-46e1-91e4-4116315bb271/1-report.cad.execution.json",
+    "kind": "report.cad.execution",
+    "sha256": "3e1abd7b2f3ed58708446ea6237a23004f85bf3f8ad710cf8a3e9eb9bc075f60",
+    "sizeBytes": 278,
+    "matches": true
+  },
+  {
+    "path": "remote-results/4b68f6e5-1ab4-46e1-91e4-4116315bb271/2-report.cad.build.json",
+    "kind": "report.cad.build",
+    "sha256": "aab87d16e1b460807b5c3ed610101a1769674e6d66ce430a44f537b3b65bebe8",
+    "sizeBytes": 646,
+    "matches": true
+  },
+  {
+    "path": "remote-results/4b68f6e5-1ab4-46e1-91e4-4116315bb271/3-report.cad.readback.json",
+    "kind": "report.cad.readback",
+    "sha256": "62a0f7520c490f032fcdf02fc364e944bab334d62e050774cb5bf64024de4cb6",
+    "sizeBytes": 997,
+    "matches": true
+  },
+  {
+    "path": "remote-results/4b68f6e5-1ab4-46e1-91e4-4116315bb271/4-model.cad.fcstd.fcstd",
+    "kind": "model.cad.fcstd",
+    "sha256": "a1a18a19b3172c65ed009bb787786afd0fe3f5c4eeda80a7725407a4c24cacf1",
+    "sizeBytes": 6667,
+    "matches": true
+  },
+  {
+    "path": "remote-results/4b68f6e5-1ab4-46e1-91e4-4116315bb271/5-model.cad.step.step",
+    "kind": "model.cad.step",
+    "sha256": "46abff1cfdc154d50a5964a46b76375f836aceb5d94fbe8d267460b295ee5281",
+    "sizeBytes": 8288,
+    "matches": true
+  },
+  {
+    "path": "remote-results/4b68f6e5-1ab4-46e1-91e4-4116315bb271/6-model.cad.stl.stl",
+    "kind": "model.cad.stl",
+    "sha256": "f632d2532da29ad4989c5b9bdfe62983c474aa4edcf5fe9ba8acc5ff5979c611",
+    "sizeBytes": 26084,
+    "matches": true
+  },
+  {
+    "path": "remote-results/4b68f6e5-1ab4-46e1-91e4-4116315bb271/7-display.cad.brep.brep",
+    "kind": "display.cad.brep",
+    "sha256": "5c8bd8fc41bbc557da9126a611e456e4aa83a2fa491da333f34916c6e971b06d",
+    "sizeBytes": 4631,
+    "matches": true
+  },
+  {
+    "path": "remote-results/4b68f6e5-1ab4-46e1-91e4-4116315bb271/8-display.cad.sketches.sketches",
+    "kind": "display.cad.sketches",
+    "sha256": "a2dda9c3208c2b147b6973c302f68b1a81172cd46d3d4c9d1382a33ae27e9200",
+    "sizeBytes": 145,
+    "matches": true
+  },
+  {
+    "path": "remote-results/4b68f6e5-1ab4-46e1-91e4-4116315bb271/9-display.cad.manifest.manifest",
+    "kind": "display.cad.manifest",
+    "sha256": "d6c6c0d2ba1d9df4d9e31f21f1543dc53836e78a8f33bfada664794b82492e17",
+    "sizeBytes": 1683,
+    "matches": true
+  },
+  {
+    "path": "remote-results/4b68f6e5-1ab4-46e1-91e4-4116315bb271/10-input.cad.recipe.recipe",
+    "kind": "input.cad.recipe",
+    "sha256": "efe9f517645075e1999b2809a1c746965c64f04da0a18b0f679a00728589b4cf",
+    "sizeBytes": 412,
+    "matches": true
+  }
+]

@@ -97,7 +97,7 @@ async function run(window, dialog) {
   await wait(`Boolean(document.querySelector('.ia-chat-welcome'))`);
   assert.equal(
     await evaluate(`document.querySelector('.ia-sidebar-brand b').textContent`),
-    'Micius Harness',
+    'Industrial Harness',
   );
   assert.equal(
     await evaluate(`(() => {

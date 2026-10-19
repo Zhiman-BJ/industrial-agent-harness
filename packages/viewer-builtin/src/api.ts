@@ -684,6 +684,8 @@ export type AgentEvent = {
       type: 'approval-resolved';
       id: string;
       decision: 'approve' | 'approve_for_session' | 'reject' | 'expired';
+      /** Who resolved it: the user through the UI, or the runtime cancelling. */
+      origin?: 'user' | 'runtime';
     }
   | {
       type: 'question';
@@ -949,6 +951,11 @@ export interface RemoteTaskState {
   status: string;
   outcome?: string;
   needsImport?: boolean;
+  sessionRelease?: {
+    status: 'releasing' | 'released' | 'pending';
+    sessionId?: string;
+    code?: string;
+  };
 }
 export interface RemoteSessionState {
   id: string;

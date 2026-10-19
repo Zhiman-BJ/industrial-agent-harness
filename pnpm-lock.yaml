@@ -269,7 +269,11 @@ importers:
 
   packages/harness-replay: {}
 
-  packages/pack-manager: {}
+  packages/pack-manager:
+    dependencies:
+      '@industrial-agent-harness/domain-runtime':
+        specifier: workspace:*
+        version: link:../domain-runtime
 
   packages/sdk: {}
 
@@ -922,7 +926,7 @@ packages:
     engines: {node: '>=10.0.0'}
 
   '@zhiman-bj/industrial-domain-packs@https://codeload.github.com/Zhiman-BJ/industrial-domain-packs/tar.gz/f91a8ab3c071e4500fd4097bb3123a7fbb0ca635':
-    resolution: {gitHosted: true, integrity: sha512-DzjebmU7BBhqMy+UFs6elRu4V9+eh9TPfKjILuwi2xKpud0ocjCI+KDAnCS89bNkgqYa42ECb9TFTWUrgRH59g==, tarball: https://codeload.github.com/Zhiman-BJ/industrial-domain-packs/tar.gz/f91a8ab3c071e4500fd4097bb3123a7fbb0ca635}
+    resolution: {tarball: https://codeload.github.com/Zhiman-BJ/industrial-domain-packs/tar.gz/f91a8ab3c071e4500fd4097bb3123a7fbb0ca635}
     version: 0.5.3
     engines: {node: '>=24'}
     peerDependencies:

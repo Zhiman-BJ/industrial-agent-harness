@@ -143,3 +143,27 @@ test('unimported remote results never appear completed or suggest starting anoth
         { label: 'Remote results need recovery before continuing.', tone: 'idle' },
       );
 });
+
+test('automatic sandbox release is visible without turning the chat into an ended session', async () => {
+  const { summarizeRemote } = await model;
+  assert.deepEqual(
+    summarizeRemote({
+      ...ready,
+      task: { status: 'completed', sessionRelease: { status: 'released' } },
+    }),
+    {
+      label: 'Remote task completed; sandbox released',
+      tone: 'ok',
+    },
+  );
+  assert.deepEqual(
+    summarizeRemote({
+      ...ready,
+      task: { status: 'completed', sessionRelease: { status: 'pending' } },
+    }),
+    {
+      label: 'Remote result saved; sandbox release pending',
+      tone: 'idle',
+    },
+  );
+});

@@ -7,6 +7,7 @@ import {
   ArrowUp,
   Bug,
   ChevronDown,
+  Cpu,
   ChevronRight,
   File,
   FilePlus2,
@@ -83,6 +84,52 @@ import { languageOptions, normalizePreference } from './i18n/core';
 
 type Theme = 'light' | 'dark';
 type ProjectFile = { path: string; name: string; depth: number; directory: boolean };
+type ModelSummary = { model: string; contextSize: number };
+type ContextUsageInfo = { fraction: number; usedTokens: number | null };
+
+// Kimi-style token counts: 25k means 25 × 1024 tokens.
+function formatContextTokens(value: number) {
+  if (value >= 10240) return `${Math.round(value / 1024)}k`;
+  if (value >= 1024) return `${(value / 1024).toFixed(1).replace(/\.0$/, '')}k`;
+  return String(value);
+}
+
+function contextUsageTitle(
+  t: ReturnType<typeof useDisplayText>['t'],
+  modelProfile: ModelSummary | null,
+  usage: ContextUsageInfo | null,
+) {
+  const name = modelProfile?.model || '';
+  if (!usage) return name;
+  const percent = Math.min(100, Math.round(usage.fraction * 100));
+  const used = usage.usedTokens != null ? formatContextTokens(usage.usedTokens) : '—';
+  const total = modelProfile ? formatContextTokens(modelProfile.contextSize) : '—';
+  const detail = t('Context {percent}% used ({used} / {total})', { percent, used, total });
+  return name ? `${name} · ${detail}` : detail;
+}
+
+function latestContextUsage(
+  turns: ChatTurn[],
+  contextSize: number | undefined,
+): ContextUsageInfo | null {
+  for (let turn = turns.length - 1; turn >= 0; turn--) {
+    const events = turns[turn].events;
+    for (let index = events.length - 1; index >= 0; index--) {
+      const event = events[index];
+      if (event.type !== 'status') continue;
+      const tokenUsage = event.tokenUsage;
+      const usedTokens = tokenUsage
+        ? tokenUsage.input_other + tokenUsage.input_cache_read + tokenUsage.input_cache_creation
+        : null;
+      const fraction =
+        event.contextUsage ??
+        (usedTokens != null && usedTokens > 0 && contextSize ? usedTokens / contextSize : null);
+      if (fraction != null && Number.isFinite(fraction) && fraction > 0)
+        return { fraction, usedTokens };
+    }
+  }
+  return null;
+}
 
 export function App() {
   const { t, locale } = useDisplayText();
@@ -97,6 +144,7 @@ export function App() {
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const attachments = useImageAttachments(activeProjectId);
   const [modelImageInput, setModelImageInput] = useState(false);
+  const [modelProfile, setModelProfile] = useState<ModelSummary | null>(null);
   const sentImages = useRef(new Map<string, PromptImage[]>());
   const sentTasks = useRef(new Map<string, string>());
   const [page, setPage] = useState<'chat' | 'project' | 'capabilities'>('chat');
@@ -203,6 +251,22 @@ export function App() {
     setLogOpen(true);
   }, []);
   const [task, setTask] = useState('');
+  // Unsent drafts survive navigation (project details, chat/project switches):
+  // stash under the leaving chat id, restore when it is opened again.
+  const taskRef = useRef('');
+  const chatDrafts = useRef(new Map<string, string>());
+  useEffect(() => {
+    taskRef.current = task;
+  }, [task]);
+  function stashDraft() {
+    const id = chatIdRef.current;
+    if (!id) return;
+    if (taskRef.current.trim()) chatDrafts.current.set(id, taskRef.current);
+    else chatDrafts.current.delete(id);
+  }
+  function draftFor(id: string | null) {
+    return (id && chatDrafts.current.get(id)) || '';
+  }
   const [submittedTask, setSubmittedTask] = useState('');
   const [broker, setBroker] = useState<BrokerResult>();
   const [capabilityDetail, setCapabilityDetail] = useState<CapabilityDetail>();
@@ -307,6 +371,14 @@ export function App() {
         ? Promise.reject(Error('Wait for the chat to open.'))
         : window.viewerHost!.answerAgentQuestion(id, answers, activeChatId || undefined),
     [activeChatId],
+  );
+  const openModelSettings = useCallback(() => setModelSettingsOpen(true), []);
+  const retryTurn = useCallback(
+    (prompt: string) => {
+      if (agentBusy || !prompt) return;
+      void resolveTask(undefined, prompt);
+    },
+    [agentBusy],
   );
   async function readHistory(read: () => Promise<ChatHistory>): Promise<ChatHistory> {
     const pending = { events: [] as AgentEvent[], overflow: false };
@@ -429,7 +501,8 @@ export function App() {
     fileOpenRevision.current++;
     try {
       const history = await readHistory(() => window.viewerHost!.selectChat(id));
-      setTask('');
+      stashDraft();
+      setTask(draftFor(id));
       applyHistory(history);
       showPage('chat');
       setBrokerError('');
@@ -541,7 +614,10 @@ export function App() {
     }
     void window.viewerHost
       .modelGet()
-      .then(profile => setModelImageInput(profile.imageInput))
+      .then(profile => {
+        setModelImageInput(profile.imageInput);
+        setModelProfile({ model: profile.model, contextSize: profile.contextSize });
+      })
       .catch(reason => setError(String(reason)));
     void window.viewerHost
       .domains()
@@ -698,7 +774,9 @@ export function App() {
       void window
         .viewerHost!.modelGet()
         .then(profile => {
-          if (!disposed) setModelImageInput(profile.imageInput);
+          if (disposed) return;
+          setModelImageInput(profile.imageInput);
+          setModelProfile({ model: profile.model, contextSize: profile.contextSize });
         })
         .catch(reason => setError(String(reason)));
     };
@@ -759,6 +837,7 @@ export function App() {
   const projectName = activeProject?.name || t('No project selected');
   const fixedDomain = activeProject?.domain || null;
   const selectedDomain = fixedDomain;
+  const contextUsage = latestContextUsage(turns, modelProfile?.contextSize);
   const domainFor = (id?: string | null) => domains.find(item => item.id === id);
   const activeFileName = activeFile?.name;
   const todo = latestEvent(agentEvents, 'todo');
@@ -1015,6 +1094,13 @@ export function App() {
         showPage('project');
         return;
       }
+      // Sitting in a chat that never sent anything: it already is the "new"
+      // chat — keep it (and its draft) instead of stacking another empty one.
+      if (chatIdRef.current && !turns.length) {
+        showPage('chat');
+        return;
+      }
+      stashDraft();
       const history = await readHistory(() => window.viewerHost!.newChat());
       if (history.chat.id !== chatIdRef.current) {
         applyHistory(history);
@@ -1095,6 +1181,7 @@ export function App() {
       setBroker(result);
       liveResultTurn.current = result.turnId || null;
       await refreshChats(true);
+      chatDrafts.current.delete(chatIdRef.current || '');
       setTask('');
       if (agentStatus?.available && agentStatus.configured && agentStatus.projectDir)
         await runAgent(prompt, images);
@@ -1196,7 +1283,7 @@ export function App() {
               <span className="ia-product-mark">
                 <img src="./product-mark.png" width={28} height={28} alt="" />
               </span>
-              <b>Micius Harness</b>
+              <b title="Industrial Harness">Industrial Harness</b>
             </div>
             <div className="ia-projects-heading">
               <span>{t('PROJECTS')}</span>
@@ -1821,6 +1908,12 @@ export function App() {
                               debug={debug}
                               approve={approveAgent}
                               answer={answerAgent}
+                              onRetry={
+                                turn.events.some(event => event.type === 'error')
+                                  ? () => retryTurn(turn.task)
+                                  : undefined
+                              }
+                              onOpenModelSettings={openModelSettings}
                               remoteTools={
                                 activeProject?.executionLocation === 'remote'
                                   ? remoteToolSet
@@ -1967,6 +2060,35 @@ export function App() {
                               <option value="ask">{t('Request approval')}</option>
                               <option value="auto">{t('Auto approve')}</option>
                             </select>
+                            <button
+                              type="button"
+                              className="ia-model-pill"
+                              onClick={() => setModelSettingsOpen(true)}
+                              title={contextUsageTitle(t, modelProfile, contextUsage)}
+                              aria-label={contextUsageTitle(t, modelProfile, contextUsage)}
+                            >
+                              <Cpu size={13} />
+                              <span className="ia-model-pill-name">
+                                {modelProfile?.model || t('Model')}
+                              </span>
+                              {contextUsage && (
+                                <span
+                                  className={`ia-model-pill-ctx${
+                                    contextUsage.fraction >= 0.8 ? ' high' : ''
+                                  }`}
+                                  aria-hidden="true"
+                                >
+                                  <span className="ia-model-pill-bar">
+                                    <span
+                                      style={{
+                                        width: `${Math.min(100, Math.round(contextUsage.fraction * 100))}%`,
+                                      }}
+                                    />
+                                  </span>
+                                  {Math.min(100, Math.round(contextUsage.fraction * 100))}%
+                                </span>
+                              )}
+                            </button>
                           </div>
                           <div className="ia-send-actions">
                             <ImageAttachButton
@@ -2251,7 +2373,13 @@ export function App() {
                     ))}
                     {!activeFile && (
                       <div className="ia-workspace-empty">
-                        {t(error) || t('Open the file tree to browse this project.')}
+                        {error
+                          ? t(error)
+                          : activeProject && fileTreeOpen && !projectFiles.length
+                            ? t(
+                                'This project has no files yet. Run a task or add files to the directory.',
+                              )
+                            : t('Open the file tree to browse this project.')}
                       </div>
                     )}
                     {selectedArtifact && (
@@ -2314,7 +2442,11 @@ export function App() {
                         ))}
                         {!projectFiles.length && (
                           <p className="ia-file-hint">
-                            {t('Choose a project to browse its files.')}
+                            {activeProject
+                              ? t(
+                                  'This project has no files yet. Run a task or add files to the directory.',
+                                )
+                              : t('Choose a project to browse its files.')}
                           </p>
                         )}
                       </div>
