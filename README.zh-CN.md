@@ -11,7 +11,7 @@
 Industrial Agent Harness 通过桌面工作台和无界面 CLI，将本地工程、Kimi Code、专业软件与工程证据连接起来。各领域通过 Domain Pack 提供知识、工具和验证方法。
 
 > [!IMPORTANT]
-> **开发者预览版（Developer Preview）。** 当前处于 Workbench MVP 阶段，已跑通首条持久化 RTL 验证路径。API、Pack 接口和运行时行为仍在迭代。本页描述当前源码；已发布的预览归档以各自版本说明为准。
+> **开发者预览版（Developer Preview）。** 当前处于 Workbench MVP 阶段，已接入持久化、受范围约束的工程运行时。API、Pack 接口和运行时行为仍在迭代。本页描述当前源码；已发布的预览归档以各自版本说明为准。
 
 [快速开始](#快速开始) · [领域扩展](#领域扩展) · [已接入的 Viewer](#已接入的-viewer) · [文档](#文档) · [许可证](#许可证)
 
@@ -20,28 +20,27 @@ Industrial Agent Harness 通过桌面工作台和无界面 CLI，将本地工程
 - **围绕真实工程协作。** 将本地目录绑定到领域，使用多个聊天、恢复会话，并查看执行日志。
 - **按任务获取知识和工具。** Capability Broker 渐进披露相关 Skill 与工具定义，并在执行时校验授权范围。
 - **使用项目指导。** 自动发现 `.skill/`、`.skills/` 与标准项目技能目录，通过 Kimi 原生机制加载项目 `AGENTS.md`。剩余限制见[兼容性审计](doc/kimi-native-compatibility-audit.md)。
-- **保留工程证据。** RTL 运行时记录输入、动作、产物、验证和检查点；输入变化使当前证据失效，中断记录在重启后仍可追踪。
+- **保留工程证据。** 领域运行时记录输入、动作、产物、验证和检查点；输入变化使当前证据失效，中断记录在重启后仍可追踪。
 - **在工作台内查看产物。** 查看波形、网表、版图、KiCad 设计、Godot 素材和通用工程文件。
-- **在工作区内上网。** 打开内嵌浏览器标签页查资料、搜索；网页在隔离 guest 进程中渲染，使用内存会话（退出即清空），页面弹窗收回同一页内跳转。
 - **接入自动化与扩展。** 使用 CLI 的 JSON Lines 事件、Node SDK 或 stdio JSON-RPC；独立构建 Domain Pack，保留完整 Skill 资源并检查安装完整性。
 
 Kimi Code 负责 Agent 循环、对话历史和上下文压缩；Harness 负责工程上下文、工具范围和证据。Agent 回合结束或进程退出成功，均不能直接判定工程验收通过。
 
-首条已实现的工业路径：
+共享工程执行路径：
 
 ```mermaid
 flowchart LR
     Project["工程与当前状态"] --> Broker["Capability Broker"]
     Broker --> Agent["Kimi Code"]
     Agent --> Runtime["受范围约束的 Domain Runtime"]
-    Runtime --> Tools["Chip Pack 工具"]
+    Runtime --> Tools["Domain Pack 工具"]
     Tools --> Evidence["产物与独立验证"]
     Evidence --> State["新状态与检查点"]
 ```
 
 ## 快速开始
 
-准备 **Node.js 24+** 和 **pnpm 11.1.3**。Kimi Code 2.1.1 随依赖安装，实际运行 Agent 需模型 API 配置；Chip MCP 另需 **uv** 和 **Python 3.13**。受保护的 Agent 支持 **macOS Apple Silicon（arm64）** 与具备 bubblewrap 的 **Linux x86-64**；使用其他平台前请查看[预览版范围](#预览版范围)。
+准备 **Node.js 24+** 和 **pnpm 11.1.3**。Kimi Code 2.1.1 随依赖安装，实际运行 Agent 需模型 API 配置；已安装的 Chip 工具使用 Harbor 托管 EDA 镜像，需要运行中的 Docker，无需宿主 Python 或手工 `uv sync`。受保护的 Agent 支持 **macOS Apple Silicon（arm64）** 与具备 bubblewrap 的 **Linux x86-64**；使用其他平台前请查看[预览版范围](#预览版范围)。
 
 ```sh
 git clone https://github.com/Zhiman-BJ/industrial-agent-harness.git
@@ -73,17 +72,17 @@ pnpm dev
 
 **设置 → 语言** 可选择简体中文、English 或跟随系统，即时生效并记住选择。切换保留草稿、运行中的任务和查看器状态。Harness 自有控件与弹窗提供中英文；项目文件、聊天原文、工具返回和嵌入的第三方界面保留原内容。见[桌面语言切换](doc/desktop-languages.md)。
 
-在 **Settings → Model API** 配置模型，再添加本地工程并选择领域。打开右侧工作区即可浏览文件；查看文件不需要模型 API Key。
+侧栏将绿色 Core 标记与 Micius Harness 放在项目区上方的独立行，并与项目区左对齐。项目导航将项目名与领域元数据分为两行。设置按外观、Agent 配置与应用选项分组，保留原有操作；Escape 或关闭按钮将焦点返回设置入口，点击外部则关闭弹层并保留目标控件的焦点。
 
-**设置 → 平台账号** 提供可选的系统浏览器登录，使用标准 OIDC Authorization Code + PKCE，并支持 Obol 文档规定的授权码粘贴兜底（含 SSH/无浏览器场景）。接入需要已注册的 native client 和明确的业务服务地址；Desktop 在主进程保存凭证，CLI 提供 `account login|status|logout`，可显式启用平台模型和远程服务。未登录仍可本地工作和使用自有 API Key。配置方法与尚待完成的真实平台验收见[平台账号](packages/harness-auth/README.md)。
+在 **Settings → Model API** 配置模型，再添加本地工程并选择领域。打开右侧工作区即可浏览文件；查看文件不需要模型 API Key。
 
 **API 格式**按模型服务选择，与 Kimi Agent 内核分开。官方 MiniMax Chat Completions 使用兼容 OpenAI 配置；思考开关和档位因模型、协议而异，当前实测与缺口见[模型 API 兼容说明](doc/model-api-compatibility.md)。
 
 准备脚本检查随包 **Kimi Code 2.1.1**，桌面和 CLI 共用认证 Server API 接入，不需要单独安装 Python Kimi。历史、诊断与兼容性边界见[迁移记录](doc/kimi-code-migration.md)。版图查看另需 KLayout Python，可运行 `pnpm --filter @industrial-agent-harness/desktop setup:layout`，或设置 `KLAYOUT_PYTHON`。
 
-### 3. 在 macOS Apple Silicon 验证真实 RTL 闭环
+### 3. 维护者在 macOS Apple Silicon 运行原生回归
 
-完成上述 Kimi 准备后，安装 Verilator，并准备 C++ 工具链与 Chip Python 环境：
+以下历史全套源码入口包含兼容性测试，维护者需准备宿主 Verilator、C++ 工具链、uv 和 Python 3.13。普通已安装 Chip 使用预构建 EDA 镜像，无需这些宿主 Python 步骤；当前托管和安装态测试还需运行中的 Docker：
 
 ```sh
 brew install verilator
@@ -93,30 +92,26 @@ HARNESS_REQUIRE_CORE_NATIVE=1 pnpm run test:industrial-core
 
 测试运行真实 RTL 仿真，检查断言、波形、失败处理、安装态 Pack 完整性和重启恢复。模型响应来自本地受控提供方，不消耗模型 API 额度，也不用于衡量模型能力。真实任务的准备方式和证据边界见[工业运行时说明](doc/p0-industrial-runtime.md)。
 
-Linux x86-64 芯片用户可使用[一键安装](releases/chip-linux-installer-v0.1.0-preview.3.md)，自动准备私有运行时、受保护 Agent 和 EDA 镜像。
+当前托管 Chip profile 已在 macOS ARM64 和 Linux x86-64 搭配 Docker 验收。历史 Linux [一键安装](releases/chip-linux-installer-v0.1.0-preview.3.md)保留各自版本的运行时与安装说明。
 
 需要下载包时，请查看 [GitHub Releases](https://github.com/Zhiman-BJ/industrial-agent-harness/releases)，并按对应版本说明安装。[无界面安装](apps/cli/README.md#github-release-安装)和[领域 CLI 分包](doc/domain-cli-downloads.md)提供校验与外部依赖说明。历史归档不会自动获得当前源码的新功能。
 
-1.0.1-beta.1 本地 Apple Silicon 桌面候选包列出全部五个领域：Chip、PCB、Godot、CAD 四个 Pack 可直接选择，未配置在线目录也能安装；CUDA 保持可见，明确显示远程服务前提和当前暂无可安装桌面包的状态。选择 PCB、Godot 或 CAD 后，应用自动在用户 Pack 目录准备固定官方 KiCad 10.0.6、Godot 4.7.2 或 FreeCAD 1.1.4；这三项托管工具无需用户运行命令或配置环境变量。Chip 仍需外部 Python、编译器及 EDA/PDK 环境。Core 内置 Kimi Code 2.1.1，模型 API 配置仍需单独完成。安装界面展示大小预估、进度、取消与恢复，完成后分别显示各领域的实际就绪状态。详见[安装体验与发行边界](doc/install-experience.md)及[CAD 安装验收](doc/macos-cad-distribution.md)。本地候选包尚不代表正式签名公众发行或真实 Core OTA 已通过验收。
+当前源码消费 **Domain Packs 0.7.0**，owner 固定为 `1eae41d583bc526c36ae8a8f6c08343504949928`。安装 Pack 只安装可信能力、Skills 与适配器；原生依赖由用户在外部安装，容器准备和远程配置分开操作。在能力中心或项目详情中选择已验证的本机、容器或远程 Profile，可关联兼容的现有软件，或在用户已安装并启动 Docker 后显式准备容器镜像。原生 Profile 不提供 Harness 下载／安装入口。本机 FreeCAD、Godot 与隔离 DXF Runtime 不要求 Docker；Chip、PCB 设计与 DXF 容器路径仍需 Docker。产品提供 Chip、PCB、Godot、CAD 四个领域；新目录和历史已装条目均撤下 CUDA，独立实现保留。领域卡片有清晰边框、一行用途与折叠依赖说明；绿色就绪、黄色缺失、红色检查失败、中性色未检查，并明确依赖名称。最近检查失败覆盖旧 Ready 显示。Go 平台组件执行固定环境检测，本轮未将所有领域 MCP 重写为 Go。详见[分发 v2](doc/runtime-distribution-v2.md)、[安装体验](doc/install-experience.md)和[本轮验收证据](doc/qa-runtime-distribution-v2-20261012.md)。模型配置、环境就绪与工程验收是不同状态。本次源码改动不代表新的签名公众安装包、Core OTA、新增 Mac CI runner 或更广的平台资格。
+
+**历史本地候选包：** 1.0.1-beta.1 Apple Silicon 桌面候选包列出全部五个领域：Chip、PCB、Godot、CAD 四个 Pack 可直接选择，未配置在线目录也能安装；CUDA 保持可见，明确显示远程服务前提和当前暂无可安装桌面包的状态。选择 PCB、Godot 或 CAD 后，应用自动在用户 Pack 目录准备固定官方 KiCad 10.0.6、Godot 4.7.2 或 FreeCAD 1.1.4；这三项托管工具无需用户运行命令或配置环境变量。Chip 仍需外部 Python、编译器及 EDA/PDK 环境。Core 内置 Kimi Code 2.1.1，模型 API 配置仍需单独完成。安装界面展示大小预估、进度、取消与恢复，完成后分别显示各领域的实际就绪状态。详见[安装体验与发行边界](doc/install-experience.md)及[CAD 安装验收](doc/macos-cad-distribution.md)。本地候选包尚不代表正式签名公众发行或真实 Core OTA 已通过验收。
 
 ## 领域扩展
 
-Desktop 和 CLI 共用 release 镜像安装及修复。Pack 声明的已发布容器镜像从固定 release
-tarball 下载，校验文件和 OCI 身份后加载到运行中的 Linux Docker engine，再激活 Pack。
-Docker 仍是外部前提；项目执行配置和工程资格分别验收。详见[容器安装契约](doc/container-image-installation.md)。
+| 领域                                                                              | 当前 0.7.0 能力                                                                                                            | 依赖与已验收范围                                                                                                                                                                    |
+| --------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Chip](https://github.com/Zhiman-BJ/industrial-domain-packs/tree/main/packs/chip) | 托管 EDA 操作、RTL 断言与 VCD、Yosys 综合检查，以及波形／网表／版图查看                                                    | macOS ARM64 与 Linux x86-64，需 Docker；Harbor 预构建镜像内含 Python 与工具。物理流程仍需工程自有 PDK／工艺输入；综合不等于等价性、LVS 或物理签核。                                 |
+| [PCB](doc/pcb-godot-runtime.md)                                                   | 复用 PCBbench 设计工具和 Skill，支持用户工程的原理图／PCB 创建、修复、元件、检查与导出；普通项目无需 benchmark seed 或评分 | macOS ARM64；受限本机板图操作使用兼容 KiCad 10.0.6，完整设计路径使用固定 Docker gateway。实际 ERC／DRC 与适用分析分别记录，不承诺完整电气、合规或制造签核。                         |
+| [CAD · FreeCAD / DXF](doc/freecad-domain-pack.md)                                 | FreeCAD 参数化创建／修改、FCStd/STEP/STL 导出及几何回读；受限 DXF 创建／检查／验证                                         | macOS ARM64；本机 FreeCAD 1.1.4、隔离本机 DXF Runtime 与固定 ezdxf Docker 运行时分别提供 Profile。AutoCAD 可选；DXF 仅涵盖声明的二维几何，不承诺通用 DWG/PDF 转换、强度或制造验收。 |
+| [Godot](doc/pcb-godot-runtime.md)                                                 | 类型化场景变换／BoxMesh 修改，原生导入／回读／限帧验证；源码与 Web Export Viewer                                           | macOS ARM64；关联外部安装的兼容 Godot 4.7.2。验收限于显式结构属性，不含任意游戏 QA；Web Export 保留独立依赖。                                                                       |
 
-项目详情和能力中心的**领域工具与 MCP**显示当前 Runtime 的实际工具名称、ID、数量和提供方版本，并支持工具搜索。全局默认和项目覆盖进入共享任务服务；工具注册、启用与依赖就绪分别展示。见[领域工具资源清单与验证](doc/domain-tool-resources.md)。
+共享环境层支持外部准备的 CLI 文件和隔离 Runtime 目录，以固定探针和完整树身份检测关联。Pack 安装不隐式准备任何依赖。真实安装态本机 DXF 已通过几何、错误核验、原生失败、取消／重开、完整树篡改拒绝与外部修复（43秒），无 Docker 调用。真实安装态 PCB 已通过 ERC、零错误 DRC、如实 UNKNOWN、取消／重开（25秒）；88 工具 fixture 分发回归单独计证。Chip 和完整 PCB design 本机执行仍未 qualified。历史 KiCad 下载／续传属于已撤下产品路径，不是当前验收阻塞。Pack 声明设计源与派生证据边界，共享执行后端负责持久工具会话、取消与清理。平台资格按上表分别成立，安装源码 Pack 本身不建立原生能力资格。
 
-| 领域                                                                                                                            | 预览版已提供                                                                                         | 依赖与限制                                                                                             |
-| ------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| [Chip](https://github.com/Zhiman-BJ/industrial-domain-packs/tree/b9759342cace66df0be0c4559b7c24fb28ea07d9/packs/chip/README.md) | EDA 知识与工具注册、持久化的声明式 RTL 验证路径，以及波形、网表、版图查看                            | Core 路径需要 Python 与 Verilator；其他 EDA 流程另需工具、镜像或 PDK，完整执行仍需接入 Runtime。       |
-| [CUDA](doc/cuda-domain-pack.md)                                                                                                 | Compiler / Evaluator 两个远程 MCP、算子优化 Skill 与 canonical 原生证据                              | 开发者配置两个已认证端点；固定 RTX 4090 AXPBY；私有执行依赖外置，尚不提供桌面安装包。                   |
-| [PCB](doc/pcb-godot-runtime.md)                                                                                                 | 公开类型化矩形板框／已有安装孔修改，原生 DRC 与独立任务验证；KiCad Viewer                            | macOS Apple Silicon，打包桌面版自动准备官方 KiCad 10.0.6 及其 Python；有限机械布局任务，无电气／制造验收，不依赖私有 actor。 |
-| [Godot](doc/pcb-godot-runtime.md)                                                                                               | 类型化场景变换／BoxMesh 修改，原生导入／回读／限帧验证；源码与 Web Export Viewer                     | macOS Apple Silicon，打包桌面版自动准备 Godot 4.7.2；验证显式结构约束，无完整游戏 QA。Web Export 保留独立依赖。  |
-| [CAD · FreeCAD](doc/freecad-domain-pack.md)                                                                                     | 参数化草图、拉伸、打孔、布尔建模和版本化参数/轮廓修改；FCStd/STEP/STL 导出、独立回读验证与 OCCT 查看 | 打包桌面版自动准备 FreeCAD 1.1.4 macOS arm64；只支持受限原生特征，不验收机械强度或可制造性。           |
-
-按 [Pack 作者教程](doc/pack-authoring.md)独立开发扩展。领域代码留在 Pack 内，共享 Core 与 Broker 不依赖具体领域。已注册、能够显示或原生烟测成功，均不代表完整工业工作流已经验收。[PCB／Godot 原生任务](doc/pcb-godot-runtime.md) 已为显式首批任务补齐共享 Runtime；不扩大其他工程支持承诺。先前[发布整改记录](doc/release-readiness-20261007.md)保留为历史证据。
-
+按 [Pack 作者教程](doc/pack-authoring.md)独立开发扩展。领域代码留在 Pack 内，共享 Core 与 Broker 不依赖具体领域。已注册、能够显示或原生烟测成功，均不代表完整工业工作流已经验收。[PCB／Godot 原生任务](doc/pcb-godot-runtime.md)及 owner 验收记录列出实际任务边界，不扩大其他工程支持承诺。先前[发布整改记录](doc/release-readiness-20261007.md)保留为历史证据。
 
 ### 任务成果
 
@@ -124,7 +119,7 @@ Docker 仍是外部前提；项目执行配置和工程资格分别验收。详�
 
 读取聊天历史不要求执行配置完成，远程项目也可直接新建／读取聊天。已有成果从记录库只读查询，不加载 Pack；单次读取复用文件校验，下次读取及打开文件重新检查内容。
 
-Owner 已整理[全部五领域、六个 Pack 的声明草案与扩展计划](https://github.com/Zhiman-BJ/industrial-domain-packs/blob/cf72a46b6b4ba927b091ded71b2d52d227db0351/docs/result-presentation-plan.md)。当前接入任务成果的领域生产者为 FreeCAD；其他领域的成果接入仍属待实施项。当前消费版本保留 main 已接入的 CUDA 支持。
+Owner 已整理[全部五领域、六个 Pack 的声明草案与扩展计划](https://github.com/Zhiman-BJ/industrial-domain-packs/blob/cf72a46b6b4ba927b091ded71b2d52d227db0351/docs/result-presentation-plan.md)。当前接入任务成果的领域生产者为 FreeCAD；其他领域的成果接入仍属待实施项。当前产品目录已撤下 CUDA；历史独立实现保留。
 
 ## 已接入的 Viewer
 
@@ -143,7 +138,9 @@ Harness 自有 Viewer 控件跟随 **设置 → 语言**（简体中文 / Englis
 | [动画](doc/godot-assets-viewers.md)         | 受支持的 `.tres`/`.tscn` 与图集动画                                            | 有限 SpriteFrames/Sprite2D 格式的播放与逐帧，不运行 Godot 引擎。                                                                                                                                                                                                                                                                                                                        |
 | [工程文件](doc/engineering-file-viewers.md) | Godot 场景/资源/脚本、KiCad 库/规则、Gerber/钻孔、STEP/VRML 和部分 3D/音频格式 | 结构、制造层与媒体预览，几何和语义范围有限，不提供编辑或制造验收。                                                                                                                                                                                                                                                                                                                      |
 | [CAD · OCCT](doc/freecad-domain-pack.md)    | STL；Pack 生成的 FCStd/STEP 与经哈希检查的配套 BREP/STL、可选原生草图数据      | 官方 OCCT 7.9.2 AIS/V3d WebGL2：曲面、轮廓、X/Y/Z 封口剖切、明确的“测量”按钮，分开单对象尺寸与两对象最短距离，点击面/边直接在模型上标注 BREP 边长/直径/面积/最短距离，不弹出测量侧栏；草图几何、尺寸和约束高亮。共享导航与全屏，窗口缩放保持模型比例；工作区分隔线可拖动或键盘调整、双击复位；本地 WASM，需 WebGL2。只读，测量名义几何，不含公差或工程验收。macOS arm64 Electron 实测。 |
-| [通用文档](doc/document-viewers.md)         | CSV/TSV、JSON、JSONL/NDJSON、Markdown、TXT/LOG、HTML/HTM                       | 表格、结构、记录与文本搜索；只读受限 UTF-8 输入，不执行公式或嵌入 HTML。HTML 预览在沙箱隔离源 iframe 中渲染：内联脚本与宿主隔离运行，远程/网络加载被阻断，可切换原文。                                                                                                                                                                    |
+| [通用文档](doc/document-viewers.md)         | CSV/TSV、JSON、JSONL/NDJSON、Markdown、TXT/LOG                                 | 表格、结构、记录与文本搜索；只读受限 UTF-8 输入，不执行公式或嵌入 HTML。                                                                                                                                                                                                                                                                                                                |
+
+远程 CAD 回执同样接入此 Viewer：有界产物索引按已校验的 SHA-256 关联 FCStd/STEP 配套文件，不改写下载字节。真实远程 build、桌面查看与自动释放沙箱的证据见[远程 CAD 验收](doc/evidence/remote-cad-20261019/README.md)。
 
 完整格式清单、文件上限与渲染依赖见各 Viewer 文档。新增接入需同时更新中英文 README，并遵守 [Viewer 接入契约](AGENTS.md#viewer-integration-contract)。
 
@@ -171,14 +168,14 @@ pnpm run test:release
 pnpm run format:check
 ```
 
-[Harness CI 门禁](.github/workflows/ci.yml)在代码 PR 保留四平台共享包/CLI 回归、macOS/Windows 桌面启动和 Linux 工业 Core 闭环；main 推送及手动完整运行额外验收 macOS 15/26 原生流程、全新 Domain 安装及 Linux 安装器升级/Docker 执行。[CI 回归说明](doc/ci-regression.md)列出依赖、保留证据与明确的覆盖缺口；跳过不代表支持。安全问题按 [SECURITY.md](SECURITY.md) 的流程报告。
+[Harness CI 门禁](.github/workflows/ci.yml)在 Linux x64/arm64、macOS arm64、Windows x64 执行共享包与独立 CLI 包回归，在 macOS/Windows 验证桌面安装，声明 Apple Silicon 与 Linux x86-64 的工业 Core 验收 lane，Linux 还检查实际安装的 Chip CLI。容器化 Mac lane 当前需要具备本地 Docker 的适用 runner；本机验收不代表 GitHub 托管 lane 已通过。[CI 回归说明](doc/ci-regression.md)列出依赖、保留证据与明确的覆盖缺口；跳过不代表支持。安全问题按 [SECURITY.md](SECURITY.md) 的流程报告。
 
 ## 预览版范围
 
 - **平台：** 桌面构建与首次启动 CI 目标为 macOS Apple Silicon（arm64）和 Windows x64。Intel Mac 暂不支持，不再发布 Intel 安装包或对应 Pack 目录目标；具备 Intel 测试机并完成安装及运行时验收后再恢复。签名安装器与真实升级仍需单独验收。
 - **受保护执行：** macOS 使用 Seatbelt；Linux x86-64 使用 bubblewrap/seccomp，需允许非特权用户命名空间。Windows 受保护 Agent 执行仍不可用。
-- **工具兼容性：** 旧领域 MCP 写入仍受隔离限制；所有领域都有受控文件编辑、声明任务执行和经 Runtime 审计的外部 MCP。Computer Use 插件（桌面 GUI 操作）可在设置中开启：工具在宿主侧执行，开启即授权，每次调用记入诊断日志。
-- **工程验收：** 首条 Core 路径验证声明的 RTL/testbench 断言与证据；覆盖率充分性、物理签核和其他领域的完整闭环尚待实现与验收。
+- **工具兼容性：** 旧领域 MCP 写入仍受隔离限制；所有领域都有受控文件编辑、声明任务执行和经 Runtime 审计的外部 MCP。独立 Computer Use 插件仍不可用。
+- **工程验收：** 各领域 profile 验证声明的原生检查，保留失败或缺失证据；不据此推定 RTL 覆盖充分性、物理签核或完整工业工作流。
 - **打包与评测：** 已记录本地未签名桌面检查和受控模型验证；签名发行、跨平台完整资格验证和正式付费模型比较仍需分别完成。
 
 具体测试版本与结果见[验证记录](doc/harness-quality-three-tracks.md)。
@@ -195,8 +192,20 @@ pnpm run format:check
 
 ### 内置远程运行（内部体验）
 
-项目可选择本机或知满远程，首次上传展示目的地和文件清单，聊天内显示任务状态。Desktop/CLI 共用 Remote Runtime，已准入领域工具在现有有限 CPU 沙箱池执行。公网地址与登录默认配置留空；已验证 macOS Apple Silicon 客户端连接 H200 Linux 进行真实 RTL 检查，公网接入及其他远程领域仍待验收。见[内置远程运行](doc/remote-execution.md)。
+远程执行重构为会话式 Gateway v1.1：Kimi/Agent 留在本地，远端提供领域 MCP、专业软件和执行沙箱。Desktop/CLI 共用持久聊天绑定、显式不可变文件上传、规范工程证据导入与核验后的产物下载，下载不覆盖既有文件。本地输入变化须再次审核上传；停止本地等待不表示远端计算已取消。服务连接可用与软件/worker 已获资格分别显示。显式重绑创建新远端项目并保留旧绑定历史，不迁移旧 0.2 job 或工程事实。公网与登录配置仍留空；此次重构不构成 KiCad 或生产 Linux worker 资格，历史 H200 RTL 记录仅属于旧协议。见[远程执行与 CLI 命令](doc/remote-execution.md)。
+
+桌面聊天将远程与任务状态合并为可折叠执行卡。聊天栏至少 960 px 宽时为展开卡预留侧边空间，更窄时在消息上方占位并限制滚动高度。任务进度、未完成工作与远程失败分别呈现；项目/设置页隐藏卡片但保留后台轮询。远程未就绪阻塞输入时，输入区显示原因并提供项目执行设置入口；Kimi 运行时缺失仍保留更高优先级提示。展示调整不改变上传确认、任务审批或既有就绪门禁。
+
+2026-10-16 已通过本地 Computer Use 验收侧栏与设置交互、上传审核、就绪门禁、HTTP 503 故障恢复、结束会话、源文件预览及窄分屏控件。远程检查使用回环地址上的受控 UI fixture，明确记录 `engineeringExecution: false`；未运行真实模型、EDA 工具或自动原生 UI selftest 套件。已验范围与测试限制见 [PD-081](doc/product-decisions.md#pd-081聊天执行状态卡的层级与窄栏适配)。
+
+从仓库根目录启动受控 fixture：
+
+```sh
+MOCK_REMOTE_TOKEN=mock-token node scripts/remote-ui-fixture.cjs
+```
+
+启动测试客户端时设置 `INDUSTRIAL_REMOTE_SERVICE_URL=http://127.0.0.1:8787`、`INDUSTRIAL_REMOTE_CREDENTIAL_ENV=MOCK_REMOTE_TOKEN` 和相同的 `MOCK_REMOTE_TOKEN`。文件上传仍需明确审核与确认。该 fixture 只验证 UI 协议行为，不构成生产远程执行或工程验收。
 
 CLI 和 Desktop 现共用 Harness 任务服务；领域声明、Skill 和实现来自一个固定版本的 Domain Packs。见[消费迁移与验收](doc/shared-task-and-pack-consumption.md)。
 
-PCB 与 Godot 专业 Runtime Actions 提供有限的 macOS Apple Silicon 原生任务，领域实现统一维护在精确固定的 Domain Packs 包中。当前源码消费端固定 Domain Packs 0.5.2 提交 `8ef1de607dad59088ee65f4298552aa719fcbff7`，由通用 Pack Manager 准备声明中的官方原生软件。见[任务边界、依赖与验收](doc/pcb-godot-runtime.md)；其他平台与远端仍未验收。
+此前托管版本以不可变提交固定 Domain Packs 0.6.0，由通用 Pack Manager 准备声明中的 Harbor 产物。以下为该版本历史证据。macOS ARM64 验收涵盖声明的 CAD、PCB、Godot profile 与 CUDA 远程客户端；托管 Chip 另已通过 Linux x86-64 安装和原生检查。具体证据与边界见[安装体验](doc/install-experience.md)及各领域验收记录。历史预览归档保留其原有依赖与范围。

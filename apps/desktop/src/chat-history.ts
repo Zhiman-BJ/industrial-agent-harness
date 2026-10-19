@@ -11,9 +11,15 @@ export function mergeHistoryEvents(history: ChatHistory, received: AgentEvent[])
       event.eventRevision > (history.eventRevision ?? 0),
   );
   if (!newer.length) return history;
+  const eventsByTurn = new Map<string | undefined, AgentEvent[]>();
+  for (const event of newer) {
+    const events = eventsByTurn.get(event.turnId);
+    if (events) events.push(event);
+    else eventsByTurn.set(event.turnId, [event]);
+  }
   const turns = history.turns.map(turn => {
-    const events = newer.filter(event => event.turnId === turn.id);
-    if (!events.length) return turn;
+    const events = eventsByTurn.get(turn.id);
+    if (!events) return turn;
     let status = turn.status;
     for (const event of events) {
       if (event.type === 'done') status = event.result.status;

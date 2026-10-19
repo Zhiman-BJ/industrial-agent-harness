@@ -82,3 +82,5 @@ The new native test files join the existing native CI test catalog; architecture
 读取历史不初始化执行 Runtime 或加载 Pack，远程配置未完成也能新建／读取聊天，并查看已缓存的成果记录。单次读取按 Artifact 身份复用文件校验，下一次读取及打开文件仍重新校验；32 个文件共 32 MiB 的回归用例将读取量从 528 MiB 降至 32 MiB。
 
 需要对比方案或突出诊断时，Agent 可按需调用 `list_results`／`select_result`，选择已登记的组；默认可见性不依赖它。CLI 获取同一成果身份、分组、选择和检查状态。实际验收限上表的 macOS arm64 源码运行态，未新增跨平台或安装包支持承诺。
+
+展示和事件消费者异常不影响已提交 Action 的 scope 同步、任务持久化收尾与会话／Pack 租约释放。成果展示持续失败时保留诊断并省略当前展示，聊天仍退出运行态，后续可重新读取已落盘事件。底层持久化错误仍向调用方报告，同时执行收尾和释放。该路径以持续故障注入验证；不代表已复演原始八小时任务。

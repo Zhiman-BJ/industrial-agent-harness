@@ -1,0 +1,291 @@
+{
+  "service": "https://industrial-mcp-remote-test.pvg1s1-cloud.internal.zhiman.tech",
+  "projectId": "a717ed2f-eb83-4db5-a8e7-87b32963ed83",
+  "snapshotId": "2a3a4435-c0c6-4512-8ec2-b97d2d00cd40",
+  "requestId": "1694309a-22c7-4636-8df8-23a5fcc3f13b",
+  "toolId": "cad.freecad.build",
+  "inputs": {
+    "recipe": {
+      "parameters": {
+        "L": 40,
+        "W": 20,
+        "T": 5,
+        "R": 2
+      },
+      "features": [
+        {
+          "id": "Plate",
+          "op": "box",
+          "length": "L",
+          "width": "W",
+          "height": "T"
+        },
+        {
+          "id": "Drilled",
+          "op": "hole",
+          "base": "Plate",
+          "radius": "R",
+          "height": "T",
+          "origin": [
+            10,
+            10,
+            0
+          ]
+        }
+      ],
+      "result": "Drilled"
+    },
+    "expect": {
+      "volume": 3937.1681469282044,
+      "solids": 1,
+      "bounds": [
+        40,
+        20,
+        5
+      ]
+    }
+  },
+  "actionId": "27c015c6-a12a-4d75-9ed1-c6996735ec2f",
+  "runId": "85ca8e8a-7d1f-45a7-9003-2c542d20eb01",
+  "receipt": {
+    "status": "completed",
+    "persisted": true,
+    "state": null,
+    "verification": {
+      "id": "217cbecf-5598-4b52-96a2-c53d176a1fa9",
+      "schemaVersion": "1",
+      "status": "passed",
+      "verifierId": "cad.freecad.geometry",
+      "reason": "Separate FreeCAD readback confirms valid solids, constrained sketches and matching FCStd/STEP/BREP geometry. Supplied dimensional expectations passed. This checks geometry, not mechanical strength or manufacturability.",
+      "metrics": {
+        "nativeValid": true,
+        "stepValid": true,
+        "brepValid": true,
+        "brepAgreement": true,
+        "positiveVolume": true,
+        "solidPresent": true,
+        "meshPresent": true,
+        "sketchesConstrained": true,
+        "exportAgreement": true,
+        "artifactsPresent": true,
+        "inputUnchanged": true,
+        "expectedVolume": true,
+        "expectedSolids": true,
+        "expectedBounds": true,
+        "volume": 3937.1681469282034,
+        "solids": 1,
+        "boundsX": 40,
+        "boundsY": 20,
+        "boundsZ": 5
+      },
+      "evidence": {
+        "artifactIds": [
+          "291c7daa-1ab2-459a-b44c-ea9e0a6aca96",
+          "f1c33f4a-7858-4995-9102-f290609795a8",
+          "e2d72329-815a-4c76-8d78-ef852a2bea99",
+          "2dc29bf1-4700-4e53-b19f-a617c24bcec2",
+          "44b40873-5c1c-471a-928e-d9f6e4afa509",
+          "510fd8c8-6b0d-46d4-b2e9-45fc45ecc5f2",
+          "d5efa815-f7c5-4238-9937-70348c31f5e2",
+          "08adf407-38db-4383-b663-4c8007770a23",
+          "e17a0e08-a2d4-42d1-abc1-4fb45f749d2f",
+          "09bb7839-3228-418e-85ca-d6e8c421be07",
+          "ca4dc26f-131f-47fc-8682-174c794adb70"
+        ],
+        "inputHashes": {
+          "invocation.json": "553bed450df6075115c649b5931fcd1132ec9952a9d03c199d75fd34f97efd10"
+        }
+      },
+      "checks": [
+        {
+          "name": "log.tool.sha256",
+          "passed": true
+        },
+        {
+          "name": "report.cad.execution.sha256",
+          "passed": true
+        },
+        {
+          "name": "report.cad.build.sha256",
+          "passed": true
+        },
+        {
+          "name": "report.cad.readback.sha256",
+          "passed": true
+        },
+        {
+          "name": "model.cad.fcstd.sha256",
+          "passed": true
+        },
+        {
+          "name": "model.cad.step.sha256",
+          "passed": true
+        },
+        {
+          "name": "model.cad.stl.sha256",
+          "passed": true
+        },
+        {
+          "name": "display.cad.brep.sha256",
+          "passed": true
+        },
+        {
+          "name": "display.cad.sketches.sha256",
+          "passed": true
+        },
+        {
+          "name": "display.cad.manifest.sha256",
+          "passed": true
+        },
+        {
+          "name": "input.cad.recipe.sha256",
+          "passed": true
+        }
+      ]
+    },
+    "artifacts": [
+      {
+        "kind": "log.tool",
+        "sha256": "ec789113698b3875c1dcc6da0e70abfec6624c99872677f7517291851c23ba14",
+        "objectKey": "artifacts/ec/ec789113698b3875c1dcc6da0e70abfec6624c99872677f7517291851c23ba14",
+        "sizeBytes": 1034,
+        "objectId": "1282c812-6a05-4a1c-95c7-74b44d8d2a49",
+        "artifactId": "291c7daa-1ab2-459a-b44c-ea9e0a6aca96"
+      },
+      {
+        "kind": "report.cad.execution",
+        "sha256": "3e1abd7b2f3ed58708446ea6237a23004f85bf3f8ad710cf8a3e9eb9bc075f60",
+        "objectKey": "artifacts/3e/3e1abd7b2f3ed58708446ea6237a23004f85bf3f8ad710cf8a3e9eb9bc075f60",
+        "sizeBytes": 278,
+        "objectId": "d37e45ac-efdc-43cd-9917-605df9907a28",
+        "artifactId": "f1c33f4a-7858-4995-9102-f290609795a8"
+      },
+      {
+        "kind": "report.cad.build",
+        "sha256": "25639c5516c203d35d5ba4fb17448c6e679b8e876c0c77f86bda95b441bf7f25",
+        "objectKey": "artifacts/25/25639c5516c203d35d5ba4fb17448c6e679b8e876c0c77f86bda95b441bf7f25",
+        "sizeBytes": 646,
+        "objectId": "26a9b97a-efe9-41b4-8d05-ad9dbb703a37",
+        "artifactId": "e2d72329-815a-4c76-8d78-ef852a2bea99"
+      },
+      {
+        "kind": "report.cad.readback",
+        "sha256": "225bca6c750c92c62680075570aa41aa0567da054780edf872a4ddeb4e6ba5c5",
+        "objectKey": "artifacts/22/225bca6c750c92c62680075570aa41aa0567da054780edf872a4ddeb4e6ba5c5",
+        "sizeBytes": 997,
+        "objectId": "92711e8e-bf9d-4d31-92e4-c880f40000a4",
+        "artifactId": "2dc29bf1-4700-4e53-b19f-a617c24bcec2"
+      },
+      {
+        "kind": "model.cad.fcstd",
+        "sha256": "6ed943b4be80b3497cbd25e5e10207d7c40d0b9aff62998bb499674aa0d836cf",
+        "objectKey": "artifacts/6e/6ed943b4be80b3497cbd25e5e10207d7c40d0b9aff62998bb499674aa0d836cf",
+        "sizeBytes": 6670,
+        "objectId": "7d690d2b-ce7c-466d-b348-8beae305b46d",
+        "artifactId": "44b40873-5c1c-471a-928e-d9f6e4afa509"
+      },
+      {
+        "kind": "model.cad.step",
+        "sha256": "de199960cc0d22379a40508454b2eaf0fbe9b0d125e06f6b07b50a0452306001",
+        "objectKey": "artifacts/de/de199960cc0d22379a40508454b2eaf0fbe9b0d125e06f6b07b50a0452306001",
+        "sizeBytes": 8288,
+        "objectId": "16a78982-32b8-40c9-9a66-d86fb2087fb9",
+        "artifactId": "510fd8c8-6b0d-46d4-b2e9-45fc45ecc5f2"
+      },
+      {
+        "kind": "model.cad.stl",
+        "sha256": "f632d2532da29ad4989c5b9bdfe62983c474aa4edcf5fe9ba8acc5ff5979c611",
+        "objectKey": "artifacts/f6/f632d2532da29ad4989c5b9bdfe62983c474aa4edcf5fe9ba8acc5ff5979c611",
+        "sizeBytes": 26084,
+        "objectId": "18c22de4-eaa1-455e-b82f-b0f673e7d986",
+        "artifactId": "d5efa815-f7c5-4238-9937-70348c31f5e2"
+      },
+      {
+        "kind": "display.cad.brep",
+        "sha256": "5c8bd8fc41bbc557da9126a611e456e4aa83a2fa491da333f34916c6e971b06d",
+        "objectKey": "artifacts/5c/5c8bd8fc41bbc557da9126a611e456e4aa83a2fa491da333f34916c6e971b06d",
+        "sizeBytes": 4631,
+        "objectId": "24eb69c4-6cbb-4a5d-922b-f3a33b42757d",
+        "artifactId": "08adf407-38db-4383-b663-4c8007770a23"
+      },
+      {
+        "kind": "display.cad.sketches",
+        "sha256": "90daa88e6d812a8eb0385eef19980f2d11602aaf0807a41321ea19525e2a5f6b",
+        "objectKey": "artifacts/90/90daa88e6d812a8eb0385eef19980f2d11602aaf0807a41321ea19525e2a5f6b",
+        "sizeBytes": 145,
+        "objectId": "bd5a6778-cb6b-4e6f-93e3-1f7d5bba7bff",
+        "artifactId": "e17a0e08-a2d4-42d1-abc1-4fb45f749d2f"
+      },
+      {
+        "kind": "display.cad.manifest",
+        "sha256": "8fb8719148441e70dbb0eb6496a0dde6c3e79154db53517a0852fc9239c57ef1",
+        "objectKey": "artifacts/8f/8fb8719148441e70dbb0eb6496a0dde6c3e79154db53517a0852fc9239c57ef1",
+        "sizeBytes": 1683,
+        "objectId": "7c7d2307-f84f-4227-a8d7-326b7621daed",
+        "artifactId": "09bb7839-3228-418e-85ca-d6e8c421be07"
+      },
+      {
+        "kind": "input.cad.recipe",
+        "sha256": "efe9f517645075e1999b2809a1c746965c64f04da0a18b0f679a00728589b4cf",
+        "objectKey": "artifacts/ef/efe9f517645075e1999b2809a1c746965c64f04da0a18b0f679a00728589b4cf",
+        "sizeBytes": 412,
+        "objectId": "a96d1859-edb0-4eb5-a8a6-38902bd81114",
+        "artifactId": "ca4dc26f-131f-47fc-8682-174c794adb70"
+      }
+    ],
+    "evidence": {
+      "requestId": "1694309a-22c7-4636-8df8-23a5fcc3f13b",
+      "lease": {
+        "leaseId": "41efe89f-ca28-4c42-b92d-0d1f464f6101",
+        "sessionId": "581018c0-a7f6-4ac4-a8a4-e4e023704f79",
+        "generation": 1,
+        "providerInstanceId": "fdrgk63nwxxqqybm53aeoub6wf7et7lnhsf6hjri",
+        "provider": "tencent",
+        "region": "ap-guangzhou",
+        "runtimeDigest": "sha256:ab4f32aef70022813f0699e034bb11c4caa1655cb766d12985c783a4de04a54d"
+      },
+      "logs": [
+        "FreeCAD 1.1.4, Libs: 1.1.4R20260928 (Git shallow)",
+        "(C) 2001-2026 FreeCAD contributors",
+        "FreeCAD is free and open-source software licensed under the terms of LGPL2+ license.",
+        "",
+        "Recompute......",
+        "\t\t\t\t\t\t(50 %)\t",
+        "\t\t\t\t\t\t(100 %)\t",
+        "\t\t\t\t\t\t\t\t",
+        "Recompute......",
+        "\t\t\t\t\t\t(25 %)\t",
+        "\t\t\t\t\t\t(50 %)\t",
+        "\t\t\t\t\t\t(75 %)\t",
+        "\t\t\t\t\t\t(100 %)\t",
+        "\t\t\t\t\t\t\t\t",
+        "Recompute......",
+        "\t\t\t\t\t\t(20 %)\t",
+        "\t\t\t\t\t\t(40 %)\t",
+        "\t\t\t\t\t\t(60 %)\t",
+        "\t\t\t\t\t\t(80 %)\t",
+        "\t\t\t\t\t\t(100 %)\t",
+        "\t\t\t\t\t\t\t\t",
+        "Recompute......",
+        "\t\t\t\t\t\t(20 %)\t",
+        "\t\t\t\t\t\t(40 %)\t",
+        "\t\t\t\t\t\t(60 %)\t",
+        "\t\t\t\t\t\t(80 %)\t",
+        "\t\t\t\t\t\t(100 %)\t",
+        "\t\t\t\t\t\t\t\t",
+        "\u001b[32;1m",
+        "*******************************************************************",
+        "******        Statistics on Transfer (Write)                 ******\u001b[0m",
+        "\u001b[32;1m",
+        "*******************************************************************",
+        "******        Transfer Mode = 0  I.E.  As Is       ******\u001b[0m",
+        "\u001b[32;1m******        Transferring Shape, ShapeType = 0                      ******\u001b[0m",
+        "\u001b[32;1m** WorkSession : Sending all data\u001b[0m",
+        "\u001b[32;1m Step File Name : /work/requests/1694309a-22c7-4636-8df8-23a5fcc3f13b/model.step(209 ents)  Write  Done\u001b[0m",
+        "",
+        ""
+      ],
+      "workerOk": true
+    }
+  }
+}

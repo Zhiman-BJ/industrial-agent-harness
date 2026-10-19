@@ -6,7 +6,23 @@ const path = require('node:path');
 const { RuntimeAssetManager, validateRuntimeAssets } = require('./runtime-assets.cjs');
 const { PackManager, createArchive, digest } = require('./index.cjs');
 
+async function waitForChildPid(file) {
+  const deadline = Date.now() + 5000;
+  while (Date.now() < deadline) {
+    try {
+      const content = fs.readFileSync(file, 'utf8').trim();
+      const pid = Number(content);
+      if (/^[1-9]\d*$/.test(content) && Number.isSafeInteger(pid)) return pid;
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+    }
+    await new Promise(resolve => setTimeout(resolve, 10));
+  }
+  assert.fail(`Installer child PID was not published in ${file}.`);
+}
+
 async function assertChildReaped(pid) {
+  assert.ok(Number.isSafeInteger(pid) && pid > 0, 'Reaping requires an actual child PID');
   // macOS CI can still observe the PID immediately after the child's close
   // event. Bound the reaping check; a live/leaked child must still fail.
   const deadline = Date.now() + 2000;
@@ -21,6 +37,27 @@ async function assertChildReaped(pid) {
   }
   assert.fail(`Installer child ${pid} remains observable after close.`);
 }
+
+test('installer readiness waits for PID content instead of accepting an empty file as process group zero', async t => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-child-pid-test-'));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const ready = path.join(directory, 'child.ready');
+  let resolved = false;
+  const waiting = waitForChildPid(ready).then(pid => {
+    resolved = true;
+    return pid;
+  });
+  // A readiness file becomes visible when the writer opens it, before its PID
+  // bytes arrive. An empty read must not become Number('') === 0.
+  fs.writeFileSync(ready, '');
+  await new Promise(resolve => setTimeout(resolve, 20));
+  assert.equal(resolved, false, 'Creating the file does not publish a child PID');
+  fs.writeFileSync(ready, '0');
+  await new Promise(resolve => setTimeout(resolve, 20));
+  assert.equal(resolved, false, 'PID zero addresses a process group, not the child');
+  fs.writeFileSync(ready, String(process.pid));
+  assert.equal(await waiting, process.pid);
+});
 
 function fixture(t) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-toolchain-test-'));
@@ -498,11 +535,7 @@ test('late installer abort waits for the real child to finish before reporting c
   const active = run(process.execPath, ['-e', script, marker, ready], {
     signal: controller.signal,
   });
-  const end = Date.now() + 5000;
-  while (!fs.existsSync(ready) && Date.now() < end)
-    await new Promise(resolve => setTimeout(resolve, 10));
-  assert.ok(fs.existsSync(ready));
-  const pid = Number(fs.readFileSync(ready, 'utf8'));
+  const pid = await waitForChildPid(ready);
   controller.abort(Error('User cancelled native preparation'));
   await assert.rejects(active, error => {
     assert.equal(error, controller.signal.reason);
@@ -545,7 +578,7 @@ test(
         return true;
       },
     );
-    const pid = Number(fs.readFileSync(ready, 'utf8'));
+    const pid = await waitForChildPid(ready);
     if (process.platform !== 'win32') assert.equal(fs.readFileSync(marker, 'utf8'), 'exited');
     await assertChildReaped(pid);
   },
