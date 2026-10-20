@@ -1,5 +1,5 @@
 // Source-workspace diagnostic: requires installed development dependencies and
-// a supported protected Kimi platform. The provider is controlled; the kernel,
+// a supported Kimi platform. The provider is controlled; the current-user launcher,
 // background process, format/type checks, build and artifact reads are real.
 // Run without arguments for automatic notification, or with `wait` for WaitFor.
 const assert = require('node:assert/strict');
@@ -135,7 +135,10 @@ async function main() {
     assert.ok(
       events.some(
         item =>
-          item.row.event.type === 'execution-boundary' && item.row.event.projectWritable === false,
+          item.row.event.type === 'execution-boundary' &&
+          item.row.event.mechanism === 'current-user' &&
+          item.row.event.osIsolation === false &&
+          item.row.event.projectWritable === true,
       ),
     );
     const waitStart = events.find(

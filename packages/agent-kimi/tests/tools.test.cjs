@@ -31,6 +31,21 @@ test('general project tasks receive no industrial tools', () => {
   assert.deepEqual(tools, []);
 });
 
+test('agent context reports current-user permissions without promising OS write isolation', () => {
+  const context = industrialContext({
+    domain: 'general',
+    stage: 'workspace',
+    capabilityIds: [],
+    skills: [],
+    tools: [],
+  });
+  assert.match(context, /current user's permissions/);
+  assert.match(context, /can modify files accessible to that user/);
+  assert.match(context, /approvals do not provide OS write isolation/);
+  assert.match(context, /Broker scope, caller approval and engineering verification/);
+  assert.doesNotMatch(context, /cannot modify the project|cannot.*host Docker|Windows runs/);
+});
+
 test('capability detail can be narrowed and stale capability calls are rejected', async () => {
   let scope = { capabilityIds: ['chip.rtl.netlist.inspect'], tools: [] };
   const tools = externalTools(

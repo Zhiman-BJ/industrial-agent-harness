@@ -1,15 +1,17 @@
 # CI 回归与托管环境
 
+2026-10-20 起按 [PD-088](local-agent-execution.md) 验证三平台当前用户 Agent：应能正常启动、如实报告 `osIsolation=false` / `projectWritable=true`，保留凭据过滤、审批与取消/恢复。Agent 不再测试或要求工程写入拒绝、Seatbelt/bubblewrap 启动；声明式本地任务的独立隔离断言与远端租户隔离继续保留。历史 CI 结果不改写，新的目标平台结果以对应提交运行记录为准。
+
 入口是 [Harness CI](../.github/workflows/ci.yml)：代码 PR 和默认手动运行执行核心检查；`main` 推送以及手动选择 `full=true` 时执行完整验收。纯文档 PR 仅运行仓库层，独立的 Architecture contract 检查仍按原有规则执行。环境由 GitHub 托管 runner 提供，每个 job 获得独立的干净机器，不需要维护自有虚拟机池。调度修订见 [ADR-008](decisions.md#adr-008核心-pr-检查与完整验收分层)。
 
-| 回归层 | 托管环境 | 核心检查 | 完整验收额外执行 |
-| --- | --- | --- | --- |
-| 仓库与协议 | Ubuntu 24.04 x64 | 格式、架构边界、Pack/类型兼容、桌面构建、Python Runtime、实际 MCP transport、Icarus 独立 RTL 验证 | — |
-| 跨平台基础 | Ubuntu 24.04 x64 / ARM64、macOS 15 ARM64、Windows 2025 x64 | 共享包、CLI、SDK、Viewer 边界、资源与持久化，以及 Chip/PCB/Godot/CAD 四种独立 CLI 包的实际消费 | — |
-| 桌面安装 | macOS 15 ARM64、Windows 2025 x64 | 打包应用首次启动、安装引导、工作台、语言切换、并行会话与设置 | 完整 Domain 安装；macOS 真实 CAD 安装、修复与工程任务 |
-| Linux 工业闭环与安装 | Ubuntu 22.04 x86-64 | bubblewrap/seccomp、真实 Kimi/Verilator、成功/失败/取消/恢复、打包 Headless Agent 与 bootstrap 回归 | 旧版升级、干净 Chip 安装包、实际安装消费、重复安装及宿主 Docker 执行 |
-| 原生工业闭环 | macOS 15 / 26 ARM64 | — | 实际 Seatbelt、Verilator、FreeCAD、固定 Kimi Code、持久化事实、审批拒绝、失败恢复、图像/并行会话、聊天恢复、空闲回收与强制中断，以及真实 CAD 产物的桌面查看 |
-| 原生安装消费 | macOS 15 / 26 ARM64 | — | 独立安装 CAD、PCB、Godot，保留签名、原生准备、API/CLI/Desktop 工程任务、独立验证和恢复断言 |
+| 回归层               | 托管环境                                                   | 核心检查                                                                                                                                | 完整验收额外执行                                                                                                                                                                                |
+| -------------------- | ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 仓库与协议           | Ubuntu 24.04 x64                                           | 格式、架构边界、Pack/类型兼容、桌面构建、Python Runtime、实际 MCP transport、Icarus 独立 RTL 验证                                       | —                                                                                                                                                                                               |
+| 跨平台基础           | Ubuntu 24.04 x64 / ARM64、macOS 15 ARM64、Windows 2025 x64 | 共享包、CLI、SDK、Viewer 边界、资源与持久化，以及 Chip/PCB/Godot/CAD 四种独立 CLI 包的实际消费                                          | —                                                                                                                                                                                               |
+| 桌面安装             | macOS 15 ARM64、Windows 2025 x64                           | 打包应用首次启动、安装引导、工作台、语言切换、并行会话与设置                                                                            | 完整 Domain 安装；macOS 真实 CAD 安装、修复与工程任务                                                                                                                                           |
+| Linux 工业闭环与安装 | Ubuntu 22.04 x86-64                                        | 当前用户 Kimi 启动与权限、声明式本地任务 bubblewrap/seccomp、真实 Verilator、成功/失败/取消/恢复、打包 Headless Agent 与 bootstrap 回归 | 旧版升级、干净 Chip 安装包、实际安装消费、重复安装及宿主 Docker 执行                                                                                                                            |
+| 原生工业闭环         | macOS 15 / 26 ARM64                                        | —                                                                                                                                       | 当前用户 Kimi 启动与权限、声明式本地任务 Seatbelt、Verilator、FreeCAD、固定 Kimi Code、持久化事实、审批拒绝、失败恢复、图像/并行会话、聊天恢复、空闲回收与强制中断，以及真实 CAD 产物的桌面查看 |
+| 原生安装消费         | macOS 15 / 26 ARM64                                        | —                                                                                                                                       | 独立安装 CAD、PCB、Godot，保留签名、原生准备、API/CLI/Desktop 工程任务、独立验证和恢复断言                                                                                                      |
 
 账号登录回归保留在独立的 Account integration workflow；本次不改变它的触发条件。仅改 Desktop 的代码 PR 也执行全部四个平台的基础回归，避免漏掉平台专属的账号存储行为。
 

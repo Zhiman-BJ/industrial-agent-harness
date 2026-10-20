@@ -4,7 +4,7 @@ CLI 不启动 Electron，也不导入桌面 UI。它面向 Domain Task bench：�
 
 首轮回答结束后，CLI 继续等待 Kimi 原生后台命令、子任务和自动后续回答；最终 `result` 在后台处理及清理结束后输出。`--timeout-ms` 覆盖整个运行，后台提问仍输出 `needs_input` 并以 2 退出。等待、超时和通知由原生工具负责，外壳不生成额外 prompt。验收范围见[后台兼容记录](../../doc/kimi-background-compatibility.md)。
 
-2026-10-04 源码新增受保护的 RTL Runtime。真实 Agent 执行支持 macOS Apple Silicon（arm64）与使用 bubblewrap 的 Linux x86-64；Intel Mac 暂不支持，外部 MCP 应用服务和 Computer Use 组合仍需接入工业边界。`--scope-only` 保持无原生依赖的注册预览；真实运行重新读取工程状态。`result.engineering` 和 `industrial_result` 给出工程验证，`result.status` 表示 Agent 回合结束。详见[三轨整改记录](../../doc/harness-quality-three-tracks.md)。
+当前本机 Agent 在 macOS、Linux、Windows 均使用当前用户权限，不要求 Seatbelt、bubblewrap 或 MXC；没有可选 strict Agent 模式。原生工具可访问该用户有权访问的文件和服务，Runtime 的项目、状态、工具范围与审批检查只约束 Runtime 调用。声明式本地任务和远端沙箱保持独立隔离；平台和领域资格不因启动策略改变而扩大，Intel Mac 仍暂不支持。`--scope-only` 保持无原生依赖的注册预览；`result.engineering` 和 `industrial_result` 给出工程验证，`result.status` 表示 Agent 回合结束。详见[本机 Agent 执行](../../doc/local-agent-execution.md)与[历史三轨整改记录](../../doc/harness-quality-three-tracks.md)。
 
 ## Linux Chip 一键安装
 
@@ -12,7 +12,7 @@ CLI 不启动 Electron，也不导入桌面 UI。它面向 Domain Task bench：�
 wget -O install-chip-linux.sh https://github.com/Zhiman-BJ/industrial-agent-harness/releases/download/chip-linux-installer-v0.1.0-preview.4/install-chip-linux.sh && bash install-chip-linux.sh
 ```
 
-安装运行时、Chip CLI/MCP 和 EDA 镜像；需要允许 bubblewrap 的用户命名空间。版本、路径、校验、模型配置前提及已知限制见[版本说明](../../releases/chip-linux-installer-v0.1.0-preview.4.md)。
+安装运行时、Chip CLI/MCP 和 EDA 镜像。当前用户 Agent 启动不要求 bubblewrap；通过共享 Runtime 执行已声明的本地任务时，仍需该任务后端要求的 bubblewrap 和用户命名空间。以下历史安装器版本的路径、校验、模型配置前提及已发布依赖以[版本说明](../../releases/chip-linux-installer-v0.1.0-preview.4.md)为准，不追溯修改旧归档。
 
 ## GitHub Release 安装
 

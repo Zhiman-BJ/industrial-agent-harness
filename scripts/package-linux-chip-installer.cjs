@@ -34,6 +34,8 @@ if (
   throw Error('Archive needs one safe top-level directory.');
 const top = roots[0];
 const metadata = JSON.parse(inspect(['-xOzf', archive, `${top}/HARNESS-PACKAGE.json`]));
+if (!entries.includes(`${top}/scripts/verify-kimi-launcher.cjs`))
+  throw Error('Chip archive does not contain the current-user launcher verification script.');
 if (metadata.domain !== 'chip') throw Error('Installer requires a Chip-only CLI package.');
 if (metadata.sourceDirty !== false || !/^[a-f0-9]{40}$/.test(metadata.sourceCommit || ''))
   throw Error('Installer requires a clean committed CLI package.');
@@ -47,13 +49,7 @@ if (!execution.includes('sys.platform.startswith("linux")') || !execution.includ
 const payload = fs.readFileSync(archive);
 const digest = crypto.createHash('sha256').update(payload).digest('hex');
 const header = fs
-  .readFileSync(
-    path.join(
-      require('../packages/domain-skills/src/index.cjs').packSourceDirectory('chip-pack'),
-      'linux-installer-header.sh',
-    ),
-    'utf8',
-  )
+  .readFileSync(path.join(__dirname, 'installers/linux-installer-header.sh'), 'utf8')
   .replace('@PAYLOAD_SHA256@', digest)
   .replace('@PAYLOAD_DIRECTORY@', top)
   .replaceAll('@RELEASE_TAG@', releaseTag);
@@ -66,13 +62,7 @@ fs.writeFileSync(output, file, { mode: 0o755, flag: 'wx' });
 const checksum = crypto.createHash('sha256').update(file).digest('hex');
 fs.writeFileSync(output + '.sha256', `${checksum}  ${path.basename(output)}\n`, { flag: 'wx' });
 const bootstrap = fs
-  .readFileSync(
-    path.join(
-      require('../packages/domain-skills/src/index.cjs').packSourceDirectory('chip-pack'),
-      'linux-bootstrap.sh',
-    ),
-    'utf8',
-  )
+  .readFileSync(path.join(__dirname, 'installers/linux-bootstrap.sh'), 'utf8')
   .replace('@INSTALLER_SHA256@', checksum)
   .replace(
     '@INSTALLER_URL@',

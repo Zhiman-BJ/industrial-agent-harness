@@ -1,5 +1,7 @@
 # P0 工业运行时与执行边界
 
+> 2026-10-20 执行政策更新：本页保留当时实现与验收记录。文中本机 Agent 的 Seatbelt/bubblewrap、工程只读或平台拒绝启动要求已由 [PD-088](local-agent-execution.md) 取代，当前三平台 Agent 均使用当前用户权限；声明式 Runtime 任务及远端沙箱隔离保持。历史实测结果不改写，也不代替新模式的平台验收。
+
 状态：2026-10-04 的实际实现，macOS Apple Silicon（arm64）与 Ubuntu 22.04 x86-64 的验证入口。Linux 一键安装门禁见 `industrial-linux.yml`；Intel Mac 暂不支持。主仓自有贡献按用户选择采用 MIT，第三方边界见根目录 `THIRD_PARTY_NOTICES.md`。本页不声明其他领域、Windows 或 Linux ARM64 已通过工业验收。
 
 `harness-core.createProjectRuntime` 从仓库注册或验签安装后的 `loadRegistry.runtimePacks` 加载 Pack 声明的 runtime entry。项目不能注入任意入口。领域实现与 Capability ID 留在 Chip Pack；通用 Factory、Broker、Kimi 与 Runtime 不硬编码领域。CLI 与桌面项目运行时缓存消费同一入口。

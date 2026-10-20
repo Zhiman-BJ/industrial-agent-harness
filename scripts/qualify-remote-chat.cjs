@@ -679,6 +679,6 @@ if (require.main === module) {
       'const test=createChatAcceptance({repo,account,modelProfile:{provider:"openai_legacy",model:confirmedModel}});\n' +
       'await test.run({approved:true});\n' +
       'Expected user approvals: batch 1 + exact local edit 1; remote-tool approval 0.\n' +
-      'Requires Node >=24, actual Kimi 2.1.1 and production process sandbox; Linux x86-64 requires bwrap + namespaces.\n',
+      'Requires Node >=24, actual Kimi 2.1.1 and the production current-user Agent launcher.\n',
   );
 }

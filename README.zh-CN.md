@@ -41,7 +41,7 @@ flowchart LR
 
 ## 快速开始
 
-准备 **Node.js 24+** 和 **pnpm 11.1.3**。Kimi Code 2.1.1 随依赖安装，实际运行 Agent 需模型 API 配置；已安装的 Chip 工具使用 Harbor 托管 EDA 镜像，需要运行中的 Docker，无需宿主 Python 或手工 `uv sync`。受保护的 Agent 支持 **macOS Apple Silicon（arm64）** 与具备 bubblewrap 的 **Linux x86-64**；使用其他平台前请查看[预览版范围](#预览版范围)。
+准备 **Node.js 24+** 和 **pnpm 11.1.3**。Kimi Code 2.1.1 随依赖安装，实际运行 Agent 需模型 API 配置；已安装的 Chip 工具使用 Harbor 托管 EDA 镜像，需要运行中的 Docker，无需宿主 Python 或手工 `uv sync`。macOS、Linux、Windows 本机 Agent 均以当前用户权限启动，不依赖 Agent OS 沙箱；平台与领域资格仍以[预览版范围](#预览版范围)为准。
 
 ```sh
 git clone https://github.com/Zhiman-BJ/industrial-agent-harness.git
@@ -161,8 +161,8 @@ pnpm run format:check
 ## 预览版范围
 
 - **平台：** 桌面构建与首次启动 CI 目标为 macOS Apple Silicon（arm64）和 Windows x64。Intel Mac 暂不支持，不再发布 Intel 安装包或对应 Pack 目录目标；具备 Intel 测试机并完成安装及运行时验收后再恢复。签名安装器与真实升级仍需单独验收。
-- **受保护执行：** macOS 使用 Seatbelt；Linux x86-64 使用 bubblewrap/seccomp，需允许非特权用户命名空间。[Windows Agent](doc/windows-agent-isolation.md)按当前用户权限运行，不要求 MXC，也不提供本机操作系统写入隔离。本机 Bash、文件工具及子进程可修改当前用户有权访问的文件；远程工业工具仍受 Broker、审批与 Runtime 检查。仍须通过真实原生与打包验收。
-- **工具兼容性：** 旧领域 MCP 写入仍受隔离限制；所有领域都有受控文件编辑、声明任务执行和经 Runtime 审计的外部 MCP。独立 Computer Use 插件仍不可用。
+- **本机 Agent 权限：** macOS、Linux、Windows 统一使用当前用户权限，不设置 Agent OS 沙箱或可选 strict 模式。原生 Bash、文件工具及后代进程可修改该用户有权访问的文件。Broker、审批与 Runtime 检查、声明式本地任务隔离和远端租户隔离保留；本次政策变化不扩大平台或安装包资格。详见[本机 Agent 执行](doc/local-agent-execution.md)。
+- **工具兼容性：** 所有领域都有受控文件编辑、声明任务执行和经 Runtime 审计的外部 MCP。移除 Agent OS 隔离不授予新增工具权限，也不建立旧 Domain MCP 工作流的资格；独立 Computer Use 插件仍不可用。
 - **工程验收：** 各领域 profile 验证声明的原生检查，保留失败或缺失证据；不据此推定 RTL 覆盖充分性、物理签核或完整工业工作流。
 - **打包与评测：** 已记录本地未签名桌面检查和受控模型验证；签名发行、跨平台完整资格验证和正式付费模型比较仍需分别完成。
 

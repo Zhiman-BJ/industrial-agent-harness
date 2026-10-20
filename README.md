@@ -41,7 +41,7 @@ flowchart LR
 
 ## Quick start
 
-Use **Node.js 24+** and **pnpm 11.1.3**. Kimi Code 2.1.1 is bundled; Agent execution needs model API settings. Installed Chip tools use the managed Harbor EDA image and need a running Docker daemon; no host Python or manual `uv sync` is required. Protected agent execution is available on **macOS with Apple Silicon (arm64)** and **Linux x86-64 with bubblewrap**; see [preview scope](#preview-scope) before trying other platforms.
+Use **Node.js 24+** and **pnpm 11.1.3**. Kimi Code 2.1.1 is bundled; Agent execution needs model API settings. Installed Chip tools use the managed Harbor EDA image and need a running Docker daemon; no host Python or manual `uv sync` is required. Local Agents on macOS, Linux and Windows use the current user permissions without an Agent OS sandbox dependency; platform and Domain Pack qualification remain as listed in [preview scope](#preview-scope).
 
 ```sh
 git clone https://github.com/Zhiman-BJ/industrial-agent-harness.git
@@ -161,8 +161,8 @@ The [Harness CI gate](.github/workflows/ci.yml) runs shared-package and packaged
 ## Preview scope
 
 - **Platforms:** desktop build and first-run CI targets are macOS with Apple Silicon (arm64) and Windows x64. Intel Mac is temporarily unsupported; no Intel installers or Pack catalog targets will be published. Support can resume after installation and runtime validation on an Intel test machine. Signed installers and real upgrades still need separate acceptance.
-- **Protected execution:** macOS uses Seatbelt; Linux x86-64 uses bubblewrap/seccomp and requires unprivileged user namespaces. [Windows Agent execution](doc/windows-agent-isolation.md) uses the current user permissions without an OS write sandbox or MXC requirement. Local Bash, file tools and descendants can modify files accessible to that user; remote industrial tools retain Broker, approval and Runtime checks. Native and packaged Windows qualification remains required.
-- **Tool compatibility:** legacy domain MCP writes remain blocked; all domains have approved workspace edits and declared task execution. Registered external MCP uses audited host Runtime calls; the separate Computer Use plugin remains unavailable.
+- **Local Agent permissions:** macOS, Linux and Windows use the current user permissions, without an Agent OS sandbox or optional strict mode. Native Bash, file tools and descendants can modify files accessible to that user. Broker, approval and Runtime checks, declared local-task isolation and remote tenant isolation remain. This policy change does not expand platform or packaged qualification. See [local Agent execution](doc/local-agent-execution.md).
+- **Tool compatibility:** all domains have approved workspace edits and declared task execution. Registered external MCP uses audited host Runtime calls; removing Agent OS isolation does not authorize new tools or qualify legacy Domain MCP workflows. The separate Computer Use plugin remains unavailable.
 - **Engineering acceptance:** declared domain profiles verify specific native checks and retain failed or missing evidence. RTL coverage sufficiency, physical signoff and complete industrial workflows are not implied.
 - **Packaging and evaluation:** local unsigned desktop checks and controlled model fixtures are documented. Signed releases, end-to-end cross-platform qualification and formal paid model comparisons remain separate work.
 

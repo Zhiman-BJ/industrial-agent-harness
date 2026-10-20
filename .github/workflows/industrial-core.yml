@@ -99,7 +99,7 @@ jobs:
           export HARNESS_PROFESSIONAL_EVIDENCE="$RUNNER_TEMP/professional-evidence"
           mkdir -p "$HARNESS_PROFESSIONAL_EVIDENCE"
           pnpm run test:ci -- native 2>&1 | tee dist/ci-reports/native.log
-      - name: Verify packaged headless Agent through its production process boundary
+      - name: Verify packaged headless Agent through its current-user launcher
         shell: bash
         run: node --test tests/integration/headless-package-kimi.test.cjs 2>&1 | tee dist/ci-reports/headless-native.log
       - name: Verify real FreeCAD artifacts through the Desktop viewer

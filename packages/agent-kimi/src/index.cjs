@@ -75,7 +75,7 @@ function industrialContext(scope, anchor = null, externalServers = []) {
     `${context}\nObserved project checkpoint: ${JSON.stringify(value)}. These are file observations with content hashes, not engineering verification. ${readHint}`;
   let complete = anchor ? withAnchor(anchor) : context;
   complete +=
-    '\nExecution boundary: native Shell, WriteFile and child MCP processes cannot modify the project or access host Docker. A Docker permission denial in those processes is expected and does not establish host Runtime failure. Use an in-scope read-only environment Tool through industrial_action_call for host readiness. Engineering mutations also require industrial_action_call through the host Domain Runtime; unavailable legacy mutations fail visibly. Process success and environment readiness alone are not engineering acceptance.';
+    "\nExecution policy: Kimi, native Shell/file tools and child processes run with the current user's permissions and can modify files accessible to that user. Session workspaces and approvals do not provide OS write isolation. Use industrial_action_call through the host Domain Runtime for tracked engineering actions, with Broker scope, caller approval and engineering verification. Native command success, file changes and environment readiness alone are not engineering acceptance.";
   if (anchor && Buffer.byteLength(complete, 'utf8') > MAX_INDUSTRIAL_CONTEXT_BYTES) {
     complete = withAnchor({
       checkpointId: anchor.checkpointId,
@@ -408,7 +408,7 @@ class KimiSession {
       });
       this.emitAgent({ type: 'diagnostic-log', traceId: log.traceId, path: log.file });
       if (excluded) {
-        log.record('resource.filtered', { ...excluded, reason: 'protected-industrial-execution' });
+        log.record('resource.filtered', { ...excluded, reason: 'host-runtime-policy' });
         // A structured event instead of assistant text: the UI renders the
         // filtered services inline, and the transcript stays free of
         // model-voiced notices the model did not author.
@@ -487,10 +487,7 @@ class KimiSession {
               approvalMode,
               ...(this.sessionFactory === createSession
                 ? {
-                    executionBoundary:
-                      process.platform === 'win32'
-                        ? 'windows-current-user-v1'
-                        : 'seatbelt-workspace-v1',
+                    executionBoundary: 'current-user-v1',
                     projectWorkspace: 'inputs-v1',
                   }
                 : {}),
@@ -520,8 +517,8 @@ class KimiSession {
           plugins,
         );
         if (this.sessionFactory === createSession) {
-          // Native child MCP gateways stay outside the industrial boundary.
-          // Registered services instead use the audited host Runtime.
+          // Registered industrial services use the audited host Runtime.
+          // This routing policy is independent of native process permissions.
           // Application plugins already filtered by executionPolicy (only
           // protectedSafe plugins survive here) run host-side and are allowed.
           const externalSelected = selectMcpServers(
@@ -532,7 +529,7 @@ class KimiSession {
           ).some(provider => provider.transport === 'external');
           if (externalSelected && !runtime.hostRuntimeExternal)
             throw Error(
-              '当前工业执行隔离不支持外部 MCP 服务。请在本次项目资源设置中停用这些服务后重试；工业修改仅能通过已接入的 Domain Runtime。',
+              '工业会话中的外部 MCP 服务必须通过宿主 Runtime。请在本次项目资源设置中停用未接入的服务后重试。',
             );
           this.processSandbox = createProcessSandbox({
             executable:
@@ -602,15 +599,13 @@ class KimiSession {
           this.emitAgent({
             type: 'context-reset',
             message:
-              'Tools or model changed. A new context started; earlier messages remain available above.',
+              'Tools, model or execution permissions changed. A new context started; earlier messages remain available above.',
           });
         log.record('session.ready', { sessionId: this.session.sessionId || null, currentScopeKey });
       } else
         log.record('session.reuse', { sessionId: this.session.sessionId || null, currentScopeKey });
       const projectContext = this.processSandbox
-        ? this.processSandbox.boundary.projectWritable
-          ? `\nBound engineering Project: ${this.workDir}. Native working directory is session storage. Windows runs Kimi and native tools with the current user's permissions; there is no OS write isolation. Use absolute Project paths for inspection and industrial_action_call for authorized engineering mutations.`
-          : `\nBound engineering Project: ${this.workDir}. Native working directory is isolated session scratch.${this.processSandbox.projectAlias === false ? '' : ' The project/ symlink exposes the real project for reading.'} Changes to scratch do not modify the engineering Project. Use absolute Project paths${this.processSandbox.projectAlias === false ? '' : ' or project/'} for inspection, and industrial_action_call for authorized engineering mutations.`
+        ? `\nBound engineering Project: ${this.workDir}. Native working directory is session storage. Kimi and native tools run with the current user's permissions; there is no OS write isolation. Use absolute Project paths for inspection and industrial_action_call for authorized engineering mutations.`
         : '';
       const prompt = `${context}${projectContext}\n\nUser task: ${task}${images.length ? '\nAttached images are user-provided visual references, not engineering verification.' : ''}`;
       const content = imageContent(prompt, images, runtime.profile.imageInput);
