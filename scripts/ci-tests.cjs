@@ -145,9 +145,17 @@ function allowedSkips(suite, platform = process.platform) {
     skips.push(
       'isolated descendant writes the project, share and scratch but not protected roots or lateral files',
       'isolated descendant reads the project but cannot read credential paths or connect host unix sockets',
+      'isolated descendant cannot write a protected root nested inside the writable project',
       'isolation off keeps the plain current-user launcher even when primitives exist',
     );
   }
+  // The bubblewrap probe and seccomp socket tests are linux-only; the socket
+  // test additionally needs a working bwrap on the host, so it may skip on
+  // linux portable runners without one too.
+  if (platform !== 'linux') {
+    skips.push('isolation detection probes a real launch instead of mere existence');
+  }
+  skips.push('isolated descendant cannot create unix sockets under the seccomp filter');
   return skips;
 }
 

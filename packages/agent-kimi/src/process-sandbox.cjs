@@ -5,6 +5,7 @@ const { spawn } = require('node:child_process');
 const {
   buildIsolationPolicy,
   detectIsolation,
+  seccompUnixSocketFilter,
   seatbeltProfile,
   bubblewrapArgs,
 } = require('./agent-isolation.cjs');
@@ -97,9 +98,15 @@ function createProcessSandbox({
     // boundary.osIsolation then reports false so the product surface can show
     // the session is unisolated.
     const protectedRoots = protectedPaths.filter(fs.existsSync).map(file => fs.realpathSync(file));
-    const layer = isolation === 'off' ? null : detectIsolation(platform, environment);
+    // `isolation: 'off'` forces the plain launcher; the same escape hatch is
+    // available to deployments through INDUSTRIAL_AGENT_ISOLATION=off for
+    // hosts whose kernel policy blocks the primitives outright.
+    const requested =
+      isolation === 'auto' && process.env.INDUSTRIAL_AGENT_ISOLATION === 'off' ? 'off' : isolation;
+    const layer = requested === 'off' ? null : detectIsolation(platform, environment);
     let wrap = null;
     let writableRoots = null;
+    let socketFilter = false;
     if (layer) {
       const scratchReal = fs.realpathSync(scratch);
       const policy = buildIsolationPolicy({
@@ -114,8 +121,23 @@ function createProcessSandbox({
         const profile = path.join(directory, 'agent.sb');
         fs.writeFileSync(profile, seatbeltProfile(policy), { mode: 0o400 });
         wrap = { command: layer.command, args: ['-f', profile] };
+        socketFilter = true; // the profile denies outbound unix-socket connects
       } else {
-        wrap = { command: layer.command, args: bubblewrapArgs(policy, { workDir }) };
+        // The AF_UNIX seccomp filter reaches bwrap through an inherited fd
+        // (spawn stdio slot 3); on architectures without a compiled filter
+        // the sandbox still runs and the boundary reports it honestly.
+        const program = seccompUnixSocketFilter();
+        let filterFile = null;
+        if (program) {
+          filterFile = path.join(directory, 'agent-seccomp.bpf');
+          fs.writeFileSync(filterFile, program, { mode: 0o400 });
+        }
+        wrap = {
+          command: layer.command,
+          args: bubblewrapArgs(policy, { workDir, seccompFd: program ? 3 : null }),
+          seccompFile: filterFile,
+        };
+        socketFilter = Boolean(program);
       }
     }
     const pinned = {
@@ -138,6 +160,7 @@ function createProcessSandbox({
         platform,
         mechanism: wrap ? layer.mechanism : 'current-user',
         osIsolation: Boolean(wrap),
+        unixSocketsFiltered: socketFilter,
         projectWritable: true,
         projectDir: project,
         agentWorkDir: workDir,
@@ -163,17 +186,38 @@ function createProcessSandbox({
         // With an isolation wrap the sandbox command becomes the direct child;
         // the whole confined tree shares its process group, so the group
         // lifecycle below (TERM → KILL escalation, retire-once) still applies.
-        const child = spawn(
-          wrap ? wrap.command : command,
-          wrap ? [...wrap.args, command, ...nativeArgs] : nativeArgs,
-          {
-            ...options,
-            cwd: workDir,
-            env: cleanEnvironment({ ...env, ...options.env, ...pinned }, hostOnlyEnv),
-            shell: false,
-            detached: true,
-          },
-        );
+        // The bubblewrap wrap additionally expects its seccomp BPF program on
+        // inherited fd 3 (--seccomp 3): open the filter file, place the fd at
+        // stdio slot 3 and close the parent copy right after spawn.
+        let filterFd = null;
+        const spawnOptions = {
+          ...options,
+          cwd: workDir,
+          env: cleanEnvironment({ ...env, ...options.env, ...pinned }, hostOnlyEnv),
+          shell: false,
+          detached: true,
+        };
+        if (wrap?.seccompFile) {
+          filterFd = fs.openSync(wrap.seccompFile, 'r');
+          const stdio = Array.isArray(options.stdio)
+            ? [...options.stdio]
+            : [options.stdio || 'ignore', 'inherit', 'inherit'];
+          if (stdio.length > 3)
+            throw Error('Agent launch cannot reserve fd 3 for the isolation filter.');
+          while (stdio.length < 3) stdio.push('ignore');
+          stdio.push(filterFd);
+          spawnOptions.stdio = stdio;
+        }
+        let child;
+        try {
+          child = spawn(
+            wrap ? wrap.command : command,
+            wrap ? [...wrap.args, command, ...nativeArgs] : nativeArgs,
+            spawnOptions,
+          );
+        } finally {
+          if (filterFd !== null) fs.closeSync(filterFd);
+        }
         let childClosed = false,
           groupGone = false,
           forceSent = false,
