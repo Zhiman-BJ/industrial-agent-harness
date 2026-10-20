@@ -627,7 +627,7 @@ function createChatAcceptance({
       const completion = await started.completion;
       await approvalsQueue;
       if (fatal) throw fatal;
-      assert.equal(completion.status, 'completed', sessionError || JSON.stringify(completion));
+      assert.equal(completion.status, 'finished', sessionError || JSON.stringify(completion));
       assert.equal(remoteRuns.length, 2, 'The model must actually execute both CAD actions.');
       assert.ok(planResult && prepareResult && editResult);
       const counts = Object.fromEntries(

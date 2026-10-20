@@ -1,0 +1,303 @@
+{
+  "mode": "real-TaskService-real-Kimi-mock-model-real-remote-no-Electron",
+  "modelService": "local-mock",
+  "root": "<test-root>",
+  "projectDir": "<test-root>/project",
+  "evidenceDir": "<test-root>/evidence",
+  "endpoint": "https://industrial-mcp-remote-test.pvg1s1-cloud.internal.zhiman.tech",
+  "model": "remote-chat-controlled-fixture",
+  "provider": "openai_legacy",
+  "modelBaseUrl": "http://127.0.0.1:59388/v1",
+  "kimiVersion": "2.1.1",
+  "selectedFiles": [
+    "recipe.json"
+  ],
+  "selectedTools": [
+    "cad.freecad.build"
+  ],
+  "initialSha256": "1f9fdd40a5e462caec414574042f97e5dba38fe20490cbc7a8517d784cc15b82",
+  "changedSha256": "f14e61eb18b1639e715a849e496ec7c7d7f0a87873771337755d48088e83f9c2",
+  "expectedApprovals": {
+    "batch": 1,
+    "localEdit": 1,
+    "remoteTool": 0,
+    "other": 0
+  },
+  "chatId": "422cc046-7531-42e6-ad22-80c01eb3e86c",
+  "turnId": "cbf80cfa-f18b-40d0-9f06-b523ce736083",
+  "passed": true,
+  "finishedAt": "2026-10-20T05:24:25.669Z",
+  "approvals": {
+    "batch": 1,
+    "localEdit": 1,
+    "remoteTool": 0,
+    "other": 0
+  },
+  "totalApprovalPrompts": 2,
+  "modelEditedApprovedInput": true,
+  "reportReads": [
+    {
+      "artifactId": "186f29e7-8e91-41d7-8a43-48c34fc3653e",
+      "kind": "report.cad.execution",
+      "toolCallId": "remote-chat-fdcf88e5-5c94-4343-96fd-50c028104935"
+    }
+  ],
+  "remoteRuns": [
+    {
+      "actionId": "942a41b3-b7c0-46d0-86d3-ea4b1a7e532e",
+      "requestId": "4a280f91-077d-464e-934c-cdf9c5714730",
+      "snapshotId": "6339e3ab-f054-448b-a808-d2867a3af599",
+      "verification": "passed",
+      "release": {
+        "status": "released",
+        "sessionId": "5bda1f6c-23fc-46b5-be6d-6149d38f1f88"
+      },
+      "artifactChecks": [
+        {
+          "id": "475a8923-711c-4010-a3db-23adb4d26250",
+          "kind": "log.tool",
+          "sha256": "3fc93277416ab58b83c920e9f4af268f7d07c146efde906bf953dbbdff46a53a",
+          "sizeBytes": 1034
+        },
+        {
+          "id": "55151c11-783b-41a0-88ca-5ed2ab62aef2",
+          "kind": "report.cad.execution",
+          "sha256": "3e1abd7b2f3ed58708446ea6237a23004f85bf3f8ad710cf8a3e9eb9bc075f60",
+          "sizeBytes": 278
+        },
+        {
+          "id": "dcaa2866-a24a-40af-be09-ff2caefb2779",
+          "kind": "report.cad.build",
+          "sha256": "d8ff2ee5b906bdc89e7d0577af55c1a96595d4308f14e27367f9885b58eb9919",
+          "sizeBytes": 646
+        },
+        {
+          "id": "0c1adf28-6755-4bbc-bf97-5e404e36431d",
+          "kind": "report.cad.readback",
+          "sha256": "b24cb890e65c346b1dc64bb70c56f50d133bcbb59784a04c7c27d310d2f87a25",
+          "sizeBytes": 997
+        },
+        {
+          "id": "67acb64a-ba90-49f1-b916-fbeb664e3d7b",
+          "kind": "model.cad.fcstd",
+          "sha256": "1040c01a002b1c329a0142929f5619be3e81cc8cee170b6287e6ba3963472d63",
+          "sizeBytes": 6671
+        },
+        {
+          "id": "be761ce9-8d9a-47fb-b092-49f58f03c4c2",
+          "kind": "model.cad.step",
+          "sha256": "cf75a375df05060d3bc44796975d32a745c000641d3fa9b23350a0b7335be57b",
+          "sizeBytes": 8288
+        },
+        {
+          "id": "cba3dda9-070d-4af9-a382-734eaf0168d7",
+          "kind": "model.cad.stl",
+          "sha256": "f632d2532da29ad4989c5b9bdfe62983c474aa4edcf5fe9ba8acc5ff5979c611",
+          "sizeBytes": 26084
+        },
+        {
+          "id": "359de4c6-b689-4192-bd69-6494f0e57736",
+          "kind": "display.cad.brep",
+          "sha256": "5c8bd8fc41bbc557da9126a611e456e4aa83a2fa491da333f34916c6e971b06d",
+          "sizeBytes": 4631
+        },
+        {
+          "id": "ebafee5d-97a2-4773-bf93-d3594e84f886",
+          "kind": "display.cad.sketches",
+          "sha256": "42cde04ee9ee2d59287a1307913d5a5bdd3e6053cf742ccfc0260a1edc9132ec",
+          "sizeBytes": 145
+        },
+        {
+          "id": "22bdf553-89da-4bd1-99f8-287557b6d200",
+          "kind": "display.cad.manifest",
+          "sha256": "06f6cdd4c2e1226237158c0006f5de705cdc18fe04839bc6dca99c5082d7a1e9",
+          "sizeBytes": 1683
+        },
+        {
+          "id": "4db25960-67d2-4e07-8da5-70c9873cd447",
+          "kind": "input.cad.recipe",
+          "sha256": "efe9f517645075e1999b2809a1c746965c64f04da0a18b0f679a00728589b4cf",
+          "sizeBytes": 412
+        }
+      ],
+      "inputHashes": {
+        "recipe.json": "1f9fdd40a5e462caec414574042f97e5dba38fe20490cbc7a8517d784cc15b82"
+      }
+    },
+    {
+      "actionId": "1081d29e-0aee-495f-9faa-60a8c66ba787",
+      "requestId": "fe4bdbd5-ec74-47b2-bc70-7efe35619f05",
+      "snapshotId": "61986c1d-c84a-493b-92da-d829cfc3818f",
+      "verification": "passed",
+      "release": {
+        "status": "released",
+        "sessionId": "e7355e45-0490-4b7b-87e8-226713742666"
+      },
+      "artifactChecks": [
+        {
+          "id": "e75c7275-f3ec-4d48-9ff2-0648838d396d",
+          "kind": "log.tool",
+          "sha256": "3c1c8fad27fd17ec26e800f96b37a0f09aa2c400448a94e6e419d23c9ce69aff",
+          "sizeBytes": 1034
+        },
+        {
+          "id": "186f29e7-8e91-41d7-8a43-48c34fc3653e",
+          "kind": "report.cad.execution",
+          "sha256": "3e1abd7b2f3ed58708446ea6237a23004f85bf3f8ad710cf8a3e9eb9bc075f60",
+          "sizeBytes": 278
+        },
+        {
+          "id": "97725fd4-d408-475c-86cf-b946911eb60c",
+          "kind": "report.cad.build",
+          "sha256": "65732bb39779e398168c058fbb5b19afa9897f65b591355df81a9fab72eb2aa9",
+          "sizeBytes": 646
+        },
+        {
+          "id": "20dc5e1e-bfbd-4051-93a3-d5958633c1f5",
+          "kind": "report.cad.readback",
+          "sha256": "849a27e61d97634cd5107856a99e8d6657705186f064f5724a8a9d2568198d3c",
+          "sizeBytes": 997
+        },
+        {
+          "id": "7d1930ef-99da-4c2b-9a2b-6fe6991e68c9",
+          "kind": "model.cad.fcstd",
+          "sha256": "0edde88b5f8d6918b7e21b183992322efebebe79226600ae7ed3d17e68233660",
+          "sizeBytes": 6667
+        },
+        {
+          "id": "06a41e25-744e-4d46-a5e8-d0c9f3c5ca50",
+          "kind": "model.cad.step",
+          "sha256": "59fa2d41fcf304feb3a8deb9839373d71048a11ca0d58d161aede69c2697e372",
+          "sizeBytes": 8288
+        },
+        {
+          "id": "ba6b4955-0a74-46fc-9fbf-b43196d27743",
+          "kind": "model.cad.stl",
+          "sha256": "f632d2532da29ad4989c5b9bdfe62983c474aa4edcf5fe9ba8acc5ff5979c611",
+          "sizeBytes": 26084
+        },
+        {
+          "id": "dfad4317-d1e2-43c0-9396-05e1648cbc79",
+          "kind": "display.cad.brep",
+          "sha256": "5c8bd8fc41bbc557da9126a611e456e4aa83a2fa491da333f34916c6e971b06d",
+          "sizeBytes": 4631
+        },
+        {
+          "id": "a30a9c01-11de-4ccc-875a-c06b1d7242d3",
+          "kind": "display.cad.sketches",
+          "sha256": "3375d0456e3c763c17da93b93ec7f1116c7a910f71c3a0f03019068bb5b80fdf",
+          "sizeBytes": 145
+        },
+        {
+          "id": "da5897dd-d19d-4fd6-8ef3-1e3e8f7134ff",
+          "kind": "display.cad.manifest",
+          "sha256": "e961583251dfdaa696add429fb7c127f895f8f83837506a0708a8161402f0e6f",
+          "sizeBytes": 1683
+        },
+        {
+          "id": "9eecedbe-3a9f-4951-a957-9432a5b232bc",
+          "kind": "input.cad.recipe",
+          "sha256": "efe9f517645075e1999b2809a1c746965c64f04da0a18b0f679a00728589b4cf",
+          "sizeBytes": 412
+        }
+      ],
+      "inputHashes": {
+        "recipe.json": "f14e61eb18b1639e715a849e496ec7c7d7f0a87873771337755d48088e83f9c2"
+      }
+    }
+  ],
+  "completion": {
+    "status": "finished",
+    "chatId": "422cc046-7531-42e6-ad22-80c01eb3e86c",
+    "turnId": "cbf80cfa-f18b-40d0-9f06-b523ce736083",
+    "results": {
+      "schemaVersion": "1",
+      "projectId": "cf39ed396b372d9f6ee425f1f3bb862e13978a68613e1d6c746d80fb6889cc16",
+      "chatId": "422cc046-7531-42e6-ad22-80c01eb3e86c",
+      "turnId": "cbf80cfa-f18b-40d0-9f06-b523ce736083",
+      "revision": 7,
+      "phase": "settled",
+      "requestStatus": "finished",
+      "actionIds": [
+        "59e94a52-7d68-4cc3-8afc-80b6661e0b28",
+        "777240fc-7aa7-4d57-800c-593e70af27e0",
+        "ada40ddd-b64a-4ccf-9583-e8bc22b5401d",
+        "942a41b3-b7c0-46d0-86d3-ea4b1a7e532e",
+        "0544e131-695f-4315-b466-ad299c9d1a99",
+        "1081d29e-0aee-495f-9faa-60a8c66ba787"
+      ],
+      "groups": [
+        {
+          "title": "recipe.json",
+          "primaryArtifactId": "a5f0dc5e-8f6c-4dfc-b1de-a12e200debe7",
+          "previewArtifactId": "a5f0dc5e-8f6c-4dfc-b1de-a12e200debe7",
+          "attachmentArtifactIds": [],
+          "companionArtifactIds": [],
+          "schemaVersion": "1",
+          "id": "0544e131-695f-4315-b466-ad299c9d1a99:file-0",
+          "projectId": "cf39ed396b372d9f6ee425f1f3bb862e13978a68613e1d6c746d80fb6889cc16",
+          "chatId": "422cc046-7531-42e6-ad22-80c01eb3e86c",
+          "turnId": "cbf80cfa-f18b-40d0-9f06-b523ce736083",
+          "actionId": "0544e131-695f-4315-b466-ad299c9d1a99",
+          "supersedes": [],
+          "verificationRefs": [
+            {
+              "actionId": "0544e131-695f-4315-b466-ad299c9d1a99",
+              "verificationId": "6f53491d-610f-47b0-940e-7530dbac8fb6"
+            }
+          ],
+          "historical": false,
+          "superseded": false,
+          "selected": false,
+          "artifacts": [
+            {
+              "schemaVersion": "1",
+              "id": "a5f0dc5e-8f6c-4dfc-b1de-a12e200debe7",
+              "projectId": "cf39ed396b372d9f6ee425f1f3bb862e13978a68613e1d6c746d80fb6889cc16",
+              "runId": "5d1f8fa8-1f4b-4406-9642-584587fb51b1",
+              "actionId": "0544e131-695f-4315-b466-ad299c9d1a99",
+              "kind": "file.project",
+              "relativePath": "recipe.json",
+              "sha256": "f14e61eb18b1639e715a849e496ec7c7d7f0a87873771337755d48088e83f9c2",
+              "sizeBytes": 608,
+              "source": "domain-tool",
+              "inputHashes": {
+                "recipe.json": "1f9fdd40a5e462caec414574042f97e5dba38fe20490cbc7a8517d784cc15b82"
+              }
+            }
+          ],
+          "executionStatus": "completed",
+          "contentStatus": "recorded",
+          "verifications": [
+            {
+              "schemaVersion": "1",
+              "id": "6f53491d-610f-47b0-940e-7530dbac8fb6",
+              "status": "not_run",
+              "verifierId": "project.files.integrity",
+              "reason": "Input changes were recorded. Engineering verification must be rerun for the new inputs.",
+              "metrics": {},
+              "evidence": {
+                "artifactIds": [
+                  "93e41c63-1670-4540-9e02-0e749caeb8fb",
+                  "a5f0dc5e-8f6c-4dfc-b1de-a12e200debe7"
+                ],
+                "inputHashes": {
+                  "recipe.json": "1f9fdd40a5e462caec414574042f97e5dba38fe20490cbc7a8517d784cc15b82"
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "selection": null,
+      "checks": [],
+      "historicalGroups": [],
+      "executionStatus": "completed"
+    },
+    "engineering": {
+      "stateId": "a16968de-0cf9-4b9f-a4f0-ec9d8b1e3cf2",
+      "status": "verified",
+      "checkpointId": "7f490ced-1bb4-4241-99b6-2d388a4baf53"
+    }
+  }
+}

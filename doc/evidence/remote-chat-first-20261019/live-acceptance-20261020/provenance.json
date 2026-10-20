@@ -1,0 +1,87 @@
+{
+  "sourceCommit": "b53f08649967f03bfae0e586bfdf4e846cbee32b",
+  "workingTreeChange": "scripts/qualify-remote-chat.cjs: completion.status assertion changed from 'completed' to TaskService's 'finished'",
+  "sourceRun": "pr230-chat-wTGZlx",
+  "finishedAt": "2026-10-20T05:24:25.669Z",
+  "sourceFiles": [
+    {
+      "name": "acceptance.json",
+      "sha256": "b20e68611e12433c971a5ceb07eb2f4f5adb022d4d315cb8f138c7204521536b"
+    },
+    {
+      "name": "execution-boundary.json",
+      "sha256": "cc6b2e162f0f2083ce83af682f3b356491949c07d0bcb0ebeba7863a29e591f9"
+    },
+    {
+      "name": "model-fixture-requests.json",
+      "sha256": "f4c6d49772d847370b6008cf29c0b3f80ef16e45586ddff74b3cd9f102d36934"
+    },
+    {
+      "name": "approvals.json",
+      "sha256": "cba4317f86639bff3d5e9ee10f9304c62496478336ec6245723433456b429018"
+    },
+    {
+      "name": "batch-approval.json",
+      "sha256": "4742401cfcd6bde62dc6a1038d5a49b14f69a144eeefa78e010f25ba4c25e8c3"
+    },
+    {
+      "name": "local-edit-approval.json",
+      "sha256": "6620f3409df2dd647cbcf0f67ba4fc5f72c16e71e00d10aae0d4f769862a9c64"
+    },
+    {
+      "name": "immutable-plan.json",
+      "sha256": "dbf1262d746556d60f3785fd4221a68ab033049451e49e29a361df6d43a23726"
+    },
+    {
+      "name": "ready-and-preparation-release.json",
+      "sha256": "84e668ce870f079fe11ab47b6d3bdacaf7a9f599292fbe5bdc1a4c50f3dce175"
+    },
+    {
+      "name": "action-4.json",
+      "sha256": "7d3ff5f81d6183db63012ecde418c969ec679a0d7a8070eba5955a5f114fd17a"
+    },
+    {
+      "name": "remote-1.json",
+      "sha256": "54e2a1a30846d68e4b2bde539f16a4d65c1bf5cac7de7263a2151e8ed2f3618a"
+    },
+    {
+      "name": "remote-1-receipt.json",
+      "sha256": "30a2275708979128e30cfecc7a77797c596b9020a17a3966a4062dd917e564b9"
+    },
+    {
+      "name": "action-6.json",
+      "sha256": "ca20b6116d630e2c7aa39f091445b8eed22219017257082369bdb24d743afa11"
+    },
+    {
+      "name": "remote-2.json",
+      "sha256": "765f59b15dabecbd08a62cb1f10ff8c58f829fa0ca96b44b5fbdcc2e1cbdc06c"
+    },
+    {
+      "name": "remote-2-receipt.json",
+      "sha256": "8df37be558b170625fb61e3361fc7420a1d6fc45762d0e5f9595b04f614f3032"
+    },
+    {
+      "name": "events.jsonl",
+      "sha256": "357e12d18fa794a97096df11b161a464b888a022dd5a6f89f69c34284564bf00"
+    },
+    {
+      "name": "model-report-reads.json",
+      "sha256": "d6e503ce696f061c29bc22fa93ff3c4a12554d10ac8912717f38e7effa37bf2f"
+    },
+    {
+      "name": "completion.json",
+      "sha256": "7cef174b0ec9bcc425074f5c9db0449a1c1fd024e48b16815111c89a838b2bef"
+    }
+  ],
+  "transformations": [
+    "Host temporary test-root paths replaced by <test-root> in structured excerpts.",
+    "Approval previews joined to final decisions by exact approval ID.",
+    "Copied CAD report artifact bytes are unchanged."
+  ],
+  "accountCleanup": {
+    "status": "signed_out",
+    "source": "outer runner terminal result after passed",
+    "runnerExitCode": 0
+  },
+  "modelFixtureScope": "Only local model responses; real TaskService, Kimi, AuthManager, snapshots, protected remote tools, canonical facts, artifacts and verification."
+}
