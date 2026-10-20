@@ -731,16 +731,19 @@ body,
   align-items: center;
   gap: 6px;
   max-width: 250px;
-  /* Shrink this pill (its name ellipsizes) before the row wraps. */
+  /* Shrink the model name before the row wraps. */
   min-width: 0;
   flex: 0 1 auto;
-  padding: 5px 9px;
-  border: 1px solid var(--ia-border);
-  border-radius: 999px;
-  background: var(--ia-raised);
-  color: var(--ia-text);
+  padding: 5px 6px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--ia-panel);
+  color: var(--ia-muted);
   font-size: 11px;
   line-height: 16px;
+}
+.ia-model-pill > svg {
+  flex: none;
 }
 .ia-model-pill .ia-model-pill-name {
   min-width: 0;
