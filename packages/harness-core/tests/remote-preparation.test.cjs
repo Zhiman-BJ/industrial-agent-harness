@@ -7,7 +7,7 @@ const { randomUUID } = require('node:crypto');
 const { RemoteSettings, selectedSnapshot } = require('../src/remote-settings.cjs');
 const { hash } = require('@industrial-agent-harness/domain-runtime');
 
-function fixture(t, { current = true, account } = {}) {
+function fixture(t, { current = true, account, serviceInfo = {} } = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'remote-prepare-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const directory = path.join(root, 'settings');
@@ -39,6 +39,7 @@ function fixture(t, { current = true, account } = {}) {
               domainCatalog: [],
               capabilitySnapshotHash: 'a'.repeat(64),
               sessionModel: 'application-session',
+              ...serviceInfo,
             }
           : {
               serverId: 'test-service',
@@ -129,6 +130,62 @@ function pending(f, changes) {
     }),
   );
 }
+
+test('stable MCP v1 service releases 1.1.x and 1.2.x retain read-only planning without weakening execution qualification', async t => {
+  for (const version of ['1.1.0', '1.1.1', '1.2.0', '1.2.1', '1.2.12']) {
+    const f = fixture(t, { serviceInfo: { version } });
+    const connection = await f.settings.check();
+    assert.equal(connection.status, 'connected', `${version}: ${connection.reason}`);
+    assert.equal(connection.protocol, '1.1');
+    assert.deepEqual(connection.executableDomains, []);
+    assert.equal(f.settings.read().service.gatewayContract, 'mcp-v1');
+    const review = await f.settings.review(f.projectDir, 'test', ['input.txt']);
+    assert.equal(review.files[0].path, 'input.txt');
+    assert.ok(f.requests.every(request => request.method === 'GET'));
+    assert.equal(f.settings.project(f.projectDir, 'test').remoteProjectId, undefined);
+  }
+});
+
+test('unknown or prerelease product versions and malformed current service envelopes remain unavailable', async t => {
+  const changes = [
+    ...[
+      '1.0.0',
+      '1.3.0',
+      '2.0.0',
+      '1.2',
+      '1.2.1-rc.1',
+      '1.2.1+build',
+      '1.02.1',
+      '1.2.01',
+      '',
+      null,
+      1.2,
+    ].map(version => ({ version })),
+    { sessionModel: 'project-session' },
+    { sessionModel: undefined },
+    { domains: ['test', 2] },
+    { domains: null },
+    { domainCatalog: {} },
+    { domainCatalog: undefined },
+    { capabilitySnapshotHash: 'bad-hash' },
+    { capabilitySnapshotHash: 'A'.repeat(64) },
+    { capabilitySnapshotHash: undefined },
+    { remoteProtocolVersion: '1.0' },
+    { remoteProtocolVersion: '1.1' },
+  ];
+  for (const change of changes) {
+    const f = fixture(t, { serviceInfo: { version: '1.2.1', ...change } });
+    const connection = await f.settings.check();
+    assert.equal(connection.status, 'unavailable', JSON.stringify(change));
+    assert.match(connection.reason, /does not support the remote execution protocol 1.1/);
+    await assert.rejects(
+      f.settings.review(f.projectDir, 'test', ['input.txt']),
+      /unavailable for this domain/,
+    );
+    assert.ok(f.requests.every(request => request.method === 'GET'));
+    assert.equal(f.settings.read().service, undefined);
+  }
+});
 
 test('planning does not upload and freezes exact files, hashes, destination and remembered choice', async t => {
   const f = fixture(t);

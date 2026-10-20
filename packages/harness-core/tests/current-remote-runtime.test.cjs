@@ -16,6 +16,7 @@ const json = value =>
 async function setup(
   t,
   {
+    serviceVersion = '1.1.0',
     corrupt = false,
     disconnect = false,
     metadataOnly = false,
@@ -66,7 +67,7 @@ async function setup(
     }
     if (route === '/v1/service-info')
       return json({
-        version: '1.1.0',
+        version: serviceVersion,
         domains: ['test'],
         domainCatalog: [
           {
@@ -291,8 +292,8 @@ async function invoke(f, approval = true) {
     },
   );
 }
-test('shared runtime persists canonical local records from the current server receipt and restores them', async t => {
-  const f = await setup(t);
+test('MCP v1 service 1.2.1 retains approval, canonical receipt persistence and restore', async t => {
+  const f = await setup(t, { serviceVersion: '1.2.1' });
   const denied = await invoke(f, false);
   assert.equal(denied.action.status, 'failed');
   assert.equal(f.calls, 0);

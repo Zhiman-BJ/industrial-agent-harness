@@ -17,6 +17,8 @@ Kimi 原生 Bash、文件工具和后代进程拥有当前用户已有的权限�
 - 已声明的本地任务继续使用 `packages/domain-runtime/src/task-process.cjs` 的独立隔离。只读快照、专属输出目录、禁网和宿主 socket 限制保持；Linux 执行这种任务仍需 bubblewrap 与可用命名空间。缺少条件只拒绝相应任务，不阻止 Agent 启动。
 - Docker 任务的固定镜像与资源限制、远端服务的认证和租户/项目隔离、快照校验、工具授权、配额与沙箱释放保持。移除本机 Agent 包装器不改变远端 worker 的边界。
 
+当前固定版本的外部 Domain Pack 中，`chip.environment.check` 仍可能返回 `agent_docker_access: intentionally_denied`。这是旧 Pack 的诊断字段，不代表当前本机 Agent 的 OS 权限。验收脚本将原值保留为 `packReportedAgentDockerAccess`，不再据此验证 Agent 隔离；实际权限以启动器的 `execution-boundary` 和真实权限验证为准。该文案留待后续 Pack 升级修正，不改写上游返回的工程事实或历史记录。
+
 ## 验收与历史
 
 平台资格仍以原有 OS/CPU、原生内核、安装包及领域 Profile 的实际结果为准。移除启动依赖不自动支持 Intel Mac、未验证 Linux 架构或其他专业软件。当前用户启动、环境过滤、普通工程写入、审批、取消/恢复和打包消费须按目标平台验证；声明式任务隔离与远端服务完整链路分别验证。

@@ -1,7 +1,8 @@
 'use strict';
-// Opt-in real model + TaskService acceptance. Import and inject a normally
+// Opt-in TaskService acceptance. Import and inject a normally
 // authenticated AuthManager; this module never restores/extracts saved tokens.
-// No fake fetch, Session, tools, gateway, model or Electron is used.
+// The model is real by default; an explicitly labelled local model fixture can
+// drive the real Kimi session. Runtime, sync, remote tools and artifacts stay real.
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
@@ -158,6 +159,7 @@ function createChatAcceptance({
   account,
   endpoint = account?.config.remoteOrigin,
   modelProfile,
+  modelFixture,
   executable,
   environment = process.env,
   onProgress = () => {},
@@ -179,11 +181,28 @@ function createChatAcceptance({
     throw Error('Use the confirmed remote endpoint bound to this AuthManager.');
   if (!modelProfile?.provider || !modelProfile.model)
     throw Error('Pass the confirmed modelProfile.provider and modelProfile.model.');
+  if (modelFixture) {
+    const url = new URL(modelFixture.endpoint);
+    if (
+      modelFixture.mode !== 'mock' ||
+      url.protocol !== 'http:' ||
+      url.hostname !== '127.0.0.1' ||
+      !url.port ||
+      url.pathname !== '/v1' ||
+      url.username ||
+      url.password ||
+      url.search ||
+      url.hash ||
+      typeof modelFixture.apiKey !== 'string' ||
+      !modelFixture.apiKey
+    )
+      throw Error('Model fixtures must be explicit mocks on a keyed 127.0.0.1 /v1 endpoint.');
+  }
   // Validates config locally. Do not store a proxy key or call either service.
   const selectedProfile = validateProfile({
     ...defaults,
     ...modelProfile,
-    endpoint: account.config.modelBaseUrl,
+    endpoint: modelFixture?.endpoint || account.config.modelBaseUrl,
   });
   const root = privateDirectory('pr230-chat-');
   const projectDir = path.join(root, 'project'),
@@ -218,7 +237,10 @@ function createChatAcceptance({
     });
   const emit = (phase, detail) => onProgress(phase, redact(detail));
   const summary = {
-    mode: 'real-TaskService-real-model-real-remote-no-Electron',
+    mode: modelFixture
+      ? 'real-TaskService-real-Kimi-mock-model-real-remote-no-Electron'
+      : 'real-TaskService-real-model-real-remote-no-Electron',
+    modelService: modelFixture ? 'local-mock' : 'platform-real',
     root,
     projectDir,
     evidenceDir,
@@ -258,7 +280,7 @@ function createChatAcceptance({
     remoteRuns = [],
     reportReads = [];
   const toolCalls = new Map();
-  let plan, planResult, prepareResult, editResult, allowedTurnId;
+  let plan, planResult, prepareResult, editResult, allowedTurnId, sessionError;
   const allowedTools = new Set(['project.files.read', PLAN, PREPARE, EDIT, TOOL]);
   function fail(error) {
     if (!fatal) {
@@ -367,6 +389,17 @@ function createChatAcceptance({
       JSON.stringify(redact({ ...event, metadata })) + '\n',
       { mode: 0o600 },
     );
+    if (event.type === 'execution-boundary') {
+      try {
+        assert.equal(event.mechanism, 'current-user');
+        assert.equal(event.osIsolation, false);
+        assert.equal(event.projectWritable, true);
+        save('execution-boundary.json', event);
+      } catch (error) {
+        fail(error);
+      }
+    }
+    if (event.type === 'error') sessionError = event.message;
     if (event.type === 'tool') toolCalls.set(event.id, event);
     if (event.type === 'tool-result' && !event.error) {
       const call = toolCalls.get(event.id);
@@ -564,16 +597,20 @@ function createChatAcceptance({
         sessionClass: tasks.Session.name,
       });
       emit('local-chat-opened-without-upload', { chatId: entry.id });
-      await account.serviceToken('model', account.config.modelBaseUrl);
-      proxy = await createModelProxy({ auth: account });
-      const profile = validateProfile({ ...selectedProfile, endpoint: proxy.endpoint });
+      let modelConnection = modelFixture;
+      if (!modelConnection) {
+        await account.serviceToken('model', account.config.modelBaseUrl);
+        proxy = await createModelProxy({ auth: account });
+        modelConnection = proxy;
+      }
+      const profile = validateProfile({ ...selectedProfile, endpoint: modelConnection.endpoint });
       config = {
         profile,
-        apiKey: proxy.apiKey,
+        apiKey: modelConnection.apiKey,
         revision: 0,
         executable: executable || bundledExecutable(),
         shareDir: writeCliConfig(path.join(root, 'model'), profile),
-        env: sessionEnv(profile, proxy.apiKey),
+        env: sessionEnv(profile, modelConnection.apiKey),
         environment: isolatedEnvironment,
         disabledMcpServers: entry.disabled.mcpServers,
         externalServers: entry.externalServers,
@@ -590,7 +627,7 @@ function createChatAcceptance({
       const completion = await started.completion;
       await approvalsQueue;
       if (fatal) throw fatal;
-      assert.equal(completion.status, 'completed', JSON.stringify(completion));
+      assert.equal(completion.status, 'completed', sessionError || JSON.stringify(completion));
       assert.equal(remoteRuns.length, 2, 'The model must actually execute both CAD actions.');
       assert.ok(planResult && prepareResult && editResult);
       const counts = Object.fromEntries(
@@ -635,7 +672,7 @@ function createChatAcceptance({
       closing = true;
       await tasks.close();
       tasks = undefined;
-      proxy.close();
+      proxy?.close();
       proxy = undefined;
       save('acceptance.json', report);
       emit('passed', report);
@@ -647,6 +684,7 @@ function createChatAcceptance({
         message: error.message,
         approvals,
         remoteRuns,
+        remoteConnection: settings.view(),
         pending: entry ? settings.task(projectDir, 'cad', entry.id) : null,
       };
       save('failure.json', failure);
@@ -678,6 +716,7 @@ if (require.main === module) {
       '// Use normal AuthManager PKCE sign-in with a memory-only account, or inject an existing account.\n' +
       'const test=createChatAcceptance({repo,account,modelProfile:{provider:"openai_legacy",model:confirmedModel}});\n' +
       'await test.run({approved:true});\n' +
+      '// Optional modelFixture:{mode:"mock",endpoint,apiKey} uses only a local model; remote execution remains real.\n' +
       'Expected user approvals: batch 1 + exact local edit 1; remote-tool approval 0.\n' +
       'Requires Node >=24, actual Kimi 2.1.1 and the production current-user Agent launcher.\n',
   );

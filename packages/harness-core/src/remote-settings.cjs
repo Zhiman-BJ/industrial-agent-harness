@@ -88,7 +88,10 @@ function selectedSnapshot(directory, selected) {
 
 function validateServiceInfo(info) {
   if (
-    info.version === '1.1.0' &&
+    // Product releases 1.1.x and 1.2.x use the same MCP v1 application-session
+    // envelope. Product patch versions are not the canonical protocol version.
+    typeof info.version === 'string' &&
+    /^1\.[12]\.(?:0|[1-9]\d*)$/.test(info.version) &&
     info.remoteProtocolVersion === undefined &&
     info.sessionModel === 'application-session' &&
     Array.isArray(info.domains) &&
