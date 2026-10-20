@@ -7,6 +7,7 @@ const { execFile } = require('node:child_process');
 const { promisify } = require('node:util');
 const { buildHeadlessPackage } = require('./fixtures/headless-package.cjs');
 const { startModel } = require('./fixtures/domain-mcp-model.cjs');
+const { boundaryMatches } = require('./fixtures/execution-boundary.cjs');
 const execute = promisify(execFile);
 
 // This gate requires the production current-user runtime. Run it on the declared
@@ -76,15 +77,7 @@ test('packaged headless Agent completes a real current-user Kimi Code turn outsi
   );
   const rows = stdout.trim().split('\n').map(JSON.parse);
   assert.equal(rows.at(-1).status, 'finished');
-  assert.ok(
-    rows.some(
-      row =>
-        row.event?.type === 'execution-boundary' &&
-        row.event.mechanism === 'current-user' &&
-        row.event.osIsolation === false &&
-        row.event.projectWritable === true,
-    ),
-  );
+  assert.ok(rows.some(boundaryMatches));
   assert.ok(rows.some(row => row.event?.text === 'PACKAGED_CODE_OK'));
   assert.ok(rows.some(row => row.event?.text === 'PACKAGED_STARTED'));
   assert.ok(rows.some(row => row.event?.type === 'background-state' && row.event.running));

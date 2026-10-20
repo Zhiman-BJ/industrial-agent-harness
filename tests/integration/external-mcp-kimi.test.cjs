@@ -8,6 +8,7 @@ const { execFile } = require('node:child_process'),
   { promisify } = require('node:util');
 const { ExternalMcpRegistry } = require('../../packages/domain-mcp/src/index.cjs');
 const { startModel } = require('./fixtures/domain-mcp-model.cjs');
+const { boundaryMatches } = require('./fixtures/execution-boundary.cjs');
 const { image } = require('./fixtures/external-mcp-server.cjs');
 const execute = promisify(execFile),
   root = path.resolve(__dirname, '../..');
@@ -144,15 +145,7 @@ test(
           JSON.stringify(model.requests).includes(`data:${image.mimeType};base64,${image.data}`),
           'Native MCP image must reach the vision model request.',
         );
-        assert.ok(
-          rows.some(
-            row =>
-              row.event?.type === 'execution-boundary' &&
-              row.event.mechanism === 'current-user' &&
-              row.event.osIsolation === false &&
-              row.event.projectWritable === true,
-          ),
-        );
+        assert.ok(rows.some(boundaryMatches));
       }
     }
     await invoke(['mcp', 'disable', 'external.host', '--project-dir', project]);

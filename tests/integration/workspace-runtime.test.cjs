@@ -9,6 +9,7 @@ const { execFile } = require('node:child_process'),
 const { createProjectRuntime } = require('../../packages/harness-core/src/index.cjs');
 const { resolveFromState } = require('../../packages/capability-broker/src/index.cjs');
 const { startModel } = require('./fixtures/domain-mcp-model.cjs');
+const { boundaryMatches } = require('./fixtures/execution-boundary.cjs');
 const scenario = require('./fixtures/workspace-scenario.cjs');
 const execute = promisify(execFile),
   root = path.resolve(__dirname, '../..');
@@ -378,15 +379,7 @@ for (const domain of ['chip', 'pcb'])
       assert.equal(results[4].state.status, 'stale');
       assert.equal(results.at(-1).state.status, 'verified');
       assert.ok(rows[0].scope.skills.includes('project.work'));
-      assert.ok(
-        rows.some(
-          row =>
-            row.event?.type === 'execution-boundary' &&
-            row.event.mechanism === 'current-user' &&
-            row.event.osIsolation === false &&
-            row.event.projectWritable === true,
-        ),
-      );
+      assert.ok(rows.some(boundaryMatches));
       assert.equal(
         fs.readFileSync(path.join(project, 'src/calculate.cjs'), 'utf8'),
         scenario.source,
