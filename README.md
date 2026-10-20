@@ -57,6 +57,9 @@ pnpm --filter @industrial-agent-harness/desktop setup:kimi
 pnpm dev
 ```
 
+On macOS, a restricted command environment may deny GUI service access before Electron reaches application code. The launcher now reports that denial before spawning Electron. Use `pnpm --filter @industrial-agent-harness/desktop gui:prepare` and open its generated development app from the desktop; see [startup and UI validation](doc/electron-macos-startup.md).
+
+
 Open **Settings → Model API** to configure your model, then add a local project and select its domain. Open the right-hand workspace to browse files. File previews work without a model API key.
 
 Select the server's **API format** independently of the Kimi agent kernel. Official MiniMax Chat Completions uses OpenAI-compatible settings; thinking controls vary by model and protocol. See [tested model API behavior and remaining gaps](doc/model-api-compatibility.md).

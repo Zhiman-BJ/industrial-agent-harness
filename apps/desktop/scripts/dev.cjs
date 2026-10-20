@@ -2,7 +2,17 @@ const { spawn } = require('node:child_process');
 const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
+const { launchElectron } = require('./launch-electron.cjs');
+const { requireGuiStartup } = require('./gui-startup.cjs');
 const root = path.resolve(__dirname, '..');
+// Diagnose an explicit GUI-service denial before starting Vite or a GUI child.
+// Unknown diagnostics use the desktop entry rather than risking a native abort.
+try {
+  requireGuiStartup();
+} catch (error) {
+  console.error(error.message);
+  process.exit(1);
+}
 // Optional local-only overrides (INDUSTRIAL_MODEL_API_KEY, …); never committed.
 try {
   for (const line of fs.readFileSync(path.join(root, '.env.local'), 'utf8').split('\n')) {
@@ -47,10 +57,8 @@ async function ready() {
 }
 ready()
   .then(() => {
-    const electronBin = require('electron');
-    electron = spawn(electronBin, ['.'], {
-      cwd: root,
-      stdio: 'inherit',
+    electron = launchElectron([], {
+      preflight: () => {}, // Already checked before starting Vite.
       env: { ...process.env, INDUSTRIAL_DEV_URL: 'http://127.0.0.1:5173/' },
     });
     electron.on('error', error => {

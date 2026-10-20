@@ -57,6 +57,9 @@ pnpm --filter @industrial-agent-harness/desktop setup:kimi
 pnpm dev
 ```
 
+macOS 受限命令环境可能在应用代码执行前拒绝 GUI 服务访问。启动器会提前诊断；可运行 `pnpm --filter @industrial-agent-harness/desktop gui:prepare`，从桌面打开生成的开发入口。见 [启动与界面验收](doc/electron-macos-startup.md)。
+
+
 **布局按钮**可切换经典两列与聊天／文件／Viewer 共用的顶部标签栏。`+` 浏览项目文件；单击复用预览标签，双击或图钉固定保留。切换保留草稿和 Viewer 状态。窗口按屏幕可用区域启动，缩窄时自动采用标签页。见[自适应窗口与标签页](doc/desktop-layouts.md)。
 
 **设置 → 语言** 可选择简体中文、English 或跟随系统，即时生效并记住选择。切换保留草稿、运行中的任务和查看器状态。Harness 自有控件与弹窗提供中英文；项目文件、聊天原文、工具返回和嵌入的第三方界面保留原内容。见[桌面语言切换](doc/desktop-languages.md)。
