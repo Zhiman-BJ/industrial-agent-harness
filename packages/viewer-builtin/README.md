@@ -57,7 +57,9 @@ engineering edits or verification logic is added to the host. See
 
 远程 CAD 下载文件可使用同目录 `artifact-bundle.json` 定位原预览 manifest，再按哈希匹配 BREP/STL/草图配套。索引不含可执行逻辑，限制 64 KiB / 64 项，文件名只允许安全 basename，配套必须与模型位于同一真实目录；大小、摘要、重复及符号链接越界均校验。它只辅助显示，不新增工程 Artifact 或 Verifier 结论。真实 FCStd/STEP 的文件树→Registry→OCCT、缩放/Fit/全屏证据见[远程 CAD 验收](../../doc/evidence/remote-cad-20261019/README.md)。
 
-PCB 三维预览复用固定 KiCanvas parser/painter 与本地 Three.js；元件模型引用来自同一 parser，显示项目内 STEP（保留颜色）和受支持的静态 KiCad legacy WRL。组件沿用源封装的顶/底面、位置、旋转及模型变换，支持独立显隐、随表面展开和点选回源封装；缺失模型不绘制占位实体。项目相对路径与 `${KIPRJMOD}` 受项目边界限制；`${KICADn_3DMODEL_DIR}` / `${KISYS3DMOD}` 按离线打包约定解析为项目 `3dmodels/`，不读取任意外部库、不启动 KiCad、不自动下载模型。
+PCB 三维预览复用固定 KiCanvas parser/painter 与本地 Three.js；元件模型引用来自同一 parser，显示项目内 STEP（保留颜色）和受支持的静态 KiCad legacy WRL。组件沿用源封装的顶/底面、位置、旋转及模型变换，支持独立显隐、随表面展开和点选回源封装；缺失模型不绘制占位实体。项目相对路径与 `${KIPRJMOD}` 受项目边界限制；`${KICADn_3DMODEL_DIR}` / `${KISYS3DMOD}` 按离线打包约定解析为项目 `3dmodels/`，不读取任意外部库、不启动 KiCad；本地模型与已验证缓存可离线查看，打开文件不自动下载。
+
+本轮增加可注入的 `modelProvider`：打开时只解析已验证本地/缓存资源并计划缺失项；用户明确点击“下载缺失模型”后才请求宿主准备。官方 STEP 目录由外部 PCB Pack owner 固定为 KiCad `10.0.7` / `8d4070daa0fa3f7a7f3c176f4ca7bffc4df392be`，包含 7,252 个 STEP / 105 个 family；共享 Pack Manager 的通用 `dataLibraries` 按当前项目所需条目校验 SHA-256、大小、许可并管理缓存、取消和预算，独立于原生应用安装。本地模型优先，WRL 不自动换 STEP；整库预下载不在本轮范围。宿主仅授权精确 sourceRef/root/path/hash/size，Viewer 包不依赖 Electron，也不接受任意外部文件根或远程 URL。iframe 仍通过同源受限资源通道读取，网络下载由宿主执行。
 
 模型有独立哈希快照、8 MiB 单文件 / 64 MiB 唯一内容总量 / 64 份唯一内容限制。单线程 worker 有单模型 10 秒与整批 60 秒时限；STEP WASM 线性内存上限 256 MiB 不等于 JavaScript 总堆上限。GPU 共享实例几何，但每个实例仍计入原 1,200,000 三角形总预算。复杂 VRML 变换与外部依赖不在当前支持范围。实体模型接入的 CPU/GPU 验收仍在推进；已有几何预览结果不能代替本轮验收。完整范围、预算与真实多层板证据见 [PCB 三维 Viewer](../../doc/pcb-3d-viewer.md)。
 

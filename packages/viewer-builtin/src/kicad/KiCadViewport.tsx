@@ -1,6 +1,6 @@
 import { useDisplayText } from '../text';
 import { useEffect, useRef, useState } from 'react';
-import type { KiCadData } from '../api';
+import type { KiCadData, KiCadModelDownloads } from '../api';
 import { useViewNavigation } from '../navigation';
 
 type PcbLayer = { id: string; name: string; color: number[] };
@@ -46,7 +46,24 @@ export function KiCadViewport({
   const [unavailableModels, setUnavailableModels] = useState(0);
   const [showComponents, setShowComponents] = useState(true);
   const [incomplete, setIncomplete] = useState(false);
+  const [downloads, setDownloads] = useState<KiCadModelDownloads | undefined>(data.modelDownloads);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState('');
+  const [downloadMessage, setDownloadMessage] = useState('');
+  const downloadEpoch = useRef(0);
+  const downloadingToken = useRef<string | null>(null);
+  const downloadCancelled = useRef(false);
+  const activeToken = useRef(data.token);
+  const changedPlanMessage = 'Component model download plan changed. Reopen the document.';
   useEffect(() => {
+    activeToken.current = data.token;
+    downloadEpoch.current++;
+    downloadingToken.current = null;
+    downloadCancelled.current = false;
+    setDownloads(data.modelDownloads);
+    setDownloading(false);
+    setDownloadError(data.modelDownloads?.error || '');
+    setDownloadMessage('');
     setStatus('Loading KiCad document…');
     setConnected(false);
     setPercent(100);
@@ -108,6 +125,7 @@ export function KiCadViewport({
       }
       switch (event.data.type) {
         case 'scene-loading':
+          setSceneReady(false);
           setSceneLoading(true);
           setSceneError('');
           return;
@@ -116,7 +134,20 @@ export function KiCadViewport({
           setSceneReady(true);
           setSceneLoading(false);
           setLayers(nextLayers);
-          setVisibleLayers(nextLayers.map(layer => layer.id));
+          const ids = new Set(nextLayers.map(layer => layer.id));
+          setVisibleLayers(
+            Array.isArray(event.data.visibleLayers)
+              ? event.data.visibleLayers.filter(
+                  (id: unknown): id is string => typeof id === 'string' && ids.has(id),
+                )
+              : [...ids],
+          );
+          setSeparation(
+            Number.isFinite(event.data.explode) ? Math.round(event.data.explode * 100) : 0,
+          );
+          setShowComponents(event.data.componentsVisible !== false);
+          if (event.data.refitted)
+            setDownloadMessage('The updated 3D view was fitted to the board and components.');
           setWarnings(event.data.warnings || []);
           setSchematicSpacing(event.data.zMode !== 'stackup');
           setMissingModels(event.data.missingModels || 0);
@@ -152,6 +183,17 @@ export function KiCadViewport({
     };
     window.addEventListener('message', receive);
     return () => {
+      const releasedEpoch = ++downloadEpoch.current;
+      if (downloadingToken.current === data.token) {
+        void window.viewerHost?.cancelViewerResources?.({ token: data.token }).catch(() => {});
+        downloadingToken.current = null;
+      }
+      // A development StrictMode remount keeps this same token. Release only
+      // after a real unmount or token change; hiding a retained tab does neither.
+      queueMicrotask(() => {
+        if (downloadEpoch.current === releasedEpoch || activeToken.current !== data.token)
+          void window.viewerHost?.releaseViewerResources?.({ token: data.token }).catch(() => {});
+      });
       clearTimeout(timer);
       window.removeEventListener('message', receive);
     };
@@ -174,6 +216,56 @@ export function KiCadViewport({
     setVisibleLayers(ids);
     command('layers', { ids });
   };
+  const prepareModels = async () => {
+    const prepare = window.viewerHost?.prepareViewerResources;
+    if (!prepare || downloadingToken.current) return;
+    const token = data.token,
+      epoch = downloadEpoch.current;
+    downloadingToken.current = token;
+    downloadCancelled.current = false;
+    setDownloading(true);
+    setDownloadError('');
+    setDownloadMessage('');
+    try {
+      const result = await prepare({ token });
+      if (downloadEpoch.current !== epoch || result.token !== token) return;
+      if (downloadCancelled.current) {
+        setDownloadMessage('Model download cancelled.');
+        return;
+      }
+      setDownloads(result.modelDownloads);
+      setDownloadError(result.modelDownloads.error || '');
+      setDownloadMessage('Component models refreshed.');
+      command('reload-models');
+    } catch (error) {
+      if (downloadEpoch.current !== epoch) return;
+      if (downloadCancelled.current || (error as { name?: string })?.name === 'AbortError')
+        setDownloadMessage('Model download cancelled.');
+      else
+        setDownloadError(
+          String((error as { message?: string })?.message || error).includes(changedPlanMessage)
+            ? changedPlanMessage
+            : 'Model download failed. Retry.',
+        );
+    } finally {
+      if (downloadEpoch.current === epoch) {
+        downloadingToken.current = null;
+        setDownloading(false);
+      }
+    }
+  };
+  const cancelDownload = async () => {
+    if (downloadingToken.current !== data.token) return;
+    downloadCancelled.current = true;
+    try {
+      await window.viewerHost?.cancelViewerResources?.({ token: data.token });
+    } catch {
+      if (downloadingToken.current === data.token)
+        setDownloadError('Model download failed. Retry.');
+    }
+  };
+  const canDownload =
+    typeof window !== 'undefined' && Boolean(window.viewerHost?.prepareViewerResources);
   return (
     <div className="rp-kicad">
       <header className="rp-kicad-toolbar">
@@ -214,6 +306,68 @@ export function KiCadViewport({
           ? t('Drag to orbit · Scroll or pinch to zoom · Right drag to pan')
           : t('Scroll or pinch to zoom · Middle/right drag to pan')}
       </div>
+      {data.document === 'board' &&
+        downloads &&
+        (downloads.downloadFiles > 0 ||
+          downloads.unavailableFiles > 0 ||
+          downloadError ||
+          downloadMessage ||
+          downloading) && (
+          <section className="rp-pcb3d-downloads" aria-label={t('Component model downloads')}>
+            {downloads.downloadFiles > 0 && (
+              <p className="rp-pcb3d-note">
+                {t('{0} model files · {1} MiB download', {
+                  '0': downloads.downloadFiles,
+                  '1': (downloads.downloadBytes / 1048576).toFixed(1),
+                })}
+              </p>
+            )}
+            {downloads.libraries.map(library => (
+              <p className="rp-pcb3d-note" key={library.id + ':' + library.version}>
+                {t('Official model library: {0} · {1} · {2}', {
+                  '0': library.label,
+                  '1': library.version,
+                  '2': library.origin,
+                })}
+                {library.license?.spdx && ` · ${library.license.spdx}`}
+              </p>
+            ))}
+            {downloads.unavailableFiles > 0 && (
+              <p className="rp-pcb3d-note">
+                {t('Unavailable for this preview: {0}', { '0': downloads.unavailableFiles })}
+              </p>
+            )}
+            {canDownload &&
+              downloadError !== changedPlanMessage &&
+              (downloads.downloadFiles > 0 || downloadError) && (
+                <button
+                  disabled={!connected || sceneLoading || downloading}
+                  onClick={() => void prepareModels()}
+                >
+                  {t(downloadError ? 'Retry model download' : 'Download missing models')}
+                </button>
+              )}
+            {downloading && (
+              <span role="status">
+                <progress aria-label={t('Downloading component models…')} />{' '}
+                {t('Downloading component models…')}
+              </span>
+            )}
+            {downloading && window.viewerHost?.cancelViewerResources && (
+              <button onClick={() => void cancelDownload()}>{t('Cancel download')}</button>
+            )}
+            {downloadError && (
+              <p className="rp-pcb3d-error" role="alert">
+                {t(downloadError)}
+              </p>
+            )}
+            {downloadMessage && (
+              <p className="rp-pcb3d-note" role="status">
+                {t(downloadMessage)}
+              </p>
+            )}
+          </section>
+        )}
       {sceneError && (
         <p className="rp-pcb3d-error" role="alert">
           {t('PCB 3D could not be opened.')} {t(sceneError)}

@@ -2248,6 +2248,22 @@
   color: var(--ia-danger, #e8a69b);
   font-size: 12px;
 }
+.rp-pcb3d-downloads {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--ia-border, #40505b);
+  flex-shrink: 0;
+}
+.rp-pcb3d-downloads p {
+  margin: 3px 0;
+  overflow-wrap: anywhere;
+}
+.rp-pcb3d-downloads button {
+  margin: 5px 8px 2px 0;
+}
+.rp-pcb3d-downloads progress {
+  width: 56px;
+  height: 8px;
+}
 .rp-kicad {
   height: 100%;
   min-height: 0;

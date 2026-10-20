@@ -11,12 +11,38 @@ const MODEL_LIMITS = Object.freeze({
 const hash = data => crypto.createHash('sha256').update(data).digest('hex');
 const contained = (file, root) => file.startsWith(root + path.sep);
 
+function hasControl(value) {
+  for (let index = 0; index < value.length; index++) {
+    const code = value.charCodeAt(index);
+    if (code <= 31 || code === 127) return true;
+  }
+  return false;
+}
+const reasonFor = error =>
+  ['ENOENT', 'ENOTDIR'].includes(error.code)
+    ? 'missing-file'
+    : [
+          'outside-project',
+          'file-limit',
+          'total-limit',
+          'model-changed',
+          'invalid-resource',
+          'unsupported-path',
+          'unsupported-format',
+          'unknown-variable',
+          'invalid-resource-root',
+          'resource-integrity',
+        ].includes(error.message)
+      ? error.message
+      : 'resource-unavailable';
+
 function resolveModelReference(reference, source, root) {
   if (
     typeof reference !== 'string' ||
     !reference ||
     reference.length > 2048 ||
-    /[\x00-\x1f\x7f\\:]/.test(reference) ||
+    /[\\:]/.test(reference) ||
+    hasControl(reference) ||
     path.isAbsolute(reference)
   )
     throw Error('unsupported-path');
@@ -54,17 +80,47 @@ function readModelSnapshot(file, root) {
     const after = fs.fstatSync(fd);
     if (after.size !== before.size || after.mtimeMs !== before.mtimeMs)
       throw Error('model-changed');
+    const current = fs.statSync(canonical);
+    if (
+      fs.realpathSync(file) !== canonical ||
+      current.dev !== after.dev ||
+      current.ino !== after.ino
+    )
+      throw Error('model-changed');
     return { file: canonical, path: file, data, sha256: hash(data), size: data.length };
   } finally {
     fs.closeSync(fd);
   }
 }
 
-function prepareModelResources(references, source, root) {
+function prepareModelResources(references, source, root, approvedResources = []) {
   const resources = [],
     seen = new Set(),
-    unique = new Map();
+    unique = new Map(),
+    approved = new Map();
+  for (const resource of Array.isArray(approvedResources)
+    ? approvedResources.slice(0, MODEL_LIMITS.references)
+    : []) {
+    if (typeof resource?.sourceRef !== 'string') continue;
+    if (approved.has(resource.sourceRef)) approved.set(resource.sourceRef, null);
+    else approved.set(resource.sourceRef, resource);
+  }
   let total = 0;
+  const include = (entry, snapshot) => {
+    if (!unique.has(snapshot.sha256)) {
+      if (unique.size >= MODEL_LIMITS.files || total + snapshot.size > MODEL_LIMITS.totalBytes)
+        throw Error('total-limit');
+      unique.set(snapshot.sha256, snapshot.data);
+      total += snapshot.size;
+    }
+    Object.assign(entry, snapshot, {
+      data: unique.get(snapshot.sha256),
+      status: 'ready',
+      url: 'models/' + resources.indexOf(entry),
+    });
+  };
+  // Load every project-local model first. A missing reference can subsequently
+  // use an exact mapping supplied by the trusted host's read-only provider.
   for (const sourceRef of references) {
     if (seen.has(sourceRef) || resources.length >= MODEL_LIMITS.references) continue;
     seen.add(sourceRef);
@@ -76,19 +132,65 @@ function prepareModelResources(references, source, root) {
       if (!['.wrl', '.step', '.stp'].includes(extension)) throw Error('unsupported-format');
       entry.format = extension === '.wrl' ? 'wrl' : 'step';
       const snapshot = readModelSnapshot(file, root);
-      if (!unique.has(snapshot.sha256)) {
-        if (unique.size >= MODEL_LIMITS.files || total + snapshot.size > MODEL_LIMITS.totalBytes)
-          throw Error('total-limit');
-        unique.set(snapshot.sha256, snapshot.data);
-        total += snapshot.size;
-      }
-      Object.assign(entry, snapshot, {
-        data: unique.get(snapshot.sha256),
-        status: 'ready',
-        url: 'models/' + (resources.length - 1),
-      });
+      include(entry, snapshot);
     } catch (error) {
-      entry.reason = ['ENOENT', 'ENOTDIR'].includes(error.code) ? 'missing-file' : error.message;
+      entry.reason = reasonFor(error);
+      entry.status = entry.reason === 'missing-file' ? 'missing' : 'unavailable';
+    }
+  }
+  for (const entry of resources) {
+    if (entry.status !== 'missing' || !approved.has(entry.sourceRef)) continue;
+    try {
+      const resource = approved.get(entry.sourceRef);
+      if (
+        !resource ||
+        typeof resource.path !== 'string' ||
+        !path.isAbsolute(resource.path) ||
+        typeof resource.root !== 'string' ||
+        !path.isAbsolute(resource.root) ||
+        typeof resource.sha256 !== 'string' ||
+        !/^[a-f0-9]{64}$/i.test(resource.sha256) ||
+        !Number.isSafeInteger(resource.size) ||
+        resource.size <= 0 ||
+        resource.size > MODEL_LIMITS.fileBytes ||
+        ![resource.libraryId, resource.version].every(
+          value =>
+            typeof value === 'string' &&
+            value.length > 0 &&
+            value.length <= 200 &&
+            !hasControl(value),
+        )
+      )
+        throw Error('invalid-resource');
+      // Content-addressed cache filenames are bare hashes. The parser format
+      // comes from the exact source reference, never the host cache pathname.
+      const format = resource.format ?? entry.format;
+      if (!['wrl', 'step'].includes(format) || format !== entry.format)
+        throw Error('unsupported-format');
+      if (resource.catalogPath !== undefined) {
+        if (typeof resource.catalogPath !== 'string') throw Error('unsupported-format');
+        const extension = path.extname(resource.catalogPath).toLowerCase();
+        if (
+          !['.wrl', '.step', '.stp'].includes(extension) ||
+          (extension === '.wrl' ? 'wrl' : 'step') !== format
+        )
+          throw Error('unsupported-format');
+      }
+      const resourceRoot = fs.realpathSync(resource.root);
+      if (!fs.statSync(resourceRoot).isDirectory()) throw Error('invalid-resource-root');
+      const snapshot = readModelSnapshot(resource.path, resourceRoot);
+      if (snapshot.sha256 !== resource.sha256.toLowerCase() || snapshot.size !== resource.size)
+        throw Error('resource-integrity');
+      include(entry, snapshot);
+      Object.assign(entry, {
+        resourceRoot,
+        libraryId: resource.libraryId,
+        version: resource.version,
+        format,
+      });
+      delete entry.reason;
+    } catch (error) {
+      entry.reason = reasonFor(error);
       entry.status = entry.reason === 'missing-file' ? 'missing' : 'unavailable';
     }
   }
@@ -96,21 +198,27 @@ function prepareModelResources(references, source, root) {
 }
 
 function modelManifest(resources) {
-  return resources.map(({ id, sourceRef, status, reason, format, sha256, size, url }) => ({
-    id,
-    sourceRef,
-    status,
-    reason,
-    format,
-    sha256,
-    size,
-    url,
-  }));
+  return resources.map(
+    ({ id, sourceRef, status, reason, format, sha256, size, url, libraryId, version }) => ({
+      id,
+      sourceRef,
+      status,
+      reason,
+      format,
+      sha256,
+      size,
+      url,
+      libraryId,
+      version,
+    }),
+  );
 }
 
 function recheckModel(entry, root) {
-  const current = readModelSnapshot(entry.path, root);
-  return current.file === entry.file && current.sha256 === entry.sha256;
+  const current = readModelSnapshot(entry.path, entry.resourceRoot || root);
+  return (
+    current.file === entry.file && current.sha256 === entry.sha256 && current.size === entry.size
+  );
 }
 
 module.exports = {

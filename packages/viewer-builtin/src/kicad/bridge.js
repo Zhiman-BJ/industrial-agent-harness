@@ -13,6 +13,8 @@ let disposed = false;
 let selectedObject;
 let scenePercent = 100;
 let synchronizingSelection = false;
+let retainedSceneState;
+let reloadSequence = 0;
 const boundCanvases = new WeakSet();
 function send(type, data) {
   window.parent.postMessage({ channel, type, ...data }, '*');
@@ -232,6 +234,15 @@ async function changeMode(next) {
           sceneHost?.remove();
           return;
         }
+        const restored = retainedSceneState;
+        if (restored) {
+          const layerIds = new Set(geometry3d.layers.map(layer => layer.id));
+          scene3d.setLayers(restored.visibleLayers.filter(id => layerIds.has(id)));
+          scene3d.setExplode(restored.explode);
+          scene3d.setComponentsVisible(restored.componentsVisible);
+          scene3d.fit();
+          retainedSceneState = undefined;
+        }
         document.body.dataset.pcb3d = 'ready';
         const renderStats = scene3d.stats;
         const renderWarnings = [];
@@ -277,6 +288,10 @@ async function changeMode(next) {
           omittedModels: renderStats.omittedModels || 0,
           modelReferences:
             components.placements.length + components.missingModels + components.failedModels,
+          visibleLayers: scene3d.getState().visibleLayers,
+          explode: scene3d.getState().explode,
+          componentsVisible: scene3d.getState().componentsVisible,
+          refitted: Boolean(restored),
         });
       } catch (error) {
         sceneHost?.remove();
@@ -287,7 +302,8 @@ async function changeMode(next) {
     try {
       await building;
     } catch (error) {
-      mode = desiredMode = '2d';
+      mode = '2d';
+      if (error?.name !== 'AbortError') desiredMode = '2d';
       document.body.dataset.pcbMode = mode;
       if (error?.name !== 'AbortError') {
         document.body.dataset.pcb3d = 'error';
@@ -312,6 +328,25 @@ async function changeMode(next) {
     viewState();
   }
 }
+async function reloadModels() {
+  const sequence = ++reloadSequence;
+  retainedSceneState = scene3d?.getState() || retainedSceneState;
+  const pending = building;
+  buildController?.abort();
+  if (pending) await pending.catch(() => {});
+  if (disposed || sequence !== reloadSequence) return;
+  scene3d?.dispose();
+  scene3d = null;
+  sceneHost?.remove();
+  sceneHost = null;
+  geometry3d = null;
+  document.querySelector('kicanvas-embed').hidden = false;
+  mode = '2d';
+  document.body.dataset.pcbMode = mode;
+  document.body.dataset.pcb3d = '';
+  if (desiredMode === '3d') await changeMode('3d');
+  else send('mode', { mode });
+}
 window.addEventListener('message', event => {
   if (
     event.source !== window.parent ||
@@ -324,6 +359,9 @@ window.addEventListener('message', event => {
   switch (event.data.command) {
     case 'mode':
       void changeMode(event.data.args?.mode);
+      break;
+    case 'reload-models':
+      void reloadModels();
       break;
     case 'layers': {
       const ids = event.data.args?.ids;

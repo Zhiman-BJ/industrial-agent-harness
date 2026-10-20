@@ -9,16 +9,16 @@
     "test": "node --test tests/*.test.cjs"
   },
   "dependencies": {
-    "@industrial-agent-harness/domain-runtime": "workspace:*",
     "@industrial-agent-harness/agent-kimi": "workspace:*",
     "@industrial-agent-harness/capability-broker": "workspace:*",
     "@industrial-agent-harness/computer-use-bridge": "workspace:*",
+    "@industrial-agent-harness/domain-runtime": "workspace:*",
     "@industrial-agent-harness/domain-skills": "workspace:*",
-    "@industrial-agent-harness/pack-manager": "workspace:*",
-    "@industrial-agent-harness/harness-core": "workspace:*",
     "@industrial-agent-harness/harness-application": "workspace:*",
-    "@zhiman-bj/industrial-domain-packs": "https://codeload.github.com/Zhiman-BJ/industrial-domain-packs/tar.gz/df0ac91ee5619952be9c511b73f715a11c8dd01b",
-    "@industrial-agent-harness/harness-auth": "workspace:*"
+    "@industrial-agent-harness/harness-auth": "workspace:*",
+    "@industrial-agent-harness/harness-core": "workspace:*",
+    "@industrial-agent-harness/pack-manager": "workspace:*",
+    "@zhiman-bj/industrial-domain-packs": "https://codeload.github.com/Zhiman-BJ/industrial-domain-packs/tar.gz/5cc78f4efd1c6db84de1dab61a72d80915d30260"
   },
   "license": "MIT",
   "engines": {

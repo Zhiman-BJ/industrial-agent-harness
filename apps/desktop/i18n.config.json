@@ -4,18 +4,82 @@
   "locales": {
     "zh-CN": {
       "label": "简体中文",
-      "systemLanguages": [
-        "zh"
-      ]
+      "systemLanguages": ["zh"]
     },
     "en": {
       "label": "English",
-      "systemLanguages": [
-        "en"
-      ]
+      "systemLanguages": ["en"]
     }
   },
   "messages": {
+    "Too many open KiCad views. Close a tab, then retry.": {
+      "en": "Too many open KiCad views. Close a tab, then retry.",
+      "zh-CN": "打开的 KiCad 视图过多，请关闭一个标签页后重试。"
+    },
+    "Open KiCad views exceed the snapshot memory limit. Close a tab, then retry.": {
+      "en": "Open KiCad views exceed the snapshot memory limit. Close a tab, then retry.",
+      "zh-CN": "已打开的 KiCad 视图超过快照内存上限，请关闭一个标签页后重试。"
+    },
+    "Component model download plan changed. Reopen the document.": {
+      "en": "Component model download plan changed. Reopen the document.",
+      "zh-CN": "元件模型下载计划已变更，请重新打开文件。"
+    },
+    "Component model downloads": {
+      "en": "Component model downloads",
+      "zh-CN": "元件模型下载"
+    },
+    "Download missing models": {
+      "en": "Download missing models",
+      "zh-CN": "下载缺失模型"
+    },
+    "Downloading component models…": {
+      "en": "Downloading component models…",
+      "zh-CN": "正在下载元件模型…"
+    },
+    "Cancel download": {
+      "en": "Cancel download",
+      "zh-CN": "取消下载"
+    },
+    "Retry model download": {
+      "en": "Retry model download",
+      "zh-CN": "重试模型下载"
+    },
+    "Model download failed. Retry.": {
+      "en": "Model download failed. Retry.",
+      "zh-CN": "模型下载失败，请重试。"
+    },
+    "Model download cancelled.": {
+      "en": "Model download cancelled.",
+      "zh-CN": "模型下载已取消。"
+    },
+    "Component models refreshed.": {
+      "en": "Component models refreshed.",
+      "zh-CN": "元件模型已刷新。"
+    },
+    "The updated 3D view was fitted to the board and components.": {
+      "en": "The updated 3D view was fitted to the board and components.",
+      "zh-CN": "更新后的三维视图已适配板图和元件。"
+    },
+    "{0} model files · {1} MiB download": {
+      "en": "{0} model files · {1} MiB download",
+      "zh-CN": "{0} 个模型文件 · 下载 {1} MiB"
+    },
+    "Official model library: {0} · {1} · {2}": {
+      "en": "Official model library: {0} · {1} · {2}",
+      "zh-CN": "官方模型库：{0} · {1} · {2}"
+    },
+    "Unavailable for this preview: {0}": {
+      "en": "Unavailable for this preview: {0}",
+      "zh-CN": "本次预览无法使用：{0}"
+    },
+    "Component model resources are unavailable. Retry downloading models.": {
+      "en": "Component model resources are unavailable. Retry downloading models.",
+      "zh-CN": "元件模型资源不可用，请重新下载。"
+    },
+    "Component model downloads are unavailable.": {
+      "en": "Component model downloads are unavailable.",
+      "zh-CN": "元件模型下载不可用。"
+    },
     "Model: {0}": {
       "en": "Model: {0}",
       "zh-CN": "模型：{0}"
@@ -2739,10 +2803,6 @@
     "Stopped": {
       "en": "Stopped",
       "zh-CN": "已停止"
-    },
-    "Cancel download": {
-      "en": "Cancel download",
-      "zh-CN": "取消下载"
     },
     "Markdown display limit reached; original text follows.": {
       "en": "Markdown display limit reached; original text follows.",

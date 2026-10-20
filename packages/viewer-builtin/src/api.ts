@@ -71,6 +71,22 @@ export interface KiCadData {
   name: string;
   document: 'board' | 'schematic';
   url: string;
+  modelDownloads?: KiCadModelDownloads;
+}
+export interface KiCadModelDownloads {
+  downloadFiles: number;
+  downloadBytes: number;
+  unavailableFiles: number;
+  libraries: Array<{
+    id: string;
+    version: string;
+    label: string;
+    origin: string;
+    catalogSha256?: string;
+    revision?: string;
+    license?: { spdx: string; url: string; [key: string]: unknown };
+  }>;
+  error?: string;
 }
 export interface CadData {
   sketches?: CadSketch[];
@@ -193,6 +209,21 @@ export type OpenedViewer =
 
 export interface ViewerHostApi {
   open(request: { artifactId: string }): Promise<OpenedViewer>;
+  prepareViewerResources?(request: {
+    token: string;
+  }): Promise<{ token: string; modelDownloads: KiCadModelDownloads }>;
+  cancelViewerResources?(request: { token: string }): Promise<{ cancelled: boolean } | void>;
+  releaseViewerResources?(request: { token: string }): Promise<{ released: boolean } | void>;
+  onViewerResourceProgress?(
+    callback: (progress: {
+      token: string;
+      phase?: string;
+      bytes?: number;
+      totalBytes?: number;
+      completed?: number;
+      total?: number;
+    }) => void,
+  ): () => void;
   openExternalArtifact(artifactId: string): Promise<{ launched: true }>;
   render(request: {
     token: string;

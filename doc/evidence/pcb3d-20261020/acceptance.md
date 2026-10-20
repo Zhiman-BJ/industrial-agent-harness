@@ -1,6 +1,6 @@
 # PCB 3D acceptance progress, 2026-10-20
 
-The source-derived preview is implemented; native GPU acceptance is pending.
+The source-derived preview is implemented; native GPU acceptance is pending. The checklists below record successive checkpoints; the official-model section records the later headless download and installation evidence.
 
 ## Completed checks
 
@@ -15,12 +15,12 @@ The source-derived preview is implemented; native GPU acceptance is pending.
 
 The official KiCad `video` board and license are identified in [fixtures.md](fixtures.md). Its unchanged source SHA-256 is `f620675158ddd5c61e5ce9e15f4c92b230ae1df1cbcec6c502b8ce266e4007ea`.
 
-| Item | Source | Captured |
-| --- | ---: | ---: |
-| Track segments | 7,932 | 7,932 |
-| Pads | 2,118 | 2,118 |
-| Vias / via drills | 808 | 808 |
-| Drilled pads / pad drills | 912 | 912 |
+| Item                      | Source | Captured |
+| ------------------------- | -----: | -------: |
+| Track segments            |  7,932 |    7,932 |
+| Pads                      |  2,118 |    2,118 |
+| Vias / via drills         |    808 |      808 |
+| Drilled pads / pad drills |    912 |      912 |
 
 Capture produced 18,591 primitives and 1,720 holes, `complete: true`, with physical four-layer stackup coordinates. A local CPU capture took approximately 126 ms. This excludes source loading, WebGL triangulation, upload and painting; it is not a first-frame performance claim.
 
@@ -40,8 +40,63 @@ The initial preview rendered source board geometry and footprints without compon
 
 The unchanged video board contains 189 footprints, 175 visible model references and 27 unique model files. All 27 original WRL files (4,473,258 bytes) were recovered from fixed official library/source revisions and checked against their Git blob identities. The local fixture's `models.provenance.json` records paths, URLs, revisions, SHA-256 and license files. A parser/capture reconciliation confirmed source placement, reference and model index identity, with 86 front and 103 back footprints, and no invalid model transforms.
 
-Latest CPU checks: Viewer 106 passed / 1 existing availability skip / 0 failed (107 total), Desktop 103/103, architecture 48/48. Focused coverage includes geometry 21/21, renderer budgets 18/18, WRL 12/12, and the component loader 9/9. The real pinned STEP WASM imports a real test model; its memory-section adaptation is tested to reject growth beyond 256 MiB linear memory. This is not a total Worker process-memory bound.
+Earlier component-model checkpoint: Viewer 106 passed / 1 existing availability skip / 0 failed (107 total), Desktop 103/103, architecture 48/48. Focused coverage includes geometry 21/21, renderer budgets 18/18, WRL 12/12, and the component loader 9/9. The real pinned STEP WASM imports a real test model; its memory-section adaptation is tested to reject growth beyond 256 MiB linear memory. This is not a total Worker process-memory bound.
 
 The ordinary source app `f8f857be-fdc8-478b-9268-68241e54b6f7`, attempt `10e4efbf-ac7d-4894-a8be-00ca733fb010`, entered main at `2026-10-20T07:17:55.722Z`. The real video project was opened through the Project file tree, reached the ready 2D viewer and entered workspace fullscreen. The Computer Use transport disconnected during the 3D-button action. Its subsequent connection/reset returned `Transport closed`; one delegated reconnection also failed to return state and was interrupted. No actual component-rendering screenshot or native GPU result has been obtained. These remain pending, regardless of CPU-test success.
 
 The separate GDS error was traced to a missing per-worktree KLayout Python environment. Installing the pinned dependency and using the product RasterService rendered the real Sobel GDS (22 layers, 1200×800) without changing the source. The setup now uses standard `venv --copies`; the canonical source contract subsequently passed without changing its checker or policy. The host KLayout Python environment is still not managed by the shared dependency manager.
+
+## Official model data: real headless integration
+
+The report at `2026-10-20T08:15:13.646Z` exercised real official HTTPS → immutable Pack catalog → shared `DataLibraryManager` / `DataLibraryRegistry` → `KiCadRuntimeManager` manifest and bounded resource channel → pinned OCCT CPU STEP parser. [official-model-download.json](official-model-download.json) is the unmodified, host-path-free report. The board is a Harness-authored contract project with two explicit STEP references, one front and one back. It is not the complex video board and does not establish GPU placement, picking, appearance or engineering acceptance.
+
+The consumed `kicad-3d` library is `10.0.7`, official source commit `8d4070daa0fa3f7a7f3c176f4ca7bffc4df392be`, catalog SHA-256 `f1a20d5edadd4f1dbac403d78591127f01c91bf22a3741d17b4e86b6be82a4e6`. The external owner change is [industrial-domain-packs PR #50](https://github.com/Zhiman-BJ/industrial-domain-packs/pull/50), commit `5cc78f4`. The catalog inventories 7,252 STEP files across 105 families; this inventory count is not a model-download or rendering-pass count.
+
+| Official source model                           |  Bytes | Raw SHA-256                                                        | OCCT triangles | CPU parse |
+| ----------------------------------------------- | -----: | ------------------------------------------------------------------ | -------------: | --------: |
+| `Resistor_SMD.3dshapes/R_0603_1608Metric.step`  | 40,618 | `1875571c326d0d9e96f36b4efeb8094068ef7619f0a449c781caf0b49c2e5861` |            276 | 172.71 ms |
+| `Capacitor_SMD.3dshapes/C_0603_1608Metric.step` | 43,450 | `4857b3dc717675bf1fb22edda622ac3b3ae03cf44d81eefaf3fa3ba3a86d84c1` |            380 |  52.69 ms |
+
+Both raw files were fetched from the pinned official GitLab revision and checked against the catalog's independently computed SHA-256 and size. The catalog records verification of the original bytes against their official Git blob identities; a Git blob ID is not used as the resource SHA-256.
+
+| Operation                                                        | Observed result                                                                                  |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| Open and plan before explicit preparation                        | 0 model network requests                                                                         |
+| Explicit cold acquisition and runtime opening                    | 2 models / 84,068 bytes, 9,452.94 ms; measured separately from OCCT parsing                      |
+| Warm offline open and prepare                                    | 70.04 ms, 0 network requests                                                                     |
+| Deliberately corrupt one cached resource, then explicitly repair | Only that resource fetched again, 365.05 ms; 3 total requests across cold acquisition and repair |
+| Read-only source handling                                        | Source unchanged through acquisition, parsing, offline reuse and cache repair                    |
+| Deliberately mutate the source afterward                         | Existing manifest returns HTTP 409; preparation rejects the changed source                       |
+| Renderer manifest                                                | No host filesystem paths exposed                                                                 |
+
+These are single local measurements, not performance thresholds or whole-process memory claims. They do not establish throughput for all catalog models, complex-board GPU load, native UI interaction, public release installation or manufacturing correctness.
+
+### Pack installation remains independent of model acquisition
+
+[pack-data-library-install.json](pack-data-library-install.json) records installation of a 1,597,383-byte development builtin trusted bundle, bundle version `0.3.3`, using source release package `0.5.6` with content SHA-256 `0f8356f1a9651d26c4486b0bc2592b365b327f1befbf50afb7a6bd47cf43f1b3`. Its catalog contains the same 7,252 model entries and catalog digest. This installation prepared no native runtime and downloaded 0 model files. The explicit two-model download above is a separate operation in its own diagnostic cache.
+
+This proves the development builtin bundle's data-library installation path. It is not acceptance of a public feed, release signatures or a native KiCad installation.
+
+### Current regression checkpoint and remaining gates
+
+At this evidence update, the final Viewer suite is 129 passed / 1 availability skip / 0 failed (130 total), Desktop 110/110, Pack Manager 99/99, domain-skills 20/20, architecture 48/48 and architecture-contract tests 20/20. The desktop TypeScript/Vite build passed, as did formatting checks for changed/untracked source and documentation and `git diff --check`. The focused model-download contract is 15/15, including retained A–B–A sessions, shared budgets, cancellation and retries, catalog/provenance replacement rejection, and full license `notice` / `exception` retention in acquisition authorization.
+
+Native GPU screenshots and the completed real complex-board desktop selftest remain outstanding, including actual top/bottom placement and picks, model appearance, navigation/fullscreen/language retention, load/heartbeat/memory observations and context-loss recovery. The PR remains Draft at this checkpoint. The local KLayout Python repair described above still does not complete shared dependency-manager integration.
+
+### Reproduction
+
+From the repository root, with dependencies installed and the consumed PCB Pack exposing the pinned official library:
+
+```sh
+node scripts/verify-pcb-model-download.cjs /absolute/path/to/a/new/pcb-model-diagnostic
+```
+
+This is an explicit network diagnostic. It downloads the two declared official STEP files into a private cache below the supplied output directory, creates its contract project, deliberately corrupts one diagnostic cache entry for repair and finally mutates that diagnostic source to exercise stale-source rejection. Use a fresh output directory separate from user projects. Unit and CI contract tests remain offline.
+
+For a Node CLI that supports corporate environment proxies, the same diagnostic can use:
+
+```sh
+node --use-env-proxy scripts/verify-pcb-model-download.cjs /absolute/path/to/a/new/pcb-model-diagnostic
+```
+
+The proxy flag applies to this Node diagnostic process only. The resulting `report.json` records actual model URLs, raw digests, timings, network counts and rejection checks; a successful headless run does not imply a GUI or GPU pass.

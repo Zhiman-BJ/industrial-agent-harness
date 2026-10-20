@@ -13,9 +13,9 @@ const {
 const hash = data => crypto.createHash('sha256').update(data).digest('hex');
 const board = '(kicad_pcb (version 20211014) (generator pcbnew))';
 const schematic = '(kicad_sch (version 20211123) (generator eeschema))';
-function setup(t) {
+function setup(t, options = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-kicad-'));
-  const manager = new KiCadRuntimeManager();
+  const manager = new KiCadRuntimeManager(options);
   t.after(() => {
     manager.close();
     fs.rmSync(root, { recursive: true, force: true });
@@ -131,9 +131,48 @@ test('sessions restrict methods, resources, origins and lifetime', async t => {
   ])
     assert.equal((await request(manager, first.url.replace('index.html', resource))).status, 404);
   const second = await open(file);
+  assert.equal((await request(manager, first.url)).status, 200);
+  manager.close(first.token);
   assert.equal((await request(manager, first.url)).status, 404);
+  assert.equal((await request(manager, second.url)).status, 200);
   manager.close();
   assert.equal((await request(manager, second.url)).status, 404);
+});
+
+test('retained KiCad tabs have an explicit session count limit without evicting existing views', async t => {
+  const { manager, write, open } = setup(t);
+  const file = write('board.kicad_pcb', board);
+  const views = [];
+  for (let i = 0; i < limits.sessions; i++) views.push(await open(file));
+  await assert.rejects(open(file), /Too many open KiCad views/);
+  assert.equal(manager.sessions.size, limits.sessions);
+  assert.equal(manager.openings.size, 0);
+  for (const view of views) assert.equal((await request(manager, view.url)).status, 200);
+  manager.close(views[0].token);
+  const next = await open(file);
+  assert.equal((await request(manager, next.url)).status, 200);
+  assert.equal((await request(manager, views[1].url)).status, 200);
+});
+
+test('source and model snapshots share a global byte budget and release it with their tab', async t => {
+  const source = '(kicad_pcb (version 20240108) (footprint "test" (model "part.step")))';
+  const contents = 'unique model snapshot bytes';
+  const oneViewBytes = Buffer.byteLength(source) + Buffer.byteLength(contents);
+  // A lower injected limit exercises the same enforced 256 MiB production gate
+  // without allocating hundreds of megabytes in a unit test.
+  const { manager, write, open } = setup(t, { sessionLimits: { bytes: oneViewBytes * 2 - 1 } });
+  const file = write('board.kicad_pcb', source);
+  write('part.step', contents);
+  const first = await open(file);
+  assert.equal(manager.snapshotUsage(), oneViewBytes);
+  await assert.rejects(open(file), /snapshot memory limit/);
+  assert.equal(manager.sessions.size, 1);
+  assert.equal(manager.openings.size, 0);
+  assert.equal((await request(manager, first.url)).status, 200);
+  manager.close(first.token);
+  assert.equal(manager.snapshotUsage(), 0);
+  const second = await open(file);
+  assert.equal((await request(manager, second.url)).status, 200);
 });
 
 test('malformed, legacy, deep, oversized and excessive companion inputs are rejected', async t => {

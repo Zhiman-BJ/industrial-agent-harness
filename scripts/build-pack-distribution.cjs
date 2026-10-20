@@ -129,6 +129,12 @@ for (const declaration of metadata.domains) {
     skills,
     providerPacks: providers,
     runtimeAssets: providers.flatMap(pack => pack.runtimeAssets || []),
+    dataLibraries: providers.flatMap(pack =>
+      (pack.dataLibraries || []).map(library => ({
+        ...library,
+        catalog: `domain-packs/${pack.provider.packDirectory}/${library.catalog}`,
+      })),
+    ),
     containerImages,
   };
   fs.writeFileSync(path.join(directory, 'bundle.json'), JSON.stringify(bundle, null, 2) + '\n');
