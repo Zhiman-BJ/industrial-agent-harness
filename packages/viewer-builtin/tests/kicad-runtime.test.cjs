@@ -184,3 +184,30 @@ test('vendored offline runtime and font match committed fingerprints', () => {
     /fonts\.googleapis\.com/,
   );
 });
+
+test('PCB 3D serves only pinned local modules under the unchanged source and CSP boundary', async t => {
+  const { write, open, manager } = setup(t);
+  const file = write('board.kicad_pcb', board);
+  const view = await open(file);
+  for (const asset of ['geometry3d.js', 'scene3d.js', 'three/three.module.js', 'three/controls/OrbitControls.js']) {
+    const response = await request(manager, view.url.replace('index.html', asset));
+    assert.equal(response.status, 200, asset);
+    assert.match(response.headers.get('Content-Type'), /javascript/);
+    assert.match(response.headers.get('Content-Security-Policy'), /script-src 'self';/);
+    assert.match(response.headers.get('Content-Security-Policy'), /connect-src 'self';/);
+  }
+  for (const asset of ['three/anything.js', 'vendor/kicanvas.js', 'three/manifest.json'])
+    assert.equal((await request(manager, view.url.replace('index.html', asset))).status, 404);
+  fs.appendFileSync(file, '\n');
+  assert.equal((await request(manager, view.url.replace('index.html', 'scene3d.js'))).status, 409);
+});
+
+test('Three runtime matches pinned fingerprints and the documented relative import is its only adaptation', () => {
+  const root = path.join(__dirname, '../src/kicad/vendor/three');
+  const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json')));
+  for (const [name, record] of Object.entries(manifest.files))
+    assert.equal(hash(fs.readFileSync(path.join(root, name))), record.sha256, name);
+  const controls = fs.readFileSync(path.join(root, 'controls/OrbitControls.js'), 'utf8');
+  assert.equal(hash(controls.replace("from '../three.module.js'", "from 'three'")),
+    manifest.files['controls/OrbitControls.js'].upstream_sha256);
+});

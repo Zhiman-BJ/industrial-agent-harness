@@ -1,0 +1,21 @@
+{
+  "repository": "https://github.com/mrdoob/three.js",
+  "version": "0.160.1",
+  "files": {
+    "three.module.js": {
+      "url": "https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.min.js",
+      "upstream_sha256": "3e690ac7d180b0aadf0891bea39eec643e29e2d3e75c99b18689518665f69ba6",
+      "sha256": "3e690ac7d180b0aadf0891bea39eec643e29e2d3e75c99b18689518665f69ba6"
+    },
+    "controls/OrbitControls.js": {
+      "url": "https://cdn.jsdelivr.net/npm/three@0.160.1/examples/jsm/controls/OrbitControls.js",
+      "upstream_sha256": "7aa4372a5ec60b49988edde81014c7361740a57962d032003ca33301c1f4edd5",
+      "sha256": "fc68a3985a18ff46dd162d12b13aea454e357611976e24f957c89e5c08d3605e"
+    },
+    "LICENSE": {
+      "url": "https://cdn.jsdelivr.net/npm/three@0.160.1/LICENSE",
+      "upstream_sha256": "852e0e8699169bf9f6fdc6bda3e682d078dcbc738b5d33e74df594721bff271d",
+      "sha256": "852e0e8699169bf9f6fdc6bda3e682d078dcbc738b5d33e74df594721bff271d"
+    }
+  }
+}

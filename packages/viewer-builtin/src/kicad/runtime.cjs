@@ -7,7 +7,9 @@ const limits = Object.freeze({
   totalBytes: 64 * 1024 * 1024,
   files: 32,
   depth: 128,
-  tokens: 500000,
+  // The official four-layer video demo has 1.07M tokens in 5.8MB. Bound
+  // source parsing separately from the 3D renderer's primitive/vertex budgets.
+  tokens: 1250000,
 });
 const hash = data => crypto.createHash('sha256').update(data).digest('hex');
 const isKiCadFile = file => ['.kicad_pcb', '.kicad_sch'].includes(path.extname(file));
@@ -101,6 +103,10 @@ const assets = {
   'embed.css': ['embed.css', 'text/css'],
   'kicanvas.js': ['vendor/kicanvas.js', 'text/javascript'],
   'symbols.ttf': ['vendor/symbols.ttf', 'font/ttf'],
+  'geometry3d.js': ['geometry3d.js', 'text/javascript'],
+  'scene3d.js': ['scene3d.js', 'text/javascript'],
+  'three/three.module.js': ['vendor/three/three.module.js', 'text/javascript'],
+  'three/controls/OrbitControls.js': ['vendor/three/controls/OrbitControls.js', 'text/javascript'],
 };
 
 class KiCadRuntimeManager {

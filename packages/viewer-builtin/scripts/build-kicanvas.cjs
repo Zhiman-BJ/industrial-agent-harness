@@ -26,7 +26,7 @@ async function build() {
   await esbuild.build({
     stdin: {
       contents:
-        'import "./kicanvas/elements/kicanvas-embed"; import "./kicanvas/elements/kc-board/app"; import "./kicanvas/elements/kc-schematic/app"; import {KCUIIconElement} from "./kc-ui/icon"; import {sprites_url} from "./kicanvas/icons/sprites"; KCUIIconElement.sprites_url = sprites_url;',
+        'import "./kicanvas/elements/kicanvas-embed"; import "./kicanvas/elements/kc-board/app"; import "./kicanvas/elements/kc-schematic/app"; import {KCUIIconElement} from "./kc-ui/icon"; import {sprites_url} from "./kicanvas/icons/sprites"; KCUIIconElement.sprites_url = sprites_url; export {BoardPainter} from "./viewers/board/painter"; export {LayerSet as BoardLayerSet} from "./viewers/board/layers"; export {NullRenderer} from "./graphics/null-renderer";',
       resolveDir: path.join(source, 'src'),
       sourcefile: 'harness-embed.ts',
     },

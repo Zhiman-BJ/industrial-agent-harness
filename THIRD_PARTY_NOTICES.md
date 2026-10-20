@@ -30,3 +30,7 @@ FreeCAD 1.1.4 is a managed dependency for the CAD Pack, downloaded separately fr
 Desktop bundles official OCCT 7.9.2 AIS/V3d/TKOpenGles as WebAssembly, built from unmodified revision `c5f20409c52bf8f658314d205a0e5d6f0be0969c`. OCCT is LGPL-2.1 with its OCCT exception; preserve the complete notices in `packages/viewer-builtin/src/cad/occt`. Desktop license resources include the complete corresponding upstream source archive, MIT bridge sources, provenance and relink instructions. Initialization follows the upstream MIT WebGL sample with its notice preserved. Emscripten runtime glue has accompanying MIT/NCSA notices. This uses the open-source OCCT visualization module.
 
 Domain source and its original notices now ship from the pinned industrial-domain-packs package; Harness maintains the generic consumer and read-only distribution assembly.
+
+## PCB geometry visualization
+
+The PCB 3D viewer bundles Three.js 0.160.1 and OrbitControls under MIT. Original source URLs, upstream and local hashes, license, and the one relative-import adaptation are retained in `packages/viewer-builtin/src/kicad/vendor/three/`. KiCanvas remains pinned to `b031159eb74aaa7eef2b026fd85d35bc05ff2095`; the build only adds exported existing display classes. No code from the AGPL ECAD Forge viewer is included.
