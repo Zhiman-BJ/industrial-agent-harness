@@ -58,11 +58,14 @@ function defaultSensitiveReads(home = os.homedir()) {
   return [...SENSITIVE_READ_DIRS, ...SENSITIVE_READ_FILES].map(name => path.join(home, name));
 }
 
-// Pure-data boundary description. writable is allow-only (everything else is
-// read-only); denyRead carves secrets out of the otherwise open read side;
-// network stays open over TCP/UDP for model APIs and the host loopback tool
-// server, while outbound Unix-socket connects are denied to close the
-// container-socket escape.
+// Pure-data boundary description, modeled on the workspace-write semantics of
+// mature agent sandboxes (Claude Code / Codex): the engineering project,
+// session storage and scratch are writable; every other write is denied.
+// denyRead carves secrets out of the otherwise open read side; network stays
+// open over TCP/UDP for model APIs and the host loopback tool server, while
+// outbound Unix-socket connects are denied to close the container-socket
+// escape. protectedRoots names host state (settings, runtime stores) that
+// stays read-only even though the project itself is writable.
 function buildIsolationPolicy({
   project,
   share,
@@ -73,8 +76,8 @@ function buildIsolationPolicy({
 }) {
   return {
     filesystem: {
-      writable: [share, scratch],
-      readOnly: [project, ...protectedRoots],
+      writable: [project, share, scratch],
+      protected: protectedRoots,
       denyRead: (sensitiveReadPaths || defaultSensitiveReads(home))
         .filter(fs.existsSync)
         .map(realpath),
@@ -102,12 +105,15 @@ function detectIsolation(platform, environment) {
 }
 
 // Seatbelt rules are order-sensitive: later rules override earlier ones. The
-// writable allowance comes AFTER the global write deny, and the system-socket
-// allows come AFTER the Unix-socket deny, so only those exact exceptions open.
+// protected-root denies come BEFORE the writable allowance, so session storage
+// nested inside a protected root (chats/ under the settings directory) is
+// re-allowed while the rest of that root stays read-only. The system-socket
+// allows likewise come after the Unix-socket deny, so only those exact
+// exceptions open.
 function seatbeltProfile(policy) {
   const quote = value => JSON.stringify(value);
   const lines = ['(version 1)', '(allow default)', '(deny file-write*)'];
-  for (const root of policy.filesystem.readOnly)
+  for (const root of policy.filesystem.protected)
     lines.push(`(deny file-write* (subpath ${quote(root)}))`);
   lines.push(
     `(allow file-write* ${policy.filesystem.writable
@@ -129,11 +135,14 @@ function seatbeltProfile(policy) {
   return lines.join('\n') + '\n';
 }
 
-// Mount-order matters like Seatbelt rule order: protected roots are
-// read-only-bound first and the writable binds come after, so session storage
-// nested inside a protected root stays writable while the root itself remains
-// read-only. Credential paths are masked over the read-only root: directories
-// get an empty tmpfs, files get /dev/null.
+// Mount-order mirrors the Seatbelt rule order: `/` is read-only-bound,
+// protected roots are re-affirmed read-only, and the writable binds come LAST
+// so session storage nested inside a protected root stays writable while the
+// rest of that root remains read-only. Credential paths are masked over the
+// read-only root: directories get an empty tmpfs, files get /dev/null. With
+// `/` read-only, the container-runtime socket is read-only too, and
+// Unix-socket connects (which require write permission) already fail — no
+// hand-rolled seccomp needed.
 function bubblewrapArgs(policy, { workDir }) {
   const args = [
     '--unshare-user',
@@ -151,7 +160,7 @@ function bubblewrapArgs(policy, { workDir }) {
     '--dev',
     '/dev',
   ];
-  for (const root of policy.filesystem.readOnly) args.push('--ro-bind', root, root);
+  for (const root of policy.filesystem.protected) args.push('--ro-bind', root, root);
   for (const file of policy.filesystem.writable) args.push('--bind', file, file);
   for (const file of policy.filesystem.denyRead) {
     try {

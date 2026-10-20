@@ -21,8 +21,18 @@ async function verifyLauncher({ projectDir, shareDir, executable, agentEntry, ti
     hostOnlyEnv: ['HARNESS_INSTALLER_HOST_ONLY'],
   });
   try {
-    assert.equal(launcher.boundary.mechanism, 'current-user');
-    assert.equal(launcher.boundary.osIsolation, false);
+    // The launcher always keeps the project writable (the startup probe below
+    // relies on it); whether an OS isolation layer confines the rest depends
+    // on the host platform's primitives.
+    if (process.platform === 'darwin') {
+      assert.equal(launcher.boundary.mechanism, 'seatbelt');
+      assert.equal(launcher.boundary.osIsolation, true);
+    } else if (process.platform === 'linux') {
+      assert.ok(['bubblewrap', 'current-user'].includes(launcher.boundary.mechanism));
+    } else {
+      assert.equal(launcher.boundary.mechanism, 'current-user');
+      assert.equal(launcher.boundary.osIsolation, false);
+    }
     assert.equal(launcher.boundary.projectWritable, true);
     assert.equal(launcher.env.HARNESS_INSTALLER_HOST_ONLY, undefined);
     const script = /\.[cm]?js$/i.test(launcher.executable);

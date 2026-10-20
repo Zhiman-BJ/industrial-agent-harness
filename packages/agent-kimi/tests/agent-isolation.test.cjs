@@ -68,13 +68,18 @@ if (socketPath) {
 `;
 
 test(
-  'isolated descendant cannot write the project, protected roots or lateral files, but writes share and scratch',
+  'isolated descendant writes the project, share and scratch but not protected roots or lateral files',
   darwin,
   async t => {
     const f = fixture(t);
     assert.equal(f.launcher.boundary.osIsolation, true);
     assert.equal(f.launcher.boundary.mechanism, 'seatbelt');
-    assert.equal(f.launcher.boundary.projectWritable, false);
+    assert.equal(f.launcher.boundary.projectWritable, true);
+    assert.deepEqual(f.launcher.boundary.writableRoots, [
+      f.project,
+      f.share,
+      fs.realpathSync(path.join(f.launcher.directory, 'scratch')),
+    ]);
     const result = await capture(
       f.launcher.spawn(
         process.execPath,
@@ -82,11 +87,12 @@ test(
           '-e',
           PROBE,
           JSON.stringify({
-            project: path.join(f.project, 'evil.txt'),
-            settings: path.join(f.settings, 'state.sqlite'),
-            lateral: path.join(f.directory, 'lateral.txt'),
+            project: path.join(f.project, 'agent-edit.txt'),
             share: path.join(f.share, 'context.json'),
             scratch: path.join(f.launcher.directory, 'scratch', 'note.txt'),
+            settings: path.join(f.settings, 'state.sqlite'),
+            lateral: path.join(f.directory, 'lateral.txt'),
+            home: path.join(os.homedir(), '.agent-isolation-probe'),
           }),
           '{}',
         ],
@@ -95,13 +101,18 @@ test(
     );
     assert.equal(result.code, 0, result.stderr);
     assert.deepEqual(JSON.parse(result.stdout), {
-      project: false,
-      settings: false,
-      lateral: false,
+      project: true,
       share: true,
       scratch: true,
+      settings: false,
+      lateral: false,
+      home: false,
     });
-    assert.equal(fs.readFileSync(path.join(f.project, 'spec.md'), 'utf8'), 'engineering source');
+    assert.equal(
+      fs.readFileSync(path.join(f.project, 'agent-edit.txt'), 'utf8'),
+      'bypass',
+      'the project stays writable inside the workspace boundary',
+    );
   },
 );
 
@@ -175,8 +186,8 @@ test('isolation policy is pure data shaped after sandbox-runtime config', t => {
     protectedRoots: ['/work/settings'],
     home,
   });
-  assert.deepEqual(policy.filesystem.writable, ['/work/share', '/tmp/scratch']);
-  assert.deepEqual(policy.filesystem.readOnly, ['/work/project', '/work/settings']);
+  assert.deepEqual(policy.filesystem.writable, ['/work/project', '/work/share', '/tmp/scratch']);
+  assert.deepEqual(policy.filesystem.protected, ['/work/settings']);
   assert.deepEqual(policy.filesystem.denyRead, [
     path.join(home, '.ssh'),
     path.join(home, '.netrc'),

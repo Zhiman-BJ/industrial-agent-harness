@@ -88,23 +88,28 @@ function createProcessSandbox({
   try {
     fs.mkdirSync(scratch, { mode: 0o700 });
     fs.mkdirSync(workDir, { recursive: true, mode: 0o700 });
-    // Build the isolation wrap before any launch. When the platform offers no
-    // verified primitive the launcher still works — boundary.osIsolation then
-    // reports false so the product surface can show the session is unisolated.
-    const protectedRoots = [
-      project,
-      ...protectedPaths.filter(fs.existsSync).map(file => fs.realpathSync(file)),
-    ];
+    // Build the isolation wrap before any launch. The boundary follows the
+    // workspace-write model of mature agent sandboxes: the project, session
+    // storage and scratch stay writable (the installer startup probe relies on
+    // a writable project), while protected host state, all other writes,
+    // credential reads and unix-socket egress are confined. When the platform
+    // offers no verified primitive the launcher still works —
+    // boundary.osIsolation then reports false so the product surface can show
+    // the session is unisolated.
+    const protectedRoots = protectedPaths.filter(fs.existsSync).map(file => fs.realpathSync(file));
     const layer = isolation === 'off' ? null : detectIsolation(platform, environment);
     let wrap = null;
+    let writableRoots = null;
     if (layer) {
+      const scratchReal = fs.realpathSync(scratch);
       const policy = buildIsolationPolicy({
         project,
         share,
-        scratch: fs.realpathSync(scratch),
+        scratch: scratchReal,
         protectedRoots,
         sensitiveReadPaths,
       });
+      writableRoots = policy.filesystem.writable;
       if (layer.mechanism === 'seatbelt') {
         const profile = path.join(directory, 'agent.sb');
         fs.writeFileSync(profile, seatbeltProfile(policy), { mode: 0o400 });
@@ -133,9 +138,10 @@ function createProcessSandbox({
         platform,
         mechanism: wrap ? layer.mechanism : 'current-user',
         osIsolation: Boolean(wrap),
-        projectWritable: !wrap,
+        projectWritable: true,
         projectDir: project,
         agentWorkDir: workDir,
+        writableRoots: writableRoots || [project],
         hostRuntimeRequired: true,
       },
       spawn(commandPath, args, options = {}) {
