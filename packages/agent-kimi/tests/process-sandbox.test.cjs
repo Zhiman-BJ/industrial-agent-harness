@@ -42,6 +42,7 @@ test(
   posix,
   async t => {
     const f = fixture(t, {
+      isolation: 'off',
       environment: {
         PATH: '',
         KIMI_SHARE_DIR: 'foreign',

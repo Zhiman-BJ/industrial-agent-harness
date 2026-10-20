@@ -32,6 +32,7 @@ test(
     for (const platform of ['darwin', 'linux']) {
       const launcher = createProcessSandbox({
         platform,
+        isolation: 'off',
         executable: process.execPath,
         projectDir: path.join(directory, 'project'),
         shareDir: path.join(directory, 'share'),

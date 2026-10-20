@@ -2,6 +2,12 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
+const {
+  buildIsolationPolicy,
+  detectIsolation,
+  seatbeltProfile,
+  bubblewrapArgs,
+} = require('./agent-isolation.cjs');
 
 function executablePath(executable, environment) {
   if (executable.includes(path.sep)) return fs.realpathSync(executable);
@@ -33,17 +39,26 @@ function cleanEnvironment(environment, hostOnlyEnv) {
   );
 }
 
-// The historical API name is retained for callers. Native Agent processes run
-// as the current user on all platforms; this is a supervised launcher, not an
-// OS sandbox. Domain Runtime task execution has its own independent policy.
+// The historical API name is retained for callers. The launcher always
+// supervises the process (bound executable, session workspace, process-group
+// lifecycle); when the host platform offers a verified OS primitive, an
+// isolation layer from agent-isolation.cjs additionally confines the whole
+// process tree — descendants inherit Seatbelt/bubblewrap restrictions, so
+// native Shell, WriteFile, Python and project-controlled MCP children cannot
+// modify the project or reach host credentials. Domain Runtime task execution
+// keeps its own independent policy. `isolation: 'off'` forces the plain
+// current-user launcher (used by tests and as the documented fallback).
 function createProcessSandbox({
   executable = 'kimi',
   shareDir,
   projectDir,
+  protectedPaths = [],
   environment = process.env,
   hostOnlyEnv = [],
   platform = process.platform,
   kimiProjectAccess = false,
+  sensitiveReadPaths,
+  isolation = 'auto',
 }) {
   if (platform === 'win32')
     return require('./windows-sandbox.cjs').createWindowsProcessSandbox({
@@ -73,6 +88,31 @@ function createProcessSandbox({
   try {
     fs.mkdirSync(scratch, { mode: 0o700 });
     fs.mkdirSync(workDir, { recursive: true, mode: 0o700 });
+    // Build the isolation wrap before any launch. When the platform offers no
+    // verified primitive the launcher still works — boundary.osIsolation then
+    // reports false so the product surface can show the session is unisolated.
+    const protectedRoots = [
+      project,
+      ...protectedPaths.filter(fs.existsSync).map(file => fs.realpathSync(file)),
+    ];
+    const layer = isolation === 'off' ? null : detectIsolation(platform, environment);
+    let wrap = null;
+    if (layer) {
+      const policy = buildIsolationPolicy({
+        project,
+        share,
+        scratch: fs.realpathSync(scratch),
+        protectedRoots,
+        sensitiveReadPaths,
+      });
+      if (layer.mechanism === 'seatbelt') {
+        const profile = path.join(directory, 'agent.sb');
+        fs.writeFileSync(profile, seatbeltProfile(policy), { mode: 0o400 });
+        wrap = { command: layer.command, args: ['-f', profile] };
+      } else {
+        wrap = { command: layer.command, args: bubblewrapArgs(policy, { workDir }) };
+      }
+    }
     const pinned = {
       KIMI_SHARE_DIR: share,
       KIMI_CODE_HOME: share,
@@ -91,9 +131,9 @@ function createProcessSandbox({
       projectAlias: false,
       boundary: {
         platform,
-        mechanism: 'current-user',
-        osIsolation: false,
-        projectWritable: true,
+        mechanism: wrap ? layer.mechanism : 'current-user',
+        osIsolation: Boolean(wrap),
+        projectWritable: !wrap,
         projectDir: project,
         agentWorkDir: workDir,
         hostRuntimeRequired: true,
@@ -114,13 +154,20 @@ function createProcessSandbox({
           throw Error('Agent launch must retain the current user and group.');
         const nativeArgs = [...args];
         if (kimiProjectAccess) nativeArgs.splice(script ? 1 : 0, 0, '--add-dir', project);
-        const child = spawn(command, nativeArgs, {
-          ...options,
-          cwd: workDir,
-          env: cleanEnvironment({ ...env, ...options.env, ...pinned }, hostOnlyEnv),
-          shell: false,
-          detached: true,
-        });
+        // With an isolation wrap the sandbox command becomes the direct child;
+        // the whole confined tree shares its process group, so the group
+        // lifecycle below (TERM → KILL escalation, retire-once) still applies.
+        const child = spawn(
+          wrap ? wrap.command : command,
+          wrap ? [...wrap.args, command, ...nativeArgs] : nativeArgs,
+          {
+            ...options,
+            cwd: workDir,
+            env: cleanEnvironment({ ...env, ...options.env, ...pinned }, hostOnlyEnv),
+            shell: false,
+            detached: true,
+          },
+        );
         let childClosed = false,
           groupGone = false,
           forceSent = false,
