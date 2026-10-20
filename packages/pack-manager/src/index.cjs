@@ -6,6 +6,12 @@ const zlib = require('node:zlib');
 const { Transfer, TransferProgress } = require('./transfer.cjs');
 const { availableSpace, footprint, checkSpace } = require('./install-space.cjs');
 const { RuntimeAssetManager, validateRuntimeAssets } = require('./runtime-assets.cjs');
+const { DataLibraryManager } = require('./data-libraries.cjs');
+const {
+  DataLibraryRegistry,
+  validateDataLibraries,
+  readDataLibraryBindings,
+} = require('./data-library-registry.cjs');
 const containerImages = require('./container-images.cjs');
 const { InstallationJournal } = require('./installation-journal.cjs');
 
@@ -56,6 +62,7 @@ function safeRelative(value) {
 
 function validateBundle(bundle) {
   validateRuntimeAssets(bundle?.runtimeAssets);
+  validateDataLibraries(bundle?.dataLibraries);
   containerImages.validateImageSelection(bundle?.containerImages);
   if (
     bundle?.schemaVersion !== 1 ||
@@ -156,6 +163,7 @@ function validateFootprintMetadata(entry) {
       throw Error('Invalid Pack installation footprint.');
   }
   validateRuntimeAssets(entry.runtimeAssets);
+  validateDataLibraries(entry.dataLibraries);
 }
 function verifyCatalog(envelope, keys) {
   if (
@@ -304,6 +312,7 @@ function decodeArchive(compressed) {
   if (bundle.domain !== archive.domain || bundle.version !== archive.version)
     throw Error('Domain Pack identity mismatch.');
   distributionForBundle(bundle, files);
+  readDataLibraryBindings(bundle.dataLibraries, { files });
   for (const skill of bundle.skills) {
     if (!seen.has(skill.file)) throw Error(`Missing Domain Skill: ${skill.id}`);
     const resources = files.filter(file =>
@@ -439,6 +448,7 @@ class PackManager {
     channel = 'stable',
     space = availableSpace,
     containerOptions = {},
+    dataLibraryOptions = {},
   } = {}) {
     this.directory = path.resolve(directory);
     this.keys = keys;
@@ -447,6 +457,11 @@ class PackManager {
     this.verifiedEntries = new WeakSet();
     this.bundledEntries = new WeakMap();
     this.runtimeAssets = new RuntimeAssetManager({ directory: this.directory, space });
+    this.dataLibraries = new DataLibraryManager({
+      ...dataLibraryOptions,
+      directory: path.join(this.directory, '.data-libraries'),
+      space,
+    });
     this.containerImages = new containerImages.ContainerImageManager({
       ...containerOptions,
       directory: this.directory,
@@ -618,6 +633,7 @@ class PackManager {
         );
         if (bundle.domain !== domain || bundle.version !== version)
           throw Error('Installed Domain Pack identity mismatch.');
+        readDataLibraryBindings(bundle.dataLibraries, { directory: location });
         for (const skill of bundle.skills)
           if (
             !fs
@@ -843,6 +859,10 @@ module.exports = {
   digest,
   validateBundle,
   RuntimeAssetManager,
+  DataLibraryManager,
+  DataLibraryRegistry,
+  validateDataLibraries,
+  readDataLibraryBindings,
   compareVersions,
   readDistributionLock: containerImages.readDistributionLock,
   resolveImageAsset: containerImages.resolveImageAsset,

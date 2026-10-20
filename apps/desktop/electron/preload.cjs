@@ -2,6 +2,14 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 const api = {
   open: request => ipcRenderer.invoke('viewer:open', request),
+  prepareViewerResources: request => ipcRenderer.invoke('viewer:resources-prepare', request),
+  cancelViewerResources: request => ipcRenderer.invoke('viewer:resources-cancel', request),
+  releaseViewerResources: request => ipcRenderer.invoke('viewer:resources-release', request),
+  onViewerResourceProgress: callback => {
+    const listener = (_event, progress) => callback(progress);
+    ipcRenderer.on('viewer:resources-progress', listener);
+    return () => ipcRenderer.removeListener('viewer:resources-progress', listener);
+  },
   openExternalArtifact: artifactId => ipcRenderer.invoke('viewer:external-open', { artifactId }),
   render: request => ipcRenderer.invoke('viewer:render', request),
   netlist: request => ipcRenderer.invoke('viewer:netlist', request),

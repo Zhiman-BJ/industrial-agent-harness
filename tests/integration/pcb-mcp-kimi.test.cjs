@@ -6,6 +6,7 @@ const path = require('node:path');
 const { execFile } = require('node:child_process');
 const { promisify } = require('node:util');
 const { startModel } = require('./fixtures/domain-mcp-model.cjs');
+const { boundaryMatches } = require('./fixtures/execution-boundary.cjs');
 const execute = promisify(execFile);
 const root = path.resolve(__dirname, '../..');
 const kimi =
@@ -110,15 +111,7 @@ test(
           fs.readFileSync(path.join(project, 'native-agent-marker.txt'), 'utf8'),
           'PCB_NATIVE_FIXTURE_WRITE_OK',
         );
-        assert.ok(
-          rows.some(
-            row =>
-              row.event?.type === 'execution-boundary' &&
-              row.event.mechanism === 'current-user' &&
-              row.event.osIsolation === false &&
-              row.event.projectWritable === true,
-          ),
-        );
+        assert.ok(rows.some(boundaryMatches), stdout);
       } else assert.equal(fs.existsSync(path.join(project, 'native-agent-marker.txt')), false);
       assert.equal(fs.readFileSync(path.join(project, 'spec.json'), 'utf8'), spec);
       assert.ok(

@@ -22,7 +22,7 @@ function fixture(t, body) {
   };
 }
 
-test('installer startup uses the production launcher, current-user project writes and filtered child environment', async t => {
+test('installer startup uses the production launcher with a writable project and filtered child environment', async t => {
   const options = fixture(
     t,
     `
@@ -41,8 +41,13 @@ test('installer startup uses the production launcher, current-user project write
   `,
   );
   const boundary = await verifyLauncher(options);
-  assert.equal(boundary.mechanism, 'current-user');
-  assert.equal(boundary.osIsolation, false);
+  if (process.platform === 'darwin') {
+    assert.equal(boundary.mechanism, 'seatbelt');
+    assert.equal(boundary.osIsolation, true);
+  } else if (process.platform !== 'linux') {
+    assert.equal(boundary.mechanism, 'current-user');
+    assert.equal(boundary.osIsolation, false);
+  }
   assert.equal(boundary.projectWritable, true);
   assert.equal(
     fs.readFileSync(path.join(options.projectDir, 'current-user.txt'), 'utf8'),

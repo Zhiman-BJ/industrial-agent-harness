@@ -2130,6 +2130,140 @@
 }
 
 /* KiCad document viewer */
+.rp-pcb3d-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.rp-pcb3d-body > .rp-kicad-canvas {
+  min-width: 0;
+}
+.rp-pcb-mode {
+  display: inline-flex;
+  gap: 2px;
+  margin-left: auto;
+}
+.rp-pcb-mode button[aria-pressed='true'] {
+  background: var(--ia-accent-soft, #33475d);
+  color: var(--ia-text-primary, #e5eef7);
+}
+.rp-pcb3d-panel {
+  box-sizing: border-box;
+  width: clamp(170px, 22%, 240px);
+  flex: 0 0 auto;
+  overflow: auto;
+  padding: 12px;
+  background: var(--ia-bg-secondary, #171b21);
+  border-left: 1px solid var(--ia-border, #303740);
+  font-size: 12px;
+}
+.rp-pcb3d-views {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 14px;
+}
+.rp-pcb3d-panel button {
+  font: inherit;
+}
+.rp-pcb3d-separation {
+  display: grid;
+  gap: 8px;
+}
+.rp-pcb3d-separation input {
+  width: 100%;
+  margin: 0;
+  accent-color: var(--ia-accent, #70aadd);
+}
+.rp-pcb3d-note {
+  color: var(--ia-text-secondary, #9caebd);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.rp-pcb3d-incomplete {
+  border-left: 2px solid var(--ia-warning, #dba65c);
+  padding: 8px;
+  background: var(--ia-bg-tertiary, #30271a);
+  line-height: 1.5;
+}
+.rp-pcb3d-layer-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 15px 0 6px;
+}
+.rp-pcb3d-layer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 29px;
+}
+.rp-pcb3d-layer i {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.rp-pcb3d-layer input {
+  margin: 0;
+  accent-color: var(--ia-accent, #70aadd);
+}
+.rp-pcb3d-layer button {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  padding: 4px;
+}
+.rp-pcb3d-layer button[aria-pressed='true'] {
+  background: var(--ia-accent-soft, #33475d);
+}
+.rp-pcb3d-selection {
+  border-top: 1px solid var(--ia-border, #303740);
+  margin-top: 12px;
+  padding-top: 12px;
+}
+.rp-pcb3d-selection p {
+  margin: 8px 0;
+  overflow-wrap: anywhere;
+}
+.rp-pcb3d-selection small {
+  display: block;
+  font-size: 10px;
+  overflow-wrap: anywhere;
+  color: var(--ia-text-secondary, #9caebd);
+}
+.rp-pcb3d-selection button {
+  margin-top: 10px;
+}
+.rp-pcb3d-warnings {
+  line-height: 1.5;
+  margin-top: 12px;
+}
+.rp-pcb3d-error {
+  margin: 0;
+  padding: 8px 12px;
+  color: var(--ia-danger, #e8a69b);
+  font-size: 12px;
+}
+.rp-pcb3d-downloads {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--ia-border, #40505b);
+  flex-shrink: 0;
+}
+.rp-pcb3d-downloads p {
+  margin: 3px 0;
+  overflow-wrap: anywhere;
+}
+.rp-pcb3d-downloads button {
+  margin: 5px 8px 2px 0;
+}
+.rp-pcb3d-downloads progress {
+  width: 56px;
+  height: 8px;
+}
 .rp-kicad {
   height: 100%;
   min-height: 0;

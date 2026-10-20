@@ -33,6 +33,74 @@
       "en": "Current inputs have not been checked",
       "zh-CN": "尚未核对当前输入"
     },
+    "Too many open KiCad views. Close a tab, then retry.": {
+      "en": "Too many open KiCad views. Close a tab, then retry.",
+      "zh-CN": "打开的 KiCad 视图过多，请关闭一个标签页后重试。"
+    },
+    "Open KiCad views exceed the snapshot memory limit. Close a tab, then retry.": {
+      "en": "Open KiCad views exceed the snapshot memory limit. Close a tab, then retry.",
+      "zh-CN": "已打开的 KiCad 视图超过快照内存上限，请关闭一个标签页后重试。"
+    },
+    "Component model download plan changed. Reopen the document.": {
+      "en": "Component model download plan changed. Reopen the document.",
+      "zh-CN": "元件模型下载计划已变更，请重新打开文件。"
+    },
+    "Component model downloads": {
+      "en": "Component model downloads",
+      "zh-CN": "元件模型下载"
+    },
+    "Download missing models": {
+      "en": "Download missing models",
+      "zh-CN": "下载缺失模型"
+    },
+    "Downloading component models…": {
+      "en": "Downloading component models…",
+      "zh-CN": "正在下载元件模型…"
+    },
+    "Cancel download": {
+      "en": "Cancel download",
+      "zh-CN": "取消下载"
+    },
+    "Retry model download": {
+      "en": "Retry model download",
+      "zh-CN": "重试模型下载"
+    },
+    "Model download failed. Retry.": {
+      "en": "Model download failed. Retry.",
+      "zh-CN": "模型下载失败，请重试。"
+    },
+    "Model download cancelled.": {
+      "en": "Model download cancelled.",
+      "zh-CN": "模型下载已取消。"
+    },
+    "Component models refreshed.": {
+      "en": "Component models refreshed.",
+      "zh-CN": "元件模型已刷新。"
+    },
+    "The updated 3D view was fitted to the board and components.": {
+      "en": "The updated 3D view was fitted to the board and components.",
+      "zh-CN": "更新后的三维视图已适配板图和元件。"
+    },
+    "{0} model files · {1} MiB download": {
+      "en": "{0} model files · {1} MiB download",
+      "zh-CN": "{0} 个模型文件 · 下载 {1} MiB"
+    },
+    "Official model library: {0} · {1} · {2}": {
+      "en": "Official model library: {0} · {1} · {2}",
+      "zh-CN": "官方模型库：{0} · {1} · {2}"
+    },
+    "Unavailable for this preview: {0}": {
+      "en": "Unavailable for this preview: {0}",
+      "zh-CN": "本次预览无法使用：{0}"
+    },
+    "Component model resources are unavailable. Retry downloading models.": {
+      "en": "Component model resources are unavailable. Retry downloading models.",
+      "zh-CN": "元件模型资源不可用，请重新下载。"
+    },
+    "Component model downloads are unavailable.": {
+      "en": "Component model downloads are unavailable.",
+      "zh-CN": "元件模型下载不可用。"
+    },
     "Model: {0}": {
       "en": "Model: {0}",
       "zh-CN": "模型：{0}"
@@ -2757,10 +2825,6 @@
       "en": "Stopped",
       "zh-CN": "已停止"
     },
-    "Cancel download": {
-      "en": "Cancel download",
-      "zh-CN": "取消下载"
-    },
     "Markdown display limit reached; original text follows.": {
       "en": "Markdown display limit reached; original text follows.",
       "zh-CN": "正文排版超出显示限制，以下保留原文。"
@@ -4204,6 +4268,274 @@
     "Remote task completed; sandbox released": {
       "en": "Remote task completed; sandbox released",
       "zh-CN": "远程任务完成，沙箱已释放"
+    },
+    "PCB view": {
+      "en": "PCB view",
+      "zh-CN": "PCB 查看模式"
+    },
+    "Drag to orbit · Scroll or pinch to zoom · Right drag to pan": {
+      "en": "Drag to orbit · Scroll or pinch to zoom · Right drag to pan",
+      "zh-CN": "拖动旋转 · 滚轮或捏合缩放 · 右键拖动平移"
+    },
+    "PCB 3D could not be opened.": {
+      "en": "PCB 3D could not be opened.",
+      "zh-CN": "无法打开 PCB 三维视图。"
+    },
+    "Preparing PCB 3D geometry…": {
+      "en": "Preparing PCB 3D geometry…",
+      "zh-CN": "正在准备 PCB 三维几何…"
+    },
+    "PCB layers": {
+      "en": "PCB layers",
+      "zh-CN": "PCB 图层"
+    },
+    "View direction": {
+      "en": "View direction",
+      "zh-CN": "观察方向"
+    },
+    "Isometric": {
+      "en": "Isometric",
+      "zh-CN": "等轴测"
+    },
+    "Top": {
+      "en": "Top",
+      "zh-CN": "顶面"
+    },
+    "Bottom": {
+      "en": "Bottom",
+      "zh-CN": "底面"
+    },
+    "Layer separation": {
+      "en": "Layer separation",
+      "zh-CN": "图层间距"
+    },
+    "Layer spacing is schematic.": {
+      "en": "Layer spacing is schematic.",
+      "zh-CN": "层间距为示意。"
+    },
+    "Layer heights follow the source stackup.": {
+      "en": "Layer heights follow the source stackup.",
+      "zh-CN": "图层高度来自源文件叠层。"
+    },
+    "Separation is for display only.": {
+      "en": "Separation is for display only.",
+      "zh-CN": "展开仅改变显示间距。"
+    },
+    "Isolate layer": {
+      "en": "Isolate layer",
+      "zh-CN": "单独显示图层"
+    },
+    "Selection": {
+      "en": "Selection",
+      "zh-CN": "已选对象"
+    },
+    "Net": {
+      "en": "Net",
+      "zh-CN": "网络"
+    },
+    "Show in 2D": {
+      "en": "Show in 2D",
+      "zh-CN": "在二维中查看"
+    },
+    "Click copper or a pad to inspect its source object.": {
+      "en": "Click copper or a pad to inspect its source object.",
+      "zh-CN": "点击走线或焊盘，查看源对象。"
+    },
+    "Component bodies are not loaded; pads show their actual placement.": {
+      "en": "Component bodies are not loaded; pads show their actual placement.",
+      "zh-CN": "未加载元件实体；焊盘显示其实际位置。"
+    },
+    "Preview limitations": {
+      "en": "Preview limitations",
+      "zh-CN": "预览范围"
+    },
+    "Reduced detail": {
+      "en": "Reduced detail",
+      "zh-CN": "已降低细节"
+    },
+    "Reduced detail: some geometry could not be displayed.": {
+      "en": "Reduced detail: some geometry could not be displayed.",
+      "zh-CN": "已降低细节：部分几何无法显示。"
+    },
+    "The board body is not displayed because its topology exceeds preview support.": {
+      "en": "The board body is not displayed because its topology exceeds preview support.",
+      "zh-CN": "基板拓扑超出当前预览范围，未显示基板实体。"
+    },
+    "Some copper detail exceeds the preview budget and is not displayed.": {
+      "en": "Some copper detail exceeds the preview budget and is not displayed.",
+      "zh-CN": "部分铜层细节超出预览预算，未显示。"
+    },
+    "Some geometry is unsupported; this is an incomplete preview.": {
+      "en": "Some geometry is unsupported; this is an incomplete preview.",
+      "zh-CN": "部分几何不受支持，当前预览不完整。"
+    },
+    "PCB 3D graphics context was lost. Return to 2D or reopen 3D.": {
+      "en": "PCB 3D graphics context was lost. Return to 2D or reopen 3D.",
+      "zh-CN": "PCB 三维图形上下文已丢失。请返回二维或重新打开三维。"
+    },
+    "PCB geometry capture cancelled.": {
+      "en": "PCB geometry capture cancelled.",
+      "zh-CN": "已取消 PCB 三维几何构建。"
+    },
+    "PCB outline exceeds the display geometry budget; board solid omitted.": {
+      "en": "PCB outline exceeds the display geometry budget; board solid omitted.",
+      "zh-CN": "板框超出预览几何预算，未显示基板实体。"
+    },
+    "PCB Edge.Cuts is open or branching; board solid omitted.": {
+      "en": "PCB Edge.Cuts is open or branching; board solid omitted.",
+      "zh-CN": "板框未闭合或存在分叉，未显示基板实体。"
+    },
+    "PCB Edge.Cuts does not form closed contours; board solid omitted.": {
+      "en": "PCB Edge.Cuts does not form closed contours; board solid omitted.",
+      "zh-CN": "板框未形成闭合轮廓，未显示基板实体。"
+    },
+    "No closed PCB Edge.Cuts contour was found; board solid omitted.": {
+      "en": "No closed PCB Edge.Cuts contour was found; board solid omitted.",
+      "zh-CN": "未找到闭合板框，未显示基板实体。"
+    },
+    "PCB Edge.Cuts contains a degenerate contour; board solid omitted.": {
+      "en": "PCB Edge.Cuts contains a degenerate contour; board solid omitted.",
+      "zh-CN": "板框包含退化轮廓，未显示基板实体。"
+    },
+    "PCB outline topology exceeds the display budget; board solid omitted.": {
+      "en": "PCB outline topology exceeds the display budget; board solid omitted.",
+      "zh-CN": "板框拓扑超出预览预算，未显示基板实体。"
+    },
+    "PCB Edge.Cuts intersects or touches itself; board solid omitted.": {
+      "en": "PCB Edge.Cuts intersects or touches itself; board solid omitted.",
+      "zh-CN": "板框存在自交或自接触，未显示基板实体。"
+    },
+    "PCB outline has too many contours; board solid omitted.": {
+      "en": "PCB outline has too many contours; board solid omitted.",
+      "zh-CN": "板框轮廓数量过多，未显示基板实体。"
+    },
+    "PCB outline containment exceeds the display budget; board solid omitted.": {
+      "en": "PCB outline containment exceeds the display budget; board solid omitted.",
+      "zh-CN": "板框包含关系检查超出预览预算，未显示基板实体。"
+    },
+    "PCB dielectric sublayers or repeated layer thickness are unsupported; layer spacing is schematic.": {
+      "en": "PCB dielectric sublayers or repeated layer thickness are unsupported; layer spacing is schematic.",
+      "zh-CN": "暂不支持介质子层或重复层厚声明，层间距按示意显示。"
+    },
+    "PCB copper stackup is missing, duplicated or out of order; layer spacing is schematic.": {
+      "en": "PCB copper stackup is missing, duplicated or out of order; layer spacing is schematic.",
+      "zh-CN": "铜层叠层缺失、重复或顺序异常，层间距按示意显示。"
+    },
+    "PCB layer thickness is incomplete; layer spacing is schematic, not a physical stackup.": {
+      "en": "PCB layer thickness is incomplete; layer spacing is schematic, not a physical stackup.",
+      "zh-CN": "层厚信息不完整，层间距仅作示意，不代表实际叠层。"
+    },
+    "PCB stackup thickness differs from the declared board thickness.": {
+      "en": "PCB stackup thickness differs from the declared board thickness.",
+      "zh-CN": "叠层总厚度与源文件声明的板厚不一致。"
+    },
+    "The KiCad board is not ready for 3D viewing.": {
+      "en": "The KiCad board is not ready for 3D viewing.",
+      "zh-CN": "KiCad 板图尚未就绪，无法打开三维视图。"
+    },
+    "Invalid PCB display geometry budget.": {
+      "en": "Invalid PCB display geometry budget.",
+      "zh-CN": "PCB 预览几何预算无效。"
+    },
+    "PCB source has repeated object identifiers; duplicate occurrences use distinct display IDs.": {
+      "en": "PCB source has repeated object identifiers; duplicate occurrences use distinct display IDs.",
+      "zh-CN": "源文件存在重复对象标识，预览为重复对象分配了不同的显示标识。"
+    },
+    "PCB outline or drilling has invalid geometry. The 2D view remains available.": {
+      "en": "PCB outline or drilling has invalid geometry. The 2D view remains available.",
+      "zh-CN": "板框或钻孔几何无效，可继续使用二维视图。"
+    },
+    "PCB outline exceeds the 3D display budget. The 2D view remains available.": {
+      "en": "PCB outline exceeds the 3D display budget. The 2D view remains available.",
+      "zh-CN": "板框超出三维预览预算，可继续使用二维视图。"
+    },
+    "PCB drilling is unsupported by the 3D display. The 2D view remains available.": {
+      "en": "PCB drilling is unsupported by the 3D display. The 2D view remains available.",
+      "zh-CN": "三维预览暂不支持此钻孔几何，可继续使用二维视图。"
+    },
+    "PCB drilling exceeds the 3D display budget. The 2D view remains available.": {
+      "en": "PCB drilling exceeds the 3D display budget. The 2D view remains available.",
+      "zh-CN": "钻孔超出三维预览预算，可继续使用二维视图。"
+    },
+    "Unused internal through-hole pad layers are not reconstructed by this preview.": {
+      "en": "Unused internal through-hole pad layers are not reconstructed by this preview.",
+      "zh-CN": "当前预览未重建被移除的未使用内层通孔焊盘。"
+    },
+    "Some source pad shapes are unsupported by the pinned KiCanvas painter.": {
+      "en": "Some source pad shapes are unsupported by the pinned KiCanvas painter.",
+      "zh-CN": "当前固定版本的 KiCanvas 暂不支持部分源焊盘形状。"
+    },
+    "Chamfered pad corners are not reconstructed by the pinned KiCanvas painter.": {
+      "en": "Chamfered pad corners are not reconstructed by the pinned KiCanvas painter.",
+      "zh-CN": "当前固定版本的 KiCanvas 未重建焊盘倒角。"
+    },
+    "PCB 3D display geometry budget reached; some primitives are omitted.": {
+      "en": "PCB 3D display geometry budget reached; some primitives are omitted.",
+      "zh-CN": "已达到 PCB 三维几何预算，部分图元未显示。"
+    },
+    "Some non-finite or invalid PCB display primitives were omitted.": {
+      "en": "Some non-finite or invalid PCB display primitives were omitted.",
+      "zh-CN": "部分包含无效坐标的 PCB 图元未显示。"
+    },
+    "Component bodies are not loaded; the preview shows source board geometry and footprints.": {
+      "en": "Component bodies are not loaded; the preview shows source board geometry and footprints.",
+      "zh-CN": "未加载元件实体；预览显示源板图几何和封装位置。"
+    },
+    "Unsupported PCB 3D geometry.": {
+      "en": "Unsupported PCB 3D geometry.",
+      "zh-CN": "暂不支持此 PCB 三维几何。"
+    },
+    "PCB has no supported 3D display geometry.": {
+      "en": "PCB has no supported 3D display geometry.",
+      "zh-CN": "PCB 中没有可显示的受支持三维几何。"
+    },
+    "PCB 3D requires stencil support for real drill openings.": {
+      "en": "PCB 3D requires stencil support for real drill openings.",
+      "zh-CN": "PCB 三维视图需要图形模板缓冲支持，以显示真实钻孔。"
+    },
+    "Component models": {
+      "en": "Component models",
+      "zh-CN": "元器件模型"
+    },
+    "Show component bodies": {
+      "en": "Show component bodies",
+      "zh-CN": "显示元器件实体"
+    },
+    "Loaded models: {0}": {
+      "en": "Loaded models: {0}",
+      "zh-CN": "已加载模型：{0}"
+    },
+    "Unavailable: {0}": {
+      "en": "Unavailable: {0}",
+      "zh-CN": "不可用：{0}"
+    },
+    "Missing component models are not replaced by placeholder shapes.": {
+      "en": "Missing component models are not replaced by placeholder shapes.",
+      "zh-CN": "缺失的元器件模型不使用占位形状代替。"
+    },
+    "Some footprints have no available component model.": {
+      "en": "Some footprints have no available component model.",
+      "zh-CN": "部分封装没有可用的元器件模型。"
+    },
+    "Some component models could not be loaded within preview support.": {
+      "en": "Some component models could not be loaded within preview support.",
+      "zh-CN": "部分元器件模型不在预览支持范围内，未能加载。"
+    },
+    "Some component models exceed the display budget and are not shown.": {
+      "en": "Some component models exceed the display budget and are not shown.",
+      "zh-CN": "部分元器件模型超过显示预算，未显示。"
+    },
+    "Some component model placements are invalid; those bodies are unavailable.": {
+      "en": "Some component model placements are invalid; those bodies are unavailable.",
+      "zh-CN": "部分元器件模型的位置参数无效，无法显示实体。"
+    },
+    "Invalid PCB component model placement; assembly transform omitted.": {
+      "en": "Invalid PCB component model placement; assembly transform omitted.",
+      "zh-CN": "元器件模型的位置参数无效，已省略该装配变换。"
+    },
+    "Some component model references are unsupported or invalid; those bodies are unavailable.": {
+      "en": "Some component model references are unsupported or invalid; those bodies are unavailable.",
+      "zh-CN": "部分元器件模型引用不受支持或无效，无法显示这些实体。"
     }
   }
 }

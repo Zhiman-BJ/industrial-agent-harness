@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "at": "2026-10-20T08:15:13.646Z",
+  "scope": "real official HTTPS + Pack catalog + cache + Viewer runtime + CPU STEP parser; no GPU or engineering acceptance",
+  "library": {
+    "id": "kicad-3d",
+    "version": "10.0.7",
+    "catalogSha256": "f1a20d5edadd4f1dbac403d78591127f01c91bf22a3741d17b4e86b6be82a4e6",
+    "source": {
+      "repository": "https://gitlab.com/kicad/libraries/kicad-packages3D",
+      "revision": "8d4070daa0fa3f7a7f3c176f4ca7bffc4df392be",
+      "tag": "10.0.7",
+      "treeSha256": "6dd8d088e42f8a4cce5dae97daf0d6b8308c1c187497aac41f519edf9145e277",
+      "archive": {
+        "url": "https://deb.debian.org/debian/pool/main/k/kicad-packages3d/kicad-packages3d_10.0.7.orig.tar.xz",
+        "size": 313340588,
+        "sha256": "82bd1384887935a06b7bcb1f6be895fe2813556a6972bcf403022da53819547e"
+      },
+      "verification": "All original STEP bytes match their pinned official Git blob SHA1; SHA256 is computed independently from those bytes."
+    }
+  },
+  "modelFiles": [
+    {
+      "sourceRef": "${KICAD10_3DMODEL_DIR}/Resistor_SMD.3dshapes/R_0603_1608Metric.step",
+      "sha256": "1875571c326d0d9e96f36b4efeb8094068ef7619f0a449c781caf0b49c2e5861",
+      "size": 40618,
+      "triangles": 276,
+      "parseMs": 172.71
+    },
+    {
+      "sourceRef": "${KICAD10_3DMODEL_DIR}/Capacitor_SMD.3dshapes/C_0603_1608Metric.step",
+      "sha256": "4857b3dc717675bf1fb22edda622ac3b3ae03cf44d81eefaf3fa3ba3a86d84c1",
+      "size": 43450,
+      "triangles": 380,
+      "parseMs": 52.69
+    }
+  ],
+  "networkRequests": 3,
+  "urls": [
+    "https://gitlab.com/kicad/libraries/kicad-packages3D/-/raw/8d4070daa0fa3f7a7f3c176f4ca7bffc4df392be/Resistor_SMD.3dshapes/R_0603_1608Metric.step",
+    "https://gitlab.com/kicad/libraries/kicad-packages3D/-/raw/8d4070daa0fa3f7a7f3c176f4ca7bffc4df392be/Capacitor_SMD.3dshapes/C_0603_1608Metric.step",
+    "https://gitlab.com/kicad/libraries/kicad-packages3D/-/raw/8d4070daa0fa3f7a7f3c176f4ca7bffc4df392be/Resistor_SMD.3dshapes/R_0603_1608Metric.step"
+  ],
+  "openNetworkRequests": 0,
+  "offlineNetworkRequests": 0,
+  "coldDownloadAndOpenMs": 9452.94,
+  "warmOfflineOpenMs": 70.04,
+  "repairMs": 365.05,
+  "sourceUnchangedBeforeMutation": true,
+  "changedSourceRejected": true,
+  "hostPathsAbsentFromManifest": true,
+  "ok": true
+}

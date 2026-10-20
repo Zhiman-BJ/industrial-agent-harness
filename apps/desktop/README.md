@@ -18,7 +18,7 @@ Electron MVP 工作台采用项目树、Agent 对话、Viewer 三列布局。左
 
 Kimi Code 会话需要本机 `kimi` CLI。界面会检测其可用性；选择工程目录、解析能力后即可运行任务，并查看文本、工具事件和审批请求。工具包括按 Scope 提供的只读产物元数据、共享 Chip MCP 和显式注册的外部 MCP；完整 Core 工业执行与验证闭环尚未完成。
 
-运行 `pnpm dev` 或从仓库根目录运行 `pnpm build && pnpm start`。版图渲染可先运行 `pnpm setup:layout`，或设置 `KLAYOUT_PYTHON`。
+运行 `pnpm dev` 或从仓库根目录运行 `pnpm build && pnpm start`。macOS 受限命令环境如果拒绝 GUI 服务访问，启动器会提前给出诊断；使用 `pnpm --filter @industrial-agent-harness/desktop gui:prepare` 生成可从桌面打开的开发入口。具体自测、日志和边界见 [macOS Electron 启动](../../doc/electron-macos-startup.md)。版图渲染可先运行 `pnpm setup:layout`，或设置 `KLAYOUT_PYTHON`。
 
 ## 平台账号
 

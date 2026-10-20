@@ -22,7 +22,12 @@ const languageConfig = require('../i18n.config.json');
 const { packagedAppName } = require('./app-identity.cjs');
 if (app.isPackaged) app.setName(packagedAppName());
 const { guiPermissions, guiPermissionSettingsUrl } = require('./gui-permissions.cjs');
-const { PackManager, defaultPackDirectory } = require('@industrial-agent-harness/pack-manager');
+const {
+  PackManager,
+  defaultPackDirectory,
+  DataLibraryRegistry,
+} = require('@industrial-agent-harness/pack-manager');
+const { ViewerResourceHost } = require('./viewer-resource-host.cjs');
 const {
   PackCatalog,
   describeInstalled,
@@ -112,7 +117,7 @@ const {
   sanitizeGeneratedTitle,
   ExternalMcpRegistry,
 } = require('@industrial-agent-harness/harness-core');
-const { loadRegistry } = require('@industrial-agent-harness/domain-skills');
+const { loadRegistry, installedDataLibraries } = require('@industrial-agent-harness/domain-skills');
 const {
   validatePromptImages,
 } = require('@industrial-agent-harness/agent-kimi/src/image-input.cjs');
@@ -241,7 +246,26 @@ let activeLayoutToken;
 let raster;
 let viewerProtocol;
 const godotRuntime = new GodotRuntimeManager();
-const kicadRuntime = new KiCadRuntimeManager();
+const kicadRuntime = new KiCadRuntimeManager({
+  modelProvider: new DataLibraryRegistry({
+    manager: packManager.dataLibraries,
+    libraries: () => installedDataLibraries(activeProject()?.domain),
+  }),
+});
+const viewerResourceHost = new ViewerResourceHost({
+  context: () => ({
+    projectId: activeProject()?.id,
+    domain: activeProject()?.domain,
+    root: projectDir,
+  }),
+  checked,
+  prepare: (token, options) => kicadRuntime.prepareModels(token, options),
+  release: token => kicadRuntime.close(token),
+  onProgress: progress => {
+    if (mainWindow && !mainWindow.isDestroyed())
+      mainWindow.webContents.send('viewer:resources-progress', progress);
+  },
+});
 // Best-effort concise session titles (issue #79): when the first turn starts,
 // ask the configured model for a short title (Kimi Code generates its session
 // title from the first prompt the same way); the completion hook retries once
@@ -483,6 +507,7 @@ function projectSnapshot() {
   };
 }
 function clearProjectArtifacts() {
+  viewerResourceHost.close();
   contextStore?.close();
   contextStore = undefined;
   artifacts.clear();
@@ -762,11 +787,24 @@ const viewerRegistry = createViewerRegistry([
   {
     id: 'kicad',
     matches: isKiCadFile,
-    open: async ({ artifact, file }) => ({
-      artifact,
-      kind: 'kicad',
-      data: await kicadRuntime.open(file, artifact.sha256, projectDir),
-    }),
+    open: async ({ artifact, file }) => {
+      const project = activeProject();
+      const root = projectDir;
+      const data = await kicadRuntime.open(file, artifact.sha256, root);
+      if (activeProject()?.id !== project?.id || projectDir !== root) {
+        kicadRuntime.close(data.token);
+        throw Error('Viewer project changed; reopen the file.');
+      }
+      viewerResourceHost.bind(data.token, {
+        artifactId: artifact.id,
+        projectId: project.id,
+        domain: project.domain,
+        root,
+        sha256: artifact.sha256,
+        file,
+      });
+      return { artifact, kind: 'kicad', data };
+    },
   },
   // Generic formats are fallbacks; preserve specialized JSON/HTML detection.
   // HTML previews are served through the viewer protocol so the sandboxed
@@ -1632,6 +1670,27 @@ function registerHandlers() {
     if (!plugin) throw Error('Viewer plugin unavailable.');
     return plugin.open({ artifact, file });
   });
+  const assertViewerResourceSender = event => {
+    if (
+      !mainWindow ||
+      mainWindow.isDestroyed() ||
+      event.sender !== mainWindow.webContents ||
+      event.senderFrame !== mainWindow.webContents.mainFrame
+    )
+      throw Error('Viewer resource downloads are only available from the workspace.');
+  };
+  ipcMain.handle('viewer:resources-prepare', (event, request) => {
+    assertViewerResourceSender(event);
+    return viewerResourceHost.prepare(request);
+  });
+  ipcMain.handle('viewer:resources-cancel', (event, request) => {
+    assertViewerResourceSender(event);
+    return viewerResourceHost.cancel(request);
+  });
+  ipcMain.handle('viewer:resources-release', (event, request) => {
+    assertViewerResourceSender(event);
+    return viewerResourceHost.release(request);
+  });
   ipcMain.handle('viewer:external-open', async (event, { artifactId } = {}) => {
     if (
       event.sender !== mainWindow?.webContents ||
@@ -2496,6 +2555,7 @@ app.on('before-quit', event => {
   raster?.close();
   viewerProtocol?.close();
   godotRuntime.close();
+  viewerResourceHost.close();
   kicadRuntime.close();
   shutdownPromise = (async () => {
     try {

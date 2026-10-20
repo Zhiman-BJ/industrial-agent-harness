@@ -1,0 +1,13 @@
+{
+  "ok": true,
+  "bundleVersion": "0.3.3",
+  "sourceRelease": {
+    "packageVersion": "0.5.6",
+    "contentSha256": "0f8356f1a9651d26c4486b0bc2592b365b327f1befbf50afb7a6bd47cf43f1b3"
+  },
+  "catalogSha256": "f1a20d5edadd4f1dbac403d78591127f01c91bf22a3741d17b4e86b6be82a4e6",
+  "models": 7252,
+  "archiveBytes": 1597383,
+  "nativeRuntimePrepared": false,
+  "modelDownloads": 0
+}
