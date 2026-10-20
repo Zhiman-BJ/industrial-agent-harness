@@ -9,7 +9,7 @@ test('an unverified platform and a writable session nested in a protected projec
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'boundary-invalid-'));
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
   assert.throws(
-    () => createProcessSandbox({ platform: 'win32' }),
+    () => createProcessSandbox({ platform: 'freebsd' }),
     /verified process write boundary/,
   );
   assert.throws(

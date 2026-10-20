@@ -30,6 +30,16 @@ function createProcessSandbox({
 }) {
   environment = { ...environment };
   for (const key of hostOnlyEnv) delete environment[key];
+  if (platform === 'win32')
+    return require('./windows-sandbox.cjs').createWindowsProcessSandbox({
+      executable,
+      shareDir,
+      projectDir,
+      protectedPaths,
+      environment,
+      hostOnlyEnv,
+      kimiProjectAccess,
+    });
   if (
     !['darwin', 'linux'].includes(platform) ||
     (platform === 'darwin' && !fs.existsSync('/usr/bin/sandbox-exec'))
@@ -55,8 +65,16 @@ function createProcessSandbox({
     project,
     ...protectedPaths.filter(fs.existsSync).map(file => fs.realpathSync(file)),
   ];
-  if (protectedRoots.some(root => share === root || share.startsWith(root + path.sep)))
-    throw Error('Agent session storage must be outside the protected project and runtime.');
+  // The project must stay fully read-only: a nested share would open a
+  // writable hole inside it. Equality with a protected root would re-allow
+  // that entire root. Nesting strictly below a non-project root (for example
+  // chat session storage under the settings directory) is safe: the write
+  // allowance below is re-issued after the protected-root denies, so only the
+  // exact share subtree becomes writable.
+  if (share === project || share.startsWith(project + path.sep))
+    throw Error('Agent session storage must be outside the protected project.');
+  if (protectedRoots.some(root => share === root))
+    throw Error('Agent session storage must not replace a protected root.');
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'industrial-kimi-boundary-'));
   fs.chmodSync(directory, 0o700);
   const scratch = path.join(directory, 'scratch');
@@ -71,10 +89,14 @@ function createProcessSandbox({
   // Descendant processes inherit the Seatbelt restriction. Native Shell,
   // WriteFile, Python and project-controlled MCP children cannot write facts.
   // Runtime tools run in the parent host process, with a separate policy check.
+  // Seatbelt rules are order-sensitive: the share/scratch allowance is emitted
+  // AFTER the protected-root denies so session storage nested inside a
+  // protected runtime root (e.g. chats/ under the settings directory) stays
+  // writable while the rest of that root remains read-only.
   if (platform === 'darwin')
     fs.writeFileSync(
       profile,
-      `(version 1)\n(allow default)\n(deny file-write*)\n(allow file-write* (subpath ${seatbeltString(share)}) (subpath ${seatbeltString(fs.realpathSync(scratch))}) (literal "/dev/null"))\n${protectedRoots.map(root => `(deny file-write* (subpath ${seatbeltString(root)}))`).join('\n')}\n(deny appleevent-send)\n`,
+      `(version 1)\n(allow default)\n(deny file-write*)\n${protectedRoots.map(root => `(deny file-write* (subpath ${seatbeltString(root)}))`).join('\n')}\n(allow file-write* (subpath ${seatbeltString(share)}) (subpath ${seatbeltString(fs.realpathSync(scratch))}) (literal "/dev/null"))\n(deny appleevent-send)\n`,
       { mode: 0o400 },
     );
   const wrapper = path.join(directory, 'kimi');
