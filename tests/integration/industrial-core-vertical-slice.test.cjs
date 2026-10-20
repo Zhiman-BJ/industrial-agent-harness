@@ -12,6 +12,7 @@ const { createRuntimePlugin } = require(
 const { execFile } = require('node:child_process');
 const { promisify } = require('node:util');
 const { startModel } = require('./fixtures/domain-mcp-model.cjs');
+const { hostBoundary, boundaryMatches } = require('./fixtures/execution-boundary.cjs');
 const execute = promisify(execFile);
 const root = path.resolve(__dirname, '../..');
 const sleep = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
@@ -486,21 +487,28 @@ test(
     const rows = result.stdout.trim().split('\n').map(JSON.parse);
     assert.equal(rows.at(-1).status, 'finished', result.stderr + result.stdout);
     assert.deepEqual(fs.readFileSync(path.join(project, 'rtl/counter.sv')), before);
-    assert.equal(fs.readFileSync(marker, 'utf8'), 'CORE_NATIVE_FIXTURE_WRITE_OK');
-    assert.match(JSON.stringify(fixture.requests), /CORE_NATIVE_FIXTURE_WRITE_OK/);
+    // The marker lives outside the project on purpose: the current-user
+    // launcher lets the approved write land, while an isolated session denies
+    // writes beyond the workspace-write roots (project, share, scratch).
+    if (hostBoundary().osIsolation) {
+      assert.equal(
+        fs.existsSync(marker),
+        false,
+        'an isolated session must deny writes outside the project',
+      );
+      assert.match(
+        JSON.stringify(fixture.requests),
+        /read-only file system|operation not permitted/i,
+      );
+    } else {
+      assert.equal(fs.readFileSync(marker, 'utf8'), 'CORE_NATIVE_FIXTURE_WRITE_OK');
+      assert.match(JSON.stringify(fixture.requests), /CORE_NATIVE_FIXTURE_WRITE_OK/);
+    }
     const engineering = rows.find(row => row.type === 'industrial_result');
     assert.ok(engineering, 'CLI must expose the real canonical runtime result.');
     assert.equal(engineering.verification.status, 'passed', JSON.stringify(engineering));
     assert.equal(engineering.state.id, engineering.checkpoint.state.id);
     assert.equal(rows.at(-1).engineering.checkpointId, engineering.checkpoint.id);
-    assert.ok(
-      rows.some(
-        row =>
-          row.event?.type === 'execution-boundary' &&
-          row.event.mechanism === 'current-user' &&
-          row.event.osIsolation === false &&
-          row.event.projectWritable === true,
-      ),
-    );
+    assert.ok(rows.some(boundaryMatches));
   },
 );

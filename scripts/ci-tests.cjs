@@ -139,6 +139,15 @@ function allowedSkips(suite, platform = process.platform) {
       'Windows shared Agent starts a chat with nested settings storage and reports current-user permissions',
     );
   }
+  // The isolation-layer functional tests exercise the macOS Seatbelt emitter
+  // only; on Linux and Windows portable runners they skip by design.
+  if (platform !== 'darwin') {
+    skips.push(
+      'isolated descendant writes the project, share and scratch but not protected roots or lateral files',
+      'isolated descendant reads the project but cannot read credential paths or connect host unix sockets',
+      'isolation off keeps the plain current-user launcher even when primitives exist',
+    );
+  }
   return skips;
 }
 

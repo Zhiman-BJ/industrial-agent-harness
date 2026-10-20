@@ -42,6 +42,7 @@ test(
   posix,
   async t => {
     const f = fixture(t, {
+      isolation: 'off',
       environment: {
         PATH: '',
         KIMI_SHARE_DIR: 'foreign',
@@ -150,11 +151,18 @@ test(
   },
 );
 
+// The lifecycle contract (TERM → KILL escalation, retire-once, scratch
+// cleanup) is implemented by the launcher around the direct child and its
+// process group, identically with or without an OS isolation wrap. These
+// tests pin `isolation: 'off'` because they probe descendants by the pid the
+// child reports — under bubblewrap's pid namespace that pid is namespaced and
+// meaningless on the host, while Seatbelt/bubblewrap coverage lives in
+// agent-isolation.test.cjs and the workspace-write test above.
 test(
   'session close stops a live child and descendant process group before removing scratch',
   posix,
   async t => {
-    const f = fixture(t);
+    const f = fixture(t, { isolation: 'off' });
     const child = f.launcher.spawn(
       process.execPath,
       [
@@ -185,7 +193,7 @@ test(
 );
 
 test('session close escalates cancellation when the child ignores SIGTERM', posix, async t => {
-  const f = fixture(t);
+  const f = fixture(t, { isolation: 'off' });
   const child = f.launcher.spawn(
     process.execPath,
     [
@@ -206,7 +214,7 @@ test(
   'session close kills remaining descendants after their group leader exits first',
   posix,
   async t => {
-    const f = fixture(t);
+    const f = fixture(t, { isolation: 'off' });
     const pidFile = path.join(f.share, 'descendant.pid');
     const descendantScript = `process.on('SIGTERM', () => {});
     require('node:fs').writeFileSync(${JSON.stringify(pidFile)}, String(process.pid));

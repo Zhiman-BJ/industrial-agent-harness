@@ -6,6 +6,7 @@ const path = require('node:path');
 const { KimiSession } = require('../src/index.cjs');
 const { validateProfile, writeCliConfig, sessionEnv } = require('../src/model-config.cjs');
 const { startModel } = require('../../../tests/integration/fixtures/domain-mcp-model.cjs');
+const { boundaryMatches } = require('../../../tests/integration/fixtures/execution-boundary.cjs');
 
 test(
   'real current-user Kimi discovers project skills progressively with native brand precedence',
@@ -91,15 +92,7 @@ test(
       events.filter(event => event.type === 'error'),
       [],
     );
-    assert.ok(
-      events.some(
-        event =>
-          event.type === 'execution-boundary' &&
-          event.mechanism === 'current-user' &&
-          event.osIsolation === false &&
-          event.projectWritable === true,
-      ),
-    );
+    assert.ok(events.some(boundaryMatches));
     assert.equal(fixture.requests.length, 3);
     const initial = JSON.stringify(fixture.requests[0].messages);
     for (const index of [0, 1, 2, 3, 4, 5])
