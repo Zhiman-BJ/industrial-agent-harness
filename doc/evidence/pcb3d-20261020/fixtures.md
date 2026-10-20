@@ -88,6 +88,10 @@ all 2D and 3D checks pass. Match that marker, a final exit code of zero and the
 same launch attempt identity when interpreting the GUI launcher's result.
 Seeing a window or reusing a previous successful result is insufficient.
 
+Opening this selftest entry immediately drives the temporary project through
+file, zoom, fullscreen, layer and language checks, then exits. Use an entry
+prepared without a selftest flag for an ordinary interactive demo window.
+
 The 3D checks use a real WebGL context, nonzero submitted triangle and draw-call
 statistics, real Chromium mouse input for raycasting, exact positive-net
 highlighting on two source objects in one layer, source UUIDs from the loaded

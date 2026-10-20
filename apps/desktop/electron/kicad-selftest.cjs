@@ -188,11 +188,12 @@ async function run(window) {
       }
       await settledCanvas();
       let lastView;
-      const measure = async () => {
+      const snapshot = async () => {
         const view = await frame.executeJavaScript(`(() => {
           const element = ${native}, camera = element.viewer.viewport.camera;
           return {zoom: camera.zoom, viewport: [...camera.viewport_size],
             canvas: [element.canvas.clientWidth, element.canvas.clientHeight],
+            backing: [element.canvas.width, element.canvas.height],
             fonts: document.fonts.status};
         })()`);
         const signature = JSON.stringify(view);
@@ -200,10 +201,19 @@ async function run(window) {
           console.log('KiCad navigation:', file, signature);
           lastView = signature;
         }
-        return view.zoom;
+        return {
+          scale: view.zoom,
+          ready:
+            view.fonts === 'loaded' &&
+            view.canvas[0] > 100 &&
+            view.canvas[1] > 100 &&
+            view.canvas.every((size, i) => size === view.viewport[i]),
+          layoutKey: [view.canvas, view.viewport, view.backing],
+        };
       };
+      const measure = async () => (await snapshot()).scale;
       try {
-        await verifyNavigation(window, measure);
+        await verifyNavigation(window, measure, { snapshot });
       } catch (error) {
         throw Error(`${file}: ${error.message}`, { cause: error });
       }
@@ -329,6 +339,7 @@ async function run(window) {
         frame.executeJavaScript(`(() => {
           const canvas = document.querySelector('.pcb3d-scene canvas');
           return canvas ? { ...canvas.dataset, width: canvas.width, height: canvas.height,
+            clientWidth: canvas.clientWidth, clientHeight: canvas.clientHeight,
             webgl: Boolean(canvas.getContext('webgl2') || canvas.getContext('webgl')) } : null;
         })()`);
       const initial = await canvasState();
@@ -358,7 +369,16 @@ async function run(window) {
       const visibleLayers = JSON.parse(initial.pcb3dVisibleLayers);
       assert.ok(visibleLayers.length >= 2, 'source copper layers are represented');
       const measure = async () => Number((await canvasState())?.pcb3dPercent);
-      await verifyNavigation(window, measure);
+      await verifyNavigation(window, measure, {
+        snapshot: async () => {
+          const state = await canvasState();
+          return {
+            scale: Number(state?.pcb3dPercent),
+            ready: state?.pcb3dReady === 'true' && state.clientWidth > 0 && state.clientHeight > 0,
+            layoutKey: [state?.width, state?.height, state?.clientWidth, state?.clientHeight],
+          };
+        },
+      });
       await verifyWheel(window, measure, (deltaY, ctrlKey) =>
         frame.executeJavaScript(`(() => {
           const canvas=document.querySelector('.pcb3d-scene canvas'), rect=canvas.getBoundingClientRect();

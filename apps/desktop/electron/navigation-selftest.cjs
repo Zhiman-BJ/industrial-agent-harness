@@ -1,5 +1,53 @@
 const assert = require('node:assert/strict');
-async function verifyNavigation(window, measure, { percent = true } = {}) {
+const layoutSignature = view => JSON.stringify(view.layoutKey ?? null);
+async function waitForFittedView(
+  read,
+  refit,
+  { now = Date.now, pause = () => new Promise(resolve => setTimeout(resolve, 100)) } = {},
+) {
+  const deadline = now() + 15000;
+  let previousScale,
+    previousLayout,
+    stable = 0,
+    last,
+    needsFit = false;
+  while (now() < deadline) {
+    last = await read();
+    const layoutKey = layoutSignature(last);
+    if (last.ready === false || !Number.isFinite(last.scale) || last.scale <= 0) {
+      stable = 0;
+      previousScale = undefined;
+      needsFit = true;
+    } else if (needsFit || (previousLayout !== undefined && layoutKey !== previousLayout)) {
+      // Resize can leave the old zoom intact. Fit the new viewport before
+      // establishing a baseline; an unchanged zoom alone is not readiness.
+      await refit();
+      stable = 0;
+      previousScale = undefined;
+      previousLayout = layoutKey;
+      needsFit = false;
+    } else {
+      stable =
+        Number.isFinite(previousScale) && Math.abs(last.scale / previousScale - 1) < 1e-6
+          ? stable + 1
+          : 0;
+      previousScale = last.scale;
+      previousLayout = layoutKey;
+      if (stable >= 7) return { scale: last.scale, layoutKey };
+    }
+    await pause();
+  }
+  throw Error(`Viewer Fit baseline did not settle: ${JSON.stringify(last)}`);
+}
+async function measureStableLayout(read, baseline) {
+  const view = await read();
+  if (view.ready === false || layoutSignature(view) !== baseline.layoutKey)
+    throw Error(
+      `Viewer layout changed during navigation: baseline=${baseline.layoutKey}, current=${layoutSignature(view)}`,
+    );
+  return view.scale;
+}
+async function verifyNavigation(window, measure, { percent = true, snapshot } = {}) {
   const evaluate = script => window.webContents.executeJavaScript(script, true);
   async function wait(check) {
     const deadline = Date.now() + 15000;
@@ -34,43 +82,33 @@ async function verifyNavigation(window, measure, { percent = true } = {}) {
     const value = await measure();
     return Number.isFinite(value) && value > 0;
   });
-  // Embedded viewers can publish readiness before their final ResizeObserver
-  // fit. Use a settled native scale as the baseline for subsequent real inputs.
-  let fitted,
-    previousFit,
-    fitStable = 0;
-  await wait(async () => {
-    fitted = await measure();
-    fitStable =
-      Number.isFinite(fitted) &&
-      fitted > 0 &&
-      Number.isFinite(previousFit) &&
-      Math.abs(fitted / previousFit - 1) < 1e-6
-        ? fitStable + 1
-        : 0;
-    previousFit = fitted;
-    return fitStable >= 7;
-  });
+  const read = snapshot || (async () => ({ scale: await measure() }));
+  const baseline = await waitForFittedView(read, () => click('Fit viewer'));
+  const fitted = baseline.scale;
+  const currentScale = () => measureStableLayout(read, baseline);
   assert.ok(Number.isFinite(fitted) && fitted > 0, `Native fitted view: ${fitted}`);
   await click('Zoom in');
-  await wait(async () => (await measure()) > fitted * 1.05);
+  await wait(async () => (await currentScale()) > fitted * 1.05);
   await click('Zoom out');
   try {
-    await wait(async () => Math.abs((await measure()) / fitted - 1) < 0.01);
+    await wait(async () => Math.abs((await currentScale()) / fitted - 1) < 0.01);
   } catch (error) {
     throw Error(
-      `Zoom out did not restore the fitted scale: fit=${fitted}, actual=${await measure()}`,
+      `Zoom out did not restore the fitted scale: fit=${fitted}, actual=${await currentScale()}`,
       { cause: error },
     );
   }
   await click('Zoom in');
   await click('Fit viewer');
   try {
-    await wait(async () => Math.abs((await measure()) / fitted - 1) < 0.01);
+    await wait(async () => Math.abs((await currentScale()) / fitted - 1) < 0.01);
   } catch (error) {
-    throw Error(`Fit did not restore the fitted scale: fit=${fitted}, actual=${await measure()}`, {
-      cause: error,
-    });
+    throw Error(
+      `Fit did not restore the fitted scale: fit=${fitted}, actual=${await currentScale()}`,
+      {
+        cause: error,
+      },
+    );
   }
   await transitionFullscreen(window, true, () => click('Fullscreen viewer'));
   assert.equal(
@@ -159,4 +197,11 @@ async function transitionFullscreen(window, active, action) {
     window.removeListener(event, settled);
   }
 }
-module.exports = { verifyNavigation, verifyWheel, verifyWheelScroll, transitionFullscreen };
+module.exports = {
+  verifyNavigation,
+  verifyWheel,
+  verifyWheelScroll,
+  transitionFullscreen,
+  waitForFittedView,
+  measureStableLayout,
+};
