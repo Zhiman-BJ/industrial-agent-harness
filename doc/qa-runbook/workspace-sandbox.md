@@ -33,10 +33,16 @@ node scripts/verify-workspace-sandbox.cjs
 
 `dist/qa/workspace-sandbox/latest.json` 指向最近一次报告内容，原运行目录保留。若 Git dirty 为 true，报告只绑定已列出的工作区源码 hash，不能直接宣称某个干净提交通过。
 
-2026-10-20 的受限工具环境已实测前置失败：`sandbox_apply: Operation not permitted`。申请宿主执行被审批策略自动拒绝（sandbox_approval=false）。该环境不能执行本页的真实通过验收，需要在允许创建子沙箱的本机终端运行并返回结果；不改变 Harness 的隔离策略。
+## 2026-10-20 本机验收结果
 
-同日本机终端运行已成功启动沙箱，但前置程序写入 `work/ran` 返回 EPERM，报告状态为 FAIL。定位为 macOS 写权限使用了 `/var/...` 别名，而实际文件路径是 `/private/var/...`；生产后端现将读写授权统一到工作目录的真实路径，并在原生用例中增加目录别名下实际写出结果的回归。配置生成回归已验证修复前失败、修复后通过；真实用例仍须重跑，不能将本次代码修复等同于原生验收通过。
+18:44（Asia/Shanghai）本机终端完成真实验收：**PASS，5/5，无失败、跳过、取消或 TODO**。绑定提交 `2f931bac0868babead182766f259cdaef2ddede8`，工作区干净，记录的源码哈希在执行前后相同；平台 macOS arm64，Darwin 25.5.0，Node v26.10.0，用例耗时约 5.61 秒。
 
-该路径修复的定向回归 23/23 通过，架构契约 20/20、架构套件 48/48 通过，Lint 与 diff 检查通过。受限工具内重跑真实入口仍为 BLOCKED；本机终端的修复后真实通过结果尚待取得。
+报告保存在 `dist/qa/workspace-sandbox/2026-10-20T10-44-45.951Z-b67858d4/report.json`，SHA-256 为 `4c84332593b95dac5dad9bcb765dc55b340e4971c0559f5cedf146c4d48ed948`。已逐一核对 5 组 canonical records、42 份 execution/checks/log 产物的 SHA-256 与长度。真实结果包括：TCP/Unix socket 连接拒绝，文件边界与凭据过滤通过，副本篡改后即使子检查通过也被记为 insufficient_evidence，超时/取消/正常父进程退出后均清理所属进程。
+
+这份结果确认本页声明式本地任务与输入绑定在该 macOS 环境通过；Linux、Windows、完整 Desktop 链路及 Agent 级 OS 沙箱仍不在本次通过范围内。
+
+此前两次阻塞保留为诊断历史：受限工具环境无法启动子沙箱（`sandbox_apply: Operation not permitted`），宿主执行申请被审批策略自动拒绝（sandbox_approval=false）；第一次本机终端运行则成功启动沙箱，但写 `work/ran` 时 EPERM。后者定位为写权限使用 `/var/...` 别名，而实际路径是 `/private/var/...`；现已统一读写授权的真实路径，并补入目录别名下实际写出结果的原生回归。配置生成对照也确认修复前失败、修复后通过。
+
+该路径修复的定向回归 23/23、架构契约 20/20、架构套件 48/48 通过，Lint 与 diff 检查通过。
 
 [返回 QA 入口](../qa-runbook.md) · [输入绑定范围](../evidence-input-binding.md)
