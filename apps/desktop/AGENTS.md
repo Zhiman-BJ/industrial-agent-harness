@@ -9,7 +9,7 @@ The repository-root [AGENTS.md](../../AGENTS.md) owns the architecture contract 
 - `pnpm --filter @industrial-agent-harness/desktop test` — package tests.
 - `test:ui`, `test:messages`, `test:logs`, `test:documents` (same filter) — named real-renderer regression flows; update them when entry points change.
 - Electron selftests are `electron/*-selftest.cjs`; `INDUSTRIAL_UI_SCREENSHOTS=<dir>` with the matching selftest writes PNG evidence.
-- `pnpm --filter @industrial-agent-harness/desktop setup:layout` — creates the machine-local KLayout Python venv (gitignored) required for GDS raster tabs.
+- `pnpm --filter @industrial-agent-harness/desktop setup:layout` — prepares the Pack-declared private Python/KLayout environment through the shared dependency manager for GDS raster tabs; no host Python is required.
 
 ## Adapter boundaries
 

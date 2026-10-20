@@ -8,6 +8,7 @@ import type {
   InstallationFootprint,
   RuntimeArchiveRequirement,
 } from '@industrial-agent-harness/viewer-builtin/api';
+import { domainPreparationState } from './domain-readiness.mjs';
 
 export function formatBytes(bytes: number, locale: string) {
   const value = Number.isFinite(bytes) ? Math.max(0, bytes) : 0;
@@ -115,6 +116,7 @@ export function CatalogEmpty({
 export function RuntimeReadiness({ item }: { item: InstalledDomainPack }) {
   const { t } = useDisplayText();
   const state = item.runtimeState || 'installed';
+  const { viewerState } = domainPreparationState(item);
   const label = {
     ready: 'Ready to use',
     'needs-preparation': 'Needs preparation',
@@ -128,11 +130,55 @@ export function RuntimeReadiness({ item }: { item: InstalledDomainPack }) {
       >
         {t(label)}
       </small>
+      {viewerState && (
+        <small
+          className={`ia-pack-badge ia-viewer-badge ${viewerState === 'ready' ? 'ok' : 'warn'}`}
+          data-viewer-state={viewerState}
+        >
+          {t(viewerState === 'ready' ? 'Viewers ready' : 'Viewers need preparation')}
+        </small>
+      )}
       {item.prerequisites?.length ? (
         <small className="ia-pack-meta">
           {t('Needs:')} {item.prerequisites.map(text => t(text)).join('; ')}
         </small>
       ) : null}
+    </>
+  );
+}
+
+export function DomainPreparationActions({
+  item,
+  disabled,
+  onRepair,
+}: {
+  item: InstalledDomainPack;
+  disabled: boolean;
+  onRepair: (domain: string, options?: { scope: 'viewer' }) => void;
+}) {
+  const { t } = useDisplayText();
+  const { runtimeRepair, runtimeReady, viewerState } = domainPreparationState(item);
+  return (
+    <>
+      {runtimeRepair && (
+        <button
+          className="ia-pack-action"
+          disabled={disabled}
+          onClick={() => onRepair(item.domain)}
+        >
+          {t(runtimeReady ? 'Check / repair' : 'Prepare / retry')}
+        </button>
+      )}
+      {viewerState && (
+        <button
+          className="ia-pack-action"
+          data-action="prepare-viewer"
+          disabled={disabled}
+          onClick={() => onRepair(item.domain, { scope: 'viewer' })}
+        >
+          {t(viewerState === 'ready' ? 'Check / repair viewers' : 'Prepare / repair viewers')}
+        </button>
+      )}
     </>
   );
 }

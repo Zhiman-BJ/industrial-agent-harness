@@ -47,7 +47,7 @@
     "@industrial-agent-harness/pack-manager": "workspace:*",
     "@industrial-agent-harness/viewer-builtin": "workspace:*",
     "@industrial-agent-harness/viewer-core": "workspace:*",
-    "@zhiman-bj/industrial-domain-packs": "https://codeload.github.com/Zhiman-BJ/industrial-domain-packs/tar.gz/5cc78f4efd1c6db84de1dab61a72d80915d30260",
+    "@zhiman-bj/industrial-domain-packs": "https://codeload.github.com/Zhiman-BJ/industrial-domain-packs/tar.gz/1117d840e35e521a0db5caf7161935ebc4930535",
     "electron-updater": "6.8.9",
     "lucide-react": "1.37.0",
     "react": "19.2.8",

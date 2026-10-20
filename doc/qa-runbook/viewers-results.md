@@ -56,7 +56,18 @@ T4 native 包含 task-results-freecad/kimi；UI 的 test:results 当前不在 wo
 
 真实 video 板的 175 处引用均为旧 WRL，现有 27 个本地模型可验证兼容与真实装配，但不能替代 VR-08 的明确 STEP 引用项目。LED 示例本身无模型引用，不能靠占位形状提供实体通过证据。完整模型与图形预算仍按 [PCB 三维 Viewer](../pcb-3d-viewer.md)；网络、缓存、解析、GPU 分别记录，不能以一种 fixture 的通过覆盖其他阶段。
 
-新增下载不等于 KLayout Python 已统一管理。GDS/OASIS 的宿主 Python 声明、就绪状态、解析及修复仍是单独 TODO；本地 `setup:layout` 恢复不改变这一状态。
+## GDS/OASIS 托管 Python
+
+KLayout 依赖已通过共享管理器接入；[固定版本与接口边界](../managed-viewer-python.md)独立于 PCB 模型下载。
+
+| ID | 步骤与预期 | 边界／必留证据 |
+| --- | --- | --- |
+| VR-12 独立准备 | 干净 store、无宿主 Python/Docker，点击 Install viewer support；固定解释器/wheel 校验后显示 Viewer ready | native/EDA 状态保持未准备；记录 owner commit、URL、大小/SHA、阶段与 PNG probe |
+| VR-13 重开与缓存 | 真实 Sobel GDS 从项目树打开，22层、缩放/平移/图层/全屏；离线检查再重开 | 不修改源、不触网；连续 render 不重扫所有 Pack/Python 文件；记录 PNG、source SHA、解析次数 |
+| VR-14 损坏与取消 | 删除专用环境模块，检查转 needs-preparation；修复中断、错误 hash/最终 probe失败，再重试 | 不误报ready；旧文件可保留但已证实损坏的runtime不可解析；staging/锁释放，暖缓存复用 |
+| VR-15 路径切换 | 显式正确/错误 KLAYOUT_PYTHON、repair同路径替换、项目切换 | 无效override不回退；新open重验，旧worker关闭；缺失依赖入口能打开领域包设置，中英文一致 |
+
+离线 fixture 回归见 PythonEnvironmentManager、PackManager 集成及 Desktop dependency/selftest；真实网络诊断仅显式执行 `node scripts/verify-managed-layout.cjs /absolute/fresh/output`，不替代目标平台的文件树与 GUI 验收。
 
 ## 自动覆盖缺口
 

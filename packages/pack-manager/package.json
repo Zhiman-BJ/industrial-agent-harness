@@ -7,7 +7,8 @@
     "test": "node --test src/*.test.cjs"
   },
   "dependencies": {
-    "@industrial-agent-harness/domain-runtime": "workspace:*"
+    "@industrial-agent-harness/domain-runtime": "workspace:*",
+    "tar": "7.5.22"
   },
   "license": "MIT"
 }

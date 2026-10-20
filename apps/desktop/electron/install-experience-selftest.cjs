@@ -213,6 +213,64 @@ async function run(window, { manager }) {
     JSON.stringify({ test: publicKey.export({ type: 'spki', format: 'pem' }) }),
   );
   const files = new Map();
+  let viewerAsset;
+  if (process.platform !== 'win32') {
+    const source = path.join(root, 'viewer-python-source');
+    const executable = path.join(source, 'python', 'bin', 'python3.12');
+    fs.mkdirSync(path.dirname(executable), { recursive: true });
+    fs.mkdirSync(path.join(source, 'python', 'lib'), { recursive: true });
+    // This executable is an explicitly fake interpreter for installer/UI
+    // contract coverage. The real subprocess, archive, hashes, receipt, repair
+    // and cancellation paths run; it does not qualify Python or a real Viewer.
+    fs.writeFileSync(executable, "#!/bin/sh\nprintf '%s\\n' HARNESS_PYTHON_PROBE_OK\n");
+    fs.chmodSync(executable, 0o755);
+    fs.writeFileSync(
+      path.join(source, 'python', 'lib', 'sample.txt'),
+      crypto.randomBytes(256 * 1024),
+    );
+    const archive = path.join(root, 'viewer-python.tar.gz');
+    const packed = spawnSync('tar', ['-czf', archive, '-C', source, 'python'], {
+      encoding: 'utf8',
+    });
+    if (packed.error || packed.status !== 0)
+      throw Error(`Viewer fixture archive failed: ${packed.error || packed.stderr}`);
+    const bytes = fs.readFileSync(archive);
+    const wheel = Buffer.from('Explicitly fake pinned wheel for the installer UI contract.');
+    files.set('/viewer-python.tar.gz', bytes);
+    files.set('/sample_viewer-1.0.0-py3-none-any.whl', wheel);
+    viewerAsset = {
+      id: 'sample-viewer',
+      label: 'Sample Viewer Runtime',
+      version: '1.0.0',
+      purpose: 'viewer',
+      viewer: 'layout',
+      environment: 'INDUSTRIAL_HARNESS_SAMPLE_VIEWER_PYTHON',
+      pythonVersion: '3.12.15',
+      modules: ['sample_viewer'],
+      platforms: {
+        [`${process.platform}-${process.arch}`]: {
+          installedSize: 1024 * 1024,
+          interpreter: {
+            url: 'https://install.example/viewer-python.tar.gz',
+            sha256: digest(bytes),
+            size: bytes.length,
+            format: 'tar.gz',
+            executable: 'python/bin/python3.12',
+          },
+          wheels: [
+            {
+              name: 'sample-viewer',
+              version: '1.0.0',
+              filename: 'sample_viewer-1.0.0-py3-none-any.whl',
+              url: 'https://install.example/sample_viewer-1.0.0-py3-none-any.whl',
+              sha256: digest(wheel),
+              size: wheel.length,
+            },
+          ],
+        },
+      },
+    };
+  }
   let asset;
   if (process.platform === 'darwin') {
     const app = path.join(root, 'native', 'Fixture.app');
@@ -271,6 +329,7 @@ async function run(window, { manager }) {
       skills: [],
       providerPacks: [],
       ...(index === 0 && asset ? { runtimeAssets: [asset] } : {}),
+      ...(index === 1 && viewerAsset ? { pythonEnvironments: [viewerAsset] } : {}),
       ...(index === 1 ? { prerequisites: ['An external sample tool is required.'] } : {}),
     };
     fs.writeFileSync(path.join(source, 'bundle.json'), JSON.stringify(bundle));
@@ -285,6 +344,7 @@ async function run(window, { manager }) {
       url: `${domain}.hpack`,
       platforms: [`${process.platform}-${process.arch}`],
       ...(bundle.prerequisites ? { prerequisites: bundle.prerequisites } : {}),
+      ...(bundle.pythonEnvironments ? { pythonEnvironments: bundle.pythonEnvironments } : {}),
       ...(index === 0 && asset
         ? {
             runtimeAssets: [asset],
@@ -301,6 +361,7 @@ async function run(window, { manager }) {
   );
   let offline = false,
     corrupt = false,
+    corruptViewer = false,
     delay = 100;
   const quitMode = process.env.HARNESS_INSTALL_EXPERIENCE_QUIT_TEST === 'true';
   const originalFetch = global.fetch;
@@ -365,6 +426,8 @@ async function run(window, { manager }) {
           }
           const chunk = Buffer.from(bytes.subarray(offset, offset + 64 * 1024));
           if (corrupt && parsed.pathname === '/sample-c.hpack' && offset === 0) chunk[0] ^= 255;
+          if (corruptViewer && parsed.pathname === '/viewer-python.tar.gz' && offset === 0)
+            chunk[0] ^= 255;
           offset += chunk.length;
           controller.enqueue(chunk);
         },
@@ -605,6 +668,22 @@ async function run(window, { manager }) {
       status.installed.find(item => item.domain === 'sample-b').runtimeState,
       'external-dependencies',
     );
+    if (viewerAsset) {
+      const item = status.installed.find(item => item.domain === 'sample-b');
+      assert.equal(item.viewerState, 'ready');
+      assert.equal(item.viewerAssets.length, 1);
+      assert.equal(item.viewerAssets[0].viewer, 'layout');
+      assert.equal(item.viewerAssets[0].ready, true);
+      await wait(
+        `document.querySelector('.ia-domains-installed .ia-viewer-badge[data-viewer-state="ready"]')?.textContent==='Viewers ready'`,
+      );
+      assert.ok(
+        await evaluate(
+          `Boolean(document.querySelector('.ia-domains-installed [data-action="prepare-viewer"]:not(:disabled)'))`,
+        ),
+        'The onboarding domain list offers Viewer repair while external tools still need setup.',
+      );
+    }
     if (asset)
       assert.equal(status.installed.find(item => item.domain === 'sample-a').runtimeState, 'ready');
     assert.ok(
@@ -631,6 +710,96 @@ async function run(window, { manager }) {
     );
     await openPacks();
     await checkNavigation('navigation-en-light');
+    if (viewerAsset) {
+      const viewerBadge = '.ia-pack-card[data-domain="sample-b"] .ia-viewer-badge';
+      const viewerButton = '.ia-pack-card[data-domain="sample-b"] [data-action="prepare-viewer"]';
+      const viewerStatus = () =>
+        evaluate(`window.viewerHost.domainStatus().then(status=>({
+          item:status.installed.find(item=>item.domain==='sample-b'),
+          operation:status.operation,
+          lastOperation:status.lastOperation
+        }))`);
+      const prepareViewer = async () => {
+        await wait(
+          `Boolean(document.querySelector(${JSON.stringify(viewerButton + ':not(:disabled)')}))`,
+        );
+        await evaluate(`document.querySelector(${JSON.stringify(viewerButton)}).click()`);
+      };
+      await wait(
+        `document.querySelector(${JSON.stringify(viewerBadge)})?.dataset.viewerState==='ready'`,
+      );
+      assert.equal(
+        await evaluate(`document.querySelector(${JSON.stringify(viewerButton)})?.textContent`),
+        'Check / repair viewers',
+      );
+      const installedViewer = manager.pythonEnvironments.status([viewerAsset])[0];
+      assert.equal(installedViewer.ready, true);
+      fs.writeFileSync(installedViewer.executable, 'broken Viewer interpreter');
+      await refresh();
+      await wait(
+        `document.querySelector(${JSON.stringify(viewerBadge)})?.dataset.viewerState==='needs-preparation'`,
+      );
+      assert.equal(
+        await evaluate(`document.querySelector(${JSON.stringify(viewerBadge)})?.textContent`),
+        'Viewers need preparation',
+      );
+      assert.equal(
+        await evaluate(`document.querySelector(${JSON.stringify(viewerButton)})?.textContent`),
+        'Prepare / repair viewers',
+      );
+      assert.equal((await viewerStatus()).item.runtimeState, 'external-dependencies');
+      await screenshot('05c-viewer-corrupt-external-tools-pending');
+
+      // Force a new, bounded download in this test's isolated Viewer store.
+      // The bad download must neither mark the Viewer ready nor remove its Pack.
+      fs.rmSync(manager.pythonEnvironments.directory, { recursive: true, force: true });
+      corruptViewer = true;
+      await prepareViewer();
+      await wait(
+        `window.viewerHost.domainStatus().then(status=>!status.operation?.active && status.lastOperation?.outcome==='failed') && !document.querySelector('.ia-domain-progress')`,
+      );
+      const failedViewer = await viewerStatus();
+      assert.match(failedViewer.lastOperation.error, /SHA-256 mismatch/);
+      assert.equal(failedViewer.item.viewerState, 'needs-preparation');
+      assert.equal(failedViewer.item.runtimeState, 'external-dependencies');
+      assert.equal(
+        manager.list().some(item => item.domain === 'sample-b'),
+        true,
+      );
+      corruptViewer = false;
+
+      // Exercise the existing progress and cancel controls during Viewer-only
+      // preparation, then retry through the same production preload/IPC path.
+      delay = 150;
+      await prepareViewer();
+      await wait(
+        `Boolean(document.querySelector('.ia-install-transfer')) && window.viewerHost.domainStatus().then(status=>status.operation?.active)`,
+      );
+      await evaluate(`document.querySelector('.ia-domain-progress button').click()`);
+      await wait(
+        `window.viewerHost.domainStatus().then(status=>!status.operation?.active && status.lastOperation?.outcome==='cancelled') && !document.querySelector('.ia-domain-progress')`,
+      );
+      const cancelledViewer = await viewerStatus();
+      assert.equal(cancelledViewer.item.viewerState, 'needs-preparation');
+      assert.equal(cancelledViewer.item.runtimeState, 'external-dependencies');
+      assert.equal(
+        fs.existsSync(path.join(manager.pythonEnvironments.directory, 'prepare.lock')),
+        false,
+      );
+      delay = 3;
+      await prepareViewer();
+      await wait(
+        `window.viewerHost.domainStatus().then(status=>!status.operation?.active && status.installed.find(item=>item.domain==='sample-b')?.viewerState==='ready') && !document.querySelector('.ia-domain-progress')`,
+      );
+      const repairedViewer = await viewerStatus();
+      assert.equal(repairedViewer.item.runtimeState, 'external-dependencies');
+      assert.equal(repairedViewer.item.viewerAssets[0].ready, true);
+      assert.equal(manager.pythonEnvironments.status([viewerAsset])[0].ready, true);
+      await wait(
+        `document.querySelector(${JSON.stringify(viewerBadge)})?.textContent==='Viewers ready' && document.querySelector(${JSON.stringify(viewerButton)})?.textContent==='Check / repair viewers'`,
+      );
+      await screenshot('05d-viewer-repaired-external-tools-pending');
+    }
     corrupt = true;
     await packAction('sample-c', 'Install');
     await wait(
@@ -825,6 +994,7 @@ async function run(window, { manager }) {
           passed: true,
           transport: 'signed local fixture HTTPS responses',
           nativeFixture: Boolean(asset),
+          viewerInstallerFixture: Boolean(viewerAsset),
           phases,
           navigationChecks,
           checks: [
@@ -837,6 +1007,14 @@ async function run(window, { manager }) {
             'download-speed-eta',
             'cancel-retry',
             'native-fixture-check-repair',
+            ...(viewerAsset
+              ? [
+                  'viewer-readiness-independent-of-external-tools',
+                  'viewer-corruption-detected-and-repair-offered',
+                  'viewer-download-failure-preserves-installed-pack',
+                  'viewer-only-cancel-cleans-up-and-retry-restores-readiness',
+                ]
+              : []),
             'failure-preserves-installed',
             'failed-update-preserves-version-and-retries',
             'background-reopen-cancel',

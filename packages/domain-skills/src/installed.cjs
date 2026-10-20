@@ -107,7 +107,10 @@ function loadRegistry() {
         runtime: pack.runtime,
         managed: true,
         runtimeEnvironment: manager.runtimeAssets.environment(bundle.runtimeAssets),
-        runtimeProtectedPaths: [manager.runtimeAssets.directory],
+        runtimeProtectedPaths: [
+          manager.runtimeAssets.directory,
+          manager.pythonEnvironments.directory,
+        ],
         directory: path.join(bundle.location, 'domain-packs', pack.provider.packDirectory),
       })),
   );
@@ -150,6 +153,30 @@ function installedDataLibraries(domain) {
     });
 }
 
+function installedPythonEnvironments(domain) {
+  // Viewer executables are contributed by the active Domain's authenticated
+  // Pack, never by project files or discovery/environment directory overrides.
+  if (
+    typeof domain !== 'string' ||
+    !domain.trim() ||
+    (distributionDomain && domain !== distributionDomain)
+  )
+    return [];
+  const packs = process.env.INDUSTRIAL_HARNESS_PACK_STORE
+    ? new PackManager().list()
+    : loadDomainPacks();
+  return packs
+    .filter(pack => pack.domain === domain)
+    .flatMap(pack => pack.pythonEnvironments || []);
+}
+
+function resolveViewerPython(domain, viewer) {
+  if (typeof viewer !== 'string' || !viewer) return undefined;
+  const declarations = installedPythonEnvironments(domain);
+  if (!declarations.length) return undefined;
+  return new PackManager().pythonEnvironments.resolve(declarations, viewer);
+}
+
 function materializeInstalledSkills(scope, directory, environment = process.env) {
   if (!process.env.INDUSTRIAL_HARNESS_PACK_STORE)
     return staticSkills.materializeSkills(scope, directory, environment);
@@ -183,5 +210,7 @@ module.exports = {
   loadRegistry,
   installedSkills,
   installedDataLibraries,
+  installedPythonEnvironments,
+  resolveViewerPython,
   materializeInstalledSkills,
 };

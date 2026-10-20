@@ -18,4 +18,6 @@ pnpm --filter @industrial-agent-harness/viewer-builtin test
 
 设置 `KLAYOUT_PYTHON` 为安装了 KLayout 的 Python 路径后，上述检查也会验证真实 GDS 的视口渲染。Surfer 的 JS/WASM 资源保留在 `src/waveform/surfer`，许可证、来源和哈希见该目录的 NOTICE 与资产清单。上游将部分消息命令标为可能变化，升级 Surfer 时须验证桥接行为。
 
+普通用户从领域包设置安装或修复 Viewer 支持，使用[共享管理的 Python/KLayout](managed-viewer-python.md)，不需要配置宿主 Python。源码 `setup:layout` 调用同一安装器；测试中的 `KLAYOUT_PYTHON` 是可选的显式测试路径。Viewer-only 准备不要求 Docker，与 Chip 工程工具链的就绪状态分开。固定资源、真实 Sobel 渲染、离线重检及损坏修复见[验证记录](evidence/klayout-managed-20261020/README.md)。
+
 后续 Viewer 接入应先声明产物类型与配套输入，再实现受限解析/渲染，最后接入 Viewer Host 的来源显示和失败状态。完整边界见 [Viewer 层设计](viewer-layer.md)。

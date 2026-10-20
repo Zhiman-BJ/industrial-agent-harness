@@ -957,6 +957,17 @@ export function App() {
     setWorkbenchFocus('chat');
     setCompactSidebarOpen(false);
   }
+  async function openViewerDomainSettings() {
+    if (document.fullscreenElement === workspace.current) {
+      try {
+        await document.exitFullscreen();
+      } catch {
+        setFullscreenError('Use the exit fullscreen button to restore the workspace.');
+        return;
+      }
+    }
+    showCapabilities('packs');
+  }
   function browseFiles() {
     setRightOpen(true);
     setFileTreeOpen(true);
@@ -2434,6 +2445,7 @@ export function App() {
                         file={file}
                         active={file.id === activeFileId}
                         onState={setViewState}
+                        onManageDomains={() => void openViewerDomainSettings()}
                       />
                     ))}
                     {!activeFile && (

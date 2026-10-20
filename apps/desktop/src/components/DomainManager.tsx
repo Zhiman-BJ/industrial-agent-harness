@@ -19,6 +19,7 @@ import {
   InstallationSize,
   RuntimePreparation,
   RuntimeReadiness,
+  DomainPreparationActions,
   UnavailableDomains,
   selectedFootprint,
 } from './DomainInstallation';
@@ -133,12 +134,21 @@ export function DomainManager({
     if (firstRun) setComplete(true);
     onInstalled?.(result.installed.filter(item => selected.includes(item.id)));
   }
-  async function install() {
-    if (!selected.length || disabled || loading) return;
+  async function install(viewerDomain?: string) {
+    if ((!selected.length && !viewerDomain) || disabled || loading) return;
     setSaving(true);
     setError('');
     setComplete(false);
     try {
+      if (viewerDomain) {
+        const result = await window.viewerHost!.domainInstall([viewerDomain], { scope: 'viewer' });
+        onChanged(result.installed);
+        setSelected(value => value.filter(domain => domain !== viewerDomain));
+        await refresh();
+        if (firstRun) setComplete(true);
+        onInstalled?.(result.installed.filter(item => item.id === viewerDomain));
+        return;
+      }
       // Runtime archives come from their official sites via the user's own
       // browser; surface the import checklist before touching the installer.
       const requirements = await window.viewerHost!.domainRuntimeArchives(selected);
@@ -195,12 +205,12 @@ export function DomainManager({
       setImporting(false);
     }
   }
-  async function repair(domain: string) {
+  async function repair(domain: string, options?: { scope: 'viewer' }) {
     if (disabled) return;
     setSaving(true);
     setError('');
     try {
-      onChanged((await window.viewerHost!.domainRepair(domain)).installed);
+      onChanged((await window.viewerHost!.domainRepair(domain, options)).installed);
       await refresh();
     } catch (reason) {
       const next = await refresh();
@@ -376,12 +386,13 @@ export function DomainManager({
               {selectable.map(item => {
                 const current = installedById.get(item.domain);
                 return (
-                  <label
+                  <div
                     key={item.domain}
                     className="ia-domain-install-row"
                     data-domain={item.domain}
                   >
                     <input
+                      id={`domain-install-${item.domain}`}
                       type="checkbox"
                       checked={selected.includes(item.domain)}
                       disabled={disabled || loading}
@@ -395,21 +406,35 @@ export function DomainManager({
                     />
                     <DomainIcon domain={item.domain} size={18} />
                     <span>
-                      <span className="ia-domain-install-title">
+                      <label
+                        className="ia-domain-install-title"
+                        htmlFor={`domain-install-${item.domain}`}
+                      >
                         <b>{t(item.label || current?.label || item.domain)}</b>
                         <small>
                           {current ? `${current.version} → ${item.version}` : `v${item.version}`}
                         </small>
                         <InstallationSize pack={item} compact />
-                      </span>
+                      </label>
                       {item.summary && <small>{t(item.summary)}</small>}
                       {item.prerequisites?.length ? (
                         <small>
                           {t('Needs:')} {item.prerequisites.map(text => t(text)).join('; ')}
                         </small>
                       ) : null}
+                      {item.viewerAvailable && !current?.viewerAssets?.length && (
+                        <button
+                          type="button"
+                          className="ia-pack-action"
+                          data-action="install-viewer"
+                          disabled={disabled || loading}
+                          onClick={() => void install(item.domain)}
+                        >
+                          {t('Install viewer support')}
+                        </button>
+                      )}
                     </span>
-                  </label>
+                  </div>
                 );
               })}
               <UnavailableDomains status={status} selection />
@@ -443,12 +468,11 @@ export function DomainManager({
                       <RuntimeReadiness item={item} />
                     </span>
                     <div className="ia-pack-actions">
-                      {(item.runtimeState === 'ready' ||
-                        item.runtimeState === 'needs-preparation') && (
-                        <button disabled={disabled} onClick={() => void repair(item.domain)}>
-                          {t(item.runtimeState === 'ready' ? 'Check / repair' : 'Prepare / retry')}
-                        </button>
-                      )}
+                      <DomainPreparationActions
+                        item={item}
+                        disabled={disabled}
+                        onRepair={(domain, options) => void repair(domain, options)}
+                      />
                       <button disabled={disabled} onClick={() => void remove(item.domain)}>
                         {t('Remove')}
                       </button>
