@@ -137,6 +137,10 @@ async function install(t, root) {
         HARNESS_PACK_SIGNING_KEY_FILE: key,
         HARNESS_PACK_SIGNING_KEY_ID: 'qualification',
         HARNESS_PACK_CHANNEL: 'beta',
+        // GitHub-hosted macOS runners cannot run Docker. This lane proves the
+        // native KiCad/Godot path; container image preparation is qualified by
+        // the Linux image lanes against the same owner lock.
+        HARNESS_PACK_OMIT_CONTAINER_IMAGES: '1',
       },
     },
   );
@@ -157,8 +161,14 @@ async function install(t, root) {
     cachedArchives = [];
   for (const p of catalog.packs) {
     const bytes = fs.readFileSync(path.join(release, path.basename(p.url)));
-    const assets = decodeArchive(bytes).bundle.runtimeAssets || [];
+    const { bundle } = decodeArchive(bytes);
+    const assets = bundle.runtimeAssets || [];
     assert.ok(assets.length, 'Installed native profiles must declare managed dependencies.');
+    assert.deepEqual(
+      bundle.containerImages,
+      [],
+      'Hosted macOS qualification bundles must not advertise container images.',
+    );
     cachedArchives.push(...stageRuntimeArchiveCache(manager.directory, assets));
     await manager.install(p, {
       bytes,
