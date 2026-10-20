@@ -5,9 +5,9 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import {
   Activity,
   ArrowUp,
+  BrainCircuit,
   Bug,
   ChevronDown,
-  Cpu,
   ChevronRight,
   File,
   FilePlus2,
@@ -99,7 +99,9 @@ function contextUsageTitle(
   modelProfile: ModelSummary | null,
   usage: ContextUsageInfo | null,
 ) {
-  const name = modelProfile?.model || '';
+  const name = modelProfile?.model
+    ? t('Model: {0}', { '0': modelProfile.model })
+    : t('Configure model');
   if (!usage) return name;
   const percent = Math.min(100, Math.round(usage.fraction * 100));
   const used = usage.usedTokens != null ? formatContextTokens(usage.usedTokens) : '—';
@@ -2066,7 +2068,7 @@ export function App() {
                               title={contextUsageTitle(t, modelProfile, contextUsage)}
                               aria-label={contextUsageTitle(t, modelProfile, contextUsage)}
                             >
-                              <Cpu size={13} />
+                              <BrainCircuit size={13} aria-hidden="true" />
                               <span className="ia-model-pill-name">
                                 {modelProfile?.model || t('Model')}
                               </span>

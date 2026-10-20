@@ -12,6 +12,10 @@
     }
   },
   "messages": {
+    "Model: {0}": {
+      "en": "Model: {0}",
+      "zh-CN": "模型：{0}"
+    },
     "Files synced": {
       "en": "Files synced",
       "zh-CN": "文件已同步"
