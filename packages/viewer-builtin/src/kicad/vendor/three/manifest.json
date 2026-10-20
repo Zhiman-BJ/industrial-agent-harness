@@ -16,6 +16,46 @@
       "url": "https://cdn.jsdelivr.net/npm/three@0.160.1/LICENSE",
       "upstream_sha256": "852e0e8699169bf9f6fdc6bda3e682d078dcbc738b5d33e74df594721bff271d",
       "sha256": "852e0e8699169bf9f6fdc6bda3e682d078dcbc738b5d33e74df594721bff271d"
+    },
+    "loaders/VRMLLoader.js": {
+      "url": "https://raw.githubusercontent.com/mrdoob/three.js/r160/examples/jsm/loaders/VRMLLoader.js",
+      "upstream_sha256": "7d1c6a31674daa0ac45d9ae87e4ecfd1848b704dab77d5133367c89feb65ea55",
+      "sha256": "2528864a4d883a27085c6ddd6823d9fb4843573cc9582b0b1a1da8a640cfc1cf",
+      "license": "MIT",
+      "upstream_ref": "r160",
+      "upstream_commit": "d04539a76736ff500cae883d6a38b3dd8643c548"
+    },
+    "libs/chevrotain.module.min.js": {
+      "url": "https://raw.githubusercontent.com/mrdoob/three.js/r160/examples/jsm/libs/chevrotain.module.min.js",
+      "upstream_sha256": "026047366a9bdd0961eb79857fd5d84db204589942193012aabe7e3bee381045",
+      "sha256": "026047366a9bdd0961eb79857fd5d84db204589942193012aabe7e3bee381045",
+      "license": "Apache-2.0 AND MIT",
+      "upstream_ref": "r160",
+      "upstream_commit": "d04539a76736ff500cae883d6a38b3dd8643c548",
+      "dependency_version": "9.0.1",
+      "bundled_dependencies": {
+        "regexp-to-ast": "0.5.0"
+      }
+    },
+    "libs/chevrotain-LICENSE.txt": {
+      "url": "https://raw.githubusercontent.com/Chevrotain/chevrotain/v9.0.1/LICENSE.txt",
+      "upstream_sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "license": "Apache-2.0",
+      "dependency_version": "9.0.1"
+    },
+    "libs/chevrotain-NOTICE.txt": {
+      "url": "https://raw.githubusercontent.com/Chevrotain/chevrotain/v9.0.1/NOTICE.txt",
+      "upstream_sha256": "97e05b20b001658cebc74920c269ee3a2da6eb80bc789b7c2399f77b04b72933",
+      "sha256": "97e05b20b001658cebc74920c269ee3a2da6eb80bc789b7c2399f77b04b72933",
+      "license": "Apache-2.0",
+      "dependency_version": "9.0.1"
+    },
+    "libs/regexp-to-ast-LICENSE": {
+      "url": "https://raw.githubusercontent.com/bd82/regexp-to-ast/v0.5.0/LICENSE",
+      "upstream_sha256": "ffdfd706a54ae16965504e916e4e236bc76bcd1573c6f88045daec6c1fed64c5",
+      "sha256": "ffdfd706a54ae16965504e916e4e236bc76bcd1573c6f88045daec6c1fed64c5",
+      "license": "MIT"
     }
   }
 }

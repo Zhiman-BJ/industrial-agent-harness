@@ -4,11 +4,15 @@
   "locales": {
     "zh-CN": {
       "label": "简体中文",
-      "systemLanguages": ["zh"]
+      "systemLanguages": [
+        "zh"
+      ]
     },
     "en": {
       "label": "English",
-      "systemLanguages": ["en"]
+      "systemLanguages": [
+        "en"
+      ]
     }
   },
   "messages": {
@@ -4375,6 +4379,50 @@
     "PCB 3D requires stencil support for real drill openings.": {
       "en": "PCB 3D requires stencil support for real drill openings.",
       "zh-CN": "PCB 三维视图需要图形模板缓冲支持，以显示真实钻孔。"
+    },
+    "Component models": {
+      "en": "Component models",
+      "zh-CN": "元器件模型"
+    },
+    "Show component bodies": {
+      "en": "Show component bodies",
+      "zh-CN": "显示元器件实体"
+    },
+    "Loaded models: {0}": {
+      "en": "Loaded models: {0}",
+      "zh-CN": "已加载模型：{0}"
+    },
+    "Unavailable: {0}": {
+      "en": "Unavailable: {0}",
+      "zh-CN": "不可用：{0}"
+    },
+    "Missing component models are not replaced by placeholder shapes.": {
+      "en": "Missing component models are not replaced by placeholder shapes.",
+      "zh-CN": "缺失的元器件模型不使用占位形状代替。"
+    },
+    "Some footprints have no available component model.": {
+      "en": "Some footprints have no available component model.",
+      "zh-CN": "部分封装没有可用的元器件模型。"
+    },
+    "Some component models could not be loaded within preview support.": {
+      "en": "Some component models could not be loaded within preview support.",
+      "zh-CN": "部分元器件模型不在预览支持范围内，未能加载。"
+    },
+    "Some component models exceed the display budget and are not shown.": {
+      "en": "Some component models exceed the display budget and are not shown.",
+      "zh-CN": "部分元器件模型超过显示预算，未显示。"
+    },
+    "Some component model placements are invalid; those bodies are unavailable.": {
+      "en": "Some component model placements are invalid; those bodies are unavailable.",
+      "zh-CN": "部分元器件模型的位置参数无效，无法显示实体。"
+    },
+    "Invalid PCB component model placement; assembly transform omitted.": {
+      "en": "Invalid PCB component model placement; assembly transform omitted.",
+      "zh-CN": "元器件模型的位置参数无效，已省略该装配变换。"
+    },
+    "Some component model references are unsupported or invalid; those bodies are unavailable.": {
+      "en": "Some component model references are unsupported or invalid; those bodies are unavailable.",
+      "zh-CN": "部分元器件模型引用不受支持或无效，无法显示这些实体。"
     }
   }
 }

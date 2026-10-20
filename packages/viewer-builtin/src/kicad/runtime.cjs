@@ -1,6 +1,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const { prepareModelResources, modelManifest, recheckModel } = require('./model-resources.cjs');
 
 const limits = Object.freeze({
   fileBytes: 16 * 1024 * 1024,
@@ -15,7 +16,7 @@ const hash = data => crypto.createHash('sha256').update(data).digest('hex');
 const isKiCadFile = file => ['.kicad_pcb', '.kicad_sch'].includes(path.extname(file));
 
 // Only inspect structure and sheet references here. KiCanvas owns CAD parsing/rendering.
-function inspectSource(text, extension) {
+function inspectSource(text, extension, modelReferences) {
   const expected = extension === '.kicad_pcb' ? 'kicad_pcb' : 'kicad_sch';
   const stack = [],
     sheets = [];
@@ -37,6 +38,14 @@ function inspectSource(text, extension) {
       const node = stack.pop();
       if (!node?.head) throw Error('Malformed KiCad source.');
       if (stack.length === 1 && node.head === 'version') version = Number(node.values[0]);
+      if (
+        modelReferences &&
+        node.head === 'model' &&
+        stack.at(-1)?.head === 'footprint' &&
+        typeof node.values[0] === 'string' &&
+        modelReferences.size < 256
+      )
+        modelReferences.add(node.values[0]);
       if (
         node.head === 'property' &&
         stack.at(-1)?.head === 'sheet' &&
@@ -91,7 +100,7 @@ function readBounded(file, root) {
 }
 
 const csp =
-  "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors app://viewer http://127.0.0.1:5173";
+  "default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors app://viewer http://127.0.0.1:5173";
 const headers = {
   'Cache-Control': 'no-store',
   'Content-Security-Policy': csp,
@@ -105,8 +114,25 @@ const assets = {
   'symbols.ttf': ['vendor/symbols.ttf', 'font/ttf'],
   'geometry3d.js': ['geometry3d.js', 'text/javascript'],
   'scene3d.js': ['scene3d.js', 'text/javascript'],
+  'component-loader.js': ['component-loader.js', 'text/javascript'],
+  'component-worker.js': ['component-worker.js', 'text/javascript'],
+  'component-wasm.js': ['component-wasm.js', 'text/javascript'],
+  'component-vrml.js': ['component-vrml.js', 'text/javascript'],
+  'vendor/occt-import/occt-import-js.js': [
+    'vendor/occt-import/occt-import-js.js',
+    'text/javascript',
+  ],
+  'vendor/occt-import/occt-import-js.wasm': [
+    'vendor/occt-import/occt-import-js.wasm',
+    'application/wasm',
+  ],
   'three/three.module.js': ['vendor/three/three.module.js', 'text/javascript'],
   'three/controls/OrbitControls.js': ['vendor/three/controls/OrbitControls.js', 'text/javascript'],
+  'three/loaders/VRMLLoader.js': ['vendor/three/loaders/VRMLLoader.js', 'text/javascript'],
+  'three/libs/chevrotain.module.min.js': [
+    'vendor/three/libs/chevrotain.module.min.js',
+    'text/javascript',
+  ],
 };
 
 class KiCadRuntimeManager {
@@ -121,6 +147,7 @@ class KiCadRuntimeManager {
       seen = new Set(),
       active = new Set();
     let total = 0;
+    const modelReferences = new Set();
     const visit = source => {
       if (active.has(source)) throw Error('Cyclic KiCad sheet reference.');
       if (seen.has(source)) return;
@@ -133,7 +160,11 @@ class KiCadRuntimeManager {
       if (total > limits.totalBytes) throw Error('KiCad project exceeds Viewer total size limit.');
       const name = path.relative(base, source).split(path.sep).join('/');
       sources.push({ ...entry, path: source, name });
-      const sheets = inspectSource(entry.data.toString('utf8'), path.extname(source));
+      const sheets = inspectSource(
+        entry.data.toString('utf8'),
+        path.extname(source),
+        modelReferences,
+      );
       for (const reference of sheets) {
         if (
           typeof reference !== 'string' ||
@@ -153,9 +184,11 @@ class KiCadRuntimeManager {
     };
     visit(file);
     if (sources[0].sha256 !== artifactHash) throw Error('KiCad source changed; reopen the file.');
+    const models =
+      path.extname(file) === '.kicad_pcb' ? prepareModelResources(modelReferences, file, root) : [];
     const token = crypto.randomUUID();
     this.sessions.clear();
-    this.sessions.set(token, { root, sources });
+    this.sessions.set(token, { root, sources, models });
     return {
       token,
       name: path.basename(file),
@@ -187,9 +220,17 @@ class KiCadRuntimeManager {
           '<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="embed.css"></head><body><script type="module" src="bridge.js"></script></body></html>',
           { headers: { ...headers, 'Content-Type': 'text/html' } },
         );
-      if (resource === 'manifest.json')
+      if (resource === 'manifest.json') {
+        for (const entry of session.models)
+          if (entry.status === 'ready' && !recheckModel(entry, session.root))
+            return new Response('PCB component model changed; reopen the file.', {
+              status: 409,
+              headers,
+            });
         return new Response(
           JSON.stringify({
+            boardSha256: session.sources[0].sha256,
+            models: modelManifest(session.models),
             sources: session.sources.map((entry, index) => ({
               name: entry.name,
               sha256: entry.sha256,
@@ -198,6 +239,24 @@ class KiCadRuntimeManager {
           }),
           { headers: { ...headers, 'Content-Type': 'application/json' } },
         );
+      }
+      if (/^models\/(0|[1-9]\d*)$/.test(resource)) {
+        const entry = session.models[Number(resource.split('/')[1])];
+        if (entry?.status === 'ready') {
+          if (!recheckModel(entry, session.root))
+            return new Response('PCB component model changed; reopen the file.', {
+              status: 409,
+              headers,
+            });
+          return new Response(entry.data, {
+            headers: {
+              ...headers,
+              'Content-Type':
+                entry.format === 'wrl' ? 'model/vrml; charset=utf-8' : 'application/octet-stream',
+            },
+          });
+        }
+      }
       if (/^source\/(0|[1-9]\d*)$/.test(resource)) {
         const entry = session.sources[Number(resource.split('/')[1])];
         if (entry)

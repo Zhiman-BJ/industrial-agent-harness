@@ -102,6 +102,70 @@ function syncSelection(item) {
   }
   send('selection', { selection: selectedObject });
 }
+async function loadComponentAssembly(geometry, manifest, signal, componentMatrix) {
+  const components = geometry.components || [];
+  const resources = new Map((manifest.models || []).map(entry => [entry.sourceRef, entry]));
+  const requested = new Map();
+  let missingModels = 0,
+    failedModels = 0,
+    unmodeledFootprints = 0;
+  for (const component of components) {
+    if (!component.models?.length) unmodeledFootprints++;
+    for (const model of component.models || []) {
+      if (model.hidden) continue;
+      if (component.error || model.error) {
+        failedModels++;
+        continue;
+      }
+      const entry = resources.get(model.path);
+      if (entry?.status === 'ready') requested.set(entry.id, entry);
+      else missingModels++;
+    }
+  }
+  const loaded = requested.size
+    ? await (
+        await import('./component-loader.js')
+      ).loadPcbComponentModels([...requested.values()], { signal })
+    : { assets: [], failures: [] };
+  if (signal.aborted) throw new DOMException('PCB component loading cancelled.', 'AbortError');
+  const assets = new Map(loaded.assets.map(asset => [asset.sha256, asset]));
+  const placements = [];
+  for (const component of components) {
+    for (const model of component.models || []) {
+      if (model.hidden || component.error || model.error) continue;
+      const entry = resources.get(model.path);
+      if (entry?.status !== 'ready') continue;
+      if (!assets.has(entry.sha256)) {
+        failedModels++;
+        continue;
+      }
+      try {
+        placements.push({
+          id: component.id + ':model:' + model.index,
+          footprintId: component.footprintId,
+          reference: component.reference,
+          modelHash: entry.sha256,
+          side: component.side,
+          opacity: model.opacity ?? 1,
+          matrix: componentMatrix(
+            component,
+            model,
+            ((component.side === 'back' ? -1 : 1) * geometry.board.thickness) / 2,
+          ),
+        });
+      } catch {
+        failedModels++;
+      }
+    }
+  }
+  return {
+    assets: [...assets.values()],
+    placements,
+    missingModels,
+    failedModels,
+    unmodeledFootprints,
+  };
+}
 async function changeMode(next) {
   if (!['2d', '3d'].includes(next) || !activeViewer?.viewer?.board) return;
   desiredMode = next;
@@ -118,7 +182,7 @@ async function changeMode(next) {
     const signal = buildController.signal;
     send('scene-loading', {});
     building = (async () => {
-      const [{ capturePcbGeometry }, { createPcbScene }] = await Promise.all([
+      const [{ capturePcbGeometry, componentMatrix }, { createPcbScene }] = await Promise.all([
         import('./geometry3d.js'),
         import('./scene3d.js'),
       ]);
@@ -131,6 +195,7 @@ async function changeMode(next) {
         sourceText: document.querySelector('kicanvas-source')?.textContent || '',
         sourceSha256: manifest.sources[0]?.sha256,
       });
+      const components = await loadComponentAssembly(geometry3d, manifest, signal, componentMatrix);
       if (disposed || signal.aborted) return;
       sceneHost = document.createElement('div');
       sceneHost.className = 'pcb3d-scene';
@@ -138,6 +203,7 @@ async function changeMode(next) {
       try {
         scene3d = await createPcbScene(sceneHost, geometry3d, {
           signal,
+          components,
           onSelect: syncSelection,
           onView: value => {
             scenePercent = value.percent;
@@ -169,6 +235,14 @@ async function changeMode(next) {
         document.body.dataset.pcb3d = 'ready';
         const renderStats = scene3d.stats;
         const renderWarnings = [];
+        const missingModels = renderStats.missingModels ?? components.missingModels;
+        const failedModels = renderStats.failedModels ?? components.failedModels;
+        if (missingModels || components.unmodeledFootprints)
+          renderWarnings.push('Some footprints have no available component model.');
+        if (failedModels)
+          renderWarnings.push('Some component models could not be loaded within preview support.');
+        if (renderStats.omittedModels)
+          renderWarnings.push('Some component models exceed the display budget and are not shown.');
         if (renderStats.omittedBoardBodies || renderStats.boardTopologyIncomplete)
           renderWarnings.push(
             'The board body is not displayed because its topology exceeds preview support.',
@@ -185,13 +259,24 @@ async function changeMode(next) {
           renderWarnings.push('Some geometry is unsupported; this is an incomplete preview.');
         send('scene-ready', {
           layers: geometry3d.layers.map(({ id, name, color }) => ({ id, name, color })),
-          warnings: [...geometry3d.warnings, ...renderWarnings],
+          warnings: [
+            ...geometry3d.warnings.filter(
+              warning =>
+                warning !==
+                'Component bodies are not loaded; the preview shows source board geometry and footprints.',
+            ),
+            ...renderWarnings,
+          ],
           stats: { ...geometry3d.stats, ...renderStats },
           complete: geometry3d.complete !== false && !renderWarnings.length,
           zMode: geometry3d.board.zMode,
           thickness: geometry3d.board.thickness,
-          missingModels: geometry3d.objects.filter(item => item.kind?.toLowerCase() === 'footprint')
-            .length,
+          renderedModels: renderStats.renderedModels || 0,
+          missingModels: missingModels + components.unmodeledFootprints,
+          failedModels,
+          omittedModels: renderStats.omittedModels || 0,
+          modelReferences:
+            components.placements.length + components.missingModels + components.failedModels,
         });
       } catch (error) {
         sceneHost?.remove();
@@ -246,6 +331,10 @@ window.addEventListener('message', event => {
         scene3d?.setLayers(ids);
       break;
     }
+    case 'components':
+      if (typeof event.data.args?.visible === 'boolean')
+        scene3d?.setComponentsVisible(event.data.args.visible);
+      break;
     case 'explode': {
       const value = event.data.args?.value;
       if (Number.isFinite(value) && value >= 0 && value <= 1) scene3d?.setExplode(value);

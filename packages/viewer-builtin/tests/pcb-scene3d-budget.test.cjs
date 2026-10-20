@@ -242,3 +242,212 @@ test('dense disjoint substrate holes cannot exceed the shared topology operation
   assert.equal(materials.size, 0);
   assert.equal(geometries.size, 0);
 });
+
+const modelHash = 'a'.repeat(64);
+const triangleMesh = (overrides = {}) => ({
+  positions: new Float32Array([0, 0, 1, 1, 0, 1, 0, 1, 1]),
+  normals: new Float32Array([0, 0, 1, 0, 0, 1, 0, 0, 1]),
+  indices: new Uint32Array([0, 1, 2]),
+  color: [0.8, 0.2, 0.1],
+  ...overrides,
+});
+const modelPlacement = (index, overrides = {}) => ({
+  id: `model-${index}`,
+  footprintId: `footprint-${index}`,
+  reference: `U${index}`,
+  modelHash,
+  side: 'front',
+  matrix: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, index, -5, 0.8, 1],
+  ...overrides,
+});
+
+test('real component meshes merge by source material, share hash geometry across sides, and charge every instance', async () => {
+  const { planPcbComponents } = await scene;
+  const result = await planPcbComponents(
+    {
+      assets: [{ sha256: modelHash, meshes: [triangleMesh(), triangleMesh()] }],
+      placements: [
+        modelPlacement(1),
+        modelPlacement(2),
+        modelPlacement(3, {
+          side: 'back',
+          // The native bottom transform has positive determinant; the renderer must
+          // retain this exact matrix instead of applying another Y reflection.
+          matrix: [1, 0, 0, 0, 0, -1, 0, 0, 0, 0, -1, 0, 3, -5, -0.8, 1],
+        }),
+      ],
+    },
+    { triangleBudget: 6 },
+  );
+  assert.equal(result.stats.renderedModels, 3);
+  assert.equal(result.stats.modelTriangles, 6);
+  assert.equal(result.stats.modelInstances, 3);
+  assert.equal(result.stats.modelBatches, 2);
+  assert.equal(result.stats.uniqueModels, 1);
+  assert.equal(result.stats.modelGeometryBytes, 168);
+  assert.equal(result.stats.modelInstanceBytes, 3 * 64);
+  assert.deepEqual(Array.from(result.batches[0].mesh.indices), [0, 1, 2, 3, 4, 5]);
+  assert.equal(result.batches[0].mesh.positions, result.batches[1].mesh.positions);
+  assert.equal(result.batches[0].mesh.positions[2], 1);
+  assert.deepEqual(
+    result.batches[1].placements[0].matrix,
+    [1, 0, 0, 0, 0, -1, 0, 0, 0, 0, -1, 0, 3, -5, -0.8, 1],
+  );
+});
+
+test('component triangle and draw-call limits admit entire placements instead of partial bodies', async () => {
+  const { planPcbComponents } = await scene;
+  const components = {
+    assets: [
+      { sha256: modelHash, meshes: [triangleMesh(), triangleMesh({ color: [0.1, 0.2, 0.3] })] },
+    ],
+    placements: [modelPlacement(1), modelPlacement(2), modelPlacement(3)],
+  };
+  const triangleLimited = await planPcbComponents(components, { triangleBudget: 5 });
+  assert.equal(triangleLimited.stats.renderedModels, 2);
+  assert.equal(triangleLimited.stats.omittedModels, 1);
+  assert.equal(triangleLimited.stats.modelTriangles, 4);
+  assert.equal(triangleLimited.batches.length, 2);
+  for (const batch of triangleLimited.batches) assert.equal(batch.placements.length, 2);
+  const batchLimited = await planPcbComponents(components, { maxBatches: 1 });
+  assert.equal(batchLimited.stats.renderedModels, 0);
+  assert.equal(batchLimited.stats.omittedModels, 3);
+  assert.equal(batchLimited.stats.modelGeometryBytes, 0);
+  assert.deepEqual(batchLimited.batches, []);
+});
+
+test('oversized component buffers are rejected from lengths before inspecting their invalid values', async () => {
+  const { planPcbComponents } = await scene;
+  const result = await planPcbComponents(
+    {
+      assets: [
+        {
+          sha256: modelHash,
+          meshes: [
+            triangleMesh({
+              positions: new Float32Array([NaN, 0, 0, 1, 0, 0, 0, 1, 0]),
+              indices: new Uint32Array(300000),
+            }),
+          ],
+        },
+      ],
+      placements: [modelPlacement(1)],
+    },
+    { triangleBudget: 10 },
+  );
+  assert.equal(result.stats.omittedModels, 1);
+  assert.equal(result.stats.failedModels, 0);
+  assert.deepEqual(result.batches, []);
+});
+
+test('component buffer validation and positive native transforms prevent invalid GPU submissions', async () => {
+  const { planPcbComponents } = await scene;
+  const cases = [
+    { mesh: triangleMesh({ indices: new Uint32Array([0, 1, 3]) }) },
+    { mesh: triangleMesh({ positions: new Float32Array([NaN, 0, 1, 1, 0, 1, 0, 1, 1]) }) },
+    { mesh: triangleMesh({ normals: new Float32Array(1) }) },
+    {
+      placement: modelPlacement(1, {
+        matrix: [1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 1, 0, 1, -5, 0.8, 1],
+      }),
+    },
+    {
+      placement: modelPlacement(1, { matrix: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 1, -5, 0.8, 1] }),
+    },
+  ];
+  for (const item of cases) {
+    const result = await planPcbComponents({
+      assets: [{ sha256: modelHash, meshes: [item.mesh || triangleMesh()] }],
+      placements: [item.placement || modelPlacement(1)],
+    });
+    assert.equal(result.stats.failedModels, 1);
+    assert.equal(result.stats.renderedModels, 0);
+    assert.deepEqual(result.batches, []);
+  }
+});
+
+test('per-face colors and source opacity are retained while final instance opacity forms separate batches', async () => {
+  const { planPcbComponents } = await scene;
+  const colors = new Float32Array([1, 0, 0, 0, 1, 0, 0, 0, 1]);
+  const result = await planPcbComponents({
+    assets: [
+      { sha256: modelHash, meshes: [triangleMesh({ colors, opacity: 0.5, doubleSided: true })] },
+    ],
+    placements: [modelPlacement(1), modelPlacement(2, { opacity: 0.4 })],
+  });
+  assert.equal(result.batches.length, 2);
+  assert.equal(result.batches[0].mesh.colors, colors);
+  assert.equal(result.batches[0].mesh.positions, result.batches[1].mesh.positions);
+  assert.deepEqual(
+    result.batches.map(batch => batch.opacity),
+    [0.5, 0.2],
+  );
+  assert.ok(result.batches.every(batch => batch.doubleSided));
+  assert.equal(result.stats.modelGeometryBytes, 120);
+});
+
+test('unique component GPU memory is charged once per hash and does not bypass capacity with new hashes', async () => {
+  const { planPcbComponents } = await scene;
+  const otherHash = 'b'.repeat(64);
+  const result = await planPcbComponents(
+    {
+      assets: [
+        { sha256: modelHash, meshes: [triangleMesh()] },
+        // Its bytes exceed the remaining shared capacity. NaN would be a
+        // validation failure if values were scanned before admission.
+        {
+          sha256: otherHash,
+          meshes: [triangleMesh({ positions: new Float32Array([NaN, 0, 1, 1, 0, 1, 0, 1, 1]) })],
+        },
+      ],
+      placements: [
+        modelPlacement(1),
+        modelPlacement(2),
+        modelPlacement(3, { modelHash: otherHash }),
+      ],
+      missingModels: 2,
+      failedModels: 1,
+    },
+    { maxGeometryBytes: 84 },
+  );
+  assert.equal(result.stats.renderedModels, 2);
+  assert.equal(result.stats.modelGeometryBytes, 84);
+  assert.equal(result.stats.uniqueModels, 1);
+  assert.equal(result.stats.omittedModels, 1);
+  assert.equal(result.stats.missingModels, 2);
+  assert.equal(result.stats.failedModels, 1);
+});
+
+test('component planning yields and aborts without returning partially built instances', async () => {
+  const { planPcbComponents } = await scene;
+  const controller = new AbortController();
+  const building = planPcbComponents(
+    {
+      assets: [{ sha256: modelHash, meshes: [triangleMesh()] }],
+      placements: Array.from({ length: 200 }, (_, index) => modelPlacement(index)),
+    },
+    { signal: controller.signal },
+  );
+  controller.abort();
+  await assert.rejects(building, { name: 'AbortError' });
+});
+
+test('repeated invalid assets cannot consume an unlimited component validation scan budget', async () => {
+  const { planPcbComponents } = await scene;
+  const otherHash = 'b'.repeat(64);
+  const invalid = () => triangleMesh({ indices: new Uint32Array([0, 1, 999]) });
+  const result = await planPcbComponents(
+    {
+      assets: [
+        { sha256: modelHash, meshes: [invalid()] },
+        { sha256: otherHash, meshes: [invalid()] },
+      ],
+      placements: [modelPlacement(1), modelPlacement(2, { modelHash: otherHash })],
+    },
+    { maxInspectionBytes: 84 },
+  );
+  assert.equal(result.stats.failedModels, 1);
+  assert.equal(result.stats.omittedModels, 1);
+  assert.equal(result.stats.renderedModels, 0);
+  assert.deepEqual(result.batches, []);
+});

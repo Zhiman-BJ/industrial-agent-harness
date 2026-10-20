@@ -185,17 +185,43 @@ test('vendored offline runtime and font match committed fingerprints', () => {
   );
 });
 
-test('PCB 3D serves only pinned local modules under the unchanged source and CSP boundary', async t => {
+test('PCB 3D serves pinned local workers and WASM while excluding JavaScript eval and foreign resources', async t => {
   const { write, open, manager } = setup(t);
   const file = write('board.kicad_pcb', board);
   const view = await open(file);
-  for (const asset of ['geometry3d.js', 'scene3d.js', 'three/three.module.js', 'three/controls/OrbitControls.js']) {
+  for (const asset of [
+    'geometry3d.js',
+    'scene3d.js',
+    'three/three.module.js',
+    'three/controls/OrbitControls.js',
+    'component-loader.js',
+    'component-worker.js',
+    'component-wasm.js',
+    'component-vrml.js',
+    'three/loaders/VRMLLoader.js',
+    'three/libs/chevrotain.module.min.js',
+    'vendor/occt-import/occt-import-js.js',
+  ]) {
     const response = await request(manager, view.url.replace('index.html', asset));
     assert.equal(response.status, 200, asset);
     assert.match(response.headers.get('Content-Type'), /javascript/);
-    assert.match(response.headers.get('Content-Security-Policy'), /script-src 'self';/);
+    assert.match(
+      response.headers.get('Content-Security-Policy'),
+      /script-src 'self' 'wasm-unsafe-eval';/,
+    );
+    assert.match(response.headers.get('Content-Security-Policy'), /worker-src 'self';/);
+    assert.doesNotMatch(
+      response.headers.get('Content-Security-Policy'),
+      /(?:^|\s)'unsafe-eval'(?:\s|;)/,
+    );
     assert.match(response.headers.get('Content-Security-Policy'), /connect-src 'self';/);
   }
+  const wasm = await request(
+    manager,
+    view.url.replace('index.html', 'vendor/occt-import/occt-import-js.wasm'),
+  );
+  assert.equal(wasm.status, 200);
+  assert.equal(wasm.headers.get('Content-Type'), 'application/wasm');
   for (const asset of ['three/anything.js', 'vendor/kicanvas.js', 'three/manifest.json'])
     assert.equal((await request(manager, view.url.replace('index.html', asset))).status, 404);
   fs.appendFileSync(file, '\n');
@@ -208,6 +234,8 @@ test('Three runtime matches pinned fingerprints and the documented relative impo
   for (const [name, record] of Object.entries(manifest.files))
     assert.equal(hash(fs.readFileSync(path.join(root, name))), record.sha256, name);
   const controls = fs.readFileSync(path.join(root, 'controls/OrbitControls.js'), 'utf8');
-  assert.equal(hash(controls.replace("from '../three.module.js'", "from 'three'")),
-    manifest.files['controls/OrbitControls.js'].upstream_sha256);
+  assert.equal(
+    hash(controls.replace("from '../three.module.js'", "from 'three'")),
+    manifest.files['controls/OrbitControls.js'].upstream_sha256,
+  );
 });

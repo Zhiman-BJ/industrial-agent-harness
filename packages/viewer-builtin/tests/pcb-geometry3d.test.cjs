@@ -280,3 +280,184 @@ test('physical copper mapping merges upstream pad and zone paint layers without 
   assert.equal(physicalLayer(':Pad:Holes'), null);
   assert.equal(physicalLayer('F.SilkS'), 'F.SilkS');
 });
+
+const transformPoint = (matrix, point) =>
+  [0, 1, 2].map(
+    row =>
+      matrix[row] * point[0] +
+      matrix[4 + row] * point[1] +
+      matrix[8 + row] * point[2] +
+      matrix[12 + row],
+  );
+const closePoint = (actual, expected) =>
+  actual.forEach((value, index) =>
+    assert.ok(Math.abs(value - expected[index]) < 1e-9, `${actual} != ${expected}`),
+  );
+
+test('native assembly preserves local model Y and only flips footprint board Y', async () => {
+  const { componentMatrix } = await geometry;
+  const matrix = componentMatrix(
+    { at: [4, 6], rotation: 0, side: 'front' },
+    { offset: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] },
+    2,
+  );
+  assert.equal(matrix.length, 16);
+  closePoint(transformPoint(matrix, [1, 2, 3]), [5, -4, 5]);
+  assert.deepEqual([matrix[3], matrix[7], matrix[11], matrix[15]], [0, 0, 0, 1]);
+});
+
+test('asymmetric pin-1 placement matches native front/back flip with 90-degree footprint and model rotation', async () => {
+  const { componentMatrix } = await geometry;
+  const model = { offset: [3, 4, 5], rotation: [0, 0, 90], scale: [2, 3, 4] };
+  const component = { at: [10, 20], rotation: 90 };
+  const front = componentMatrix({ ...component, side: 'front' }, model, 0.8);
+  const back = componentMatrix({ ...component, side: 'back' }, model, -0.8);
+  // Expectations are hand derived in native order: scale, negative model
+  // rotation, offset, underside flip, positive footprint rotation, translation.
+  closePoint(transformPoint(front, [1, 2, 0.5]), [8, -11, 7.8]);
+  closePoint(transformPoint(back, [1, 2, 0.5]), [12, -11, -7.8]);
+  closePoint(transformPoint(front, [0, 0, 0]), [6, -17, 5.8]);
+  closePoint(transformPoint(back, [0, 0, 0]), [14, -17, -5.8]);
+});
+
+test('model XYZ rotations apply in native negative-X then negative-Y then negative-Z order', async () => {
+  const { componentMatrix } = await geometry;
+  const matrix = componentMatrix(
+    { at: [2, 7], rotation: 0, side: 'front' },
+    { offset: [5, 6, 7], rotation: [90, 90, 90], scale: [2, 3, 4] },
+    1,
+  );
+  closePoint(transformPoint(matrix, [1, 2, 3]), [19, -7, 10]);
+});
+
+test('non-finite and unsupported component transforms cannot become plausible default placements', async () => {
+  const { componentMatrix } = await geometry;
+  const component = { at: [1, 2], rotation: 0, side: 'front' };
+  const model = { offset: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] };
+  for (const [placement, transform, surface] of [
+    [{ ...component, side: null }, model, 0.8],
+    [{ ...component, at: [NaN, 0] }, model, 0.8],
+    [{ ...component, rotation: Infinity }, model, 0.8],
+    [component, { ...model, scale: [1, 1] }, 0.8],
+    [component, { ...model, offset: [0, NaN, 0] }, 0.8],
+    [component, { ...model, error: 'unsupported units' }, 0.8],
+    [component, model, null],
+  ])
+    assert.throws(() => componentMatrix(placement, transform, surface), /Invalid PCB component/);
+});
+
+const emptyPaintEngine = {
+  NullRenderer: class {
+    dispose() {}
+  },
+  BoardLayerSet: class {
+    by_name(name) {
+      return { name };
+    }
+    dispose() {}
+  },
+  BoardPainter: class {
+    layers_for() {
+      return [];
+    }
+    paint_item() {}
+  },
+};
+
+test('component payload preserves source paths, model indices, transforms, side and distinct source occurrences', async () => {
+  const { capturePcbGeometry } = await geometry;
+  const offset = [1, 2, 3];
+  const footprints = [
+    {
+      uuid: 'repeated-source-uuid',
+      reference: 'U1',
+      at: { position: { x: 11, y: 23 }, rotation: 90 },
+      layer: 'F.Cu',
+      models: [
+        { filename: '${KIPRJMOD}/models/not-loaded.step', hide: true },
+        {
+          filename: '${KICAD10_3DMODEL_DIR}/Package.3dshapes/QFN.step',
+          offset: { xyz: offset },
+          rotate: { xyz: [10, 20, 30] },
+          scale: { xyz: [1, 2, 3] },
+          opacity: 0.4,
+        },
+      ],
+    },
+    {
+      uuid: 'repeated-source-uuid',
+      reference: 'U2',
+      at: { position: { x: 30, y: 40 }, rotation: -90 },
+      layer: 'B.Cu',
+      models: [{ filename: './as authored/model.wrl' }],
+    },
+  ];
+  const actual = await capturePcbGeometry(
+    { board: { footprints, *items() {} }, theme: {} },
+    { engine: emptyPaintEngine },
+  );
+  const [front, back] = actual.components;
+  assert.equal(front.id, front.footprintId);
+  assert.equal(front.footprintId, 'repeated-source-uuid');
+  assert.notEqual(back.footprintId, front.footprintId);
+  assert.deepEqual(front.at, [11, 23]);
+  assert.equal(front.rotation, 90);
+  assert.equal(front.side, 'front');
+  assert.equal(back.side, 'back');
+  assert.deepEqual(front.models[0], {
+    index: 0,
+    path: '${KIPRJMOD}/models/not-loaded.step',
+    offset: [0, 0, 0],
+    rotation: [0, 0, 0],
+    scale: [1, 1, 1],
+    hidden: true,
+    opacity: 1,
+  });
+  assert.equal(front.models[1].index, 1, 'hidden models retain their source index');
+  assert.equal(front.models[1].path, footprints[0].models[1].filename);
+  assert.equal(back.models[0].path, './as authored/model.wrl');
+  assert.deepEqual(front.models[1].offset, [1, 2, 3]);
+  assert.deepEqual(front.models[1].rotation, [10, 20, 30]);
+  assert.deepEqual(front.models[1].scale, [1, 2, 3]);
+  assert.equal(front.models[1].opacity, 0.4);
+  assert.notEqual(front.models[1].offset, offset);
+  assert.equal(actual.objects.filter(item => item.kind === 'Footprint').length, 2);
+  assert.match(actual.warnings.join(' '), /repeated object identifiers/);
+});
+
+test('invalid source transforms and legacy model-at offsets are explicit rather than guessed', async () => {
+  const { capturePcbGeometry } = await geometry;
+  const footprints = [
+    {
+      reference: 'U1',
+      at: { position: { x: 0, y: 0 }, rotation: 0 },
+      layer: 'F.Cu',
+      models: [
+        { filename: 'bad.step', offset: { xyz: [0, NaN, 0] } },
+        { filename: 'old.wrl' },
+        { filename: 'valid.step' },
+        { filename: 'bad-opacity.step', opacity: 2 },
+      ],
+    },
+    { reference: 'invalid-side', layer: 'User.Drawings', models: [{ filename: 'source.step' }] },
+  ];
+  const sourceText = `(kicad_pcb
+    (property "note" "(model quoted (at (xyz 1 2 3)))")
+    (footprint "U1" (at 0 0)
+      (model "bad.step" (offset (xyz 0 nan 0)))
+      (model "old.wrl" (at (xyz 1 2 3)))
+      (model "valid.step" (offset (xyz 0 0 0)))
+      (model "bad-opacity.step" (opacity 2)))
+    (footprint "invalid-side" (model "source.step")))`;
+  const actual = await capturePcbGeometry(
+    { board: { footprints, *items() {} }, theme: {} },
+    { engine: emptyPaintEngine, sourceText },
+  );
+  const [component, invalid] = actual.components;
+  assert.match(component.models[0].error, /invalid/);
+  assert.match(component.models[1].error, /Legacy model at offsets/);
+  assert.equal(component.models[2].error, undefined, 'quoted words do not mark a valid model');
+  assert.match(component.models[3].error, /invalid/);
+  assert.match(invalid.error, /position, rotation or side/);
+  assert.match(actual.warnings.join(' '), /model references are unsupported or invalid/);
+});

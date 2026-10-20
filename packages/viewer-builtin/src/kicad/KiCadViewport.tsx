@@ -42,6 +42,9 @@ export function KiCadViewport({
   const [warnings, setWarnings] = useState<string[]>([]);
   const [schematicSpacing, setSchematicSpacing] = useState(false);
   const [missingModels, setMissingModels] = useState(0);
+  const [renderedModels, setRenderedModels] = useState(0);
+  const [unavailableModels, setUnavailableModels] = useState(0);
+  const [showComponents, setShowComponents] = useState(true);
   const [incomplete, setIncomplete] = useState(false);
   useEffect(() => {
     setStatus('Loading KiCad document…');
@@ -57,6 +60,9 @@ export function KiCadViewport({
     setSelection(null);
     setWarnings([]);
     setMissingModels(0);
+    setRenderedModels(0);
+    setUnavailableModels(0);
+    setShowComponents(true);
     setIncomplete(false);
     let captureIncomplete = false;
     let complete = false;
@@ -114,6 +120,8 @@ export function KiCadViewport({
           setWarnings(event.data.warnings || []);
           setSchematicSpacing(event.data.zMode !== 'stackup');
           setMissingModels(event.data.missingModels || 0);
+          setRenderedModels(event.data.renderedModels || 0);
+          setUnavailableModels((event.data.failedModels || 0) + (event.data.omittedModels || 0));
           captureIncomplete = event.data.complete === false;
           setIncomplete(captureIncomplete);
           return;
@@ -264,6 +272,26 @@ export function KiCadViewport({
               {separation > 0 && ` ${t('Separation is for display only.')}`}
             </p>
             <div className="rp-pcb3d-layer-heading">
+              <strong>{t('Component models')}</strong>
+            </div>
+            <label className="rp-pcb3d-layer">
+              <input
+                type="checkbox"
+                checked={showComponents}
+                disabled={renderedModels === 0}
+                onChange={event => {
+                  setShowComponents(event.target.checked);
+                  command('components', { visible: event.target.checked });
+                }}
+              />
+              {t('Show component bodies')}
+            </label>
+            <p className="rp-pcb3d-note">
+              {t('Loaded models: {0}', { '0': renderedModels })}
+              {(missingModels > 0 || unavailableModels > 0) &&
+                ` · ${t('Unavailable: {0}', { '0': missingModels + unavailableModels })}`}
+            </p>
+            <div className="rp-pcb3d-layer-heading">
               <strong>{t('Layers')}</strong>
               <button onClick={() => showLayers(layers.map(layer => layer.id))}>
                 {t('Show all')}
@@ -319,7 +347,7 @@ export function KiCadViewport({
             </div>
             {missingModels > 0 && (
               <p className="rp-pcb3d-note">
-                {t('Component bodies are not loaded; pads show their actual placement.')}
+                {t('Missing component models are not replaced by placeholder shapes.')}
               </p>
             )}
             {warnings.length > 0 && (

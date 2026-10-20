@@ -14,6 +14,13 @@ const MAX_PRIMITIVE_POINTS = 32000;
 const MAX_POLYGON_POINTS = 65536;
 const MAX_BODY_POINTS = 32000;
 const MAX_TOPOLOGY_OPERATIONS = 8000000;
+const MAX_COMPONENT_BATCHES = 128;
+const MAX_COMPONENT_GEOMETRY_BYTES = 64 * 1024 * 1024;
+const MAX_COMPONENT_INSTANCE_BYTES = 16 * 1024 * 1024;
+const MAX_COMPONENT_INSPECTION_BYTES = 2 * MAX_COMPONENT_GEOMETRY_BYTES;
+const MAX_COMPONENT_ASSETS = 256;
+const MAX_COMPONENT_PLACEMENTS = 10000;
+const MAX_COMPONENT_MESHES = 2048;
 const finite = value => typeof value === 'number' && Number.isFinite(value);
 const xy = point => Array.isArray(point) && finite(point[0]) && finite(point[1]);
 const yieldFrame = () => new Promise(resolve => setTimeout(resolve, 0));
@@ -560,12 +567,288 @@ export async function buildDrillMask(holes, copperLayers, layerId, z, triangleBu
   return { complete: true, positions, contours, triangles };
 }
 
+// Worker output is checked again at the GPU boundary. A component placement is
+// admitted atomically: every material in that model must fit. Triangle cost is
+// charged per placement, while immutable geometry is shared by the source hash.
+export async function planPcbComponents(components = {}, options = {}) {
+  components ||= {};
+  const bounded = (value, fallback) =>
+    finite(value) ? clamp(Math.floor(value), 0, fallback) : fallback;
+  const triangleBudget = bounded(options.triangleBudget, MAX_TRIANGLES);
+  const maxBatches = bounded(options.maxBatches, MAX_COMPONENT_BATCHES);
+  const maxGeometryBytes = bounded(options.maxGeometryBytes, MAX_COMPONENT_GEOMETRY_BYTES);
+  const maxInspectionBytes = bounded(options.maxInspectionBytes, MAX_COMPONENT_INSPECTION_BYTES);
+  const checkCancelled = () => {
+    if (options.signal?.aborted) throw new DOMException('PCB 3D view closed.', 'AbortError');
+  };
+  let lastYield = performance.now(),
+    work = 0,
+    inspectedBytes = 0;
+  const checkpoint = async () => {
+    checkCancelled();
+    if (++work >= 64 || performance.now() - lastYield >= 8) {
+      work = 0;
+      await yieldFrame();
+      checkCancelled();
+      lastYield = performance.now();
+    }
+  };
+  const count = value => (Number.isSafeInteger(value) && value > 0 ? value : 0);
+  const stats = {
+    renderedModels: 0,
+    missingModels: count(components.missingModels),
+    failedModels: count(components.failedModels),
+    unmodeledFootprints: count(components.unmodeledFootprints),
+    omittedModels: 0,
+    modelTriangles: 0,
+    modelGeometryBytes: 0,
+    modelInstanceBytes: 0,
+    modelBatches: 0,
+    modelInstances: 0,
+    uniqueModels: 0,
+  };
+  const rawAssets = Array.isArray(components.assets) ? components.assets : [];
+  const placements = Array.isArray(components.placements) ? components.placements : [];
+  const assets = new Map(),
+    validated = new Map(),
+    admitted = new Map(),
+    placementIds = new Set();
+  for (let i = 0; i < Math.min(rawAssets.length, MAX_COMPONENT_ASSETS); i++) {
+    const asset = rawAssets[i];
+    if (
+      typeof asset?.sha256 === 'string' &&
+      /^[a-f0-9]{64}$/i.test(asset.sha256) &&
+      !assets.has(asset.sha256)
+    )
+      assets.set(asset.sha256, asset);
+  }
+  const inspectAsset = async asset => {
+    if (!Array.isArray(asset.meshes) || !asset.meshes.length) return { reason: 'invalid' };
+    if (asset.meshes.length > MAX_COMPONENT_MESHES) return { reason: 'budget' };
+    let triangles = 0,
+      bytes = 0;
+    const groups = new Map();
+    // Check lengths before visiting values or allocating merged geometry.
+    for (const mesh of asset.meshes) {
+      const { positions, normals, indices, colors } = mesh || {};
+      if (
+        !(positions instanceof Float32Array) ||
+        !(normals instanceof Float32Array) ||
+        !(indices instanceof Uint32Array) ||
+        !positions.length ||
+        positions.length % 3 ||
+        normals.length !== positions.length ||
+        !indices.length ||
+        indices.length % 3 ||
+        (colors !== undefined &&
+          (!(colors instanceof Float32Array) || colors.length !== positions.length))
+      )
+        return { reason: 'invalid' };
+      triangles += indices.length / 3;
+      bytes +=
+        positions.byteLength + normals.byteLength + indices.byteLength + (colors?.byteLength || 0);
+      if (triangles > triangleBudget || bytes > maxGeometryBytes) return { reason: 'budget' };
+      const color = mesh.color === undefined ? [0.72, 0.74, 0.76] : mesh.color;
+      if (
+        !Array.isArray(color) ||
+        color.length !== 3 ||
+        !color.every(value => finite(value) && value >= 0 && value <= 1)
+      )
+        return { reason: 'invalid' };
+      const opacity = mesh.opacity ?? 1;
+      const doubleSided = mesh.doubleSided ?? false;
+      if (!finite(opacity) || opacity < 0 || opacity > 1 || typeof doubleSided !== 'boolean')
+        return { reason: 'invalid' };
+      const key = `${color.join(',')}:${Boolean(colors)}:${opacity}:${doubleSided}`;
+      const group = groups.get(key) || {
+        key,
+        color,
+        opacity,
+        doubleSided,
+        meshes: [],
+        vertices: 0,
+        indices: 0,
+        hasColors: Boolean(colors),
+      };
+      group.meshes.push(mesh);
+      group.vertices += positions.length / 3;
+      group.indices += indices.length;
+      groups.set(key, group);
+      if (groups.size > maxBatches) return { reason: 'budget' };
+    }
+    return { triangles, bytes, groups: [...groups.values()] };
+  };
+  const validateValues = async model => {
+    for (const group of model.groups) {
+      for (const mesh of group.meshes) {
+        for (const array of [mesh.positions, mesh.normals, ...(mesh.colors ? [mesh.colors] : [])]) {
+          for (let i = 0; i < array.length; i++) {
+            if (
+              !finite(array[i]) ||
+              Math.abs(array[i]) > 1000000 ||
+              (array === mesh.colors && (array[i] < 0 || array[i] > 1))
+            )
+              return false;
+            if (i % 16384 === 0) await checkpoint();
+          }
+        }
+        for (let i = 0; i < mesh.indices.length; i++) {
+          if (mesh.indices[i] >= mesh.positions.length / 3) return false;
+          if (i % 16384 === 0) await checkpoint();
+        }
+      }
+    }
+    return true;
+  };
+  const validMatrix = matrix => {
+    if (
+      (!Array.isArray(matrix) &&
+        !(matrix instanceof Float32Array) &&
+        !(matrix instanceof Float64Array)) ||
+      matrix.length !== 16 ||
+      !Array.from(matrix).every(value => finite(value) && Math.abs(value) <= 1000000) ||
+      Math.abs(matrix[3]) > 1e-8 ||
+      Math.abs(matrix[7]) > 1e-8 ||
+      Math.abs(matrix[11]) > 1e-8 ||
+      Math.abs(matrix[15] - 1) > 1e-8
+    )
+      return false;
+    // KiCad-to-display conversion is already present in the supplied native
+    // model matrix. An extra Y reflection would invert winding and placement.
+    return new THREE.Matrix4().fromArray(matrix).determinant() > 1e-12;
+  };
+  stats.omittedModels += Math.max(0, placements.length - MAX_COMPONENT_PLACEMENTS);
+  for (let i = 0; i < Math.min(placements.length, MAX_COMPONENT_PLACEMENTS); i++) {
+    await checkpoint();
+    const placement = placements[i];
+    if (
+      typeof placement?.id !== 'string' ||
+      !placement.id ||
+      typeof placement.footprintId !== 'string' ||
+      !placement.footprintId ||
+      placementIds.has(placement.id) ||
+      !['front', 'back'].includes(placement.side) ||
+      !validMatrix(placement.matrix) ||
+      !finite(placement.opacity ?? 1) ||
+      (placement.opacity ?? 1) < 0 ||
+      (placement.opacity ?? 1) > 1
+    ) {
+      stats.failedModels++;
+      continue;
+    }
+    placementIds.add(placement.id);
+    const asset = assets.get(placement.modelHash);
+    if (!asset) {
+      // The loader normally reports unavailable models before making placements.
+      // A placement referring to an absent asset is still explicitly incomplete.
+      if (rawAssets.length > MAX_COMPONENT_ASSETS) stats.omittedModels++;
+      else stats.missingModels++;
+      continue;
+    }
+    if (!validated.has(asset.sha256)) validated.set(asset.sha256, await inspectAsset(asset));
+    const model = validated.get(asset.sha256);
+    if (model.reason) {
+      if (model.reason === 'budget') stats.omittedModels++;
+      else stats.failedModels++;
+      continue;
+    }
+    const previous = admitted.get(asset.sha256);
+    const batchKey = `${placement.side}:${placement.opacity ?? 1}`;
+    const newSide = !previous?.sides.has(batchKey);
+    if (
+      stats.modelTriangles + model.triangles > triangleBudget ||
+      (!previous && stats.modelGeometryBytes + model.bytes > maxGeometryBytes) ||
+      stats.modelInstanceBytes + model.groups.length * 64 > MAX_COMPONENT_INSTANCE_BYTES ||
+      stats.modelBatches + (newSide ? model.groups.length : 0) > maxBatches
+    ) {
+      stats.omittedModels++;
+      continue;
+    }
+    // Do not scan rejected assets' potentially large buffers after the shared
+    // scene capacity has already been exhausted.
+    if (!model.checked) {
+      if (inspectedBytes + model.bytes > maxInspectionBytes) {
+        model.reason = 'budget';
+        stats.omittedModels++;
+        continue;
+      }
+      inspectedBytes += model.bytes;
+      if (!(await validateValues(model))) {
+        model.reason = 'invalid';
+        stats.failedModels++;
+        continue;
+      }
+      model.checked = true;
+    }
+    const entry = previous || { hash: asset.sha256, ...model, sides: new Map() };
+    if (!previous) {
+      admitted.set(asset.sha256, entry);
+      stats.modelGeometryBytes += model.bytes;
+      stats.uniqueModels++;
+    }
+    if (newSide) {
+      entry.sides.set(batchKey, []);
+      stats.modelBatches += model.groups.length;
+    }
+    entry.sides.get(batchKey).push({ ...placement, matrix: Array.from(placement.matrix) });
+    stats.renderedModels++;
+    stats.modelTriangles += model.triangles;
+    stats.modelInstances += model.groups.length;
+    stats.modelInstanceBytes += model.groups.length * 16 * Float32Array.BYTES_PER_ELEMENT;
+  }
+  const batches = [];
+  for (const entry of admitted.values()) {
+    for (const group of entry.groups) {
+      await checkpoint();
+      let mesh;
+      if (group.meshes.length === 1) mesh = group.meshes[0];
+      else {
+        mesh = {
+          positions: new Float32Array(group.vertices * 3),
+          normals: new Float32Array(group.vertices * 3),
+          indices: new Uint32Array(group.indices),
+          ...(group.hasColors ? { colors: new Float32Array(group.vertices * 3) } : {}),
+        };
+        let vertexOffset = 0,
+          indexOffset = 0;
+        for (const part of group.meshes) {
+          mesh.positions.set(part.positions, vertexOffset * 3);
+          mesh.normals.set(part.normals, vertexOffset * 3);
+          if (group.hasColors) mesh.colors.set(part.colors, vertexOffset * 3);
+          for (let i = 0; i < part.indices.length; i++) {
+            mesh.indices[indexOffset + i] = part.indices[i] + vertexOffset;
+            if (i % 16384 === 0) await checkpoint();
+          }
+          vertexOffset += part.positions.length / 3;
+          indexOffset += part.indices.length;
+          await checkpoint();
+        }
+      }
+      const geometryKey = `${entry.hash}:${group.key}`;
+      for (const instances of entry.sides.values())
+        batches.push({
+          hash: entry.hash,
+          geometryKey,
+          side: instances[0].side,
+          opacity: group.opacity * (instances[0].opacity ?? 1),
+          doubleSided: group.doubleSided,
+          mesh: { ...mesh, color: group.color },
+          placements: instances,
+        });
+    }
+  }
+  checkCancelled();
+  return { batches, stats };
+}
+
 export async function createPcbScene(container, input, callbacks = {}) {
   if (input?.version !== 1 || input.units !== 'mm' || !Array.isArray(input.layers))
     throw Error('Unsupported PCB 3D geometry.');
   const { signal } = callbacks;
+  let buildInvalid = false;
   const checkCancelled = () => {
-    if (signal?.aborted) throw new DOMException('PCB 3D view closed.', 'AbortError');
+    if (signal?.aborted || buildInvalid)
+      throw new DOMException('PCB 3D view closed.', 'AbortError');
   };
   checkCancelled();
   const started = performance.now(),
@@ -605,7 +888,9 @@ export async function createPcbScene(container, input, callbacks = {}) {
     camera = new THREE.PerspectiveCamera(38, 1, 0.01, 10000);
   camera.up.set(0, 0, 1);
   const content = new THREE.Group();
-  const boardMeshes = [];
+  const boardMeshes = [],
+    componentBatches = [];
+  let componentsVisible = true;
   scene.add(content);
   const highlight = new THREE.Group();
   scene.add(highlight);
@@ -698,6 +983,10 @@ export async function createPcbScene(container, input, callbacks = {}) {
       pcb3dTriangles: String(counters.triangles),
       pcb3dDrawCalls: String(renderer.info.render.calls),
       pcb3dSceneId: sceneId,
+      pcb3dComponentsVisible: String(componentsVisible),
+      pcb3dRenderedModels: String(counters.renderedModels || 0),
+      pcb3dModelBatches: String(counters.modelBatches || 0),
+      pcb3dModelTriangles: String(counters.modelTriangles || 0),
     };
     Object.assign(container.dataset, values);
     Object.assign(renderer.domElement.dataset, values);
@@ -707,6 +996,7 @@ export async function createPcbScene(container, input, callbacks = {}) {
     if (
       disposed ||
       lost ||
+      builtAt === undefined ||
       !container.isConnected ||
       !container.clientWidth ||
       !container.clientHeight
@@ -790,18 +1080,36 @@ export async function createPcbScene(container, input, callbacks = {}) {
       mesh.renderOrder = 10001 + layer.index * 2;
       highlight.add(mesh);
     }
+    if (componentsVisible) {
+      for (const batch of componentBatches) {
+        if (!batch.mesh.visible) continue;
+        batch.mesh.updateWorldMatrix(true, false);
+        for (let index = 0; index < batch.placements.length; index++) {
+          const placement = batch.placements[index];
+          if (placement.footprintId !== selectedId) continue;
+          const mesh = new THREE.Mesh(batch.mesh.geometry, highlightMaterial);
+          mesh.userData.sharedGeometry = true;
+          batch.mesh.getMatrixAt(index, mesh.matrix);
+          mesh.matrix.premultiply(batch.mesh.matrixWorld);
+          mesh.matrixAutoUpdate = false;
+          mesh.renderOrder = 20000;
+          highlight.add(mesh);
+        }
+      }
+    }
   };
-  const choose = (objectId, layerId, report = true) => {
+  const choose = (objectId, layerId, report = true, provenance) => {
     const object = objectMap.get(objectId);
     selectedId = object?.id || null;
     selectedNet = Number.isInteger(object?.net) && object.net > 0 ? object.net : null;
     updateHighlight();
     requestDraw();
-    if (report) callbacks.onSelect?.(object ? { ...object, layerId } : null);
+    if (report) callbacks.onSelect?.(object ? { ...object, ...provenance, layerId } : null);
   };
   const dispose = () => {
     if (disposed) return;
     disposed = true;
+    buildInvalid = true;
     if (raf) cancelAnimationFrame(raf);
     observer?.disconnect();
     controls?.dispose();
@@ -812,6 +1120,7 @@ export async function createPcbScene(container, input, callbacks = {}) {
       renderer.domElement.remove();
     }
     clearHighlight();
+    for (const batch of componentBatches) batch.mesh.dispose();
     for (const geometry of geometries) geometry.dispose();
     for (const material of materials) material.dispose();
     renderer?.dispose();
@@ -821,6 +1130,7 @@ export async function createPcbScene(container, input, callbacks = {}) {
   const contextLost = event => {
     event.preventDefault();
     lost = true;
+    buildInvalid = true;
     if (raf) cancelAnimationFrame(raf);
     raf = 0;
     container.dataset.pcb3dReady = 'false';
@@ -830,6 +1140,27 @@ export async function createPcbScene(container, input, callbacks = {}) {
   let down;
   const pointerDown = event => {
     down = { x: event.clientX, y: event.clientY, button: event.button };
+  };
+  const visibleHit = () => {
+    scene.updateMatrixWorld(true);
+    camera.updateMatrixWorld(true);
+    raycaster.setFromCamera(pointer, camera);
+    const hits = raycaster.intersectObjects(
+      [
+        ...[...layers.values()].filter(layer => layer.mesh.visible).map(layer => layer.mesh),
+        ...boardMeshes,
+        ...componentBatches.filter(batch => batch.mesh.visible).map(batch => batch.mesh),
+      ],
+      false,
+    );
+    // Apply the same drill openings as the GPU mask before accepting a hit.
+    return hits.find(candidate => {
+      const layer = layers.get(candidate.object.userData.layerId);
+      if (!layer) return true;
+      return !layer.drillContours.some(contour =>
+        inside([candidate.point.x, -candidate.point.y], contour),
+      );
+    });
   };
   const pointerUp = event => {
     if (
@@ -844,23 +1175,17 @@ export async function createPcbScene(container, input, callbacks = {}) {
       ((event.clientX - rect.left) / rect.width) * 2 - 1,
       (-(event.clientY - rect.top) / rect.height) * 2 + 1,
     );
-    raycaster.setFromCamera(pointer, camera);
-    const hits = raycaster.intersectObjects(
-      [
-        ...[...layers.values()].filter(layer => layer.mesh.visible).map(layer => layer.mesh),
-        ...boardMeshes,
-      ],
-      false,
-    );
-    // Apply the same drill openings as the GPU mask before accepting a hit.
-    const hit = hits.find(candidate => {
-      const layer = layers.get(candidate.object.userData.layerId);
-      if (!layer) return true;
-      return !layer.drillContours.some(contour =>
-        inside([candidate.point.x, -candidate.point.y], contour),
-      );
-    });
+    const hit = visibleHit();
     if (!hit || !Number.isInteger(hit.faceIndex)) return choose(null);
+    const component = hit.object.userData.componentBatch;
+    if (component && Number.isInteger(hit.instanceId)) {
+      const placement = component.placements[hit.instanceId];
+      return choose(placement.footprintId, component.side === 'back' ? 'B.Cu' : 'F.Cu', true, {
+        componentId: placement.id,
+        modelHash: placement.modelHash,
+        footprintId: placement.footprintId,
+      });
+    }
     const layer = layers.get(hit.object.userData.layerId);
     if (!layer) return choose(null);
     let lo = 0,
@@ -1047,6 +1372,79 @@ export async function createPcbScene(container, input, callbacks = {}) {
         index: layerIndex,
       });
     }
+    const componentPlan = await planPcbComponents(callbacks.components, {
+      triangleBudget: MAX_TRIANGLES - counters.triangles,
+      signal,
+    });
+    checkCancelled();
+    Object.assign(counters, componentPlan.stats);
+    counters.triangles += componentPlan.stats.modelTriangles;
+    const componentGeometry = new Map(),
+      componentMaterials = new Map();
+    for (const batch of componentPlan.batches) {
+      checkCancelled();
+      let geometry = componentGeometry.get(batch.geometryKey);
+      if (!geometry) {
+        geometry = new THREE.BufferGeometry();
+        geometries.add(geometry);
+        geometry.setAttribute('position', new THREE.BufferAttribute(batch.mesh.positions, 3));
+        geometry.setAttribute('normal', new THREE.BufferAttribute(batch.mesh.normals, 3));
+        if (batch.mesh.colors)
+          geometry.setAttribute('color', new THREE.BufferAttribute(batch.mesh.colors, 3));
+        geometry.setIndex(new THREE.BufferAttribute(batch.mesh.indices, 1));
+        geometry.computeBoundingBox();
+        geometry.computeBoundingSphere();
+        componentGeometry.set(batch.geometryKey, geometry);
+      }
+      const materialKey = `${batch.geometryKey}:${batch.opacity}:${batch.doubleSided}`;
+      let material = componentMaterials.get(materialKey);
+      if (!material) {
+        material = new THREE.MeshStandardMaterial({
+          color: batch.mesh.colors ? 0xffffff : new THREE.Color(...batch.mesh.color),
+          vertexColors: Boolean(batch.mesh.colors),
+          roughness: 0.62,
+          metalness: 0.12,
+          opacity: batch.opacity,
+          transparent: batch.opacity < 1,
+          depthWrite: batch.opacity >= 1,
+          side: batch.doubleSided ? THREE.DoubleSide : THREE.FrontSide,
+        });
+        materials.add(material);
+        componentMaterials.set(materialKey, material);
+      }
+      const mesh = new THREE.InstancedMesh(geometry, material, batch.placements.length);
+      const sourceLayer = copperOrder.find(
+        layer => layer.name === (batch.side === 'back' ? 'B.Cu' : 'F.Cu'),
+      );
+      const rank = sourceLayer ? layerRank(sourceLayer) : batch.side === 'back' ? -0.5 : 0.5;
+      const rendered = { mesh, placements: batch.placements, side: batch.side, rank };
+      componentBatches.push(rendered);
+      mesh.userData.componentBatch = rendered;
+      mesh.renderOrder = 1000;
+      mesh.visible = batch.opacity > 0;
+      const matrix = new THREE.Matrix4();
+      for (let index = 0; index < batch.placements.length; index++) {
+        const placement = batch.placements[index];
+        mesh.setMatrixAt(index, matrix.fromArray(placement.matrix));
+        if (!objectMap.has(placement.footprintId))
+          objectMap.set(placement.footprintId, {
+            id: placement.footprintId,
+            sourceId: placement.footprintId,
+            kind: 'Footprint',
+            reference: placement.reference,
+            label: placement.reference || placement.footprintId,
+            footprintId: placement.footprintId,
+          });
+        if (index % 128 === 0) {
+          await yieldFrame();
+          checkCancelled();
+        }
+      }
+      mesh.instanceMatrix.needsUpdate = true;
+      mesh.computeBoundingBox();
+      mesh.computeBoundingSphere();
+      content.add(mesh);
+    }
     const box = new THREE.Box3().setFromObject(content);
     if (box.isEmpty()) throw Error('PCB has no supported 3D display geometry.');
     box.getSize(size);
@@ -1054,6 +1452,17 @@ export async function createPcbScene(container, input, callbacks = {}) {
     radius = Math.max(size.length() / 2, 0.01);
     target.copy(center);
     const setView = preset => {
+      // Refit actual visible objects, including the current exploded component
+      // positions; hidden components do not enlarge the navigation frame.
+      const visibleBox = new THREE.Box3();
+      content.updateMatrixWorld(true);
+      for (const child of content.children)
+        if (child.visible) visibleBox.union(new THREE.Box3().setFromObject(child));
+      if (!visibleBox.isEmpty()) {
+        visibleBox.getSize(size);
+        visibleBox.getCenter(target);
+        radius = Math.max(size.length() / 2, 0.01);
+      }
       const direction =
         preset === 'top'
           ? new THREE.Vector3(0, -0.001, 1)
@@ -1095,12 +1504,21 @@ export async function createPcbScene(container, input, callbacks = {}) {
         updateHighlight();
         requestDraw();
       },
+      setComponentsVisible(value) {
+        componentsVisible = Boolean(value);
+        for (const batch of componentBatches)
+          batch.mesh.visible = componentsVisible && batch.mesh.material.opacity > 0;
+        updateHighlight();
+        requestDraw();
+      },
       setExplode(value) {
         explode = clamp(Number(value) || 0, 0, 1);
         for (const layer of layers.values()) {
           layer.mesh.position.z = layer.rank * modelSpan * 0.035 * explode;
           if (layer.maskMesh) layer.maskMesh.position.copy(layer.mesh.position);
         }
+        for (const batch of componentBatches)
+          batch.mesh.position.z = batch.rank * modelSpan * 0.035 * explode;
         updateHighlight();
         requestDraw();
       },
@@ -1130,6 +1548,7 @@ export async function createPcbScene(container, input, callbacks = {}) {
           percent: percent(),
           selectedId,
           visibleLayers: [...visibleLayers],
+          componentsVisible,
           explode,
           camera: camera.position.toArray(),
           target: controls.target.toArray(),
@@ -1137,6 +1556,60 @@ export async function createPcbScene(container, input, callbacks = {}) {
         };
       },
       projectObject(id) {
+        scene.updateMatrixWorld(true);
+        camera.updateMatrixWorld(true);
+        // Return a real visible surface point. A model's first triangle may be
+        // its underside, so confirm the camera ray hits the same source model.
+        for (const batch of componentBatches) {
+          if (!batch.mesh.visible) continue;
+          for (let instance = 0; instance < batch.placements.length; instance++) {
+            const placement = batch.placements[instance];
+            if (placement.id !== id && placement.footprintId !== id) continue;
+            const geometry = batch.mesh.geometry;
+            const matrix = new THREE.Matrix4();
+            batch.mesh.getMatrixAt(instance, matrix);
+            matrix.premultiply(batch.mesh.matrixWorld);
+            const triangleCount = geometry.index.count / 3;
+            const stride = Math.max(1, Math.floor(triangleCount / 48));
+            for (
+              let triangle = 0, tested = 0;
+              triangle < triangleCount && tested < 48;
+              triangle += stride, tested++
+            ) {
+              const point = new THREE.Vector3();
+              for (let vertex = 0; vertex < 3; vertex++)
+                point.add(
+                  new THREE.Vector3().fromBufferAttribute(
+                    geometry.attributes.position,
+                    geometry.index.getX(triangle * 3 + vertex),
+                  ),
+                );
+              point
+                .multiplyScalar(1 / 3)
+                .applyMatrix4(matrix)
+                .project(camera);
+              if (point.z < -1 || point.z > 1 || Math.abs(point.x) > 1 || Math.abs(point.y) > 1)
+                continue;
+              pointer.set(point.x, point.y);
+              const hit = visibleHit();
+              const hitBatch = hit?.object.userData.componentBatch;
+              if (
+                !hitBatch ||
+                !Number.isInteger(hit.instanceId) ||
+                hitBatch.placements[hit.instanceId].id !== placement.id
+              )
+                continue;
+              return {
+                x: ((point.x + 1) / 2) * renderer.domElement.clientWidth,
+                y: ((1 - point.y) / 2) * renderer.domElement.clientHeight,
+                componentId: placement.id,
+                footprintId: placement.footprintId,
+                modelHash: placement.modelHash,
+                layerId: batch.side === 'back' ? 'B.Cu' : 'F.Cu',
+              };
+            }
+          }
+        }
         for (const layer of layers.values()) {
           if (!layer.mesh.visible) continue;
           const range = layer.ranges.find(item => item.id === id);

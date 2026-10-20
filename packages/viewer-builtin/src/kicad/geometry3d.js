@@ -14,6 +14,70 @@ const abort = signal => {
 };
 const pause = () => new Promise(resolve => setTimeout(resolve, 0));
 
+const identity4 = () => [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
+function multiply4(a, b) {
+  const result = Array(16).fill(0);
+  for (let column = 0; column < 4; column++)
+    for (let row = 0; row < 4; row++)
+      for (let k = 0; k < 4; k++) result[column * 4 + row] += a[k * 4 + row] * b[column * 4 + k];
+  return result;
+}
+function rotation4(axis, degrees) {
+  const angle = (degrees * Math.PI) / 180,
+    c = Math.cos(angle),
+    s = Math.sin(angle);
+  if (axis === 'x') return [1, 0, 0, 0, 0, c, s, 0, 0, -s, c, 0, 0, 0, 0, 1];
+  if (axis === 'y') return [c, 0, -s, 0, 0, 1, 0, 0, s, 0, c, 0, 0, 0, 0, 1];
+  return [c, s, 0, 0, -s, c, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
+}
+const vector3 = value => Array.isArray(value) && value.length === 3 && value.every(finite);
+
+/**
+ * KiCad's native assembly transform, as a column-major matrix, in millimetres.
+ * Assets must already use KiCad's right-handed model coordinates in mm. Only
+ * the footprint's board Y is inverted; model-local Y must not be reflected.
+ * Matches KiCad 10.0.6 RENDER_3D_OPENGL::get3dModelsFromFootprint.
+ */
+export function componentMatrix(component, model, zSurface) {
+  if (
+    component?.error ||
+    model?.error ||
+    !Array.isArray(component?.at) ||
+    component.at.length !== 2 ||
+    !component.at.every(finite) ||
+    !finite(component.rotation) ||
+    !['front', 'back'].includes(component.side) ||
+    !finite(zSurface) ||
+    !vector3(model?.offset) ||
+    !vector3(model?.rotation) ||
+    !vector3(model?.scale)
+  )
+    throw Error('Invalid PCB component model placement; assembly transform omitted.');
+  let matrix = identity4();
+  matrix[12] = component.at[0];
+  matrix[13] = -component.at[1];
+  matrix[14] = zSurface;
+  matrix = multiply4(matrix, rotation4('z', component.rotation));
+  if (component.side === 'back') {
+    matrix = multiply4(matrix, rotation4('y', 180));
+    matrix = multiply4(matrix, rotation4('z', 180));
+  }
+  const translation = identity4();
+  translation.splice(12, 3, ...model.offset);
+  matrix = multiply4(matrix, translation);
+  for (const [axis, index] of [
+    ['z', 2],
+    ['y', 1],
+    ['x', 0],
+  ])
+    matrix = multiply4(matrix, rotation4(axis, -model.rotation[index]));
+  const scale = identity4();
+  scale[0] = model.scale[0];
+  scale[5] = model.scale[1];
+  scale[10] = model.scale[2];
+  return multiply4(matrix, scale);
+}
+
 /** Map KiCanvas virtual paint layers to the physical layer they represent. */
 export function physicalLayer(name) {
   if (name === ':Pads:Front') return 'F.Cu';
@@ -178,11 +242,11 @@ export function stitchOutline(paths, tolerance = 0.001, maxPoints = DEFAULT_LIMI
   return { outline, warnings };
 }
 
-/** Read physical copper positions only when every dielectric/copper thickness exists. */
-export function stackupPositions(board, sourceText = '') {
-  const layers = board.layers || [];
+function inspectSourceFeatures(sourceText = '') {
   let declaredThickness = false;
   let unsupportedSublayers = false;
+  let footprintIndex = -1;
+  const legacyModelOffsets = new Set();
   const sourceHeads = [];
   // Only detect declaration presence and syntax the pinned upstream parser does
   // not retain. Values and CAD semantics remain owned by that parser. In
@@ -197,6 +261,21 @@ export function stackupPositions(board, sourceText = '') {
       if (!current) continue;
       const isHead = current.head === null;
       if (isHead) current.head = token;
+      if (isHead && sourceHeads[0].head === 'kicad_pcb') {
+        if (sourceHeads.length === 2 && token === 'footprint') {
+          current.footprintIndex = ++footprintIndex;
+          current.modelCount = 0;
+        }
+        if (sourceHeads.length === 3 && sourceHeads[1].head === 'footprint' && token === 'model')
+          current.modelIndex = sourceHeads[1].modelCount++;
+        if (
+          sourceHeads.length === 4 &&
+          sourceHeads[1].head === 'footprint' &&
+          sourceHeads[2].head === 'model' &&
+          token === 'at'
+        )
+          legacyModelOffsets.add(`${sourceHeads[1].footprintIndex}:${sourceHeads[2].modelIndex}`);
+      }
       if (
         isHead &&
         sourceHeads.length === 3 &&
@@ -226,6 +305,17 @@ export function stackupPositions(board, sourceText = '') {
       }
     }
   }
+  return { declaredThickness, unsupportedSublayers, legacyModelOffsets };
+}
+
+/** Read physical copper positions only when every dielectric/copper thickness exists. */
+export function stackupPositions(
+  board,
+  sourceText = '',
+  features = inspectSourceFeatures(sourceText),
+) {
+  const layers = board.layers || [];
+  const { declaredThickness, unsupportedSublayers } = features;
   let thickness = declaredThickness ? board.general?.thickness : null;
   if (!(finite(thickness) && thickness > 0)) thickness = null;
   const stack = (board.setup?.stackup?.layers || []).filter(
@@ -328,7 +418,8 @@ export async function capturePcbGeometry(viewer, options = {}) {
   for (const key of Object.keys(DEFAULT_LIMITS))
     if (!Number.isInteger(limits[key]) || limits[key] < 1 || limits[key] > DEFAULT_LIMITS[key])
       throw Error('Invalid PCB display geometry budget.');
-  const stack = stackupPositions(board, options.sourceText);
+  const features = inspectSourceFeatures(options.sourceText);
+  const stack = stackupPositions(board, options.sourceText, features);
   const warnings = new Set(stack.warnings),
     objects = new Map(),
     itemIds = new WeakMap(),
@@ -680,6 +771,68 @@ export async function capturePcbGeometry(viewer, options = {}) {
     const layers = [...outputLayers.values()].sort(
       (a, b) => (sourceOrder.get(a.id) ?? 1000) - (sourceOrder.get(b.id) ?? 1000),
     );
+    // Preserve model references and local transforms exactly as parsed. Loading
+    // bounded project assets belongs to the host, never to the source painter.
+    const components = (board.footprints || []).map((footprint, footprintIndex) => {
+      const footprintId = idFor(footprint);
+      const component = {
+        id: footprintId,
+        footprintId,
+        reference: footprint.reference || null,
+        at: [footprint.at?.position?.x ?? null, footprint.at?.position?.y ?? null],
+        rotation: footprint.at?.rotation ?? null,
+        side: footprint.layer === 'F.Cu' ? 'front' : footprint.layer === 'B.Cu' ? 'back' : null,
+        models: [],
+      };
+      if (!component.at.every(finite) || !finite(component.rotation) || !component.side) {
+        component.error = 'The source footprint position, rotation or side is invalid.';
+        warnings.add('Some component model placements are invalid; those bodies are unavailable.');
+      }
+      if (!objects.has(footprintId))
+        objects.set(footprintId, {
+          id: footprintId,
+          sourceId: footprint.unique_id || footprint.uuid || footprint.tstamp || null,
+          kind: 'Footprint',
+          label: component.reference || 'Footprint',
+          reference: component.reference,
+          footprintId: null,
+          net: null,
+          netName: null,
+        });
+      component.models = (footprint.models || []).map((source, index) => {
+        const model = {
+          index,
+          path: source.filename,
+          offset: source.offset === undefined ? [0, 0, 0] : source.offset?.xyz,
+          rotation: source.rotate === undefined ? [0, 0, 0] : source.rotate?.xyz,
+          scale: source.scale === undefined ? [1, 1, 1] : source.scale?.xyz,
+          hidden: source.hide === true,
+          opacity: source.opacity === undefined ? 1 : source.opacity,
+        };
+        if (features.legacyModelOffsets.has(`${footprintIndex}:${index}`))
+          model.error = 'Legacy model at offsets are unsupported by the pinned KiCanvas parser.';
+        else if (
+          typeof model.path !== 'string' ||
+          !model.path.length ||
+          !vector3(model.offset) ||
+          !vector3(model.rotation) ||
+          !vector3(model.scale) ||
+          !Number.isFinite(model.opacity) ||
+          model.opacity < 0 ||
+          model.opacity > 1
+        )
+          model.error = 'The source model path, transform or opacity is invalid.';
+        if (model.error && !model.hidden)
+          warnings.add(
+            'Some component model references are unsupported or invalid; those bodies are unavailable.',
+          );
+        // Do not share mutable arrays with the parsed document.
+        for (const field of ['offset', 'rotation', 'scale'])
+          if (Array.isArray(model[field])) model[field] = [...model[field]];
+        return model;
+      });
+      return component;
+    });
     return {
       version: 1,
       units: 'mm',
@@ -698,6 +851,7 @@ export async function capturePcbGeometry(viewer, options = {}) {
       layers,
       holes: [...holes.values()],
       objects: [...objects.values()],
+      components,
       warnings: [...warnings],
       stats,
     };
