@@ -2,6 +2,8 @@
 
 最新结论（2026-10-20）：真实 TaskService/Kimi、正常账号登录及部署远端 CAD 的完整链路已通过，仅模型服务使用本地 mock。一次远端批量授权、一次本地编辑授权，两次 CAD 验证及自动重同步成功，远端释放与本地清理完成。见[最终验收说明](current-user-and-model-mock-20261020.md)和[保留证据](live-acceptance-20261020/README.md)。
 
+Electron 点击验收单独记为 **blocked**：2026-10-20 05:35 UTC 的当前源码构建通过，但一次有界 Electron 启动仍收到 `SIGABRT`，没有可点击的 Harness 窗口。见[本轮启动探测](electron-click-readiness-20261020.json)；点击步骤与证据要求见 [QA 远程执行手册](../../qa-runbook/remote-execution.md)。服务层通过不能替代该项。
+
 以下保留早期源码与受控集成检查记录；其中当时的阻塞不代表最新验收状态。
 
 日期：2026-10-19；2026-10-20 合入 main `073e72a` 后复验。范围：本地源码实现及受控协议集成；未部署到生产服务。
