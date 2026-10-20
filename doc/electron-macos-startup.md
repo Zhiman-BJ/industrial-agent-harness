@@ -17,6 +17,18 @@ pnpm install --frozen-lockfile
 pnpm --filter @industrial-agent-harness/desktop build
 ```
 
+### GDS / OASIS Viewer 依赖
+
+源码构建不会自动创建 KLayout Python 环境。每个新工作树在打开 GDS / OASIS 前需运行：
+
+```sh
+pnpm --filter @industrial-agent-harness/desktop setup:layout
+```
+
+该脚本以标准 `venv --copies` 在当前工作树的 `apps/desktop/.venv-klayout/` 创建独立虚拟环境并安装固定版本 `klayout==0.30.12`，不修改全局 Python。解释器使用常规文件副本，避免新建环境中的 Python 符号链接触发源码契约；该环境仍依赖创建时的兼容 Python 运行时，不承诺可跨机器搬移。该目录被 Git 忽略，因此切换到新工作树后，即使另一工作树已安装，也仍需为当前工作树准备依赖；不会隐式搜索或复用其他工作树的虚拟环境。
+
+若窗口已打开并提示 `KLayout Python is unavailable`，安装完成后关闭该文件预览，再从项目文件树重新打开。主进程会重新检查当前环境；这类缺失依赖错误无需重启 Harness。此恢复仅说明布局显示依赖可用，不代表版图通过工程验证。
+
 普通本机终端可继续使用 `pnpm dev`、`pnpm start` 和现有 `test:*` 命令。它们的统一启动器在 macOS 做一次只读服务 lookup；明确拒绝时提前给出诊断，不再启动注定失败的 GUI 子进程。缺少编译器、服务未知或诊断超时按“未知”处理，不能据此声称系统 GUI 不可用；启动器保守停止本次直接启动并提示使用桌面入口，避免瞬时诊断失败再次触发原生 abort。lookup 成功同样不是启动或自测通过的证明。
 
 macOS 命令启动的诊断需要可运行的 Xcode Command Line Tools（`xcrun clang`）。诊断工具缺失时会保留“未知”状态并停止直接启动，也可使用下面的桌面入口；无需更改系统权限。
