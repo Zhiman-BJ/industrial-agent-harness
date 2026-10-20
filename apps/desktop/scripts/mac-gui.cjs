@@ -208,6 +208,14 @@ function prepareMacGui(options = {}, dependencies = {}) {
     throw Error('GUI source bundles are available only on macOS.');
   const selected = validateOptions(options);
   const desktopRoot = fs.realpathSync(options.desktopRoot || path.resolve(__dirname, '..'));
+  // Keep the source app recognizable across preparations without sharing identity
+  // with another checkout, interactive mode, or selftest suite.
+  const identity = crypto
+    .createHash('sha256')
+    .update(JSON.stringify(['source-v1', desktopRoot, selected.mode, selected.args]))
+    .digest('hex')
+    .slice(0, 24);
+  const bundleId = `com.industrial-harness.source-${identity}`;
   const desktopPackage = JSON.parse(
     fs.readFileSync(path.join(desktopRoot, 'package.json'), 'utf8'),
   );
@@ -248,7 +256,7 @@ function prepareMacGui(options = {}, dependencies = {}) {
       plistPath,
       plist.replace(
         /(<key>CFBundleIdentifier<\/key>\s*<string>)[^<]+(<\/string>)/,
-        `$1com.industrial-harness.source-${runId}$2`,
+        `$1${bundleId}$2`,
       ),
     );
     const resources = path.join(appPath, 'Contents/Resources/app');
@@ -256,6 +264,7 @@ function prepareMacGui(options = {}, dependencies = {}) {
     const configPath = path.join(resources, 'config.json');
     const config = {
       runId,
+      bundleId,
       desktopRoot,
       main,
       ...selected,
@@ -284,7 +293,16 @@ function prepareMacGui(options = {}, dependencies = {}) {
     );
     fs.writeFileSync(path.join(resources, 'launcher.cjs'), BOOTSTRAP_SOURCE);
     (dependencies.signApp || signApp)(appPath);
-    return { runId, runDirectory, appPath, logPath, resultPath, configPath, mode: selected.mode };
+    return {
+      runId,
+      bundleId,
+      runDirectory,
+      appPath,
+      logPath,
+      resultPath,
+      configPath,
+      mode: selected.mode,
+    };
   } catch (error) {
     fs.writeFileSync(
       resultPath,

@@ -134,6 +134,12 @@ test(
     const second = prepareMacGui(options, f.dependencies);
     assert.notEqual(first.appPath, second.appPath);
     assert.notEqual(first.runId, second.runId);
+    assert.equal(first.bundleId, second.bundleId, 'same source app has a stable identity');
+    assert.match(first.bundleId, /^com\.industrial-harness\.source-[a-f0-9]{24}$/);
+    assert.match(
+      fs.readFileSync(path.join(first.appPath, 'Contents/Info.plist'), 'utf8'),
+      new RegExp(`<string>${first.bundleId.replaceAll('.', '\\.')}</string>`),
+    );
     assert.deepEqual(f.signed, [first.appPath, second.appPath]);
     assert.equal(fs.statSync(first.runDirectory).mode & 0o777, 0o700);
     assert.equal(fs.statSync(first.configPath).mode & 0o777, 0o600);
@@ -163,6 +169,7 @@ test(
     assert.equal(packageJson.name, '@industrial-agent-harness/desktop');
     assert.equal(packageJson.version, '1.0.1-beta.6');
     const config = JSON.parse(fs.readFileSync(first.configPath));
+    assert.equal(config.bundleId, first.bundleId);
     assert.equal(config.main, path.join(f.desktopRoot, 'electron/main.cjs'));
     assert.deepEqual(config.env, { INDUSTRIAL_UI_SCREENSHOTS: '/tmp/explicit-shots' });
     assert.equal(
@@ -172,6 +179,25 @@ test(
     );
   },
 );
+
+test('source app identities separate checkouts, interactive modes and selftest suites', t => {
+  const first = fixture(t);
+  const other = fixture(t);
+  const prepare = (f, options = {}) =>
+    prepareMacGui({ desktopRoot: f.desktopRoot, outputRoot: f.root, ...options }, f.dependencies);
+  const launches = [
+    prepare(first),
+    prepare(first, { mode: 'dev', env: { INDUSTRIAL_DEV_URL: 'http://127.0.0.1:5173/' } }),
+    prepare(first, { args: ['--ui-selftest'] }),
+    prepare(first, { args: ['--kicad-selftest'] }),
+    prepare(other),
+  ];
+  assert.equal(new Set(launches.map(launch => launch.bundleId)).size, launches.length);
+  const same = prepare(first, { env: { INDUSTRIAL_UI_SCREENSHOTS: '/tmp/another-output' } });
+  assert.equal(same.bundleId, launches[0].bundleId, 'output paths are not application identity');
+  assert.notEqual(same.runDirectory, launches[0].runDirectory);
+  assert.notEqual(same.logPath, launches[0].logPath);
+});
 
 test('missing build, wrong Electron version and signing errors never report a prepared success', t => {
   const f = fixture(t);
