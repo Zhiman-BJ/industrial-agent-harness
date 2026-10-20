@@ -353,6 +353,12 @@ these checks require a working native Electron session to establish visual evide
 
 ### Inputs / Fields
 
+The composer model entry uses muted text and a small trailing chevron on the
+subtle panel surface, with a 6 px radius and no leading icon or border. Hover and
+keyboard focus use the shared button states. The model name truncates before the chevron; its tooltip
+and accessible name identify it as the model. Clicking still opens model
+settings, and context usage remains visible when available.
+
 Model configuration uses a 16 px title and a vertically bounded dialog. Its
 field region scrolls independently while the header, 32 px close control and
 footer actions remain visible. Labels and inputs use the 12 px control role;
