@@ -2,6 +2,8 @@
 
 The source-derived preview is implemented; native GPU acceptance is pending. The checklists below record successive checkpoints; the official-model section records the later headless download and installation evidence.
 
+The subsequent [PR #235 CI recovery and Astra Ultra review](pr235-review.md) records five confirmed P2 fixes and their regression evidence, including asynchronous tab cleanup, retained snapshot accounting and nested board topology. Historical test counts below belong to their stated checkpoints.
+
 ## Completed checks
 
 - TypeScript/Vite desktop build passed.

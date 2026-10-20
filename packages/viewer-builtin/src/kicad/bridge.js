@@ -104,7 +104,13 @@ function syncSelection(item) {
   }
   send('selection', { selection: selectedObject });
 }
-async function loadComponentAssembly(geometry, manifest, signal, componentMatrix) {
+async function loadComponentAssembly(
+  geometry,
+  manifest,
+  signal,
+  componentMatrix,
+  displayThickness,
+) {
   const components = geometry.components || [];
   const resources = new Map((manifest.models || []).map(entry => [entry.sourceRef, entry]));
   const requested = new Map();
@@ -152,7 +158,7 @@ async function loadComponentAssembly(geometry, manifest, signal, componentMatrix
           matrix: componentMatrix(
             component,
             model,
-            ((component.side === 'back' ? -1 : 1) * geometry.board.thickness) / 2,
+            ((component.side === 'back' ? -1 : 1) * displayThickness) / 2,
           ),
         });
       } catch {
@@ -184,10 +190,8 @@ async function changeMode(next) {
     const signal = buildController.signal;
     send('scene-loading', {});
     building = (async () => {
-      const [{ capturePcbGeometry, componentMatrix }, { createPcbScene }] = await Promise.all([
-        import('./geometry3d.js'),
-        import('./scene3d.js'),
-      ]);
+      const [{ capturePcbGeometry, componentMatrix, pcbDisplayDimensions }, { createPcbScene }] =
+        await Promise.all([import('./geometry3d.js'), import('./scene3d.js')]);
       // Recheck the source snapshot immediately before deriving a new view.
       const response = await fetch('./manifest.json');
       if (!response.ok) throw Error(await response.text());
@@ -197,7 +201,13 @@ async function changeMode(next) {
         sourceText: document.querySelector('kicanvas-source')?.textContent || '',
         sourceSha256: manifest.sources[0]?.sha256,
       });
-      const components = await loadComponentAssembly(geometry3d, manifest, signal, componentMatrix);
+      const components = await loadComponentAssembly(
+        geometry3d,
+        manifest,
+        signal,
+        componentMatrix,
+        pcbDisplayDimensions(geometry3d).thickness,
+      );
       if (disposed || signal.aborted) return;
       sceneHost = document.createElement('div');
       sceneHost.className = 'pcb3d-scene';

@@ -294,6 +294,106 @@ const closePoint = (actual, expected) =>
     assert.ok(Math.abs(value - expected[index]) < 1e-9, `${actual} != ${expected}`),
   );
 
+test('unknown physical thickness uses one display depth for front and back component surfaces', async () => {
+  const { stackupPositions, pcbDisplayDimensions, componentMatrix } = await geometry;
+  const physical = stackupPositions(board([]), '(kicad_pcb)');
+  const input = {
+    board: {
+      thickness: physical.thickness,
+      zMode: physical.zMode,
+      outline: [{ points: rect(0, 0, 100, 100) }],
+    },
+    layers: [],
+    warnings: physical.warnings,
+  };
+  const original = JSON.stringify(input);
+  const display = pcbDisplayDimensions(input);
+  assert.equal(display.modelSpan, Math.hypot(100, 100));
+  assert.equal(display.thickness, Math.SQRT2);
+  const model = { offset: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] };
+  for (const [side, sign] of [
+    ['front', 1],
+    ['back', -1],
+  ]) {
+    const matrix = componentMatrix(
+      { at: [20, 30], rotation: 0, side },
+      model,
+      (sign * display.thickness) / 2,
+    );
+    closePoint(transformPoint(matrix, [0, 0, 0]), [20, -30, (sign * Math.SQRT2) / 2]);
+    closePoint(transformPoint(matrix, [0, 0, 3]), [20, -30, sign * (Math.SQRT2 / 2 + 3)]);
+  }
+  assert.equal(
+    JSON.stringify(input),
+    original,
+    'display dimensions never become source measurements',
+  );
+  assert.equal(input.board.thickness, null);
+  assert.equal(input.board.zMode, 'schematic');
+  assert.match(input.warnings.join(' '), /schematic/);
+});
+
+test('display dimensions retain the shape, circle and outline bounds and minimum scene span', async () => {
+  const { pcbDisplayDimensions } = await geometry;
+  const display = pcbDisplayDimensions({
+    board: { thickness: null, outline: [{ points: rect(0, 0, 100, 100) }] },
+    layers: [
+      {
+        shapes: [
+          {
+            points: [
+              [-10, 0],
+              [0, 0],
+            ],
+          },
+          { center: [200, 50], radius: 10 },
+        ],
+      },
+    ],
+  });
+  assert.equal(display.modelSpan, Math.hypot(220, 100));
+  assert.equal(display.thickness, Math.hypot(220, 100) / 100);
+  assert.deepEqual(
+    pcbDisplayDimensions({
+      board: { thickness: null, outline: [{ points: rect(0, 0, 0.1, 0.1) }] },
+      layers: [],
+    }),
+    { modelSpan: 1, thickness: 0.01 },
+  );
+});
+
+test('declared thickness and complete stackups retain their physical front and back component surfaces', async () => {
+  const { stackupPositions, pcbDisplayDimensions, componentMatrix } = await geometry;
+  const declared = board([]);
+  declared.general.thickness = 3;
+  const cases = [
+    [stackupPositions(declared, '(kicad_pcb (general (thickness 3)))'), 3],
+    [stackupPositions(board(stack), '(kicad_pcb (general (thickness 1.6)))'), 1.6],
+  ];
+  const model = { offset: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] };
+  for (const [physical, expected] of cases) {
+    const input = {
+      board: { thickness: physical.thickness, outline: [{ points: rect(0, 0, 100, 100) }] },
+      layers: [],
+    };
+    const display = pcbDisplayDimensions(input);
+    assert.ok(Math.abs(display.thickness - expected) < 1e-9);
+    assert.equal(input.board.thickness, physical.thickness);
+    for (const [side, sign] of [
+      ['front', 1],
+      ['back', -1],
+    ]) {
+      const matrix = componentMatrix(
+        { at: [0, 0], rotation: 0, side },
+        model,
+        (sign * display.thickness) / 2,
+      );
+      closePoint(transformPoint(matrix, [0, 0, 0]), [0, 0, (sign * expected) / 2]);
+      closePoint(transformPoint(matrix, [0, 0, 2]), [0, 0, sign * (expected / 2 + 2)]);
+    }
+  }
+});
+
 test('native assembly preserves local model Y and only flips footprint board Y', async () => {
   const { componentMatrix } = await geometry;
   const matrix = componentMatrix(

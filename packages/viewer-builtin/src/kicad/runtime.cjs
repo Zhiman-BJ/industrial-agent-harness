@@ -25,6 +25,12 @@ const snapshotBytes = (sources, models = []) =>
     (total, data) => total + data.length,
     0,
   );
+const pooledSnapshots = pool => [...(pool?.values() || [])].map(data => ({ data }));
+const sessionSnapshotBytes = session =>
+  Math.max(
+    snapshotBytes(session.sources, [...session.models, ...pooledSnapshots(session.pendingBuffers)]),
+    session.pendingBytes || 0,
+  );
 function jsonSnapshot(value, maximumBytes = 16384) {
   let nodes = 0;
   const active = new Set();
@@ -93,9 +99,13 @@ function inspectSource(text, extension, modelReferences) {
       const node = stack.pop();
       if (!node?.head) throw Error('Malformed KiCad source.');
       if (stack.length === 1 && node.head === 'version') version = Number(node.values[0]);
+      // The pinned Model parser uses atom('hide'), which accepts a direct
+      // hide list as well as the bare atom. Nested child atoms are unrelated.
+      if (node.head === 'hide' && stack.at(-1)?.head === 'model') stack.at(-1).hidden = true;
       if (
         modelReferences &&
         node.head === 'model' &&
+        !node.hidden &&
         stack.at(-1)?.head === 'footprint' &&
         typeof node.values[0] === 'string'
       )
@@ -121,7 +131,10 @@ function inspectSource(text, extension, modelReferences) {
         node.head = value;
         if (stack.length === 1 && value !== expected)
           throw Error('File is not a matching KiCad document.');
-      } else if (node.values.length < 2) node.values.push(value);
+      } else {
+        if (node.head === 'model' && value === 'hide') node.hidden = true;
+        if (node.values.length < 2) node.values.push(value);
+      }
     }
   }
   if (text.slice(end).trim() || stack.length || roots !== 1) throw Error('Malformed KiCad source.');
@@ -218,7 +231,7 @@ class KiCadRuntimeManager {
   snapshotUsage() {
     return (
       [...this.sessions.values()].reduce(
-        (total, session) => total + Math.max(session.bytes, session.pendingBytes || 0),
+        (total, session) => total + sessionSnapshotBytes(session),
         0,
       ) + [...this.openings.values()].reduce((total, opening) => total + opening.bytes, 0)
     );
@@ -234,7 +247,7 @@ class KiCadRuntimeManager {
     }
     return session;
   }
-  async modelState(context, { signal, onSnapshot } = {}) {
+  async modelState(context, { signal, onSnapshot, snapshotPool = new Map() } = {}) {
     const references = context.references.slice(0, MODEL_LIMITS.references);
     const requestFor = refs => ({
       references: refs,
@@ -247,7 +260,7 @@ class KiCadRuntimeManager {
         throw new DOMException('Model resource preparation cancelled.', 'AbortError');
     };
     cancelled();
-    let models = prepareModelResources(references, context.source, context.root);
+    let models = prepareModelResources(references, context.source, context.root, [], snapshotPool);
     let modelByteBudget = onSnapshot?.(models) ?? MODEL_LIMITS.totalBytes;
     let providerUnavailable = false;
     let resolvedLibraries = [];
@@ -268,6 +281,7 @@ class KiCadRuntimeManager {
           context.source,
           context.root,
           Array.isArray(result?.resources) ? result.resources : [],
+          snapshotPool,
         );
         modelByteBudget = onSnapshot?.(models) ?? MODEL_LIMITS.totalBytes;
       } catch (error) {
@@ -436,14 +450,13 @@ class KiCadRuntimeManager {
     if (signal?.aborted) controller.abort();
     signal?.addEventListener('abort', abort, { once: true });
     session.preparing = controller;
+    const snapshotPool = new Map(
+      session.models.filter(entry => entry.data).map(entry => [entry.sha256, entry.data]),
+    );
+    session.pendingBuffers = snapshotPool;
     const onSnapshot = models => {
-      session.pendingBytes = snapshotBytes(session.sources, models);
       this.assertCapacity();
-      return (
-        this.sessionLimits.bytes -
-        (this.snapshotUsage() - Math.max(session.bytes, session.pendingBytes)) -
-        snapshotBytes(session.sources)
-      );
+      return this.sessionLimits.bytes - this.snapshotUsage() + snapshotBytes([], models);
     };
     const check = () => {
       if (controller.signal.aborted)
@@ -455,6 +468,7 @@ class KiCadRuntimeManager {
       const before = await this.modelState(session.context, {
         signal: controller.signal,
         onSnapshot,
+        snapshotPool,
       });
       check();
       if (before.summary.error) throw Error(before.summary.error);
@@ -479,6 +493,7 @@ class KiCadRuntimeManager {
       const after = await this.modelState(session.context, {
         signal: controller.signal,
         onSnapshot,
+        snapshotPool,
       });
       check();
       if (after.fingerprint !== before.fingerprint)
@@ -492,6 +507,7 @@ class KiCadRuntimeManager {
       signal?.removeEventListener('abort', abort);
       if (session.preparing === controller) delete session.preparing;
       delete session.pendingBytes;
+      delete session.pendingBuffers;
     }
   }
   async open(file, artifactHash, projectRoot) {
@@ -555,18 +571,16 @@ class KiCadRuntimeManager {
         root,
         sha256: artifactHash,
       };
+      const snapshotPool = new Map();
       const state =
         path.extname(file) === '.kicad_pcb'
           ? await this.modelState(context, {
               signal: controller.signal,
+              snapshotPool,
               onSnapshot: models => {
-                opening.bytes = snapshotBytes(sources, models);
+                opening.bytes = snapshotBytes(sources, pooledSnapshots(snapshotPool));
                 this.assertCapacity();
-                return (
-                  this.sessionLimits.bytes -
-                  (this.snapshotUsage() - opening.bytes) -
-                  snapshotBytes(sources)
-                );
+                return this.sessionLimits.bytes - this.snapshotUsage() + snapshotBytes([], models);
               },
             })
           : { models: [], summary: undefined };

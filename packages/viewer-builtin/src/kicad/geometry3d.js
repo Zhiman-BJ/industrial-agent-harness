@@ -14,6 +14,43 @@ const abort = signal => {
 };
 const pause = () => new Promise(resolve => setTimeout(resolve, 0));
 
+/** Shared display dimensions; unknown physical thickness remains unknown. */
+export function pcbDisplayDimensions(input) {
+  let minX = Infinity,
+    minY = Infinity,
+    maxX = -Infinity,
+    maxY = -Infinity;
+  const displayPoint = point =>
+    Array.isArray(point) && Number.isFinite(point[0]) && Number.isFinite(point[1]);
+  const expand = point => {
+    if (!displayPoint(point)) return;
+    minX = Math.min(minX, point[0]);
+    minY = Math.min(minY, point[1]);
+    maxX = Math.max(maxX, point[0]);
+    maxY = Math.max(maxY, point[1]);
+  };
+  for (const layer of input.layers || [])
+    for (const shape of layer.shapes || []) {
+      for (const point of shape.points || []) expand(point);
+      if (displayPoint(shape.center) && Number.isFinite(shape.radius)) {
+        expand([shape.center[0] - shape.radius, shape.center[1] - shape.radius]);
+        expand([shape.center[0] + shape.radius, shape.center[1] + shape.radius]);
+      }
+    }
+  for (const ring of input.board?.outline || [])
+    for (const point of ring.points || []) expand(point);
+  const modelSpan = minX === Infinity ? 1 : Math.max(Math.hypot(maxX - minX, maxY - minY), 1);
+  const physicalThickness = input.board?.thickness;
+  return {
+    modelSpan,
+    // This scale-relative depth is only a view parameter, never a measurement.
+    thickness:
+      Number.isFinite(physicalThickness) && physicalThickness > 0
+        ? physicalThickness
+        : modelSpan / 100,
+  };
+}
+
 const identity4 = () => [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
 function multiply4(a, b) {
   const result = Array(16).fill(0);

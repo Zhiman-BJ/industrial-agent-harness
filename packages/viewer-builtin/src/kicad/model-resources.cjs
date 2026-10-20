@@ -93,7 +93,13 @@ function readModelSnapshot(file, root) {
   }
 }
 
-function prepareModelResources(references, source, root, approvedResources = []) {
+function prepareModelResources(
+  references,
+  source,
+  root,
+  approvedResources = [],
+  snapshotPool = new Map(),
+) {
   const resources = [],
     seen = new Set(),
     unique = new Map(),
@@ -110,7 +116,12 @@ function prepareModelResources(references, source, root, approvedResources = [])
     if (!unique.has(snapshot.sha256)) {
       if (unique.size >= MODEL_LIMITS.files || total + snapshot.size > MODEL_LIMITS.totalBytes)
         throw Error('total-limit');
-      unique.set(snapshot.sha256, snapshot.data);
+      // The fresh read above still verifies the file and content. Reuse the
+      // already verified bytes across local/cache passes and download retries
+      // rather than retaining another copy while waiting for network I/O.
+      const shared = snapshotPool.get(snapshot.sha256);
+      unique.set(snapshot.sha256, shared || snapshot.data);
+      if (!shared) snapshotPool.set(snapshot.sha256, snapshot.data);
       total += snapshot.size;
     }
     Object.assign(entry, snapshot, {

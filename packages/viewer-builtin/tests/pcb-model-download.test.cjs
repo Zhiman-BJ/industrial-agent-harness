@@ -375,6 +375,91 @@ test('retained A-B-A views can prepare independently and closing B preserves A',
   assert.equal(f.calls.ensure.length, 1, 'retained A remains usable after closing B');
 });
 
+test('pending downloads reuse verified snapshots and reserve bytes across retained views', async t => {
+  const f = setup(t),
+    entered = deferred(),
+    release = deferred();
+  const localBytes = Buffer.alloc(64 * 1024, 42);
+  fs.writeFileSync(path.join(f.root, 'local-contract.step'), localBytes);
+  writeContractBoard(f, ['local-contract.step', SOURCE_REF]);
+  const states = [];
+  const modelState = f.manager.modelState.bind(f.manager);
+  f.manager.modelState = async (...args) => {
+    const state = await modelState(...args);
+    states.push(state);
+    return state;
+  };
+  const a = await f.open(),
+    b = await f.open();
+  const sourceBytes = fs.statSync(f.source).size;
+  const oneViewBytes = sourceBytes + localBytes.length + STEP_BYTES.length;
+  f.manager.sessionLimits.bytes = 2 * oneViewBytes;
+  let arrivals = 0;
+  f.hooks.beforeDownload = async () => {
+    if (++arrivals === 2) entered.resolve();
+    await release.promise;
+  };
+  const pending = [f.manager.prepareModels(a.token), f.manager.prepareModels(b.token)];
+  try {
+    await entered.promise;
+    assert.equal(f.manager.snapshotUsage(), 2 * oneViewBytes, 'downloads reserve remaining bytes');
+    const live = new Set([
+      ...[...f.manager.sessions.values()].flatMap(session =>
+        session.sources.map(entry => entry.data),
+      ),
+      ...states.flatMap(state => state.models.map(entry => entry.data).filter(Boolean)),
+    ]);
+    assert.equal(
+      [...live].reduce((sum, data) => sum + data.length, 0),
+      2 * (sourceBytes + localBytes.length),
+      'initial and before-download states retain exactly one local buffer per view',
+    );
+    for (const token of [a.token, b.token]) {
+      const session = f.manager.sessions.get(token);
+      const local = session.models.find(entry => entry.sourceRef === 'local-contract.step');
+      assert.equal(session.pendingBuffers.get(local.sha256), local.data);
+    }
+  } finally {
+    release.resolve();
+    await Promise.all(pending);
+  }
+  assert.equal(f.manager.snapshotUsage(), 2 * oneViewBytes);
+  for (const token of [a.token, b.token]) {
+    const session = f.manager.sessions.get(token);
+    assert.equal(session.pendingBuffers, undefined);
+    assert.equal(session.pendingBytes, undefined);
+    assert.equal(session.models.filter(entry => entry.status === 'ready').length, 2);
+  }
+  assert.equal(
+    new Set(
+      states.flatMap(state =>
+        state.models
+          .filter(entry => entry.sourceRef === 'local-contract.step')
+          .map(entry => entry.data),
+      ),
+    ).size,
+    2,
+    'after-download passes also reuse each view’s existing local buffer',
+  );
+});
+
+test('changed model bytes cannot hide behind a retained snapshot during preparation', async t => {
+  const f = setup(t);
+  const local = path.join(f.root, 'local-contract.step'),
+    bytes = Buffer.alloc(1024, 42);
+  fs.writeFileSync(local, bytes);
+  writeContractBoard(f, ['local-contract.step', SOURCE_REF]);
+  const view = await f.open();
+  const retainedBytes = f.manager.snapshotUsage();
+  f.manager.sessionLimits.bytes = retainedBytes + STEP_BYTES.length;
+  fs.writeFileSync(local, Buffer.alloc(bytes.length, 43));
+  await assert.rejects(f.manager.prepareModels(view.token), /snapshot memory limit/);
+  assert.equal(f.calls.ensure.length, 0, 'changed content is verified before any acquisition');
+  assert.equal(f.manager.snapshotUsage(), retainedBytes, 'failed staging releases pending bytes');
+  assert.equal(f.manager.sessions.get(view.token).pendingBuffers, undefined);
+  assert.equal((await f.response(view)).status, 409, 'old snapshot still rejects modified source');
+});
+
 test('changing catalog identity requires reopening even when the model checksum is unchanged', async t => {
   const changes = {
     catalogSha256: digest('Harness-authored replacement catalog'),

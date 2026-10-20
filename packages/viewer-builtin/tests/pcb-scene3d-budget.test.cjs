@@ -19,8 +19,13 @@ const source = fs
     JSON.stringify(
       pathToFileURL(path.join(directory, 'vendor/three/controls/OrbitControls.js')).href,
     ),
+  )
+  .replace(
+    "'./geometry3d.js'",
+    JSON.stringify(pathToFileURL(path.join(directory, 'geometry3d.js')).href),
   );
 const scene = import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
+const three = import(pathToFileURL(path.join(directory, 'vendor/three/three.module.js')).href);
 const layers = ['F.Cu', 'In1.Cu', 'B.Cu'].map(id => ({ id, name: id }));
 const drill = (overrides = {}) => ({
   center: [10, 10],
@@ -188,6 +193,138 @@ const substrateInput = holes => ({
   holes,
 });
 const substrateCounters = () => ({ triangles: 0, omittedBoardBodies: 0 });
+
+const boardRing = (low, high, hole = false) => ({
+  hole,
+  points: [
+    [low, low],
+    [high, low],
+    [high, high],
+    [low, high],
+    [low, low],
+  ],
+});
+function substrateTopArea(group, top = 0.8) {
+  let total = 0;
+  for (const mesh of group.children) {
+    const positions = mesh.geometry.attributes.position.array;
+    for (let i = 0; i < positions.length; i += 9)
+      if ([i + 2, i + 5, i + 8].every(index => Math.abs(positions[index] - top) < 1e-6))
+        total += area(positions.subarray(i, i + 9));
+  }
+  return total;
+}
+
+test('nested material islands retain both substrate bodies and drill only their own material regions', async () => {
+  const { buildPcbSubstrate } = await scene;
+  const { Raycaster, Vector3 } = await three;
+  for (const drilled of [false, true]) {
+    const counters = substrateCounters(),
+      materials = new Set(),
+      geometries = new Set();
+    const body = buildPcbSubstrate(
+      {
+        board: { outline: [boardRing(0, 30), boardRing(5, 25, true), boardRing(10, 20)] },
+        holes: drilled
+          ? [drill({ center: [2, 2] }), drill({ center: [15, 15] }), drill({ center: [7, 7] })]
+          : [],
+      },
+      1.6,
+      layers,
+      materials,
+      geometries,
+      counters,
+    );
+    try {
+      assert.equal(
+        body.children.length,
+        2,
+        'the surrounding board and nested island remain present',
+      );
+      assert.equal(counters.omittedBoardBodies, 0);
+      assert.notEqual(counters.boardTopologyIncomplete, true);
+      assert.ok(Math.abs(substrateTopArea(body) - (600 - (drilled ? Math.PI / 2 : 0))) < 0.05);
+      body.updateMatrixWorld(true);
+      const hit = (x, y) =>
+        new Raycaster(new Vector3(x, -y, 10), new Vector3(0, 0, -1)).intersectObjects(body.children)
+          .length > 0;
+      assert.equal(hit(2, 2), !drilled, 'ordinary board drill is physically open');
+      assert.equal(hit(7, 7), false, 'parent cutout remains empty');
+      assert.equal(hit(12, 12), true, 'nested island retains material');
+      assert.equal(hit(15, 15), !drilled, 'island drill is physically open');
+    } finally {
+      for (const geometry of geometries) geometry.dispose();
+      for (const material of materials) material.dispose();
+    }
+  }
+});
+
+test('deeper cutouts belong to their nearest material island rather than every surrounding ring', async () => {
+  const { buildPcbSubstrate } = await scene;
+  const counters = substrateCounters(),
+    materials = new Set(),
+    geometries = new Set();
+  const body = buildPcbSubstrate(
+    {
+      // Source order need not be nesting order.
+      board: {
+        outline: [
+          boardRing(12, 18, true),
+          boardRing(0, 30),
+          boardRing(10, 20),
+          boardRing(5, 25, true),
+        ],
+      },
+      holes: [drill({ center: [11, 11] }), drill({ center: [15, 15] })],
+    },
+    1.6,
+    layers,
+    materials,
+    geometries,
+    counters,
+  );
+  try {
+    assert.equal(body.children.length, 2);
+    assert.equal(counters.omittedBoardBodies, 0);
+    assert.notEqual(counters.boardTopologyIncomplete, true);
+    assert.ok(Math.abs(substrateTopArea(body) - (564 - Math.PI / 4)) < 0.03);
+  } finally {
+    for (const geometry of geometries) geometry.dispose();
+    for (const material of materials) material.dispose();
+  }
+});
+
+test('a drill crossing a cutout or outer edge still conservatively omits the affected substrate', async () => {
+  const { buildPcbSubstrate } = await scene;
+  for (const center of [
+    [5, 15],
+    [0, 15],
+  ]) {
+    const counters = substrateCounters(),
+      materials = new Set(),
+      geometries = new Set();
+    const body = buildPcbSubstrate(
+      {
+        board: { outline: [boardRing(0, 30), boardRing(5, 25, true), boardRing(10, 20)] },
+        holes: [drill({ center })],
+      },
+      1.6,
+      layers,
+      materials,
+      geometries,
+      counters,
+    );
+    try {
+      assert.equal(body.children.length, 1, 'the unaffected island remains available');
+      assert.equal(counters.omittedBoardBodies, 1);
+      assert.equal(counters.boardTopologyIncomplete, true);
+      assert.ok(Math.abs(substrateTopArea(body) - 100) < 1e-6);
+    } finally {
+      for (const geometry of geometries) geometry.dispose();
+      for (const material of materials) material.dispose();
+    }
+  }
+});
 
 test('substrate extrusion checks total points and the remaining triangle budget before allocating geometry', async () => {
   const { buildPcbSubstrate } = await scene;

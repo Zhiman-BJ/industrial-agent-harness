@@ -1,5 +1,6 @@
 import * as THREE from './three/three.module.js';
 import { OrbitControls } from './three/controls/OrbitControls.js';
+import { pcbDisplayDimensions } from './geometry3d.js';
 
 // The input is display geometry captured by the pinned KiCanvas painter. These
 // budgets apply to rendered detail, never to the source board or engineering
@@ -183,6 +184,29 @@ function containedBoardHoles(outline, candidates, cellSize, budget) {
   return selected;
 }
 
+function boardCutoutsByMaterial(outerRings, contours, budget) {
+  const areas = outerRings.map(({ points }) => {
+    let area = 0;
+    for (let i = 0, j = points.length - 1; i < points.length; j = i++)
+      area += points[j][0] * points[i][1] - points[i][0] * points[j][1];
+    return Math.abs(area);
+  });
+  const assigned = outerRings.map(() => []);
+  for (const contour of contours) {
+    let owner = -1;
+    for (let index = 0; index < outerRings.length; index++) {
+      const outer = outerRings[index].points;
+      if (intersects(contour, outer, budget)) {
+        // Keep genuine crossings visible to the conservative Earcut checks.
+        assigned[index].push(contour);
+      } else if (inside(contour[0], outer, budget) && (owner < 0 || areas[index] < areas[owner]))
+        owner = index;
+    }
+    if (owner >= 0) assigned[owner].push(contour);
+  }
+  return assigned;
+}
+
 export function buildPcbSubstrate(input, thickness, layerNames, materials, geometries, counters) {
   const front = layerNames.find(layer => layer.name === 'F.Cu');
   const back = layerNames.find(layer => layer.name === 'B.Cu');
@@ -265,13 +289,35 @@ export function buildPcbSubstrate(input, thickness, layerNames, materials, geome
   }
   const outerRings = outlines.filter(item => !item.hole);
   const topologyBudget = { remaining: MAX_TOPOLOGY_OPERATIONS };
+  let cutoutsByMaterial;
+  try {
+    cutoutsByMaterial = boardCutoutsByMaterial(outerRings, contours, topologyBudget);
+  } catch (error) {
+    if (!(error instanceof TopologyBudgetError)) throw error;
+    counters.omittedBoardBodies = outerRings.length;
+    counters.bodyComplexityLimited = true;
+    counters.topologyOperations = MAX_TOPOLOGY_OPERATIONS - topologyBudget.remaining;
+    return group;
+  }
   for (let ringIndex = 0; ringIndex < outerRings.length; ringIndex++) {
     const ring = outerRings[ringIndex];
     let selectedHoles;
     try {
+      const cutouts = cutoutsByMaterial[ringIndex];
+      // A drill fully inside this material ring's own cutout belongs to a void
+      // or a nested island, not to the surrounding substrate. Crossing/touching
+      // drills remain candidates and make that body's topology incomplete.
+      const drills = bodyDrills.filter(
+        drill =>
+          !cutouts.some(
+            cutout =>
+              inside(drill[0], cutout, topologyBudget) &&
+              !intersects(drill, cutout, topologyBudget),
+          ),
+      );
       selectedHoles = containedBoardHoles(
         ring.points,
-        [...contours, ...bodyDrills],
+        [...cutouts, ...drills],
         Math.max(1, thickness * 2),
         topologyBudget,
       );
@@ -899,33 +945,8 @@ export async function createPcbScene(container, input, callbacks = {}) {
   const pointer = new THREE.Vector2();
   const size = new THREE.Vector3(),
     center = new THREE.Vector3();
-  let radius = 1,
-    modelSpan = 1;
-  const shapeBounds = new THREE.Box2();
-  for (const layer of input.layers)
-    for (const shape of layer.shapes || []) {
-      for (const point of shape.points || [])
-        if (xy(point)) shapeBounds.expandByPoint(new THREE.Vector2(...point));
-      if (xy(shape.center) && finite(shape.radius)) {
-        shapeBounds.expandByPoint(
-          new THREE.Vector2(shape.center[0] - shape.radius, shape.center[1] - shape.radius),
-        );
-        shapeBounds.expandByPoint(
-          new THREE.Vector2(shape.center[0] + shape.radius, shape.center[1] + shape.radius),
-        );
-      }
-    }
-  for (const ring of input.board.outline || [])
-    for (const point of ring.points || [])
-      if (xy(point)) shapeBounds.expandByPoint(new THREE.Vector2(...point));
-  if (!shapeBounds.isEmpty())
-    modelSpan = Math.max(shapeBounds.getSize(new THREE.Vector2()).length(), 1);
-  // Unknown thickness gets a scale-relative display depth, with zMode retained
-  // as schematic. This value is never returned as a board measurement.
-  const thickness =
-    finite(input.board.thickness) && input.board.thickness > 0
-      ? input.board.thickness
-      : modelSpan / 100;
+  let radius = 1;
+  const { modelSpan, thickness } = pcbDisplayDimensions(input);
   const copperLayers = input.layers.filter(layer => /\.Cu$/.test(layer.name));
   const order = layer =>
     layer.name === 'F.SilkS'
