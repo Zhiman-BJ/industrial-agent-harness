@@ -2,6 +2,12 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
+try {
+  require('./gui-startup.cjs').requireGuiStartup();
+} catch (error) {
+  console.error(error.message);
+  process.exit(1);
+}
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-install-experience-'));
 for (const mode of process.platform === 'darwin' ? ['ui', 'quit'] : ['ui']) {
   const report = path.join(root, mode);

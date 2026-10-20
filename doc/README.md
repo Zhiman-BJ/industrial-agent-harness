@@ -90,3 +90,5 @@ Godot/PCB 的源工程文件另有[受限只读预览](engineering-file-viewers.
 来源：用户提供的《Industrial Harness 架构与开发 Plan》（2026-09-23，v0.1 提案）和《Industrial Capability Broker 开发 Plan》。本目录提炼两份材料供仓库实施使用，不把计划中的示例接口当成已经存在的实现。
 
 2026-09-23 的四份架构评审文档由用户另行提供，已修正最小持久化顺序、失败 Action 的空产物处理，以及固定 MCP Gateway surface 与动态 Scope 的验收表述。`AGENTS.md` 只保留执行摘要；细节和现有例外以本目录为准。
+
+[macOS Electron 启动与界面验收](electron-macos-startup.md)：受限命令环境的 GUI 服务诊断、隔离桌面开发入口和真实自测记录。

@@ -1,6 +1,6 @@
 const fs = require('node:fs');
 const path = require('node:path');
-const { PackManager } = require('@industrial-agent-harness/pack-manager');
+const { PackManager, readDataLibraryBindings } = require('@industrial-agent-harness/pack-manager');
 const { distributionDomain } = require('./distribution.cjs');
 const staticCapabilities = require('@zhiman-bj/industrial-domain-packs').consumerMetadata()
   .capabilities;
@@ -120,6 +120,36 @@ function installedSkills(domain) {
     .map(({ file, ...item }) => item);
 }
 
+function installedDataLibraries(domain) {
+  // A project domain is required; never expose every Pack's data libraries to
+  // an unbound workspace. Catalog roots come only from the owning Pack.
+  if (
+    typeof domain !== 'string' ||
+    !domain.trim() ||
+    (distributionDomain && domain !== distributionDomain)
+  )
+    return [];
+  if (process.env.INDUSTRIAL_HARNESS_PACK_STORE)
+    return new PackManager()
+      .list()
+      .filter(bundle => bundle.domain === domain)
+      .flatMap(bundle =>
+        readDataLibraryBindings(bundle.dataLibraries, { directory: bundle.location }),
+      );
+  return loadDomainPacks()
+    .filter(pack => pack.domain === domain)
+    .flatMap(pack => {
+      if (
+        pack.dataLibraries === undefined ||
+        (Array.isArray(pack.dataLibraries) && !pack.dataLibraries.length)
+      )
+        return [];
+      return readDataLibraryBindings(pack.dataLibraries, {
+        directory: builtInPackDirectory(pack.provider),
+      });
+    });
+}
+
 function materializeInstalledSkills(scope, directory, environment = process.env) {
   if (!process.env.INDUSTRIAL_HARNESS_PACK_STORE)
     return staticSkills.materializeSkills(scope, directory, environment);
@@ -152,5 +182,6 @@ module.exports = {
   builtInPackDirectory,
   loadRegistry,
   installedSkills,
+  installedDataLibraries,
   materializeInstalledSkills,
 };

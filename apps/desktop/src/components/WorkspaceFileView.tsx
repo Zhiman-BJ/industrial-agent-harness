@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ViewerCanvas, type ViewNavigation } from '@industrial-agent-harness/viewer-builtin/canvas';
 import type { OpenedViewer, ViewerArtifact } from '@industrial-agent-harness/viewer-builtin/api';
 import { useDisplayText } from '@industrial-agent-harness/viewer-builtin/text';
 import { BrowserPanel } from './BrowserPanel';
+import { openViewerLifecycle, type ViewerOpenLifecycle } from './viewer-open-lifecycle.mjs';
 
 export type WorkspaceFile = {
   id: string;
@@ -36,6 +37,16 @@ export function WorkspaceFileView({
   const [ready, setReady] = useState(false);
   const [error, setError] = useState('');
   const [started, setStarted] = useState(false);
+  const opening = useRef<ViewerOpenLifecycle<OpenedViewer> | null>(null);
+  const onNavigation = useCallback(
+    (value: ViewNavigation | null) => {
+      setNavigation(value);
+      // ViewerCanvas can commit a Suspense fallback before its lazy Viewport
+      // mounts. Its navigation controller confirms the Viewport owns cleanup.
+      if (value && opened) opening.current?.commit(opened);
+    },
+    [opened],
+  );
   const onReady = useCallback(() => setReady(true), []);
   const onError = useCallback((message: string) => {
     setError(message);
@@ -49,17 +60,15 @@ export function WorkspaceFileView({
   }, [active, file.artifact, started]);
   useEffect(() => {
     if (!started || !file.artifact) return;
-    let cancelled = false;
-    void window
-      .viewerHost!.open({ artifactId: file.artifact.id })
-      .then(view => {
-        if (!cancelled) setOpened(view);
-      })
-      .catch(reason => {
-        if (!cancelled) setError(String(reason));
-      });
+    const lifecycle = openViewerLifecycle(
+      window.viewerHost!,
+      { artifactId: file.artifact.id },
+      { onOpened: setOpened, onError: reason => setError(String(reason)) },
+    );
+    opening.current = lifecycle;
     return () => {
-      cancelled = true;
+      if (opening.current === lifecycle) opening.current = null;
+      lifecycle.cancel();
     };
   }, [started, file.artifact?.id]);
   useEffect(() => {
@@ -83,7 +92,7 @@ export function WorkspaceFileView({
           {opened ? (
             <ViewerCanvas
               opened={opened}
-              onNavigation={setNavigation}
+              onNavigation={onNavigation}
               onReady={onReady}
               onError={onError}
             />

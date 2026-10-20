@@ -32,6 +32,48 @@ Core-owned optional `.hpack` files may also ship inside the application resource
 
 Optional `runtimeAssets` declarations prepare pinned macOS arm64 vendor applications in `<store>/.runtime-assets/`: streaming HTTPS download, exact size/SHA-256, read-only DMG mount or validated ZIP extraction, full app copy with upstream licenses, signature verification, bounded version probe, atomic activation and repair. Large applications remain separate from bounded `.hpack` archives. Interrupted staging is not ready; versions and the verified download cache are retained. Removing a Pack preserves this reusable runtime cache. Desktop and CLI use the same resolved dependency environment.
 
+## Optional data libraries: explicit resource acquisition
+
+This branch adds generic `dataLibraries` for versioned, read-only resources,
+separate from native application `runtimeAssets` and container preparation.
+A data library does not make a native execution profile ready. Opening a Viewer
+may resolve existing verified data and plan missing resources; downloading is a
+separate, explicit user action. It must not trigger application installation,
+Docker startup or a download of the complete library.
+
+The PCB Pack owner maintains the official KiCad STEP catalog at tag `10.0.7`,
+commit `8d4070daa0fa3f7a7f3c176f4ca7bffc4df392be`: 7,252 STEP entries in 105
+family directories. Its declaration records exact relative paths, raw-file
+SHA-256, byte size, source revision and upstream license/attribution. The owner
+publishes this metadata; Harness consumes the immutable declaration rather than
+maintaining a second domain-specific index or executing an upstream installer.
+The directory count is inventory, not evidence of downloading or qualifying all
+7,252 models. Bulk prefetch of the entire library is outside this change.
+
+The shared manager accepts only declared resources required by the selected
+project, enforces request/download/cache budgets, supports cancellation and
+reports progress. It verifies exact size and SHA-256 before activating reusable
+content in its cache; interrupted, changed or corrupt content is not ready.
+Cache reuse must retain the declaration identity and must not silently repair
+it by networking during a read. Acquisition writes the managed cache, without
+rewriting board files or model references.
+
+The Desktop host derives requests from the current source snapshot and grants
+the Viewer exact source-reference, root/path, size and hash bindings. A renderer
+cannot choose an arbitrary library root, local file or remote URL. The existing
+restricted session resource channel serves those approved bytes; its CSP keeps
+renderer connections local. A `.wrl` reference is not changed to `.step`, even
+when a similarly named official STEP exists. Local legacy WRL remains supported.
+
+This interface and its consumer are being integrated; this section does not
+claim completion of the current GPU/desktop acceptance or publication of a new
+installer. It also does not provide managed KLayout Python: that host dependency
+still has a separate declaration/resolution/repair integration gap. The
+[PCB Viewer guide](../../doc/pcb-3d-viewer.md) and
+[QA matrix](../../doc/qa-runbook/viewers-results.md) define the required evidence.
+
+## Native and container runtime preparation
+
 Optional `containerImages` declarations select released image IDs from the owner's unchanged
 `provenance/runtime-distribution.json`, included in the authenticated `.hpack`. Desktop and CLI
 install/update/repair call the same `PackManager.prepareRuntime` path before Pack activation.

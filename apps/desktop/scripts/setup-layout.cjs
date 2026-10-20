@@ -18,7 +18,9 @@ for (const [command, ...prefix] of commands) {
 if (!selected) throw Error('Python 3 is required for the KLayout viewer.');
 const [command, ...prefix] = selected;
 if (!fs.existsSync(envDir)) {
-  const created = spawnSync(command, [...prefix, '-m', 'venv', envDir], { stdio: 'inherit' });
+  const created = spawnSync(command, [...prefix, '-m', 'venv', '--copies', envDir], {
+    stdio: 'inherit',
+  });
   if (created.status !== 0) process.exit(created.status || 1);
 }
 const python = path.join(

@@ -13,9 +13,9 @@ const {
 const hash = data => crypto.createHash('sha256').update(data).digest('hex');
 const board = '(kicad_pcb (version 20211014) (generator pcbnew))';
 const schematic = '(kicad_sch (version 20211123) (generator eeschema))';
-function setup(t) {
+function setup(t, options = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-kicad-'));
-  const manager = new KiCadRuntimeManager();
+  const manager = new KiCadRuntimeManager(options);
   t.after(() => {
     manager.close();
     fs.rmSync(root, { recursive: true, force: true });
@@ -131,9 +131,48 @@ test('sessions restrict methods, resources, origins and lifetime', async t => {
   ])
     assert.equal((await request(manager, first.url.replace('index.html', resource))).status, 404);
   const second = await open(file);
+  assert.equal((await request(manager, first.url)).status, 200);
+  manager.close(first.token);
   assert.equal((await request(manager, first.url)).status, 404);
+  assert.equal((await request(manager, second.url)).status, 200);
   manager.close();
   assert.equal((await request(manager, second.url)).status, 404);
+});
+
+test('retained KiCad tabs have an explicit session count limit without evicting existing views', async t => {
+  const { manager, write, open } = setup(t);
+  const file = write('board.kicad_pcb', board);
+  const views = [];
+  for (let i = 0; i < limits.sessions; i++) views.push(await open(file));
+  await assert.rejects(open(file), /Too many open KiCad views/);
+  assert.equal(manager.sessions.size, limits.sessions);
+  assert.equal(manager.openings.size, 0);
+  for (const view of views) assert.equal((await request(manager, view.url)).status, 200);
+  manager.close(views[0].token);
+  const next = await open(file);
+  assert.equal((await request(manager, next.url)).status, 200);
+  assert.equal((await request(manager, views[1].url)).status, 200);
+});
+
+test('source and model snapshots share a global byte budget and release it with their tab', async t => {
+  const source = '(kicad_pcb (version 20240108) (footprint "test" (model "part.step")))';
+  const contents = 'unique model snapshot bytes';
+  const oneViewBytes = Buffer.byteLength(source) + Buffer.byteLength(contents);
+  // A lower injected limit exercises the same enforced 256 MiB production gate
+  // without allocating hundreds of megabytes in a unit test.
+  const { manager, write, open } = setup(t, { sessionLimits: { bytes: oneViewBytes * 2 - 1 } });
+  const file = write('board.kicad_pcb', source);
+  write('part.step', contents);
+  const first = await open(file);
+  assert.equal(manager.snapshotUsage(), oneViewBytes);
+  await assert.rejects(open(file), /snapshot memory limit/);
+  assert.equal(manager.sessions.size, 1);
+  assert.equal(manager.openings.size, 0);
+  assert.equal((await request(manager, first.url)).status, 200);
+  manager.close(first.token);
+  assert.equal(manager.snapshotUsage(), 0);
+  const second = await open(file);
+  assert.equal((await request(manager, second.url)).status, 200);
 });
 
 test('malformed, legacy, deep, oversized and excessive companion inputs are rejected', async t => {
@@ -182,5 +221,60 @@ test('vendored offline runtime and font match committed fingerprints', () => {
   assert.doesNotMatch(
     fs.readFileSync(path.join(root, 'kicanvas.js'), 'utf8'),
     /fonts\.googleapis\.com/,
+  );
+});
+
+test('PCB 3D serves pinned local workers and WASM while excluding JavaScript eval and foreign resources', async t => {
+  const { write, open, manager } = setup(t);
+  const file = write('board.kicad_pcb', board);
+  const view = await open(file);
+  for (const asset of [
+    'geometry3d.js',
+    'scene3d.js',
+    'three/three.module.js',
+    'three/controls/OrbitControls.js',
+    'component-loader.js',
+    'component-worker.js',
+    'component-wasm.js',
+    'component-vrml.js',
+    'three/loaders/VRMLLoader.js',
+    'three/libs/chevrotain.module.min.js',
+    'vendor/occt-import/occt-import-js.js',
+  ]) {
+    const response = await request(manager, view.url.replace('index.html', asset));
+    assert.equal(response.status, 200, asset);
+    assert.match(response.headers.get('Content-Type'), /javascript/);
+    assert.match(
+      response.headers.get('Content-Security-Policy'),
+      /script-src 'self' 'wasm-unsafe-eval';/,
+    );
+    assert.match(response.headers.get('Content-Security-Policy'), /worker-src 'self';/);
+    assert.doesNotMatch(
+      response.headers.get('Content-Security-Policy'),
+      /(?:^|\s)'unsafe-eval'(?:\s|;)/,
+    );
+    assert.match(response.headers.get('Content-Security-Policy'), /connect-src 'self';/);
+  }
+  const wasm = await request(
+    manager,
+    view.url.replace('index.html', 'vendor/occt-import/occt-import-js.wasm'),
+  );
+  assert.equal(wasm.status, 200);
+  assert.equal(wasm.headers.get('Content-Type'), 'application/wasm');
+  for (const asset of ['three/anything.js', 'vendor/kicanvas.js', 'three/manifest.json'])
+    assert.equal((await request(manager, view.url.replace('index.html', asset))).status, 404);
+  fs.appendFileSync(file, '\n');
+  assert.equal((await request(manager, view.url.replace('index.html', 'scene3d.js'))).status, 409);
+});
+
+test('Three runtime matches pinned fingerprints and the documented relative import is its only adaptation', () => {
+  const root = path.join(__dirname, '../src/kicad/vendor/three');
+  const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json')));
+  for (const [name, record] of Object.entries(manifest.files))
+    assert.equal(hash(fs.readFileSync(path.join(root, name))), record.sha256, name);
+  const controls = fs.readFileSync(path.join(root, 'controls/OrbitControls.js'), 'utf8');
+  assert.equal(
+    hash(controls.replace("from '../three.module.js'", "from 'three'")),
+    manifest.files['controls/OrbitControls.js'].upstream_sha256,
   );
 });

@@ -57,6 +57,8 @@ pnpm --filter @industrial-agent-harness/desktop setup:kimi
 pnpm dev
 ```
 
+macOS 受限命令环境可能在应用代码执行前拒绝 GUI 服务访问。启动器会提前诊断；可运行 `pnpm --filter @industrial-agent-harness/desktop gui:prepare`，从桌面打开生成的开发入口。见 [启动与界面验收](doc/electron-macos-startup.md)。
+
 **布局按钮**可切换经典两列与聊天／文件／Viewer 共用的顶部标签栏。`+` 浏览项目文件；单击复用预览标签，双击或图钉固定保留。切换保留草稿和 Viewer 状态。窗口按屏幕可用区域启动，缩窄时自动采用标签页。见[自适应窗口与标签页](doc/desktop-layouts.md)。
 
 **设置 → 语言** 可选择简体中文、English 或跟随系统，即时生效并记住选择。切换保留草稿、运行中的任务和查看器状态。Harness 自有控件与弹窗提供中英文；项目文件、聊天原文、工具返回和嵌入的第三方界面保留原内容。见[桌面语言切换](doc/desktop-languages.md)。
@@ -121,7 +123,7 @@ Harness 自有 Viewer 控件跟随 **设置 → 语言**（简体中文 / Englis
 | [芯片版图](doc/viewer-eda-reference.md)     | GDS/GDSII、OAS/OASIS                                                           | 按视口渲染和图层选择，需要 KLayout Python。                                                                                                                                                                                                                                                                                                                                             |
 | [网表](doc/viewer-eda-reference.md)         | Yosys `write_json` 输出                                                        | 独立 worker 中生成 netlistsvg 图，普通 JSON 使用文档查看器。                                                                                                                                                                                                                                                                                                                            |
 | [波形](doc/viewer-eda-reference.md)         | VCD、FST、GHW                                                                  | 内置 Surfer WASM，查看信号与时间轴。                                                                                                                                                                                                                                                                                                                                                    |
-| [KiCad](doc/kicad-viewer.md)                | `.kicad_pcb`、`.kicad_sch` 与工程子页                                          | 本地 KiCanvas 展示图层、网络和符号，只读 2D 查看，无需安装 KiCad。                                                                                                                                                                                                                                                                                                                      |
+| [KiCad](doc/kicad-viewer.md)                | `.kicad_pcb`、`.kicad_sch` 与工程子页                                          | 本地 KiCanvas 二维与同源 PCB 三维：分层展开、源对象点选、STEP/静态 WRL 实体和共享导航。本地模型优先，明确点击才通过宿主缓存按需下载固定官方 STEP；不将 WRL 自动换 STEP、不造占位。省略几何明确提示，无需安装 KiCad。见 [PCB 三维](doc/pcb-3d-viewer.md)。                                                                                                                               |
 | [Godot Web Export](doc/godot-viewer.md)     | 配套 HTML/JS/WASM/PCK                                                          | 运行、暂停、单步与节点检查，需要含 Viewer Bridge 的单线程导出。                                                                                                                                                                                                                                                                                                                         |
 | [图片与图集](doc/godot-assets-viewers.md)   | PNG/JPEG/WebP、`.sprite.json` 与配套图片                                       | 平移、采样模式、图集选帧与裁剪预览，无需 Godot 运行时。                                                                                                                                                                                                                                                                                                                                 |
 | [动画](doc/godot-assets-viewers.md)         | 受支持的 `.tres`/`.tscn` 与图集动画                                            | 有限 SpriteFrames/Sprite2D 格式的播放与逐帧，不运行 Godot 引擎。                                                                                                                                                                                                                                                                                                                        |
@@ -130,6 +132,8 @@ Harness 自有 Viewer 控件跟随 **设置 → 语言**（简体中文 / Englis
 | [通用文档](doc/document-viewers.md)         | CSV/TSV、JSON、JSONL/NDJSON、Markdown、TXT/LOG                                 | 表格、结构、记录与文本搜索；只读受限 UTF-8 输入，不执行公式或嵌入 HTML。                                                                                                                                                                                                                                                                                                                |
 
 远程 CAD 回执同样接入此 Viewer：有界产物索引按已校验的 SHA-256 关联 FCStd/STEP 配套文件，不改写下载字节。真实远程 build、桌面查看与自动释放沙箱的证据见[远程 CAD 验收](doc/evidence/remote-cad-20261019/README.md)。
+
+KLayout Python 目前仍是本地 Viewer 前提；统一到共享依赖管理器的声明、就绪状态与解析仍为 TODO。开发环境安装命令不代表依赖已被托管。见[macOS 源码启动与 Viewer 依赖](doc/electron-macos-startup.md)。
 
 完整格式清单、文件上限与渲染依赖见各 Viewer 文档。新增接入需同时更新中英文 README，并遵守 [Viewer 接入契约](AGENTS.md#viewer-integration-contract)。
 

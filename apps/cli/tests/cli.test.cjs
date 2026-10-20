@@ -10,6 +10,7 @@ const { run, loadArtifacts } = require('../src/main.cjs');
 test('headless CLI resolves a domain task as JSON Lines without Electron or a model key', async t => {
   const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'industrial-cli-test-'));
   t.after(() => fs.rmSync(projectDir, { recursive: true, force: true }));
+  const environment = { INDUSTRIAL_HARNESS_CONFIG_DIR: path.join(projectDir, 'config') };
   const rows = [];
   const output = new Writable({
     write(chunk, _encoding, callback) {
@@ -27,7 +28,7 @@ test('headless CLI resolves a domain task as JSON Lines without Electron or a mo
     'Inspect PCB board routing',
     '--scope-only',
   ]);
-  assert.equal(await run(options, output, {}), 0);
+  assert.equal(await run(options, output, environment), 0);
   assert.deepEqual(
     rows.map(item => item.type),
     ['scope', 'result'],
@@ -78,6 +79,7 @@ test('CLI requires one task source and a known domain', async t => {
 test('CLI disable flag removes a repository skill from the resolved scope', async t => {
   const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'industrial-cli-disabled-'));
   t.after(() => fs.rmSync(projectDir, { recursive: true, force: true }));
+  const environment = { INDUSTRIAL_HARNESS_CONFIG_DIR: path.join(projectDir, 'config') };
   const rows = [];
   const output = new Writable({
     write(chunk, _encoding, callback) {
@@ -97,10 +99,10 @@ test('CLI disable flag removes a repository skill from the resolved scope', asyn
     '--disable-skill',
     'chip.netlist.inspect',
   ]);
-  assert.equal(await run(options, output, {}), 0);
+  assert.equal(await run(options, output, environment), 0);
   assert.deepEqual(rows[0].scope.skills, []);
   await assert.rejects(
-    run({ ...options, disabledSkills: ['unknown'] }, output, {}),
+    run({ ...options, disabledSkills: ['unknown'] }, output, environment),
     /Unknown project skill/,
   );
 });
@@ -160,7 +162,18 @@ test('headless CLI runs a task and emits agent and approval events', async t => 
     '--chat-dir',
     path.join(projectDir, 'chats'),
   ]);
-  assert.equal(await run(options, output, { KIMI_API_KEY: 'test-key' }, FakeSession), 0);
+  assert.equal(
+    await run(
+      options,
+      output,
+      {
+        KIMI_API_KEY: 'test-key',
+        INDUSTRIAL_HARNESS_CONFIG_DIR: path.join(projectDir, 'config'),
+      },
+      FakeSession,
+    ),
+    0,
+  );
   assert.deepEqual(
     rows.map(item => item.type),
     [
@@ -265,6 +278,7 @@ test('CLI uses the same persisted global and per-project policy as Desktop', asy
 test('CLI lists shared project chats without a model key and validates resume ownership', async t => {
   const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'industrial-cli-chat-list-'));
   t.after(() => fs.rmSync(projectDir, { recursive: true, force: true }));
+  const environment = { INDUSTRIAL_HARNESS_CONFIG_DIR: path.join(projectDir, 'config') };
   const { ChatStore } = require('@industrial-agent-harness/harness-core');
   const chatDir = path.join(projectDir, 'chats');
   const store = new ChatStore(chatDir);
@@ -287,11 +301,15 @@ test('CLI lists shared project chats without a model key and validates resume ow
     '--chat-dir',
     chatDir,
   ]);
-  assert.equal(await run(options, output, {}), 0);
+  assert.equal(await run(options, output, environment), 0);
   assert.equal(rows[0].chats[0].id, chat.id);
   assert.equal(rows[0].chats[0].title, 'Persisted task');
   await assert.rejects(
-    run({ projectDir, domain: 'pcb', task: 'Continue', chatId: chat.id, chatDir }, output, {}),
+    run(
+      { projectDir, domain: 'pcb', task: 'Continue', chatId: chat.id, chatDir },
+      output,
+      environment,
+    ),
     /unavailable/,
   );
 });

@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "package": "occt-import-js",
+  "version": "0.0.23",
+  "repository": "https://github.com/kovacsv/occt-import-js",
+  "revision": "c2148e54b456b571238d35cac037d304053d64b2",
+  "npmIntegrity": "sha512-RFfYQXYFX5C1mB1Aywm0ShcUKzXOr/VzTnlzhBSDJOR6YCAPt1HYCzeXWg1vwwjn/cUxwqRNhhtf1dlewoZYCQ==",
+  "occtRepository": "https://github.com/Open-Cascade-SAS/OCCT",
+  "occtRevision": "d2abb6d844231cb8f29be6894440874a4700e4a5",
+  "emscripten": "3.1.69",
+  "upstreamFilesUnmodified": true,
+  "runtimeAdaptation": "component-wasm.js validates the pinned source bytes and reduces the sole internal memory maximum from 2048 MiB to 256 MiB before instantiation. This bounds only WebAssembly linear memory.",
+  "files": {
+    "OCCT_LGPL_EXCEPTION.txt": "04580a884ea6cea294402649ff7b5cbb167d47462d1340a4ed33e550db10a81b",
+    "occt-import-js.js": "3fb44ce11d00611f9b3f3c5775d520ebab48930c1f08279b7b1316f05f0d3379",
+    "license.occt.txt": "090f8eb6ba63e72887c1f89b009fb1656cfda02d83b6e9805b20468520a5d77f",
+    "license.occt-import-js.txt": "7ffe1954587c77dfba1cf8eb9b2ea743671fa6e63f9e7a2f258119d42e14eefe",
+    "occt-import-js.wasm": "33391fc9d94ea5c869a6718488bf0a9a464222bac9bdc764dfe1690cef281952",
+    "source/OCCT-d2abb6d.tar.gz": "2715d89a1bc44dfd34dab88f729c445ea93f6b57d6539b0c89614a80ae144a6c",
+    "source/occt-import-js-c2148e5.tar.gz": "2bd3799b2ac56cbf3f0df6300a51c8890e137bd001462702b356f621e33ff192",
+    "EMSCRIPTEN-LICENSE.txt": "620a78084fc7ca97c0b5dea9abf891f3ffcadfdbf305276f099c9c4e12fc1d86"
+  }
+}
