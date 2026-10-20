@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { createRequire } = require('node:module');
+const { assertAgentBoundary } = require('./assert-agent-boundary.cjs');
 
 async function child(archive, directory, endpoint) {
   const shareDir = path.join(directory, 'session');
@@ -58,9 +59,7 @@ async function child(archive, directory, endpoint) {
       },
       hostOnlyEnv: ['HARNESS_PACKAGED_HOST_ONLY'],
     });
-    assert.equal(sandbox.boundary.mechanism, 'current-user');
-    assert.equal(sandbox.boundary.osIsolation, false);
-    assert.equal(sandbox.boundary.projectWritable, true);
+    assertAgentBoundary(sandbox.boundary);
     assert.equal(sandbox.env.HARNESS_PACKAGED_HOST_ONLY, undefined);
     Object.assign(options, {
       executable: sandbox.executable,
@@ -198,9 +197,7 @@ async function main() {
     assert.equal(result.resumed, true);
     assert.equal(result.projectWrite, true);
     assert.equal(result.hostEnvironmentFiltered, true);
-    assert.equal(result.boundary.mechanism, 'current-user');
-    assert.equal(result.boundary.osIsolation, false);
-    assert.equal(result.boundary.projectWritable, true);
+    assertAgentBoundary(result.boundary);
     assert.equal(model.requests.length, 5);
     assert.match(JSON.stringify(model.requests.at(-1).messages), /PACKAGED_FIRST/);
     process.stdout.write(
