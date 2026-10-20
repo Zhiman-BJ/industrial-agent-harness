@@ -102,6 +102,7 @@ function portableFiles() {
       'tests/ci/qa-cleanup.test.cjs',
       'tests/ci/smoke-packaged-cad-fixture.test.cjs',
       'tests/ci/release-desktop.test.cjs',
+      'tests/ci/pack-distribution-native-only.test.cjs',
     ]),
   ]
     .filter(
