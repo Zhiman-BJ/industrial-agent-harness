@@ -5,9 +5,9 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import {
   Activity,
   ArrowUp,
+  BrainCircuit,
   Bug,
   ChevronDown,
-  Cpu,
   ChevronRight,
   File,
   FilePlus2,
@@ -99,7 +99,9 @@ function contextUsageTitle(
   modelProfile: ModelSummary | null,
   usage: ContextUsageInfo | null,
 ) {
-  const name = modelProfile?.model || '';
+  const name = modelProfile?.model
+    ? t('Model: {0}', { '0': modelProfile.model })
+    : t('Configure model');
   if (!usage) return name;
   const percent = Math.min(100, Math.round(usage.fraction * 100));
   const used = usage.usedTokens != null ? formatContextTokens(usage.usedTokens) : '—';
@@ -282,11 +284,6 @@ export function App() {
   }>();
   const [agentEvents, setAgentEvents] = useState<AgentEvent[]>([]);
   const [agentBusy, setAgentBusy] = useState(false);
-  const [remoteExecution, setRemoteExecution] = useState<{
-    projectId: string;
-    chatId: string | null;
-    ready: boolean;
-  }>();
   // Tool ids the bound remote service executes in its sandbox; used to badge
   // tool calls in the chat flow so remote work is visually distinct.
   const [remoteToolIds, setRemoteToolIds] = useState<string[]>([]);
@@ -325,10 +322,6 @@ export function App() {
   const projectIdRef = useRef<string | null>(null);
   projectIdRef.current = activeProjectId;
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
-  const remoteExecutionReady =
-    remoteExecution?.projectId === activeProjectId &&
-    remoteExecution?.chatId === activeChatId &&
-    remoteExecution.ready;
   // Tool identities belong to the bound service; drop them with the project.
   useEffect(() => setRemoteToolIds([]), [activeProjectId]);
   const chatIdRef = useRef<string | null>(null);
@@ -844,9 +837,11 @@ export function App() {
   const isViewerReady = Boolean(activeViewState?.ready);
   const viewNavigation = activeViewState?.navigation;
   const activeProject = projects.find(item => item.id === activeProjectId);
-  const remoteInputBlocked = activeProject?.executionLocation === 'remote' && !remoteExecutionReady;
-  const showRemoteSetupHint = Boolean(
-    activeProject && agentStatus?.available && remoteInputBlocked,
+  const showRemotePreparationHint = Boolean(
+    activeProject?.executionLocation === 'remote' &&
+      agentStatus?.available &&
+      agentStatus.configured &&
+      agentStatus.projectDir,
   );
   const projectName = activeProject?.name || t('No project selected');
   const fixedDomain = activeProject?.domain || null;
@@ -1159,7 +1154,6 @@ export function App() {
       submitting.current ||
       startingAgent.current ||
       agentBusy ||
-      (activeProject?.executionLocation === 'remote' && !remoteExecutionReady) ||
       attachments.loading ||
       (!prompt.trim() && !attachments.images.length)
     )
@@ -1802,12 +1796,6 @@ export function App() {
                         projectId: activeProject.id,
                         domain: activeProject.domain || '',
                         chatId: activeChatId,
-                        onReady: ready =>
-                          setRemoteExecution({
-                            projectId: activeProject.id,
-                            chatId: activeChatId,
-                            ready,
-                          }),
                         onTools: setRemoteToolIds,
                         onConfigure: () => showPage('project'),
                       }
@@ -2030,12 +2018,7 @@ export function App() {
                               : t('Create or choose a project to start…')
                           }
                           value={task}
-                          disabled={
-                            agentBusy ||
-                            navigating ||
-                            !fixedDomain ||
-                            (activeProject?.executionLocation === 'remote' && !remoteExecutionReady)
-                          }
+                          disabled={agentBusy || navigating || !fixedDomain}
                           onChange={event => setTask(event.target.value)}
                           onKeyDown={event => {
                             if (
@@ -2085,7 +2068,7 @@ export function App() {
                               title={contextUsageTitle(t, modelProfile, contextUsage)}
                               aria-label={contextUsageTitle(t, modelProfile, contextUsage)}
                             >
-                              <Cpu size={13} />
+                              <BrainCircuit size={13} aria-hidden="true" />
                               <span className="ia-model-pill-name">
                                 {modelProfile?.model || t('Model')}
                               </span>
@@ -2155,8 +2138,6 @@ export function App() {
                                 navigating ||
                                 agentBusy ||
                                 !fixedDomain ||
-                                (activeProject?.executionLocation === 'remote' &&
-                                  !remoteExecutionReady) ||
                                 attachments.loading ||
                                 (!task.trim() && !attachments.images.length) ||
                                 (attachments.images.length > 0 && !modelImageInput)
@@ -2173,24 +2154,24 @@ export function App() {
                     <p id="ia-composer-help" className="ia-sr-only">
                       {t('Press Enter to send. Press Shift+Enter for a new line.')}
                     </p>
-                    <div className={`ia-composer-hint${showRemoteSetupHint ? ' is-blocked' : ''}`}>
+                    <div className="ia-composer-hint">
                       <div className="ia-composer-status">
                         <span id="ia-composer-status" role="status">
                           {!activeProject
                             ? t('Choose a project to run Kimi')
                             : !agentStatus?.available
                               ? t('Kimi CLI is required to run Agent tasks')
-                              : remoteInputBlocked
-                                ? t(
-                                    'Remote environment is not ready. Check project execution settings.',
-                                  )
-                                : !agentStatus.configured
-                                  ? t('Configure the Model API in Settings to run Kimi')
-                                  : !agentStatus.projectDir
-                                    ? t('Choose a project to run Kimi')
+                              : !agentStatus.configured
+                                ? t('Configure the Model API in Settings to run Kimi')
+                                : !agentStatus.projectDir
+                                  ? t('Choose a project to run Kimi')
+                                  : showRemotePreparationHint
+                                    ? t(
+                                        'Start with your task. Agent will prepare remote files and request one approval.',
+                                      )
                                     : t('Kimi ready')}
                         </span>
-                        {showRemoteSetupHint && (
+                        {showRemotePreparationHint && (
                           <button
                             className="ia-composer-status-action"
                             type="button"

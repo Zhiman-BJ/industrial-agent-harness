@@ -1,0 +1,182 @@
+{
+  "kind": "electron-click-progress",
+  "date": "2026-10-20",
+  "verdict": "blocked",
+  "reason": "isolated-ui-model-profile-required",
+  "commit": "546b41efcdf36f200739d1b89276418cba6481bf",
+  "application": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "kind": "source-build",
+    "electron": "44.0.0",
+    "launchContext": "user normal Terminal GUI session",
+    "clickMethod": "CUA native visible UI",
+    "visibleHarnessWindow": true,
+    "buildSourceAnchor": "a283fec5bbe47dbdd1c263da38c25258b4a95105",
+    "documentationRevision": "cf15cd2f9f6d4765feffc42c1b6d1bc7751fa5a5",
+    "identityNote": "The source build was made at a283/cf15 before the worktree fast-forwarded to 546b41 for a CI distribution-only merge. This is not a rebuilt or packaged 546b41 runtime qualification; the earlier shared-dependency caveat remains."
+  },
+  "project": {
+    "name": "PR230 Electron CAD 验收",
+    "domain": "cad",
+    "directory": "/private/var/folders/z0/8fqzv4jn6zb32j82pxz8mw2r0000gn/T/pr230-ui-cad-W0oSOJ/project",
+    "chatTitle": "远端批量授权点击验收",
+    "executionLocation": "remote",
+    "projectDetailsConnectionLabel": "已连接",
+    "chatPreparationLabel": "按需准备文件",
+    "approvalMode": "请求审批",
+    "manuallySelectedSyncFiles": []
+  },
+  "observations": {
+    "unsyncedChatCreatedByClick": true,
+    "draftEnteredByUI": true,
+    "sendButtonEnabledAfterInput": true,
+    "sendClicked": false,
+    "draftClearedAfterObservation": true,
+    "windowKeptOpen": true,
+    "localProjectReadPerformed": false,
+    "batchApprovalClicked": false,
+    "localEditApprovalClicked": false,
+    "taskStarted": false,
+    "uploads": 0,
+    "remoteEngineeringCalls": 0,
+    "countEvidence": "Operator click trace and observed unsent chat; these zero counts are not an independently captured network trace. Connection/health observations do not count as industrial execution."
+  },
+  "model": {
+    "currentlyDisplayed": "MiniMax-M2.7-highspeed",
+    "plannedForFullTask": "local mock model with real remote deployment",
+    "mockConfigured": false,
+    "settingsSaved": false,
+    "reason": "Existing MiniMax credentials occupy the current profile single key slot. Test key entry was cancelled without saving to avoid overwriting them. An isolated UI model profile is required before sending the task.",
+    "fixtureLimitations": "The existing success fixture is a single-conversation 11-step /v1/chat/completions sequence. A connection probe may consume it; the headless runner approves programmatically and cannot drive UI acceptance. Negative branches need an appropriate independent sequence or real model."
+  },
+  "cases": [
+    {
+      "id": "RE-E01",
+      "status": "blocked",
+      "reason": "isolated-ui-model-profile-required",
+      "subcases": [
+        {
+          "id": "RE-E01.window",
+          "status": "pass",
+          "evidence": ["01-unsynced-chat.png"]
+        },
+        {
+          "id": "RE-E01.chat-created-without-sync",
+          "status": "pass",
+          "evidence": ["01-unsynced-chat.png", "ui-entry-observation.txt"]
+        },
+        {
+          "id": "RE-E01.input-and-send-enabled",
+          "status": "pass",
+          "evidence": ["02-unsynced-send-enabled.png", "ui-entry-observation.txt"]
+        },
+        {
+          "id": "RE-E01.send-and-local-read",
+          "status": "blocked",
+          "reason": "isolated-ui-model-profile-required"
+        },
+        {
+          "id": "RE-E01.unconfigured-or-offline-variant",
+          "status": "blocked",
+          "reason": "isolated-ui-model-profile-required"
+        }
+      ]
+    },
+    {
+      "id": "RE-E02",
+      "status": "blocked",
+      "reason": "isolated-ui-model-profile-required"
+    },
+    {
+      "id": "RE-E03",
+      "status": "blocked",
+      "reason": "isolated-ui-model-profile-required"
+    },
+    {
+      "id": "RE-E04",
+      "status": "blocked",
+      "reason": "isolated-ui-model-profile-required"
+    },
+    {
+      "id": "RE-E05",
+      "status": "blocked",
+      "reason": "isolated-ui-model-profile-required"
+    },
+    {
+      "id": "RE-E06",
+      "status": "blocked",
+      "reason": "isolated-ui-model-profile-required",
+      "additionalPrerequisite": "model-fixture-scenario-unavailable"
+    },
+    {
+      "id": "RE-E07",
+      "status": "blocked",
+      "reason": "isolated-ui-model-profile-required",
+      "additionalPrerequisite": "model-fixture-scenario-unavailable"
+    },
+    {
+      "id": "RE-E08",
+      "status": "blocked",
+      "reason": "isolated-ui-model-profile-required"
+    },
+    {
+      "id": "RE-E09",
+      "status": "blocked",
+      "reason": "isolated-ui-model-profile-required"
+    },
+    {
+      "id": "RE-E10",
+      "status": "blocked",
+      "reason": "isolated-ui-model-profile-required"
+    },
+    {
+      "id": "RE-E11",
+      "status": "blocked",
+      "reason": "isolated-ui-model-profile-required"
+    }
+  ],
+  "evidence": {
+    "01-unsynced-chat.png": {
+      "bytes": 276065,
+      "sha256": "0c3c5fac5fcb0b2b23a536c48d9bad7a352fb7b8208ddf508161e78fdfb1466b",
+      "fileModifiedAt": "2026-10-20T05:50:59.717137+00:00"
+    },
+    "02-unsynced-send-enabled.png": {
+      "bytes": 330302,
+      "sha256": "725a40a2491a3193004a0fa5e79dd478b9fc3f79a379186feb14334e693e9f87",
+      "fileModifiedAt": "2026-10-20T05:52:43.029721+00:00"
+    },
+    "ui-entry-observation.txt": {
+      "bytes": 1725,
+      "sha256": "87b2e0089f40032395268e800e54ecbbfeab3d7b271cb02db0bad2ec5509861a",
+      "isExcerpt": true
+    }
+  },
+  "previousAttempt": {
+    "path": "../electron-click-readiness-20261020.json",
+    "finishedAt": "2026-10-20T05:35:37.683Z",
+    "result": "SIGABRT; no Harness window in that bounded tool-launched attempt",
+    "preserved": true,
+    "interpretation": "Later normal Terminal launch supplied a real window. The earlier failure is retained and does not establish a current OS-permission requirement."
+  },
+  "remaining": [
+    "Start an independently configured GUI model profile without overwriting existing credentials.",
+    "Send the task through the actual UI, then verify local read and plan before any upload.",
+    "Click one batch approval and one local edit approval; verify both actual CAD runs, resync, artifacts, IDs and releases.",
+    "Run separate reject/scope-expansion/reopen/cleanup cases with their own supported prerequisites."
+  ],
+  "scopeBoundary": "Only the Electron entry and editable composer substeps were exercised. No complete RE-E01 pass, model call, local read, approval, upload, remote CAD, Viewer, reopening or cleanup acceptance is claimed. The earlier real remote headless pass remains separate.",
+  "localWorkspaceObservation": {
+    "method": "read-only disk inspection by operator",
+    "files": [
+      {
+        "path": "recipe.json",
+        "bytes": 607,
+        "sha256": "1f9fdd40a5e462caec414574042f97e5dba38fe20490cbc7a8517d784cc15b82"
+      }
+    ],
+    "canonicalActionOrArtifactFilesCreated": false,
+    "note": "This is host evidence inspection, not a Kimi project.files.read task invocation."
+  }
+}

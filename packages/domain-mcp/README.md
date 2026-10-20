@@ -2,7 +2,7 @@
 
 Exposes compact discovery, selected tool schemas, and scoped calls backed by a declared domain Runtime.
 
-P0 工业执行边界已变更：真实 Kimi 及子 MCP 在 macOS 中只读实际 Project，遗留 Gateway mutation 会可见失败，不再作为正式工程写入路径；当前 Chip RTL Core 使用宿主 scoped `industrial_action_call` 经过规范 Runtime。显式注册外部 MCP 已经经由宿主 Runtime 审批与持久 Action/响应执行；外部响应仍未验收。下文的 Gateway 注册/传输 API 仍存在，不能据此声称工业 mutation 或工程验收已支持。事实和平台矩阵见 [P0 工业运行时](../../doc/p0-industrial-runtime.md) 与 [安全边界](../../SECURITY.md)。
+当前工业调用通过宿主 scoped `industrial_action_call` 进入规范 Runtime，保留项目、状态、工具范围和审批检查。显式注册外部 MCP 也经由宿主 Runtime 审批与持久 Action/响应执行；外部响应仍未验收。[PD-088](../../doc/local-agent-execution.md) 已将三平台本机 Kimi 统一为当前用户权限，原生工具和子进程不再继承只读工程的 OS 限制。移除该限制不使遗留 Gateway mutation 自动获得 Runtime 授权或工程资格。下文保留 Gateway 注册/传输 API；历史 P0 实测见 [P0 工业运行时](../../doc/p0-industrial-runtime.md)，当前权限见[安全说明](../../SECURITY.md)。
 
 `listToolProviders` 生成领域工具资源目录，优先读取当前 Runtime factory 的实际 ToolDescriptor 注册，并包含外部 MCP 发现结果。稳定资源 ID 用于全局默认与项目覆盖。该目录用于 UI 和共享权限策略，不生成独立 MCP 子进程。
 

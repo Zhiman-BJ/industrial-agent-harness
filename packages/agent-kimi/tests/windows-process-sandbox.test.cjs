@@ -10,7 +10,7 @@ const systemBinary = name =>
 
 function windowsOnly(t) {
   if (process.platform === 'win32') return true;
-  t.diagnostic('Windows native execution requires a Windows runner; no native qualification here.');
+  t.skip('Windows native execution requires a Windows runner; no native qualification here.');
   return false;
 }
 
@@ -472,7 +472,7 @@ test(
       events.some(
         event =>
           event.type === 'execution-boundary' &&
-          event.mechanism === 'windows-current-user' &&
+          event.mechanism === 'current-user' &&
           event.osIsolation === false &&
           event.projectWritable === true,
       ),

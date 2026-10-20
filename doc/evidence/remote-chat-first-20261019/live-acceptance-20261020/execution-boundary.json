@@ -1,0 +1,11 @@
+{
+  "type": "execution-boundary",
+  "platform": "darwin",
+  "mechanism": "current-user",
+  "osIsolation": false,
+  "projectWritable": true,
+  "projectDir": "<test-root>/project",
+  "agentWorkDir": "<test-root>/chats/sessions/0a14c098-db88-4299-bf37-905b7d6b1b10/workspace",
+  "hostRuntimeRequired": true,
+  "recordedAt": "2026-10-20T05:23:56.717Z"
+}

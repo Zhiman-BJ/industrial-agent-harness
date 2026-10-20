@@ -1,6 +1,6 @@
 # 外部 MCP：Desktop / CLI 共用注册
 
-2026-10-07 更新：显式注册的外部 MCP 已通过共享宿主 Runtime 调用，可与受保护的 Kimi 会话组合。每次调用重查审批、Scope、参数和服务快照，持久记录 Run/Action、脱敏响应和 Checkpoint；外部结果保持 not_run，不覆盖工程验收。独立应用控制插件仍受限制。
+当前接入：显式注册的外部 MCP 通过共享宿主 Runtime 调用，可与当前用户 Kimi 会话组合。每次调用重查审批、Scope、参数和服务快照，持久记录 Run/Action、脱敏响应和 Checkpoint；外部结果保持 not_run，不覆盖工程验收。独立应用控制插件仍受限制。[PD-088](local-agent-execution.md) 移除本机 Agent OS 隔离，不移除这些 Runtime 检查。
 
 外部服务可显式注册一次，在 Desktop 和 Chip / PCB / Godot CLI 包中共用。支持本地 stdio、Streamable HTTP 和旧 SSE；使用固定的官方 TypeScript MCP SDK 1.30.1。不自动安装服务、软件镜像或申请操作系统授权，也不读取项目里的任意 MCP 启动配置。
 
@@ -84,4 +84,4 @@ PNG/JPEG/WebP 原生 MCP ImageContent 继续传给 Kimi 模型，最多四张；
 
 macOS Desktop：构建后运行 `pnpm --filter @industrial-agent-harness/desktop test:external-mcp`，验证实际表单添加、CLI 共享读取、项目禁用、连续两次点击及截图审批、无参分页默认值、图片输入、运行中拒绝修改、刷新/移除。发现和 schema 读取不启动服务，不请求修改审批。原生 macOS CI 强制该界面链路；受控模型与 MCP fixture 不代表任意供应商 computer-use 安装兼容性或屏幕录制/辅助功能权限已就绪。
 
-受保护会话不启动外部服务的 Kimi 子 MCP Gateway；同名发现/调用入口由 SDK 宿主 callback 进入 Runtime，参数可用 argumentsJson 保留数值与数组。跨进程注册变化拒绝旧调用，需开启新轮；失败、超时、取消不自动重发。桌面表单保持原有配置流程，修改服务后重建空闲 Runtime。真实 Kimi、打包 Chip CLI 及 stdio/HTTP/SSE 回归验证了该路径，不代表任意外部应用兼容。
+使用宿主 Runtime 的会话不启动外部服务的 Kimi 子 MCP Gateway；同名发现/调用入口由 SDK 宿主 callback 进入 Runtime，参数可用 argumentsJson 保留数值与数组。跨进程注册变化拒绝旧调用，需开启新轮；失败、超时、取消不自动重发。桌面表单保持原有配置流程，修改服务后重建空闲 Runtime。真实 Kimi、打包 Chip CLI 及 stdio/HTTP/SSE 历史回归验证了该路径，不代表任意外部应用兼容。

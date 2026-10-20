@@ -1,0 +1,57 @@
+[
+  {
+    "step": 0,
+    "tool": "industrial_action_call",
+    "action": "project.files.read"
+  },
+  {
+    "step": 1,
+    "tool": "industrial_artifact_read",
+    "action": null
+  },
+  {
+    "step": 2,
+    "tool": "industrial_action_call",
+    "action": "project.remote.plan"
+  },
+  {
+    "step": 3,
+    "tool": "industrial_artifact_read",
+    "action": null
+  },
+  {
+    "step": 4,
+    "tool": "industrial_action_call",
+    "action": "project.remote.prepare"
+  },
+  {
+    "step": 5,
+    "tool": "industrial_artifact_read",
+    "action": null
+  },
+  {
+    "step": 6,
+    "tool": "industrial_action_call",
+    "action": "cad.freecad.build"
+  },
+  {
+    "step": 7,
+    "tool": "industrial_action_call",
+    "action": "project.files.apply"
+  },
+  {
+    "step": 8,
+    "tool": "industrial_action_call",
+    "action": "cad.freecad.build"
+  },
+  {
+    "step": 9,
+    "tool": "industrial_artifact_read",
+    "action": null
+  },
+  {
+    "step": 10,
+    "tool": null,
+    "action": null
+  }
+]

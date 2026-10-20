@@ -16,6 +16,18 @@ materials. PCB actor sources and Skills come from the pinned owner Pack; its hos
 Python environment remains a separately prepared prerequisite.
 Production catalogs require `HARNESS_PACK_SIGNING_KEY_FILE` and `HARNESS_PACK_SIGNING_KEY_ID`.
 
+Desktop release publication keeps Pack signing independent of application code signing.
+Both beta and stable feeds publish the authenticated `catalog.json` and its `.hpack` files
+even for unsigned Core builds. `scripts/publish-desktop-feed.cjs` verifies the catalog,
+channel and all archive sizes/hashes before publication, then uploads archives before
+the catalog. Core binaries and OTA manifests are published only when both platform
+installers report signed; unsigned releases preserve any previous signed Core feed.
+Unsigned clients keep Core OTA disabled while consuming signed Pack updates normally.
+This publication policy does not add platform qualifications or bypass Pack compatibility,
+signature, integrity, runtime preparation or task lease checks. Regression coverage:
+`node --test tests/ci/release-desktop.test.cjs` (GitHub uploads and HTTPS responses are
+simulated; actual installer signing and public-feed recovery require release acceptance).
+
 Core-owned optional `.hpack` files may also ship inside the application resources; their catalog is protected by the Core application signature, and installation verifies the pinned archive hash. This source is supplied only by the desktop main process, never a renderer or project path. Signed HTTPS catalogs remain the update source.
 
 Optional `runtimeAssets` declarations prepare pinned macOS arm64 vendor applications in `<store>/.runtime-assets/`: streaming HTTPS download, exact size/SHA-256, read-only DMG mount or validated ZIP extraction, full app copy with upstream licenses, signature verification, bounded version probe, atomic activation and repair. Large applications remain separate from bounded `.hpack` archives. Interrupted staging is not ready; versions and the verified download cache are retained. Removing a Pack preserves this reusable runtime cache. Desktop and CLI use the same resolved dependency environment.
@@ -33,6 +45,12 @@ installs (`~/.docker/bin`, `/usr/local/bin`, `/opt/homebrew/bin`, the Docker.app
 timeout-bounded login-shell PATH capture for GUI launches whose environment lacks them; the miss
 message lists every searched location.
 Installing images does not configure a project's execution profile or qualify an engineering task.
+
+Qualification hosts that cannot run Docker (GitHub-hosted macOS runners) build their bundles with
+`HARNESS_PACK_OMIT_CONTAINER_IMAGES=1` and `HARNESS_PACK_SIGNING_KEY_ID=qualification`: the bundle
+keeps the owner lock verbatim but advertises no container images, so `prepareRuntime` prepares the
+native applications only. The switch is refused for every other signing identity and therefore
+never reaches production catalogs; container image preparation is qualified on Linux hosts.
 
 Container preparation streams bytes to disk while checking the exact size and SHA-256. It reads
 bounded OCI metadata without extracting layers, verifies the locked config digest and platform,

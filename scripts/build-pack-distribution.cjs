@@ -19,6 +19,15 @@ const root = path.resolve(__dirname, '..');
 const output = path.resolve(process.argv[2] || path.join(root, 'dist', 'domain-packs'));
 const channel = process.env.HARNESS_PACK_CHANNEL || 'beta';
 if (!['stable', 'beta'].includes(channel)) throw Error('Invalid Pack channel.');
+// Qualification hosts without Docker (GitHub-hosted macOS) prove the native path
+// from bundles that keep the owner lock but advertise no container images, so
+// PackManager.prepareRuntime never reaches the Docker preflight. Production
+// catalogs cannot omit images: the switch is bound to the qualification identity.
+const omitContainerImages = process.env.HARNESS_PACK_OMIT_CONTAINER_IMAGES === '1';
+if (omitContainerImages && process.env.HARNESS_PACK_SIGNING_KEY_ID !== 'qualification')
+  throw Error(
+    'HARNESS_PACK_OMIT_CONTAINER_IMAGES is only valid for qualification builds signed with HARNESS_PACK_SIGNING_KEY_ID=qualification.',
+  );
 if (fs.existsSync(output)) throw Error(`Output already exists: ${output}`);
 fs.mkdirSync(output, { recursive: true });
 const providerPacks = loadDomainPacks();
@@ -40,9 +49,14 @@ for (const declaration of metadata.domains) {
   const directory = path.join(output, domain);
   fs.mkdirSync(directory, { recursive: true });
   const providers = providerPacks.filter(pack => pack.domain === domain);
-  const containerImages = distributionLock.images
+  const releasedImages = distributionLock.images
     .filter(image => image.pack === domain && image.current != null)
     .map(image => image.id);
+  const containerImages = omitContainerImages ? [] : releasedImages;
+  if (omitContainerImages && releasedImages.length)
+    process.stderr.write(
+      `${domain}: omitting released container images ${releasedImages.join(', ')} from the qualification bundle; the owner lock stays embedded.\n`,
+    );
   const containerDownloadSize = containerImages.reduce(
     (total, image) => total + resolveImageAsset({ lock: distributionLock }, image).bytes,
     0,

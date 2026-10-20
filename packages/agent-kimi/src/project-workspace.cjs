@@ -53,8 +53,9 @@ function prepareProjectWorkspace(directory, projectDir, platform = process.platf
     .filter(root => fs.statSync(root, { throwIfNoEntry: false })?.isDirectory());
 }
 
-// A restricted Windows token cannot follow a junction into the engineering
-// project. Materialize only Kimi's native discovery inputs, never project data.
+// Keep Windows discovery inputs bounded and independent of symlink privileges.
+// This session snapshot is not an OS boundary: the Agent can access the project
+// with the current user's permissions.
 const WINDOWS_INPUT_LIMITS = {
   file: 1024 * 1024,
   bytes: 16 * 1024 * 1024,

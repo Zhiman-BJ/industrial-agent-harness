@@ -13,6 +13,7 @@ const {
 } = require('@industrial-agent-harness/domain-mcp');
 const { RemoteSettings } = require('./remote-settings.cjs');
 const { createRemoteRuntime } = require('@industrial-agent-harness/domain-runtime');
+const { createRemotePlanningRuntime } = require('./remote-planning-runtime.cjs');
 const { defaultResourceDirectory } = require('./resource-settings.cjs');
 
 function createProjectRuntime({
@@ -29,7 +30,11 @@ function createProjectRuntime({
 }) {
   const execution = remoteSettings.project(projectDir, domain);
   if (execution.location === 'remote')
-    return createRemoteRuntime({
+    return (
+      execution.remoteProjectId && execution.gatewayContract !== 'mcp-v1'
+        ? createRemoteRuntime
+        : createRemotePlanningRuntime
+    )({
       settings: remoteSettings,
       projectDir,
       domain,

@@ -20,7 +20,7 @@ function inside(parent, child) {
   );
 }
 
-// PD-086: Windows runs with the current user's permissions. This adapter
+// Native Agent processes run with the current user's permissions. This adapter
 // prepares session storage and supervises launches; it is not an OS sandbox.
 function createWindowsProcessSandbox({
   executable,
@@ -68,7 +68,7 @@ function createWindowsProcessSandbox({
       projectAlias: false,
       boundary: {
         platform: 'win32',
-        mechanism: 'windows-current-user',
+        mechanism: 'current-user',
         osIsolation: false,
         projectWritable: true,
         projectDir: project,

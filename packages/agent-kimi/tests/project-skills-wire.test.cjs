@@ -8,7 +8,7 @@ const { validateProfile, writeCliConfig, sessionEnv } = require('../src/model-co
 const { startModel } = require('../../../tests/integration/fixtures/domain-mcp-model.cjs');
 
 test(
-  'real isolated Kimi discovers project skills progressively with native brand precedence',
+  'real current-user Kimi discovers project skills progressively with native brand precedence',
   {
     skip: !process.env.KIMI_EXECUTABLE || !['darwin', 'linux'].includes(process.platform),
     timeout: 45000,
@@ -92,7 +92,13 @@ test(
       [],
     );
     assert.ok(
-      events.some(event => event.type === 'execution-boundary' && event.projectWritable === false),
+      events.some(
+        event =>
+          event.type === 'execution-boundary' &&
+          event.mechanism === 'current-user' &&
+          event.osIsolation === false &&
+          event.projectWritable === true,
+      ),
     );
     assert.equal(fixture.requests.length, 3);
     const initial = JSON.stringify(fixture.requests[0].messages);

@@ -13,24 +13,28 @@ const kimi =
   require('../../packages/agent-kimi/src/code-session.cjs').bundledExecutable();
 
 test(
-  'real PCB CLI keeps the shared Runtime scope and refuses native Bash mutation even after approval',
+  'real PCB CLI keeps the shared Runtime scope and requires approval for current-user native fixture writes',
   { timeout: 90000 },
   async t => {
     assert.ok(fs.existsSync(kimi), 'The pinned native Kimi executable is required.');
     const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'pcb-kimi-boundary-'));
     t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
     let project;
-    const quote = value => "'" + value.replaceAll("'", "'\\''") + "'";
     const model = await startModel({
-      calls: () => [
-        {
-          name: 'Bash',
-          arguments: {
-            command: `${quote(process.execPath)} -e ${quote('require("node:fs").writeFileSync(process.argv[1],"UNAUTHORIZED_BOARD_CHANGE")')} ${quote(path.join(project, 'spec.json'))}`,
-            description: 'Attempt a PCB project write outside Domain Runtime',
+      calls: () => {
+        const script =
+          `require('node:fs').writeFileSync(${JSON.stringify(path.join(project, 'native-agent-marker.txt'))}, 'PCB_NATIVE_FIXTURE_WRITE_OK');` +
+          "console.log('PCB_NATIVE_FIXTURE_WRITE_OK')";
+        return [
+          {
+            name: 'Bash',
+            arguments: {
+              command: `node -e "eval(Buffer.from('${Buffer.from(script).toString('base64')}', 'base64').toString())"`,
+              description: 'Write a synthetic marker in this temporary PCB project',
+            },
           },
-        },
-      ],
+        ];
+      },
     });
     t.after(model.close);
     for (const approval of ['reject', 'approve']) {
@@ -49,7 +53,7 @@ test(
           '--domain',
           'pcb',
           '--task',
-          'pcb mcp 修改板尺寸',
+          'pcb mcp 写入 native-agent-marker.txt 合成测试标记',
           '--approval',
           approval,
           '--provider',
@@ -100,14 +104,22 @@ test(
       if (approval === 'approve') {
         assert.match(
           JSON.stringify(requests.at(-1).messages.filter(message => message.role === 'tool')),
-          /Operation not permitted|EACCES|EPERM|EROFS|read-only file system/i,
+          /PCB_NATIVE_FIXTURE_WRITE_OK/,
+        );
+        assert.equal(
+          fs.readFileSync(path.join(project, 'native-agent-marker.txt'), 'utf8'),
+          'PCB_NATIVE_FIXTURE_WRITE_OK',
         );
         assert.ok(
           rows.some(
-            row => row.event?.type === 'execution-boundary' && row.event.projectWritable === false,
+            row =>
+              row.event?.type === 'execution-boundary' &&
+              row.event.mechanism === 'current-user' &&
+              row.event.osIsolation === false &&
+              row.event.projectWritable === true,
           ),
         );
-      }
+      } else assert.equal(fs.existsSync(path.join(project, 'native-agent-marker.txt')), false);
       assert.equal(fs.readFileSync(path.join(project, 'spec.json'), 'utf8'), spec);
       assert.ok(
         !rows.some(row => row.type === 'industrial_result' && row.verification.status === 'passed'),

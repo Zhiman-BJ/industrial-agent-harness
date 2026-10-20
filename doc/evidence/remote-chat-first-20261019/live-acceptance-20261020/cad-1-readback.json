@@ -1,0 +1,47 @@
+{
+  "version": "1.1.4",
+  "runtimePaths": {
+    "UserConfigPath": "/work/requests/4a280f91-077d-464e-934c-cdf9c5714730/home/",
+    "UserAppData": "/work/requests/4a280f91-077d-464e-934c-cdf9c5714730/home/data/",
+    "UserCachePath": "/work/requests/4a280f91-077d-464e-934c-cdf9c5714730/temp/",
+    "UserMacroPath": "/work/requests/4a280f91-077d-464e-934c-cdf9c5714730/home/data/",
+    "AppTempPath": "/work/requests/4a280f91-077d-464e-934c-cdf9c5714730/temp/"
+  },
+  "native": {
+    "valid": true,
+    "volume": 3937.1681469282034,
+    "solids": 1,
+    "faces": 7,
+    "bounds": [
+      40.0,
+      20.0,
+      5.0
+    ]
+  },
+  "step": {
+    "valid": true,
+    "volume": 3937.1681469282034,
+    "solids": 1,
+    "faces": 7,
+    "bounds": [
+      40.0,
+      20.0,
+      5.0
+    ]
+  },
+  "brep": {
+    "valid": true,
+    "volume": 3937.1681469282034,
+    "solids": 1,
+    "faces": 7,
+    "bounds": [
+      40.0,
+      20.0,
+      5.0
+    ]
+  },
+  "mesh": {
+    "facets": 520
+  },
+  "sketches": []
+}

@@ -81,12 +81,10 @@ export function ProjectExecution({
   project,
   busy,
   onChanged,
-  onReady,
 }: {
   project: ProjectBinding;
   busy: boolean;
   onChanged: () => void;
-  onReady: (ready: boolean) => void;
 }) {
   const { t } = useDisplayText();
   const [state, setState] = useState<RemoteProjectState>();
@@ -105,13 +103,6 @@ export function ProjectExecution({
         if (alive) {
           setState(value);
           setSelected(value.files);
-          onReady(
-            value.location === 'local' ||
-              (Boolean(value.syncedAt) &&
-                value.service.status === 'connected' &&
-                (value.service.executableDomains?.includes(project.domain || '') === true ||
-                  value.service.capabilities?.runtimeDiscovery === true)),
-          );
         }
       })
       .catch(reason => {
@@ -130,13 +121,6 @@ export function ProjectExecution({
       await operation();
       const next = await window.viewerHost!.remoteProject({ projectId: project.id });
       setState(next);
-      onReady(
-        next.location === 'local' ||
-          (Boolean(next.syncedAt) &&
-            next.service.status === 'connected' &&
-            (next.service.executableDomains?.includes(project.domain || '') === true ||
-              next.service.capabilities?.runtimeDiscovery === true)),
-      );
       if (changed) onChanged();
     } catch (reason) {
       setError(String(reason));
@@ -194,6 +178,11 @@ export function ProjectExecution({
       </div>
       {state?.location === 'remote' && (
         <div className="ia-remote-project-body">
+          <p>
+            {t(
+              'Start a chat to describe your task. Agent prepares the required files and remote tools, then asks for one approval before execution. Manual file sync is optional.',
+            )}
+          </p>
           <p role="status">
             {t(serviceLabels[state.service.status])}
             {state.syncedAt && ` · ${t('Approved files synced')}`}
@@ -228,7 +217,7 @@ export function ProjectExecution({
               <>
                 <p>
                   {t(
-                    'Only reviewed files are uploaded. Review and upload changed files before the next remote task.',
+                    'Only approved files are uploaded. You can also review and sync files manually below.',
                   )}
                 </p>
                 {!files && (
@@ -343,7 +332,7 @@ export function ProjectExecution({
             <>
               <p>
                 {t(
-                  'Creates a new project on the configured service. Previous remote files and results stay in the old project. Review and upload files before running again.',
+                  'Creates a new project on the configured service. Previous remote files and results stay in the old project. Agent will request a new file approval before remote execution.',
                 )}
               </p>
               <button

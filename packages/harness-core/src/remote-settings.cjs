@@ -88,7 +88,10 @@ function selectedSnapshot(directory, selected) {
 
 function validateServiceInfo(info) {
   if (
-    info.version === '1.1.0' &&
+    // Product releases 1.1.x and 1.2.x use the same MCP v1 application-session
+    // envelope. Product patch versions are not the canonical protocol version.
+    typeof info.version === 'string' &&
+    /^1\.[12]\.(?:0|[1-9]\d*)$/.test(info.version) &&
     info.remoteProtocolVersion === undefined &&
     info.sessionModel === 'application-session' &&
     Array.isArray(info.domains) &&
@@ -212,7 +215,7 @@ class RemoteSettings {
     // A stable, digest-only stand-in for the rotating service token.
     return hash(account.identity + ':' + (account.view().user?.sub || ''));
   }
-  client(binding = {}) {
+  client(binding = {}, { signal, identity, assertCurrent } = {}) {
     const config = this.configuration();
     if (!config.url) throw Error('Remote execution is not configured.');
     const account = this.accountFor(config);
@@ -234,7 +237,16 @@ class RemoteSettings {
         : undefined,
       credentialKey: account ? this.accountCredentialKey(config) : undefined,
       serverId: config.serverId || undefined,
-      fetch: this.fetch,
+      fetch:
+        signal || identity || assertCurrent
+          ? async (url, options) => {
+              signal?.throwIfAborted();
+              if (identity && this.identity() !== identity)
+                throw Error('Remote configuration changed during preparation.');
+              assertCurrent?.();
+              return (this.fetch || globalThis.fetch)(url, options);
+            }
+          : this.fetch,
       ...binding,
     });
   }
@@ -251,12 +263,17 @@ class RemoteSettings {
       ? this.connection
       : { status: 'unchecked', domains: [] };
   }
-  async check() {
+  async check({ signal } = {}) {
+    signal?.throwIfAborted();
     if (['not_configured', 'credentials_missing'].includes(this.view().status)) return this.view();
     const config = this.configuration();
-    const client = this.client();
+    const identity = this.identity();
+    const client = this.client({}, { signal, identity });
     try {
-      const info = validateServiceInfo(await client.info());
+      const info = validateServiceInfo(await client.info({ signal }));
+      signal?.throwIfAborted();
+      if (identity !== this.identity())
+        throw Error('Remote configuration changed during the connection check.');
       if (config.serverId && config.serverId !== info.serverId)
         throw Error('Remote service identity changed. Rebind the service explicitly.');
       const saved = this.read();
@@ -269,7 +286,10 @@ class RemoteSettings {
       };
       this.write(saved);
       this.connection = serviceConnection(info);
+      this.connectionIdentity = this.identity();
     } catch (error) {
+      signal?.throwIfAborted();
+      this.connectionIdentity = identity;
       this.connection = {
         status:
           error.status === 401 || error.status === 403 ? 'credentials_missing' : 'unavailable',
@@ -279,7 +299,7 @@ class RemoteSettings {
     } finally {
       await client.close();
     }
-    this.connectionIdentity = this.identity();
+    signal?.throwIfAborted();
     return this.view();
   }
   project(directory, domain) {
@@ -300,10 +320,23 @@ class RemoteSettings {
     this.assertTaskIdle(directory, domain);
     return this.update(directory, domain, { location });
   }
-  async bind(directory, domain) {
-    if ((await this.check()).status !== 'connected' || !this.view().domains.includes(domain))
+  async bind(directory, domain, { signal, expectedIdentity } = {}) {
+    signal?.throwIfAborted();
+    const initialBinding = JSON.stringify(this.project(directory, domain));
+    if (expectedIdentity && this.identity() !== expectedIdentity)
+      throw Error('Remote configuration changed during preparation.');
+    if (
+      (await this.check({ signal })).status !== 'connected' ||
+      !this.view().domains.includes(domain)
+    )
       throw Error('Remote service is unavailable for this domain.');
+    signal?.throwIfAborted();
     let binding = this.project(directory, domain);
+    if (
+      JSON.stringify(binding) !== initialBinding ||
+      (expectedIdentity && this.identity() !== expectedIdentity)
+    )
+      throw Error('Remote project binding changed during preparation.');
     if (binding.remoteProjectId) {
       if (
         binding.protocol !== REMOTE_PROTOCOL_VERSION ||
@@ -314,9 +347,22 @@ class RemoteSettings {
         );
       return binding;
     }
-    const client = this.client();
+    const identity = this.identity();
+    const previous = JSON.stringify(binding);
+    const assertCurrent = () => {
+      signal?.throwIfAborted();
+      if (
+        identity !== this.identity() ||
+        JSON.stringify(this.project(directory, domain)) !== previous
+      )
+        throw Error('Remote project binding changed during preparation.');
+      this.assertTaskIdle(directory, domain);
+    };
+    const client = this.client({}, { signal, identity, assertCurrent });
     try {
-      const project = await client.createProject({ domain });
+      assertCurrent();
+      const project = await client.createProject({ domain }, { signal });
+      assertCurrent();
       uuid(project.id);
       const current = this.read().service?.gatewayContract === 'mcp-v1';
       if (
@@ -327,9 +373,12 @@ class RemoteSettings {
       binding = this.update(directory, domain, {
         protocol: REMOTE_PROTOCOL_VERSION,
         remoteProjectId: project.id,
-        canonicalProjectId: project.canonicalProjectId || hash(this.identity() + ':' + project.id),
+        canonicalProjectId:
+          project.canonicalProjectId ||
+          binding.canonicalProjectId ||
+          hash(identity + ':' + project.id),
         gatewayContract: current ? 'mcp-v1' : null,
-        serviceIdentity: this.identity(),
+        serviceIdentity: identity,
       });
       return binding;
     } finally {
@@ -549,7 +598,9 @@ class RemoteSettings {
       if (
         pending.remoteProjectId === project.remoteProjectId &&
         pending.serviceIdentity === this.identity() &&
-        (['submitting', 'running', 'unknown'].includes(pending.status) ||
+        (['submitting', 'queued', 'provisioning', 'running', 'collecting', 'unknown'].includes(
+          pending.status,
+        ) ||
           pending.needsImport === true)
       )
         throw Error(
@@ -762,41 +813,70 @@ class RemoteSettings {
     walk('', 0);
     return result.sort();
   }
-  async review(directory, domain, files) {
-    if ((await this.check()).status !== 'connected' || !this.view().domains.includes(domain))
+  async review(directory, domain, files, { remember = false, signal } = {}) {
+    signal?.throwIfAborted();
+    if (typeof remember !== 'boolean') throw Error('The remembered upload choice must be boolean.');
+    if (
+      (await this.check({ signal })).status !== 'connected' ||
+      !this.view().domains.includes(domain)
+    )
       throw Error('Remote service is unavailable for this domain.');
+    signal?.throwIfAborted();
     if (!this.view().capabilities?.snapshots) throw Error('Remote file upload is unavailable.');
+    this.assertTaskIdle(directory, domain);
     const snapshot = selectedSnapshot(directory, files),
       id = crypto.randomUUID();
-    this.reviews.set(id, {
-      directory: fs.realpathSync(directory),
+    const manifestFiles = Object.freeze(
+      snapshot.manifest.files.map(file => Object.freeze({ ...file })),
+    );
+    const publicReview = Object.freeze({
+      id,
       domain,
-      files,
-      digest: snapshot.digest,
-      identity: this.identity(),
-      expires: Date.now() + 300000,
+      destination: this.configuration().url,
+      manifestDigest: snapshot.digest,
+      files: manifestFiles,
+      totalBytes: snapshot.totalBytes,
+      remember,
     });
+    this.reviews.set(
+      id,
+      Object.freeze({
+        directory: fs.realpathSync(directory),
+        domain,
+        files: Object.freeze(manifestFiles.map(file => file.path)),
+        digest: snapshot.digest,
+        identity: this.identity(),
+        binding: JSON.stringify(this.project(directory, domain)),
+        remember,
+        publicReview,
+        expires: Date.now() + 300000,
+      }),
+    );
     for (const [key, value] of this.reviews)
       if (value.expires < Date.now()) this.reviews.delete(key);
-    return {
-      id,
-      destination: this.configuration().url,
-      files: snapshot.manifest.files.map(({ path, sizeBytes }) => ({ path, sizeBytes })),
-      totalBytes: snapshot.totalBytes,
-    };
+    return publicReview;
   }
-  async sync(directory, domain, reviewId) {
-    const key = keyFor(directory, domain),
-      review = this.reviews.get(reviewId);
-    this.reviews.delete(reviewId);
+  approvalReview(directory, domain, reviewId) {
+    const review = this.reviews.get(reviewId);
     if (
       !review ||
       review.directory !== fs.realpathSync(directory) ||
       review.domain !== domain ||
       review.expires < Date.now() ||
-      review.identity !== this.identity()
+      review.identity !== this.identity() ||
+      review.binding !== JSON.stringify(this.project(directory, domain))
     )
-      throw Error('File upload review expired. Review the selection again.');
+      throw Error(
+        'File upload review expired or project binding changed. Review the selection again.',
+      );
+    return review.publicReview;
+  }
+  async sync(directory, domain, reviewId, { signal } = {}) {
+    signal?.throwIfAborted();
+    this.approvalReview(directory, domain, reviewId);
+    const key = keyFor(directory, domain),
+      review = this.reviews.get(reviewId);
+    this.reviews.delete(reviewId);
     if (this.locks.has(key)) throw Error('Remote project settings are busy.');
     this.assertTaskIdle(directory, domain);
     this.locks.add(key);
@@ -804,21 +884,54 @@ class RemoteSettings {
       const snapshot = selectedSnapshot(directory, review.files);
       if (snapshot.digest !== review.digest)
         throw Error('Selected files changed. Review them again before uploading.');
-      const binding = await this.bind(directory, domain);
-      const client = this.client({ remoteProjectId: binding.remoteProjectId, domain });
+      const binding = await this.bind(directory, domain, {
+        signal,
+        expectedIdentity: review.identity,
+      });
+      const expectedBinding = JSON.stringify(binding);
+      const assertCurrent = () => {
+        signal?.throwIfAborted();
+        if (
+          this.identity() !== review.identity ||
+          JSON.stringify(this.project(directory, domain)) !== expectedBinding
+        )
+          throw Error('Remote project binding changed during preparation.');
+        this.assertTaskIdle(directory, domain);
+      };
+      assertCurrent();
+      if (selectedSnapshot(directory, review.files).digest !== snapshot.digest)
+        throw Error('Selected files changed. Review them again before uploading.');
+      const client = this.client(
+        { remoteProjectId: binding.remoteProjectId, domain },
+        { signal, identity: review.identity, assertCurrent },
+      );
       try {
+        assertCurrent();
         const uploaded =
           binding.gatewayContract === 'mcp-v1'
-            ? await client.uploadSnapshot(snapshot, binding.snapshotId || null)
-            : await client.sync(snapshot, binding.snapshotId || null);
+            ? await client.uploadSnapshot(snapshot, binding.snapshotId || null, { signal })
+            : await client.sync(snapshot, binding.snapshotId || null, { signal });
+        assertCurrent();
         const snapshotId = uploaded.snapshotId || uploaded.id;
         uuid(snapshotId);
+        if (uploaded.projectId !== binding.remoteProjectId)
+          throw Error('Uploaded snapshot belongs to another remote project.');
         return this.update(directory, domain, {
           location: 'remote',
-          files: review.files,
+          files: [...review.files],
           manifestDigest: snapshot.digest,
           snapshotId,
           syncedAt: new Date().toISOString(),
+          syncPolicy: review.remember
+            ? {
+                schemaVersion: 1,
+                mode: 'approved-files',
+                files: [...review.files],
+                serviceIdentity: review.identity,
+                remoteProjectId: binding.remoteProjectId,
+                approvedAt: new Date().toISOString(),
+              }
+            : null,
         });
       } finally {
         await client.close();
@@ -826,6 +939,47 @@ class RemoteSettings {
     } finally {
       this.locks.delete(key);
     }
+  }
+  async ensurePrepared(directory, domain, { signal } = {}) {
+    signal?.throwIfAborted();
+    this.assertTaskIdle(directory, domain);
+    if (this.locks.has(keyFor(directory, domain))) throw Error('Remote project settings are busy.');
+    const binding = this.project(directory, domain);
+    if (binding.location !== 'remote')
+      throw Error('This project is no longer using remote execution.');
+    if (
+      binding.protocol !== REMOTE_PROTOCOL_VERSION ||
+      !binding.remoteProjectId ||
+      !binding.snapshotId ||
+      !binding.files?.length
+    )
+      throw Error('Prepare and approve the task input files before running remotely.');
+    if (binding.serviceIdentity !== this.identity())
+      throw Error('Project belongs to another service or credential.');
+    const snapshot = selectedSnapshot(directory, binding.files);
+    if (snapshot.digest === binding.manifestDigest) return binding;
+    const policy = binding.syncPolicy;
+    if (
+      policy?.schemaVersion !== 1 ||
+      policy.mode !== 'approved-files' ||
+      policy.serviceIdentity !== this.identity() ||
+      policy.remoteProjectId !== binding.remoteProjectId ||
+      !Array.isArray(policy.files) ||
+      JSON.stringify([...policy.files].sort()) !== JSON.stringify([...binding.files].sort())
+    )
+      throw Error(
+        'Local inputs changed. Prepare and approve the changed task files before running remotely.',
+      );
+    // Only the exact approved paths may be refreshed. A new dependency requires a
+    // new plan and approval; directory scanning never expands this authorization.
+    const expectedBinding = JSON.stringify(binding);
+    const review = await this.review(directory, domain, policy.files, { remember: true, signal });
+    signal?.throwIfAborted();
+    if (JSON.stringify(this.project(directory, domain)) !== expectedBinding) {
+      this.reviews.delete(review.id);
+      throw Error('Remote upload authorization changed during preparation.');
+    }
+    return this.sync(directory, domain, review.id, { signal });
   }
   async ensureSynced(directory, domain) {
     const binding = this.project(directory, domain);

@@ -9,9 +9,9 @@ const { buildHeadlessPackage } = require('./fixtures/headless-package.cjs');
 const { startModel } = require('./fixtures/domain-mcp-model.cjs');
 const execute = promisify(execFile);
 
-// This gate requires the production process boundary. Run it on the declared
+// This gate requires the production current-user runtime. Run it on the declared
 // native platforms, separately from portable packaging and other pnpm deploys.
-test('packaged headless Agent completes a real protected Kimi Code turn outside the workspace', async t => {
+test('packaged headless Agent completes a real current-user Kimi Code turn outside the workspace', async t => {
   const { directory, target } = buildHeadlessPackage(t);
   const isFollowup = body =>
     JSON.stringify(body.messages.findLast(m => m.role === 'user')?.content).includes(
@@ -78,7 +78,11 @@ test('packaged headless Agent completes a real protected Kimi Code turn outside 
   assert.equal(rows.at(-1).status, 'finished');
   assert.ok(
     rows.some(
-      row => row.event?.type === 'execution-boundary' && row.event.projectWritable === false,
+      row =>
+        row.event?.type === 'execution-boundary' &&
+        row.event.mechanism === 'current-user' &&
+        row.event.osIsolation === false &&
+        row.event.projectWritable === true,
     ),
   );
   assert.ok(rows.some(row => row.event?.text === 'PACKAGED_CODE_OK'));

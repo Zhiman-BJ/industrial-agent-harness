@@ -20,7 +20,17 @@ const { hash, writePrivateJson } = require('./remote-client.cjs');
 // The project owns one canonical cache; chats own disposable transports and durable
 // remote reconnect identities. No professional software is loaded on this host.
 class RemoteRuntime {
-  constructor({ settings, projectDir, domain, directory, registry, onStatus = () => {} }) {
+  constructor({
+    settings,
+    projectDir,
+    domain,
+    directory,
+    registry,
+    onStatus = () => {},
+    workspaceRuntime,
+    workspaceCapabilities,
+    prepareInputs,
+  }) {
     this.settings = settings;
     this.projectDir = fs.realpathSync(projectDir);
     this.domain = domain;
@@ -35,29 +45,48 @@ class RemoteRuntime {
       throw Error('Choose and confirm files to upload before running remotely.');
     this.registry = registry;
     this.remoteTools = [];
+    this.remoteToolImplementations = new Map();
     this.contexts = new Map();
     this.hostOnlyEnv = [settings.configuration().credentialEnv].filter(Boolean);
     this.hostRuntimeOnly = true;
     this.onStatus = onStatus;
     this.closed = false;
+    this.prepareInputs = prepareInputs;
+    this.ownsWorkspace = workspaceRuntime === undefined;
+    if (!this.ownsWorkspace) {
+      if (
+        !(workspaceRuntime instanceof IndustrialRuntime) ||
+        !workspaceRuntime.db ||
+        workspaceRuntime.projectDir !== this.projectDir ||
+        workspaceRuntime.project.projectId !== this.binding.canonicalProjectId ||
+        workspaceRuntime.project.domain !== domain
+      )
+        throw Error('Shared workspace does not match the bound remote project identity.');
+      workspaceRuntime.assertProjectBound();
+    }
     const workspace = createWorkspacePlugin({
       domain,
       protectedPaths: [directory, settings.directory].filter(Boolean),
       environment: settings.environment,
     });
     workspace.tools = workspace.tools.filter(tool => tool.descriptor.id !== 'project.task.run');
-    this.workspaceCapabilities = workspace.capabilities.map(item => ({
+    this.workspace =
+      workspaceRuntime ||
+      new IndustrialRuntime(projectDir, domain, {
+        directory: path.join(
+          directory || path.join(settings.directory, 'core'),
+          'remote-workspaces',
+        ),
+        projectRef: { schemaVersion: '1', projectId: this.binding.canonicalProjectId, domain },
+        stateProvider: workspace.stateProvider,
+        tools: workspace.tools,
+        verifiers: workspace.verifiers,
+      });
+    this.workspaceCapabilities = (workspaceCapabilities || workspace.capabilities).map(item => ({
       ...item,
-      tools: item.tools.filter(tool => workspace.tools.some(t => t.descriptor.id === tool.id)),
+      tools: item.tools.filter(tool => this.workspace.tools.has(tool.id)),
     }));
     this.capabilities = this.workspaceCapabilities;
-    this.workspace = new IndustrialRuntime(projectDir, domain, {
-      directory: path.join(directory || path.join(settings.directory, 'core'), 'remote-workspaces'),
-      projectRef: { schemaVersion: '1', projectId: this.binding.canonicalProjectId, domain },
-      stateProvider: workspace.stateProvider,
-      tools: workspace.tools,
-      verifiers: workspace.verifiers,
-    });
     this.project = this.workspace.project;
     this.diagnosticsRuntime = this.workspace;
     this.control = settings.client({ remoteProjectId: this.binding.remoteProjectId, domain });
@@ -553,6 +582,9 @@ class RemoteRuntime {
   assertProjectBound() {
     return this.workspace.assertProjectBound();
   }
+  approvalPreview(request) {
+    return this.workspace.approvalPreview(request);
+  }
   readArtifact(id) {
     return this.workspace.readArtifact(id);
   }
@@ -579,9 +611,15 @@ class RemoteRuntime {
     if ([...this.contexts.values()].some(c => c.executing))
       throw Error('Cannot close a running remote action.');
     this.closed = true;
-    await Promise.all([...this.contexts.values()].map(context => context.client.close()));
-    await this.control.close();
-    await this.workspace.close();
+    try {
+      await Promise.all([...this.contexts.values()].map(context => context.client.close()));
+      await this.control.close();
+    } finally {
+      if (!this.ownsWorkspace)
+        for (const [id, implementation] of this.remoteToolImplementations)
+          if (this.workspace.tools.get(id) === implementation) this.workspace.tools.delete(id);
+    }
+    if (this.ownsWorkspace) await this.workspace.close();
   }
 }
 function createRemoteRuntime(options) {

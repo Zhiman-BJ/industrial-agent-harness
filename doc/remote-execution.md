@@ -1,10 +1,12 @@
 # 远程软件、MCP 与沙箱：v1.1 重构
 
+2026-10-19 对话准备流程：选择远端后可先聊天，由本地 Agent 阅读、编辑工程并规划任务输入，再在对话中批量确认上传文件与本次工具范围。远端离线、尚未同步或查询失败不阻塞聊天；真正的远程软件调用仍要求准备、审批与受保护的实时工具发现均通过。该流程替代下文历史记录中的“先手工同步才能发送”和“所有内容变化均重新确认”，产品决定见 [PD-089](product-decisions.md#pd-089远程任务在对话中规划与批量准备)。既有真实远程证据属于其记录版本，不代表本次准备流程已完成生产环境验收。
+
 2026-10-19 更新：当前 `mcp-v1` 路径支持一个 profile 的多个工具：以受保护 inventory 的 Pack/profile/能力摘要绑定服务目录中的 `worker.toolIds`，逐个通过实时 describe 确认身份；拒绝缺失、重复和超限集合。CAD 四工具可发现，真实 build、下载与 Viewer 验收见[证据](evidence/remote-cad-20261019/README.md)。工具输入 schema 仍以远端实际返回为准；当前 CAD 服务仅返回 object，并未完整披露参数约束。
 
 单用户单沙箱 quota 下，当前路径在远端调用结果确定、本地产物与规范记录提交、`needsImport` 清除后自动释放。先核对项目、领域、聊天身份和非 busy 状态，只有服务确认同一 application session 为 `stopped` 才更新持久绑定、生成下一代 client session key。同一聊天的下一次调用重新建立远程会话，已有工程历史保留；任务后刷新不重新占用刚释放的 quota。工程验证失败但证据已完整提交的任务也可释放，运行中、结果未知及待导入任务保留会话。释放异常独立显示 pending，保留已提交的工程结论；后续调用先重新确认释放，未确认时不提交新工程调用。
 
-该自动释放只覆盖当前 `mcp-v1` 任务完成路径，不是全局空闲回收器：仅发现/描述工具而未执行的会话、旧版本遗留会话和进程意外退出仍需服务端 TTL 或显式结束。不会为抢 quota 终止其他聊天，不自动重放工程调用。显式结束的旧行为与历史 canonical gateway 协议不变。
+对话内 `project.remote.prepare` 的实时环境检查可能先占用沙箱，因此成功、失败和取消后的准备清理均核对同一项目、聊天会话及非 busy 状态，并要求确认 `stopped` 后才更新会话代际。清理使用独立的 10 秒超时，不被已取消的任务信号跳过；释放未确认时准备失败。正式工具调用重新获取并检查环境，避免模型思考期间持续占用唯一配额。该机制不是全局空闲回收器：旧版本遗留会话、独立发现入口和进程意外退出仍需服务端 TTL 或显式结束。不会为抢 quota 终止其他聊天，不自动重放工程调用。
 
 2026-10-17 更新：已用 MiniMax-M3 完成真实 Desktop/Kimi 对话闭环：模型描述并调用
 `chip.rtl.verify`，经审批进入远程沙箱，源 Verifier 返回 `passed`，模型读取本次报告并
@@ -30,9 +32,20 @@
 
 ## 用户操作
 
+选择远端后，项目详情和侧栏均可新建或打开聊天；已有空白聊天继续按原规则复用。在本地模型与 Agent 可用的前提下，服务未连接、未同步文件、状态查询失败或旧会话已结束均不禁用聊天输入和发送。本地 Agent 可以先阅读、编辑工程并解释远端阻塞原因，执行状态卡继续显示远端的实际状态。
+
 项目运行位置仍为本机或远程，对话继承项目选择，审批按对话生效。服务由应用/部署配置提供；地址或凭据未配置时，界面明确显示尚未配置。连接成功只证明服务协议可用；远端领域及沙箱后端均有对应资格，才允许正式专业软件调用。
 
-每次上传均有显式文件清单及目的地预览，默认不选文件。用户确认后得到不可变 snapshot；本地文件内容变化后，下一次远程执行要求重新审核并上传，**不再自动同步曾选路径的新内容**。服务端的生成内容以 canonical Artifact 返回；下载时由用户指定项目内相对目的路径，验证大小与 SHA-256，并拒绝覆盖既有文件。下载不会自动合并或替换本地源码。
+默认路径在对话内完成：
+
+1. Agent 使用本地受控读取、编辑工具检查工程，按当前任务选择输入文件及要执行的 canonical Tool ID，调用 `project.remote.plan`。该工具生成不可变审核记录，包含精确文件路径、大小、内容摘要、远端目的地和具名工具范围，不上传文件或执行专业软件。
+2. Agent 调用 `project.remote.prepare`，对话展示这一批文件与工具的一次确认。即使聊天处于自动审批模式，这次准备仍要求显式批准。拒绝、审核过期或批准前文件/身份发生变化时，不继续上传或执行。
+3. “记住这些文件并同步后续修改”是可选授权，对话准备默认启用。批准后只记住这组精确路径；后续调用前可自动上传这些路径的新内容，形成新的不可变 snapshot。目录中的新文件、额外依赖和新增工具不会自动纳入；范围扩展需要新的计划与一次批量确认。关闭记住选项时，只批准本次快照，内容变化需重新确认。
+4. 同一任务在已批准的工具范围内继续执行，无需逐个工具重复确认；执行边界仍复查项目、领域、身份、任务及工具范围。下一任务或超范围操作不能沿用本次工具授权。上传成功不代表软件就绪：准备步骤必须以受保护的实时 MCP 发现/描述结果核对工具身份。默认计划仅授权目录工具与实际可用工具的交集；Agent 明确指定的工具缺失则准备失败。状态卡仅凭同步记录显示“文件已同步”，不声称环境可用。
+
+项目执行设置中的手工选择、审核上传、重绑和下载入口继续作为高级路径，聊天无需先完成这些设置。手工上传保留其明确清单和单次快照语义，不自动获得对话任务的工具授权。Agent 的文件选择基于实际阅读与任务判断；当前不提供各领域依赖解析器，也不上传空快照。
+
+服务端的生成内容以 canonical Artifact 返回；下载时由用户指定项目内相对目的路径，验证大小与 SHA-256，并拒绝覆盖既有文件。下载不会自动合并或替换本地源码。
 
 每个聊天有独立、持久的 `clientSessionId`；重连、重启与同一聊天追问复用它，新聊天使用新身份。远端生成 `applicationSessionId`，将身份、项目、领域和沙箱代际绑定。多个聊天共用项目事实库，但不共用远端聊天身份或调用连接。
 
@@ -56,7 +69,7 @@ flowchart LR
   Remote -->|核验后显式下载| Local
 ```
 
-`harness-application` 的共享任务服务供 Desktop/CLI 使用。`RemoteSettings` 管理服务身份、远端项目与 snapshot；`RemoteGatewaySessions` 管理聊天到远端会话的持久绑定；`RemoteGatewayClient` 使用官方 MCP SDK 的 Streamable HTTP 与 v1.1 文件/状态接口。`RemoteRuntime` 维持 canonical Runtime facade，并将项目事实缓存与聊天连接分开。
+`harness-application` 的共享任务服务供 Desktop/CLI 使用。`RemoteSettings` 管理服务身份、远端项目、不可变审核记录、精确路径同步授权与 snapshot；`RemoteGatewaySessions` 管理聊天到远端会话的持久绑定；`RemoteGatewayClient` 使用官方 MCP SDK 的 Streamable HTTP 与 v1.1 文件/状态接口。`RemoteRuntime` 提供本地工程操作及远程计划/准备工具，按需建立远端执行连接，并将项目事实缓存与聊天连接分开。任务工具授权由共享执行及 Agent 集成层检查，不在 Desktop 另建调度循环。
 
 远程模式在加载本地领域可执行插件之前分流。本地保留受控工程文件读取/编辑；专业软件的 Runtime、MCP 进程和沙箱由服务部署，不需要客户端本机安装对应软件。Agent 通用 Shell 不迁移到远端，远程 facade 当前不提供 `project.task.run`。普通外部 MCP 仍是未验收观察，不能绕过 Broker 与受保护的 Runtime 入口。
 
@@ -66,7 +79,7 @@ flowchart LR
 
 - 服务连接固定 URL、`serverId` 和凭据身份。凭据只由宿主读取，不进入模型、Renderer、snapshot 或调用 journal；服务凭据环境变量从 Agent 环境排除。
 - 正式服务使用 HTTPS，开发允许 loopback HTTP；拒绝 URL 内嵌凭据和自动重定向。
-- 上传限制为 1–256 个文件、总量不超过 8 MiB，排除路径穿越、符号链接、硬链接、私钥和常见凭据路径/字段。预览绑定目的地、项目和文件摘要，五分钟后失效，期间文件变化需重新审核。
+- 上传限制为 1–256 个文件、总量不超过 8 MiB，排除路径穿越、符号链接、硬链接、私钥和常见凭据路径/字段。预览绑定目的地、项目、具名工具及文件摘要，五分钟后失效，批准前文件变化需重新审核。记住路径后的自动同步仍执行相同文件边界和摘要校验，不扩大获准文件集。
 - 输入文件在服务端核验并冻结，软件输出以产物返回。修改本地工程后，旧 snapshot 的通过记录仍是历史证据，不能证明新内容。
 - 每次调用在发出 grant/MCP 之前持久保存 invocation ID；恢复按该 ID 查询。断线、超时或查询 404 均不能证明未执行，不自动重放可能发生过的调用。
 - 只有服务明确报告 `retryable` 且 `outcome: not_submitted`，客户端才进行有界重试。未知结果需要先确认，不能切到另一服务/本机重新执行同一操作。
@@ -91,7 +104,7 @@ flowchart LR
 
 ## CLI
 
-以下为已实现命令。`DOMAIN` 与各 UUID 替换为实际项目及查询得到的身份：
+以下是保留的手工管理命令，属于内部 CLI 高级路径；聊天中的计划/批量准备不要求先运行这些命令。`DOMAIN` 与各 UUID 替换为实际项目及查询得到的身份：
 
 ```sh
 industrial-harness remote status
@@ -122,6 +135,8 @@ industrial-harness remote terminate --project-dir /path/to/project --domain DOMA
 
 ## 验证与仍待验收项
 
+2026-10-19 聊天优先与批量授权改动的源码检查、受控集成结果和本轮环境限制见[本轮验证记录](evidence/remote-chat-first-20261019/README.md)。下面的既有部署与原生验证属于其原始版本，不代表本轮已经完成生产或原生界面验收。
+
 当前专项测试覆盖会话身份隔离/重连、凭据隔离、HTTP/JSON-RPC/MCP 错误、busy/限流、已知未提交的有界重试、未知结果不重放、显式上传、受控下载、canonical 事实/产物验证与 Scope/审批拒绝。远端测试另外使用真实 owner `IndustrialRuntime` 与固定的受控文件驱动验证上传→执行→canonical result→产物字节闭环；该驱动无工业验收能力，结果保持 `not_run` / `unverified`。
 
 本次实测环境为 macOS、Node 26.10.0。本地真实 PostgreSQL 16、S3 兼容对象存储和 Flyway V1/V2 迁移已参与双仓联调，`RemoteSettings/createProjectRuntime → HTTP/MCP → owner Runtime → 结果导入/产物下载` 及重启后查询恢复共 36 项通过。这证明本地持久化与客户端/服务端协议闭环；执行驱动仍是受控 fixture，不是 KiCad 或其他专业软件验收。
@@ -144,11 +159,12 @@ A matching login access-token audience uses normal refresh; a different service 
 still requires resource exchange. All requests resolve credentials at dispatch and check
 the bound subject again after token acquisition. Tokens never enter model arguments.
 
-Current-service execution availability is checked by protected tool discovery when a
-chat connects. A metadata-only discovery response binds the catalog hash, Pack and active
+Current-service execution availability is checked by protected live tool discovery when a
+prepared task needs remote execution. Opening a chat or sending a local planning prompt
+does not require that discovery to succeed. A metadata-only discovery response binds the catalog hash, Pack and active
 profile to its bounded worker tool list; the live runtime must describe each exact tool. A static
-catalog entry alone does not establish executable/native support. The UI permits this
-discovery after sync and displays service failures when discovery rejects.
+catalog entry alone does not establish executable/native support. After approved preparation,
+the runtime performs this discovery and reports service failures without blocking local chat.
 
 The 2026-10-16 real run used desktop Obol login and the shared settings/Broker/Runtime,
 created an application session and Tencent sandbox, and executed `chip.rtl.verify`.

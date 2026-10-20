@@ -44,15 +44,24 @@ async function child(archive, directory, endpoint) {
     ],
   };
   let sandbox;
-  if (['darwin', 'win32'].includes(process.platform)) {
+  {
     const { createProcessSandbox } = agentRequire('./process-sandbox.cjs');
     sandbox = createProcessSandbox({
       executable: agentRequire('./code-session.cjs').bundledExecutable(),
       shareDir,
       projectDir,
       kimiProjectAccess: true,
-      environment: { ...process.env, ...options.env },
+      environment: {
+        ...process.env,
+        ...options.env,
+        HARNESS_PACKAGED_HOST_ONLY: 'host-only-marker',
+      },
+      hostOnlyEnv: ['HARNESS_PACKAGED_HOST_ONLY'],
     });
+    assert.equal(sandbox.boundary.mechanism, 'current-user');
+    assert.equal(sandbox.boundary.osIsolation, false);
+    assert.equal(sandbox.boundary.projectWritable, true);
+    assert.equal(sandbox.env.HARNESS_PACKAGED_HOST_ONLY, undefined);
     Object.assign(options, {
       executable: sandbox.executable,
       workDir: sandbox.workDir,
@@ -89,7 +98,7 @@ async function child(archive, directory, endpoint) {
     assert.ok(approvals >= 1, 'native Bash must request approval');
     assert.equal(questions, 1, 'the packaged question must be explicitly dismissed');
     assert.equal(
-      fs.readFileSync(path.join(options.workDir, 'packaged-code.txt'), 'utf8').trim(),
+      fs.readFileSync(path.join(projectDir, 'packaged-code.txt'), 'utf8').trim(),
       'PACKAGED_CODE_OK',
     );
     // Also read the real web assets from inside app.asar, rather than only --version.
@@ -113,6 +122,9 @@ async function child(archive, directory, endpoint) {
         approvals,
         questions,
         resumed: true,
+        projectWrite: true,
+        hostEnvironmentFiltered: true,
+        boundary: sandbox.boundary,
       }) + '\n',
     );
   } finally {
@@ -152,8 +164,8 @@ async function main() {
       {
         name: 'Bash',
         arguments: {
-          command: 'echo PACKAGED_CODE_OK > packaged-code.txt',
-          description: 'Write the packaged runtime marker',
+          command: `echo PACKAGED_CODE_OK > "${path.join(directory, 'project', 'packaged-code.txt')}"`,
+          description: 'Write the approved marker in the actual project',
         },
       },
       {
@@ -184,6 +196,11 @@ async function main() {
     const result = JSON.parse(stdout.trim());
     assert.equal(result.version, '2.1.1');
     assert.equal(result.resumed, true);
+    assert.equal(result.projectWrite, true);
+    assert.equal(result.hostEnvironmentFiltered, true);
+    assert.equal(result.boundary.mechanism, 'current-user');
+    assert.equal(result.boundary.osIsolation, false);
+    assert.equal(result.boundary.projectWritable, true);
     assert.equal(model.requests.length, 5);
     assert.match(JSON.stringify(model.requests.at(-1).messages), /PACKAGED_FIRST/);
     process.stdout.write(

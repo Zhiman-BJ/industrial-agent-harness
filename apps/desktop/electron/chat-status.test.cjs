@@ -53,7 +53,7 @@ test('remote query errors override stale healthy state, including the first fail
       tone: 'bad',
     });
   }
-  assert.deepEqual(summarizeRemote(ready), { label: 'Remote ready', tone: 'ok' });
+  assert.deepEqual(summarizeRemote(ready), { label: 'Files synced', tone: 'ok' });
 });
 
 test('configuration, qualification and file-sync prerequisites remain distinct', async () => {
@@ -75,7 +75,7 @@ test('configuration, qualification and file-sync prerequisites remain distinct',
   assert.equal(summarizeRemote({ ...ready, project: undefined }).label, 'Loading…');
   assert.equal(
     summarizeRemote({ ...ready, project: { ...ready.project, syncedAt: null } }).label,
-    'Choose files to sync',
+    'Files will be prepared when needed',
   );
   assert.equal(
     summarizeRemote({ ...ready, domain: 'absent' }).label,
@@ -114,6 +114,9 @@ test('status-card summaries and accessible progress text have both UI translatio
   const { messages } = require('../i18n.config.json');
   const labels = [
     summarizeRemote(ready).label,
+    summarizeRemote({ ...ready, project: { ...ready.project, syncedAt: null } }).label,
+    'Start with your task. Agent will prepare remote files and request one approval.',
+    'You can keep chatting. Agent prepares the files and remote tools for one approval before execution.',
     summarizeRemote({ ...ready, error: 'failed' }).label,
     ...[null, [pending], [active], [complete]].flatMap(todo =>
       [false, true].flatMap(running => {
