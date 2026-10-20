@@ -91,7 +91,11 @@ test('bounded real WASM imports a real STEP and rejects growth beyond 256 MiB', 
   assert.ok(pages < PCB_STEP_WASM_PAGES);
   assert.equal(memory.grow(1), pages, 'growth inside the real limit remains available');
   assert.throws(() => memory.grow(PCB_STEP_WASM_PAGES - pages), RangeError);
-  assert.equal(memory.buffer.byteLength / 65536, pages + 1, 'failed growth preserves the live heap');
+  assert.equal(
+    memory.buffer.byteLength / 65536,
+    pages + 1,
+    'failed growth preserves the live heap',
+  );
 });
 
 test('the memory adaptation rejects unrecognized or altered upstream binaries', async () => {

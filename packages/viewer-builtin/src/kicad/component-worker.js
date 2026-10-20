@@ -124,7 +124,7 @@ async function stepParser() {
       if (!response.ok) throw Error('STEP parser binary is unavailable.');
       const { boundPcbStepWasm } = await import('./component-wasm.js');
       const wasmBinary = await boundPcbStepWasm(await response.arrayBuffer());
-      importScripts('./vendor/occt-import/occt-import-js.js');
+      self.importScripts('./vendor/occt-import/occt-import-js.js');
       return self.occtimportjs({ wasmBinary, print() {}, printErr() {} });
     })();
   }

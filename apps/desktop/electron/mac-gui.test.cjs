@@ -117,43 +117,43 @@ test('GUI launcher rejects unsupported platforms, injected flags and unsafe envi
   assert.deepEqual(env, { INDUSTRIAL_UI_SCREENSHOTS: '/tmp/shots' });
 });
 
-test(
-  'preparation copies the pinned Electron into unique private bundles without changing upstream files',
-  { skip: process.platform !== 'darwin' },
-  t => {
-    const f = fixture(t, { links: true });
-    const sourcePlist = fs.readFileSync(path.join(f.app, 'Contents/Info.plist'));
-    const sourceExecutable = fs.readFileSync(path.join(f.app, 'Contents/MacOS/Electron'));
-    const options = {
-      desktopRoot: f.desktopRoot,
-      outputRoot: f.root,
-      args: ['--ui-selftest'],
-      env: { INDUSTRIAL_UI_SCREENSHOTS: '/tmp/explicit-shots' },
-    };
-    const first = prepareMacGui(options, f.dependencies);
-    const second = prepareMacGui(options, f.dependencies);
-    assert.notEqual(first.appPath, second.appPath);
-    assert.notEqual(first.runId, second.runId);
-    assert.equal(first.bundleId, second.bundleId, 'same source app has a stable identity');
-    assert.match(first.bundleId, /^com\.industrial-harness\.source-[a-f0-9]{24}$/);
-    assert.match(
-      fs.readFileSync(path.join(first.appPath, 'Contents/Info.plist'), 'utf8'),
-      new RegExp(`<string>${first.bundleId.replaceAll('.', '\\.')}</string>`),
-    );
-    assert.deepEqual(f.signed, [first.appPath, second.appPath]);
+test('preparation copies the pinned Electron into unique private bundles without changing upstream files', t => {
+  // All native operations are injected: this exercises bundle preparation,
+  // not macOS launch/signing qualification. Windows needs no file symlinks.
+  const links = process.platform !== 'win32';
+  const f = fixture(t, { links });
+  const sourcePlist = fs.readFileSync(path.join(f.app, 'Contents/Info.plist'));
+  const sourceExecutable = fs.readFileSync(path.join(f.app, 'Contents/MacOS/Electron'));
+  const options = {
+    desktopRoot: f.desktopRoot,
+    outputRoot: f.root,
+    args: ['--ui-selftest'],
+    env: { INDUSTRIAL_UI_SCREENSHOTS: '/tmp/explicit-shots' },
+  };
+  const first = prepareMacGui(options, f.dependencies);
+  const second = prepareMacGui(options, f.dependencies);
+  assert.notEqual(first.appPath, second.appPath);
+  assert.notEqual(first.runId, second.runId);
+  assert.equal(first.bundleId, second.bundleId, 'same source app has a stable identity');
+  assert.match(first.bundleId, /^com\.industrial-harness\.source-[a-f0-9]{24}$/);
+  assert.match(
+    fs.readFileSync(path.join(first.appPath, 'Contents/Info.plist'), 'utf8'),
+    new RegExp(`<string>${first.bundleId.replaceAll('.', '\\.')}</string>`),
+  );
+  assert.deepEqual(f.signed, [first.appPath, second.appPath]);
+  if (process.platform !== 'win32') {
     assert.equal(fs.statSync(first.runDirectory).mode & 0o777, 0o700);
     assert.equal(fs.statSync(first.configPath).mode & 0o777, 0o600);
     assert.equal(fs.statSync(first.logPath).mode & 0o777, 0o600);
-    assert.deepEqual(fs.readFileSync(path.join(f.app, 'Contents/Info.plist')), sourcePlist);
-    assert.deepEqual(
-      fs.readFileSync(path.join(f.app, 'Contents/MacOS/Electron')),
-      sourceExecutable,
-    );
-    assert.equal(
-      fs.readFileSync(path.join(first.appPath, 'Contents/Resources/LICENSE'), 'utf8'),
-      'upstream license notice',
-    );
-    assert.ok(fs.existsSync(path.join(first.appPath, 'Contents/MacOS/Electron')));
+  }
+  assert.deepEqual(fs.readFileSync(path.join(f.app, 'Contents/Info.plist')), sourcePlist);
+  assert.deepEqual(fs.readFileSync(path.join(f.app, 'Contents/MacOS/Electron')), sourceExecutable);
+  assert.equal(
+    fs.readFileSync(path.join(first.appPath, 'Contents/Resources/LICENSE'), 'utf8'),
+    'upstream license notice',
+  );
+  assert.ok(fs.existsSync(path.join(first.appPath, 'Contents/MacOS/Electron')));
+  if (links) {
     const copiedLink = path.join(
       first.appPath,
       'Contents/Frameworks/Electron Framework.framework/Versions/Current',
@@ -163,22 +163,31 @@ test(
       fs.realpathSync(copiedLink).startsWith(first.appPath + path.sep),
       'the copied app is independent of the upstream dependency',
     );
-    const packageJson = JSON.parse(
-      fs.readFileSync(path.join(first.appPath, 'Contents/Resources/app/package.json')),
-    );
-    assert.equal(packageJson.name, '@industrial-agent-harness/desktop');
-    assert.equal(packageJson.version, '1.0.1-beta.6');
-    const config = JSON.parse(fs.readFileSync(first.configPath));
-    assert.equal(config.bundleId, first.bundleId);
-    assert.equal(config.main, path.join(f.desktopRoot, 'electron/main.cjs'));
-    assert.deepEqual(config.env, { INDUSTRIAL_UI_SCREENSHOTS: '/tmp/explicit-shots' });
-    assert.equal(
-      fs.existsSync(first.resultPath),
-      false,
-      'preparing an app does not report a completed test',
-    );
-  },
-);
+  }
+  const framework =
+    'Contents/Frameworks/Electron Framework.framework/Versions/A/Electron Framework';
+  assert.equal(fs.lstatSync(path.join(first.appPath, framework)).isFile(), true);
+  fs.writeFileSync(path.join(first.appPath, framework), 'changed private copy');
+  assert.equal(fs.readFileSync(path.join(f.app, framework), 'utf8'), 'official framework fixture');
+  assert.equal(
+    fs.readFileSync(path.join(second.appPath, framework), 'utf8'),
+    'official framework fixture',
+  );
+  const packageJson = JSON.parse(
+    fs.readFileSync(path.join(first.appPath, 'Contents/Resources/app/package.json')),
+  );
+  assert.equal(packageJson.name, '@industrial-agent-harness/desktop');
+  assert.equal(packageJson.version, '1.0.1-beta.6');
+  const config = JSON.parse(fs.readFileSync(first.configPath));
+  assert.equal(config.bundleId, first.bundleId);
+  assert.equal(config.main, path.join(f.desktopRoot, 'electron/main.cjs'));
+  assert.deepEqual(config.env, { INDUSTRIAL_UI_SCREENSHOTS: '/tmp/explicit-shots' });
+  assert.equal(
+    fs.existsSync(first.resultPath),
+    false,
+    'preparing an app does not report a completed test',
+  );
+});
 
 test('source app identities separate checkouts, interactive modes and selftest suites', t => {
   const first = fixture(t);
@@ -251,19 +260,35 @@ test('missing build, wrong Electron version and signing errors never report a pr
   assert.equal(JSON.parse(fs.readFileSync(results[0])).completed, false);
 });
 
-test(
-  'escaping bundle links are rejected before signing rather than following upstream paths',
-  { skip: process.platform !== 'darwin' },
-  t => {
-    const f = fixture(t);
-    fs.symlinkSync(f.root, path.join(f.app, 'Contents/Resources/outside'));
-    assert.throws(
-      () => prepareMacGui({ desktopRoot: f.desktopRoot, outputRoot: f.root }, f.dependencies),
-      /preparation failed/,
-    );
-    assert.deepEqual(f.signed, [], 'a bundle with an external link is never signed');
-  },
-);
+test('escaping bundle links are rejected before signing rather than following upstream paths', t => {
+  const f = fixture(t);
+  const relative = path.join('Contents', 'Resources', 'outside');
+  const outside = path.join(f.app, relative);
+  fs.symlinkSync(f.root, outside, process.platform === 'win32' ? 'junction' : 'dir');
+  if (process.platform === 'win32') {
+    // Node cpSync recreates junctions as privileged directory symlinks.
+    // Copy ordinary files normally, then recreate this actual outside link
+    // as an unprivileged junction so the real boundary verifier is exercised.
+    const copy = fs.cpSync;
+    t.mock.method(fs, 'cpSync', (source, destination, options) => {
+      assert.equal(options.verbatimSymlinks, true);
+      copy(source, destination, {
+        ...options,
+        filter: file => path.relative(source, file) !== relative,
+      });
+      fs.symlinkSync(f.root, path.join(destination, relative), 'junction');
+    });
+  }
+  assert.throws(
+    () => prepareMacGui({ desktopRoot: f.desktopRoot, outputRoot: f.root }, f.dependencies),
+    error => {
+      assert.match(error.message, /preparation failed/);
+      assert.match(error.cause?.message || '', /link outside the copied app/);
+      return true;
+    },
+  );
+  assert.deepEqual(f.signed, [], 'a bundle with an external link is never signed');
+});
 
 function runBootstrap(
   t,

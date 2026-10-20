@@ -54,6 +54,14 @@ const SELFTEST_MARKERS = Object.freeze({
   '--container-install-selftest': 'Real release-image Desktop installation and repair passed.',
 });
 
+function hasControl(value) {
+  for (let index = 0; index < value.length; index++) {
+    const code = value.charCodeAt(index);
+    if (code <= 31 || code === 127) return true;
+  }
+  return false;
+}
+
 function validateOptions({ args = [], mode, env = {} } = {}) {
   if (!Array.isArray(args) || args.length > 1 || args.some(arg => !SELFTEST_FLAGS.includes(arg)))
     throw Error('GUI source launch accepts one supported selftest flag or no arguments.');
@@ -68,7 +76,7 @@ function validateOptions({ args = [], mode, env = {} } = {}) {
   const safeEnv = {};
   for (const [name, value] of Object.entries(env)) {
     if (!ENV_ALLOWLIST.includes(name)) throw Error(`Unsupported GUI environment variable: ${name}`);
-    if (typeof value !== 'string' || !value || value.length > 4096 || /[\x00-\x1f\x7f]/.test(value))
+    if (typeof value !== 'string' || !value || value.length > 4096 || hasControl(value))
       throw Error(`Invalid GUI environment variable: ${name}`);
     if (PATH_ENV.includes(name) && !path.isAbsolute(value))
       throw Error(`GUI resource path must be absolute: ${name}`);

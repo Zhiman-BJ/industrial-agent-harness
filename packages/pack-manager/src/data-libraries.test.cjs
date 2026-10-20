@@ -286,10 +286,51 @@ test('a queued cancellation returns promptly without releasing another active tr
 });
 
 test('constructing a manager over a read-only hot cache does not require write access', async t => {
-  if (process.platform === 'win32') return t.skip('requires POSIX directory mode semantics');
   const f = fixture(t);
-  await f.manager.ensure(f.library, f.catalog, ['parts/first.bin']);
-  fs.chmodSync(f.directory, 0o500);
+  const loaded = await f.manager.ensure(f.library, f.catalog, ['parts/first.bin']);
+  const entries = fs.readdirSync(f.directory);
+  const attempts = [];
+  const deny = name => {
+    attempts.push(name);
+    throw Object.assign(Error('The hot cache is read-only.'), { code: 'EROFS' });
+  };
+  // Enforce read-only access even where POSIX directory modes are unavailable,
+  // and record rejected calls so catching EROFS cannot hide a write attempt.
+  if (process.platform !== 'win32') fs.chmodSync(f.directory, 0o500);
+  const guards = [
+    'mkdirSync',
+    'chmodSync',
+    'writeSync',
+    'writeFileSync',
+    'appendFileSync',
+    'renameSync',
+    'rmSync',
+    'unlinkSync',
+    'rmdirSync',
+    'truncateSync',
+    'ftruncateSync',
+    'copyFileSync',
+    'cpSync',
+    'linkSync',
+    'symlinkSync',
+  ].map(name => t.mock.method(fs, name, () => deny(name)));
+  const open = fs.openSync;
+  guards.push(
+    t.mock.method(fs, 'openSync', (file, flags, ...options) => {
+      const writes =
+        typeof flags === 'string'
+          ? !['r', 'rs', 'sr'].includes(flags)
+          : (flags &
+              (fs.constants.O_WRONLY |
+                fs.constants.O_RDWR |
+                fs.constants.O_CREAT |
+                fs.constants.O_TRUNC |
+                fs.constants.O_APPEND)) !==
+            0;
+      if (writes) return deny('openSync with write flags');
+      return Reflect.apply(open, fs, [file, flags, ...options]);
+    }),
+  );
   try {
     const readonly = new DataLibraryManager({
       directory: f.directory,
@@ -303,9 +344,14 @@ test('constructing a manager over a read-only hot cache does not require write a
       offline: true,
     });
     assert.equal(offline.stats.downloadedFiles, 0);
+    assert.deepEqual(attempts, [], 'construction, resolution and offline reuse attempt no writes');
   } finally {
-    fs.chmodSync(f.directory, 0o700);
+    for (const guard of guards) guard.mock.restore();
+    if (process.platform !== 'win32') fs.chmodSync(f.directory, 0o700);
   }
+  assert.deepEqual(fs.readdirSync(f.directory), entries);
+  assert.deepEqual(fs.readFileSync(loaded.files[0].file), first);
+  assert.equal(f.calls.length, 1, 'read-only reuse causes no additional network activity');
 });
 
 test('a damaged transfer is never published and removes its private staging file', async t => {
@@ -438,22 +484,33 @@ test('redirects reject downgrade, credentials, another origin, directory escape,
 });
 
 test('symlink cache entries and cache directory replacement cannot escape to another directory', async t => {
-  if (process.platform === 'win32') return t.skip('requires native unprivileged symlinks');
   const f = fixture(t);
-  const outside = path.join(f.root, 'outside.bin');
+  const outsideDirectory = path.join(f.root, 'outside');
+  fs.mkdirSync(outsideDirectory);
+  const outside = path.join(outsideDirectory, 'outside.bin');
   fs.writeFileSync(outside, first);
-  fs.symlinkSync(outside, path.join(f.directory, hash(first)));
+  // Directory junctions need no administrator privilege on Windows; the
+  // cache must reject them as entries and roots before following the target.
+  const directoryLink = (target, link) =>
+    fs.symlinkSync(target, link, process.platform === 'win32' ? 'junction' : 'dir');
+  if (process.platform === 'win32')
+    directoryLink(outsideDirectory, path.join(f.directory, hash(first)));
+  else fs.symlinkSync(outside, path.join(f.directory, hash(first)), 'file');
   assert.throws(() => f.manager.resolve(f.library, f.catalog, ['parts/first.bin']), /Unsafe/);
   await assert.rejects(f.manager.ensure(f.library, f.catalog, ['parts/first.bin']), /Unsafe/);
   assert.deepEqual(fs.readFileSync(outside), first);
   assert.equal(f.calls.length, 0);
   const link = path.join(f.root, 'linked-cache');
-  fs.symlinkSync(f.directory, link);
+  directoryLink(f.directory, link);
   assert.throws(() => new DataLibraryManager({ directory: link }), /symbolic/);
   fs.renameSync(f.directory, path.join(f.root, 'original-cache'));
   fs.mkdirSync(path.join(f.root, 'other-cache'));
-  fs.symlinkSync(path.join(f.root, 'other-cache'), f.directory);
+  directoryLink(path.join(f.root, 'other-cache'), f.directory);
   assert.throws(() => f.manager.resolve(f.library, f.catalog, ['parts/first.bin']), /unsafe/);
+  assert.deepEqual(fs.readdirSync(outsideDirectory), ['outside.bin']);
+  assert.deepEqual(fs.readFileSync(outside), first);
+  assert.deepEqual(fs.readdirSync(path.join(f.root, 'other-cache')), []);
+  assert.equal(f.calls.length, 0);
 });
 
 test('disk admission counts only missing bytes and fails before fetching on insufficient space', async t => {
