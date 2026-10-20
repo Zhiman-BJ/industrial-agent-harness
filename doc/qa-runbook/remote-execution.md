@@ -6,6 +6,8 @@
 
 ## 本次状态与验收口径
 
+**后续更新：** 用户已启动独立 mock 模型窗口，配置前置已具备；当前阻塞变为原生窗口控制接口持续超时，尚未发送任务或点击审批。见[独立窗口后续记录](../evidence/remote-chat-first-20261019/electron-click-20261020/isolated-window-followup.md)。下段保留此前入口子项验证过程。
+
 **2026-10-20 最新进展：真实 Electron 窗口与未同步聊天入口已验证，完整点击验收仍为 `blocked`。** 用户在正常 Terminal 启动应用后，已通过 CUA 原生界面创建独立 CAD 工程、选择远端并直接新建聊天，没有选择同步文件；“按需准备文件”和“请求审批”均实际显示。已填写合成任务并观察到发送按钮可用，随后清空草稿，未点击发送。RE-E01 的窗口、聊天入口及输入/发送可用子项通过，但尚未发送或读取本地工程，**完整 RE-E01 不能记 pass**。准备 mock 时发现当前 profile 的单槽密钥已有 MiniMax 配置，已取消而未保存；RE-E01 剩余部分及 RE-E02–11 当前为 `blocked: isolated-ui-model-profile-required`，待独立 UI 模型 profile 启动。无本轮上传、审批或远端工程调用；负向 fixture 的额外前置限制仍保留。见[本轮点击进展与截图](../evidence/remote-chat-first-20261019/electron-click-20261020/README.md)及[逐用例 JSON](../evidence/remote-chat-first-20261019/electron-click-20261020/progress.json)。当前工作区为 `546b41`，实际窗口使用此前 `a283` / `cf15` 的源码构建，身份范围详见记录。
 
 **早期有界启动探测（保留历史，已非当前窗口阻塞）：** 锚定提交为 `a283fec5bbe47dbdd1c263da38c25258b4a95105`，仍须结合本次 dirty 快照理解测试对象。常规 `pnpm --filter @industrial-agent-harness/desktop build` 因共享依赖缺少 `.bin` 的 `tsc` 入口未启动；随后直接使用实际 package bin 执行 TypeScript 7.0.2 `--noEmit` 与 Vite 8.2.2 build，均退出 0。构建当前源码后，Electron 44.0.0 的 `. --remote-ui-selftest` 子进程仍以 `SIGABRT` 结束，`status: null`、stderr 为空，探测于 `05:35:37Z` 结束。前后均未观察到运行中的 Harness 窗口，未进行真实审批或成果点击。本轮没有新的 `_RegisterApplication` 堆栈证据。[本轮持久化探测记录](../evidence/remote-chat-first-20261019/electron-click-readiness-20261020.json)归档了构建、启动和窗口缺失事实；原始记录位于 `dist/ci-reports/electron-click-probe-20261020-qaJpFl/report.json`；本轮因缺少可用窗口记为 blocked，不是点击用例通过；崩溃根因未由此次探测确认，无需循环重试。

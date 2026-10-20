@@ -1,5 +1,7 @@
 # Electron 真实点击进展 — 2026-10-20
 
+后续：[独立窗口已启动，但原生窗口控制超时；模型图标修正](isolated-window-followup.md)。以下保留此前入口验证的原始记录。
+
 本轮已在用户正常 Terminal 启动的真实 Electron 窗口中完成未同步聊天入口与输入验证，**完整点击验收仍为 blocked**。本记录追加在 [05:35 UTC 启动探测](../electron-click-readiness-20261020.json)之后：早期工具启动收到 SIGABRT、没有窗口的结果保留；后来正常 Terminal 启动成功，不再把“没有可用窗口”写成本轮当前阻塞。
 
 ## 对象与实际操作
