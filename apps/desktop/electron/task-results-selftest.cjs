@@ -6,8 +6,10 @@ const { saveProfile } = require('./model-config.cjs');
 const { startResultsModel } = require('../../../tests/integration/fixtures/task-results-model.cjs');
 const { verifyNavigation, verifyWheel } = require('./navigation-selftest.cjs');
 let model;
+let projectDirectory;
 async function prepare(config, modelDirectory) {
   const directory = path.join(config, 'result-project');
+  projectDirectory = directory;
   fs.mkdirSync(directory, { recursive: true });
   fs.writeFileSync(path.join(directory, 'manual.txt'), 'Manually selected file.');
   saveBindings(config, {
@@ -132,6 +134,25 @@ async function run(window) {
     'completion preserves the manually opened report',
   );
   console.log('Manual report focus preserved after the second native request.');
+  await evaluate(
+    "(()=>{const input=document.querySelector('.ia-composer textarea');Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(input,'Keep this unfinished draft');input.dispatchEvent(new Event('input',{bubbles:true}));})()",
+  );
+  fs.writeFileSync(path.join(projectDirectory, 'manual.txt'), 'External edit after verification.');
+  await wait(
+    'Boolean(document.querySelector(\'.ia-result-inputs[data-input-status="changed"]\'))',
+    15000,
+  );
+  assert.equal(
+    await evaluate("document.querySelector('.ia-composer textarea').value"),
+    'Keep this unfinished draft',
+  );
+  assert.ok(
+    await evaluate("document.body.textContent.includes('Recorded version passed verification')"),
+  );
+  fs.writeFileSync(path.join(projectDirectory, 'manual.txt'), 'Manually selected file.');
+  console.log(
+    'External input edits become visible without rewriting historical verdicts or clearing the draft.',
+  );
   await window.webContents.reload();
   await wait(`document.querySelectorAll('.ia-result-card').length===14`);
   assert.equal(

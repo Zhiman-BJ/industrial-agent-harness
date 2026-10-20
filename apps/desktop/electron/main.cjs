@@ -1458,6 +1458,13 @@ function registerHandlers() {
     notifySessions();
     return history;
   });
+  ipcMain.handle('chat:evidence', (event, request) => {
+    chatRequest(event);
+    const project = activeProject();
+    if (request?.projectId !== project.id || request?.chatId !== activeChatId)
+      throw Error('Evidence belongs to the selected project and chat.');
+    return tasks.refreshEvidence(project, request.chatId, request.turnIds);
+  });
   ipcMain.handle('chat:set-approval-mode', (event, request) => {
     chatRequest(event);
     const project = activeProject();

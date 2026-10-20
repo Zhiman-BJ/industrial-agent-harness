@@ -1,5 +1,14 @@
 # Domain runtime
 
+2026-10-20 input binding: declared workspace tasks hash-check their manifest,
+copy exact inputs, and recheck the copies after execution. Only an Action-bound,
+in-process snapshot result preserves its historical verifier verdict across
+concurrent live-source edits; other producers keep the conservative
+insufficient-evidence path. `createEvidenceInspector` supplies bounded read-only
+observations for application results without changing canonical records.
+Matching recorded files is not whole-project acceptance or full-source restore.
+See [scope and limits](../../doc/evidence-input-binding.md).
+
 2026-10-16 current MCP gateway integration: the shared factory selects the current
 adapter from the persisted service contract. It uses manifest/object/complete uploads,
 per-request credentials and the protected `requestId/snapshotId/expectedStateId` call.

@@ -70,6 +70,8 @@ local runtime 显式声明 `readOnlyDirs`（绝对目录，最多 32 个），�
 
 ## 边界与历史
 
+原生编辑后可调用 `industrial_state_inspect` 获取新 stateId 和 Broker scope；正式 Action 仍独立拒绝过期身份。声明式任务增加任务声明 hash 校验和执行后副本校验，只为实际快照绑定的结果保留并发修改前的历史 verdict；当前状态另行标记 stale。只读输入匹配显示、完整保证范围及后续领域迁移见[输入绑定第一期](evidence-input-binding.md)。
+
 文件回执记录修改前后哈希；批次先检查全部前提，拒绝 .git、.harness-runs、领域包声明的证据目录、
 依赖目录、Runtime 存储、symlink 和 hard link。文本单文件最多 256 KiB；SDK JSON
 调用输入总量也有 256 KiB 上限。源文件修改不生成工程通过：当前验收变 stale，

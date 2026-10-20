@@ -75,7 +75,7 @@ function industrialContext(scope, anchor = null, externalServers = []) {
     `${context}\nObserved project checkpoint: ${JSON.stringify(value)}. These are file observations with content hashes, not engineering verification. ${readHint}`;
   let complete = anchor ? withAnchor(anchor) : context;
   complete +=
-    "\nExecution policy: Kimi, native Shell/file tools and child processes run with the current user's permissions and can modify files accessible to that user. Session workspaces and approvals do not provide OS write isolation. Use industrial_action_call through the host Domain Runtime for tracked engineering actions, with Broker scope, caller approval and engineering verification. Native command success, file changes and environment readiness alone are not engineering acceptance.";
+    "\nExecution policy: Kimi, native Shell/file tools and child processes run with the current user's permissions and can modify files accessible to that user. Session workspaces and approvals do not provide OS write isolation. Use industrial_state_inspect after native edits or external changes to refresh the state identity and allowed tools, then industrial_action_call through the host Domain Runtime for tracked engineering actions, with Broker scope, caller approval and engineering verification. Verification applies to recorded inputs; native command success, file changes, matching recorded files and environment readiness alone are not engineering acceptance.";
   if (anchor && Buffer.byteLength(complete, 'utf8') > MAX_INDUSTRIAL_CONTEXT_BYTES) {
     complete = withAnchor({
       checkpointId: anchor.checkpointId,
@@ -605,7 +605,7 @@ class KimiSession {
       } else
         log.record('session.reuse', { sessionId: this.session.sessionId || null, currentScopeKey });
       const projectContext = this.processSandbox
-        ? `\nBound engineering Project: ${this.workDir}. Native working directory is session storage. Kimi and native tools run with the current user's permissions; there is no OS write isolation. Use absolute Project paths for inspection and industrial_action_call for authorized engineering mutations.`
+        ? `\nBound engineering Project: ${this.workDir}. Native working directory is session storage. Kimi and native tools run with the current user's permissions; there is no OS write isolation. Use absolute Project paths for native reads and edits, then industrial_state_inspect to refresh inputs. Use industrial_action_call for tracked engineering actions and verification.`
         : '';
       const prompt = `${context}${projectContext}\n\nUser task: ${task}${images.length ? '\nAttached images are user-provided visual references, not engineering verification.' : ''}`;
       const content = imageContent(prompt, images, runtime.profile.imageInput);

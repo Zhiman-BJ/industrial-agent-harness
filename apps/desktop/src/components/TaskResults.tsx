@@ -6,6 +6,7 @@ import type {
 } from '@industrial-agent-harness/viewer-builtin/api';
 import { useDisplayText } from '@industrial-agent-harness/viewer-builtin/text';
 import { partitionResultGroups } from '../result-layout';
+import { evidenceLabel } from '../evidence-refresh';
 
 export function TaskResults({
   results,
@@ -37,6 +38,11 @@ export function TaskResults({
     const primary = group.artifacts.find(artifact => artifact.id === group.primaryArtifactId);
     const step = results.actionIds.indexOf(group.actionId);
     const statuses = group.verifications.map(verification => verification.status);
+    const inputs = group.verifications.map(verification => verification.inputStatus);
+    const inputStatus =
+      inputs.find(input => input?.status === 'changed') ||
+      inputs.find(input => input?.status === 'unavailable') ||
+      (inputs.every(input => input?.status === 'matches') ? inputs[0] : undefined);
     const checkLabel = statuses.includes('failed')
       ? 'Checks failed'
       : statuses.includes('insufficient_evidence')
@@ -135,7 +141,7 @@ export function TaskResults({
                     <b>
                       {t(
                         verification.status === 'passed'
-                          ? 'Engineering verification passed'
+                          ? 'Recorded version passed verification'
                           : verification.status === 'failed'
                             ? 'Engineering verification failed'
                             : verification.status === 'not_run'
@@ -144,6 +150,7 @@ export function TaskResults({
                       )}
                     </b>
                     <p>{verification.reason}</p>
+                    <small>{t(evidenceLabel(verification.inputStatus))}</small>
                   </div>
                 ))}
                 <small>{t('Verification applies to the recorded version.')}</small>
@@ -153,6 +160,14 @@ export function TaskResults({
             <span className="ia-result-checks">{t('Not checked')}</span>
           )}
         </div>
+        {group.verifications.length ? (
+          <small
+            className="ia-result-inputs"
+            data-input-status={inputStatus?.status || 'unchecked'}
+          >
+            {t('Recorded version')} · {t(evidenceLabel(inputStatus))}
+          </small>
+        ) : null}
         {group.contentStatus !== 'recorded' ? (
           <p className="ia-flow-error ia-result-warning">
             {t(

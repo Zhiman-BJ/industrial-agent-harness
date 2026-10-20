@@ -88,6 +88,7 @@ const api = {
     ipcRenderer.invoke('project:set-resource', { projectId, kind, id, enabled }),
   chats: () => ipcRenderer.invoke('chat:list'),
   chatHistory: request => ipcRenderer.invoke('chat:history', request),
+  refreshEvidence: request => ipcRenderer.invoke('chat:evidence', request),
   selectChat: id => ipcRenderer.invoke('chat:select', id),
   deleteChat: id => ipcRenderer.invoke('chat:delete', id),
   renameChat: (id, title) => ipcRenderer.invoke('chat:rename', { id, title }),

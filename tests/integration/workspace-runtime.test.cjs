@@ -78,6 +78,46 @@ test('real protected local task: empty project → create → pass → edit → 
       .listCheckpoints()
       .some(c => c.id === passed.checkpoint.id && c.state.status === 'verified'),
   );
+  // The real child waits after its immutable input copy exists. An external
+  // writer then changes the live source; the checks must still read the copy.
+  fs.writeFileSync(
+    path.join(project, 'tests/check.cjs'),
+    [
+      "const fsWait = require('node:fs'), pathWait = require('node:path');",
+      "fsWait.writeFileSync(pathWait.join(process.env.HARNESS_OUTPUT_DIR, 'ready'), 'ready');",
+      "const wait = setInterval(() => { if (!fsWait.existsSync(pathWait.join(process.env.HARNESS_OUTPUT_DIR, 'release'))) return; clearInterval(wait);",
+      scenario.checks,
+      '}, 10);',
+    ].join('\n'),
+  );
+  const running = run('project.task.run', { task: 'test' });
+  let work;
+  const deadline = Date.now() + 4000;
+  while (Date.now() < deadline) {
+    const action = bundle.runtime.listActions().find(action => action.status === 'running');
+    const candidate = action && path.join(project, '.harness-runs', action.id, 'work');
+    if (candidate && fs.existsSync(path.join(candidate, 'ready'))) {
+      work = candidate;
+      break;
+    }
+    await new Promise(resolve => setTimeout(resolve, 10));
+  }
+  if (!work) {
+    const result = await running;
+    assert.fail('Real task did not become ready: ' + JSON.stringify(result));
+  }
+  fs.writeFileSync(path.join(project, 'src/calculate.cjs'), scenario.broken);
+  fs.writeFileSync(path.join(work, 'release'), 'release');
+  const historical = await running;
+  assert.equal(historical.action.inputBinding, 'snapshot');
+  assert.equal(historical.verification.status, 'passed');
+  assert.equal(historical.state.status, 'stale');
+  assert.equal(
+    historical.verification.evidence.inputHashes['src/calculate.cjs'],
+    scenario.hash(scenario.source),
+  );
+  fs.writeFileSync(path.join(project, 'tests/check.cjs'), scenario.checks);
+  assert.equal((await run('project.task.run', { task: 'test' })).verification.status, 'failed');
 });
 test('real task cannot write source, runtime evidence, input snapshots or contact host sockets; no inherited credentials', async t => {
   const { project, bundle, run } = workspace(t);

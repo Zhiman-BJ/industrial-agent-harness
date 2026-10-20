@@ -12,6 +12,27 @@
     }
   },
   "messages": {
+    "Recorded version": { "en": "Recorded version", "zh-CN": "记录版本" },
+    "Recorded version passed verification": {
+      "en": "Recorded version passed verification",
+      "zh-CN": "记录版本验证通过"
+    },
+    "Inputs changed · rerun checks for the current project": {
+      "en": "Inputs changed · rerun checks for the current project",
+      "zh-CN": "输入已变化 · 当前工程需重新验证"
+    },
+    "Recorded input files are unchanged": {
+      "en": "Recorded input files are unchanged",
+      "zh-CN": "已记录的输入文件未变化"
+    },
+    "Current inputs could not be checked": {
+      "en": "Current inputs could not be checked",
+      "zh-CN": "无法核对当前输入"
+    },
+    "Current inputs have not been checked": {
+      "en": "Current inputs have not been checked",
+      "zh-CN": "尚未核对当前输入"
+    },
     "Model: {0}": {
       "en": "Model: {0}",
       "zh-CN": "模型：{0}"

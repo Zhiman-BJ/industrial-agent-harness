@@ -23,6 +23,7 @@ const sameInputs = (a, b) =>
 const activeStores = new Set();
 const { bindPresentation } = require('./presentation.cjs');
 const { displayInputs, boundedPreview } = require('./approval-preview.cjs');
+const { hasSnapshotBinding } = require('./evidence-inputs.cjs');
 const schemas = {
   project: ProjectRefSchema,
   state: DomainStateSchema,
@@ -476,6 +477,7 @@ class IndustrialRuntime {
         signal: this.abortController.signal,
         ownerId: policy.ownerId,
       });
+      if (hasSnapshotBinding(result, action)) action.inputBinding = 'snapshot';
       if (typeof result.toolVersion === 'string' && result.toolVersion)
         action.toolVersion = result.toolVersion;
       artifacts = await this.collect(result, action);
@@ -509,7 +511,11 @@ class IndustrialRuntime {
         projectDir: this.projectDir,
         project: this.project,
       });
-      if (tool.descriptor.effect !== 'inputs' && !sameInputs(after.inputHashes, action.inputHashes))
+      if (
+        tool.descriptor.effect !== 'inputs' &&
+        action.inputBinding !== 'snapshot' &&
+        !sameInputs(after.inputHashes, action.inputHashes)
+      )
         verification = {
           ...verification,
           status: 'insufficient_evidence',

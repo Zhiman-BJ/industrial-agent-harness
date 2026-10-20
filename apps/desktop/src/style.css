@@ -5270,6 +5270,16 @@ body {
   padding: 0 0 0 22px;
   font-size: 11px;
 }
+.ia-result-inputs {
+  padding-left: 22px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--ia-muted);
+}
+.ia-result-inputs[data-input-status='changed'],
+.ia-result-inputs[data-input-status='unavailable'] {
+  color: var(--ia-danger);
+}
 .ia-result-supporting > summary,
 .ia-result-previous > summary {
   border-top: 1px solid var(--ia-border);
