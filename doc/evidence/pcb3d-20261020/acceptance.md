@@ -6,7 +6,7 @@ The source-derived preview is implemented; native GPU acceptance is pending.
 
 - TypeScript/Vite desktop build passed.
 - Viewer Node suite: 67 passed, 1 existing KLayout availability skip, 0 failed (68 total).
-- Desktop Node suite: 82/82 passed.
+- Desktop Node suite: 99/99 passed after integrating the macOS startup fix (82/82 before that integration).
 - Architecture suite: 48/48 passed. Temporary downloaded fixtures are outside the Git worktree; no checker or policy exception changed.
 - Geometry-specific tests: 15/15 passed, including nonuniform stackups, malformed outlines, source-declared thickness, unsupported dielectric sublayers, duplicate/out-of-order copper, and unsupported pads.
 - Rendering-budget tests: 10/10 passed, including rotated slot area, blind-via spans, complete drill masks, cancellation, preallocation rejection of a million-point line and oversized polygon, body extrusion bounds and bounded dense-hole topology checks.
