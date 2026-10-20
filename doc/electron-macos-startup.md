@@ -4,7 +4,7 @@
 
 2026-10-20，本机从 ChatGPT 受限命令进程直接启动 Electron 44.0.0 时，在 AppKit `_RegisterApplication` 阶段收到 SIGABRT，尚未进入 Harness JavaScript。只读 Mach lookup 诊断对 `com.apple.coreservices.launchservicesd`、`com.apple.windowserver.active` 均返回 `1100 / BOOTSTRAP_NOT_PRIVILEGED`。
 
-同一官方 Electron 二进制通过已授权的桌面应用启动通道成功打开。早期隔离 `.app` 的薄入口同步加载原 Harness `main.cjs`，真实 `--ui-selftest` 通过并正常退出 0；主可执行文件仍名为 `Electron`，原生 `app.isPackaged` 为 false，无属性替换。正式可复用入口已进入真实界面，但干净 main 的 UI 自测退出 1；补齐直接写入标准错误的日志后，后续桌面打开操作尚未完成，因此正式入口的完整 UI 验收仍待补测。
+同一官方 Electron 二进制通过桌面应用启动通道成功打开。2026-10-20 13:15:55（Asia/Shanghai），用户从普通终端打开正式可复用入口后，同步加载干净 main 工作树的原始 `main.cjs`，13:16:09 完成真实 `--ui-selftest` 并正常退出 0。主可执行文件仍名为 `Electron`，原生 `app.isPackaged` 为 false，无属性替换。[验收记录](evidence/macos-gui-20261020.md)保存了运行身份、日志摘要及哈希。此前两次退出 1 的具体原因因旧入口未捕获标准错误而无法追溯，不能据此次通过倒推其原因。
 
 这修复的是本仓库的本地启动入口及失败诊断。宿主进程的服务访问限制，以及 AppKit 在该限制下的原生 abort 行为不由 Harness 更改。相同上游报告：[Electron #52815](https://github.com/electron/electron/issues/52815)、[Codex #30043](https://github.com/openai/codex/issues/30043)。
 

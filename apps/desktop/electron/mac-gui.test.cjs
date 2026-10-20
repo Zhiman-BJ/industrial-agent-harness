@@ -348,7 +348,7 @@ test('zero exit alone and a different selftest marker do not establish UI selfte
   }
   const result = runBootstrap(t, { marker: 'UI selftest passed: assertions finished.', code: 1 });
   assert.equal(JSON.parse(fs.readFileSync(result.prepared.resultPath)).passed, false);
-  const unknownMarker = runBootstrap(t, { args: ['--kicad-selftest'], marker: '{"ok":true}' });
+  const unknownMarker = runBootstrap(t, { args: ['--godot-selftest'], marker: '{"ok":true}' });
   assert.equal(
     JSON.parse(fs.readFileSync(unknownMarker.prepared.resultPath)).completed,
     false,
