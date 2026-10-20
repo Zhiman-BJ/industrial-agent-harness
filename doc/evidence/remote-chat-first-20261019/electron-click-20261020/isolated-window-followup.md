@@ -15,3 +15,11 @@
 实际页面确认模型按钮的 SVG 类为 `lucide-brain-circuit`，title 和无障碍名称为“模型：remote-chat-controlled-fixture”；旁边“芯片”领域仍使用芯片图标。[完整界面](03-model-icon-browser-preview.jpg)与[输入区截图](04-model-icon-composer-preview.jpg)由浏览器直接截图取得，未重绘。构建资源为 `index-DoOwPZ0u.js`，SHA-256 `92549ef37628aaf12c8aa548f89888eb9249c0db86e94c7309252b7fc8e28c50`，源代码改动为 `f116ef7`。
 
 这仅验证模型入口的真实 renderer 外观，不证明 Electron 目标窗口已刷新，也不补记审批、自动同步或远端执行用例通过。
+
+### 简洁样式修订
+
+用户认为上述 AI 图标版本花哨，并提供模型名与末尾小箭头的浅灰入口参考。后续版本去掉前置图标及描边，使用产品现有 panel 灰阶、次要文字和 6 px 小圆角；保留“模型：…”提示、长名称省略与上下文用量。决策见 PD-090。
+
+以同一只读浏览器预览重新加载真实构建，确认模型入口无描边且只含末尾箭头，并实际点击打开“模型 API 设置”再关闭，没有保存设置或发起模型调用。[修订后的完整界面](05-model-simple-browser-preview.jpg)及[输入区截图](06-model-simple-composer-preview.jpg)为默认未聚焦状态。类型检查、Vite 构建、架构检查及其 20 项回归通过；本次没有重跑原生 Electron 自测。真实 Electron 完整任务点击验收仍受前述控制问题阻塞。
+
+修订构建：`index-Jr2ftY_E.js` SHA-256 `8359c923869336cf09d57525fbc02b1221c16d4994ea4f5bdcc41dce689d62df`；`index-Dqxpvj-1.css` SHA-256 `acb6de71b1c76909f1ec5df0dd381ef0ea9b9511f60750841f6b543b194b19d4`。上方 03/04 截图保留为被用户要求简化的历史版本。
