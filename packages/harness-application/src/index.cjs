@@ -12,7 +12,10 @@ const {
 } = require('@industrial-agent-harness/harness-core');
 const { loadRegistry } = require('@industrial-agent-harness/domain-skills');
 const { KimiSession } = require('@industrial-agent-harness/agent-kimi');
-const { ObservedContextStore } = require('@industrial-agent-harness/domain-runtime');
+const {
+  ObservedContextStore,
+  createEvidenceInspector,
+} = require('@industrial-agent-harness/domain-runtime');
 const { discloseDetail } = require('@industrial-agent-harness/capability-broker');
 const { PackManager } = require('@industrial-agent-harness/pack-manager');
 const { SessionManager, finishTurn } = require('./session-manager.cjs');
@@ -289,6 +292,13 @@ class TaskService {
           eventRevision: entry.eventRevision,
         };
         let displayed = recorded;
+        if (recorded.type === 'industrial-result')
+          displayed = {
+            ...recorded,
+            inputStatus: createEvidenceInspector(entry.project.path)(
+              recorded.verification?.evidence?.inputHashes,
+            ),
+          };
         if (['results-changed', 'results-ready'].includes(recorded.type)) {
           try {
             displayed = {
@@ -339,6 +349,27 @@ class TaskService {
         emit,
       );
       entry.resultContext = resultContext;
+      resultContext.refreshState = async () => {
+        if (entry.resultContext !== resultContext) throw Error('Request is no longer current.');
+        const state = await entry.runtimeBundle.runtime.inspect();
+        if (entry.resultContext !== resultContext) throw Error('Request is no longer current.');
+        synchronizeScope(state);
+        return { state, allowedTools: entry.scope.tools };
+      };
+      const synchronizeScope = state => {
+        const refreshed = resolveProjectTask(
+          entry.project.domain,
+          { ...entry.resolvedRequest, state },
+          entry.scope,
+          runtimeCapabilities(this.registry(), entry.runtimeBundle),
+          entry.disabled,
+          entry.externalServers,
+          this.registry().domains,
+          entry.resourceCatalog.mcpServers,
+        );
+        Object.assign(entry.scope, refreshed.scope);
+        entry.trace.push(...refreshed.trace);
+      };
       resultContext.onIndustrialResult = async result => {
         // Result display (register/view) is a presentation concern. The
         // mutation already committed in the Runtime, so a display failure
@@ -351,18 +382,7 @@ class TaskService {
           displayError = error;
         }
         if (entry.resultContext === resultContext) {
-          const refreshed = resolveProjectTask(
-            entry.project.domain,
-            { ...entry.resolvedRequest, state: result.state },
-            entry.scope,
-            runtimeCapabilities(this.registry(), entry.runtimeBundle),
-            entry.disabled,
-            entry.externalServers,
-            this.registry().domains,
-            entry.resourceCatalog.mcpServers,
-          );
-          Object.assign(entry.scope, refreshed.scope);
-          entry.trace.push(...refreshed.trace);
+          synchronizeScope(result.state);
         }
         emit({ type: 'industrial-result', ...result });
         if (displayError) {
@@ -513,19 +533,33 @@ class TaskService {
     const entry = this.sessions.find(id);
     const history = this.chats.history(id, project.path, project.domain, before);
     const resultEvent = event => ['results-changed', 'results-ready'].includes(event.type);
-    if (history.turns.some(turn => turn.events.some(resultEvent))) {
+    if (
+      history.turns.some(turn =>
+        turn.events.some(event => resultEvent(event) || event.type === 'industrial-result'),
+      )
+    ) {
       const records = this.projects.read(project);
       const contentStatuses = new Map();
+      const inspect = createEvidenceInspector(project.path);
       try {
         history.turns = history.turns.map(turn => {
           const results = new TaskResults(this.chats, { id, project }, turn.id, records, () => {});
           return {
             ...turn,
-            events: turn.events.map(event =>
-              resultEvent(event)
-                ? { ...event, results: results.view(event.results, contentStatuses) }
-                : event,
-            ),
+            events: turn.events.map(event => {
+              if (resultEvent(event))
+                return { ...event, results: results.view(event.results, contentStatuses, inspect) };
+              if (event.type === 'industrial-result') {
+                const action = records?.get('action', event.action?.id);
+                return {
+                  ...event,
+                  inputStatus: action
+                    ? inspect(action.verification.evidence.inputHashes)
+                    : { status: 'unavailable', changedPaths: [] },
+                };
+              }
+              return event;
+            }),
           };
         });
       } finally {
@@ -545,6 +579,67 @@ class TaskService {
     const records = this.projects.read(entry.project);
     try {
       return new TaskResults(this.chats, entry, turnId, records, () => {}).view();
+    } finally {
+      records?.close();
+    }
+  }
+  refreshEvidence(project, chatId, turnIds) {
+    this.chats.get(chatId, project.path, project.domain);
+    if (
+      !Array.isArray(turnIds) ||
+      turnIds.length > 100 ||
+      turnIds.some(id => typeof id !== 'string')
+    )
+      throw Error('Evidence refresh requires at most 100 request identities.');
+    const turns = [...new Set(turnIds)].map(turnId => ({
+      turnId,
+      events: this.chats.turnEvents(chatId, turnId),
+    }));
+    const records = this.projects.read(project);
+    const inspect = createEvidenceInspector(project.path);
+    try {
+      const all = this.chats.latestEvents(chatId, 'results-changed').map(event => event.results);
+      const allGroups = all.flatMap(result => result.groups);
+      const allChecks = all.flatMap(result => result.checks || []);
+      const unavailable = { status: 'unavailable', changedPaths: [] };
+      return turns.map(({ turnId, events }) => {
+        const actions = {},
+          verifications = {};
+        for (const event of events) {
+          if (event.type === 'industrial-result') {
+            const action = records?.get('action', event.action?.id);
+            actions[event.action.id] = unavailable;
+            if (action && action.projectId === records?.project.projectId) {
+              actions[action.id] = inspect(action.verification.evidence.inputHashes);
+              verifications[action.verification.id] = actions[action.id];
+            }
+          }
+          if (['results-changed', 'results-ready'].includes(event.type)) {
+            const groups = [
+              ...event.results.groups,
+              ...allGroups.filter(group => event.results.selection?.groupIds.includes(group.id)),
+            ];
+            const groupIds = new Set(groups.map(group => group.id));
+            const refs = [
+              ...groups.flatMap(group => group.verificationRefs),
+              ...allChecks.filter(check => groupIds.has(check.groupId)),
+              ...(event.results.checks || []),
+            ];
+            for (const ref of refs) {
+              verifications[ref.verificationId] = unavailable;
+              const verification = records?.get('verification', ref.verificationId);
+              const action = records?.get('action', ref.actionId);
+              if (
+                verification &&
+                action?.projectId === records.project.projectId &&
+                action.verification.id === verification.id
+              )
+                verifications[verification.id] = inspect(verification.evidence.inputHashes);
+            }
+          }
+        }
+        return { turnId, actions, verifications };
+      });
     } finally {
       records?.close();
     }

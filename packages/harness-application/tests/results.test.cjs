@@ -42,6 +42,7 @@ function setup(t, script, cleanupError) {
         kernel: this,
         context: this.options.getApplicationContext(),
         application: applicationTools(this.options.getApplicationContext),
+        tools,
       });
       this.emit({ type: 'done', result: { status: status || 'completed' } });
     }
@@ -90,6 +91,151 @@ function setup(t, script, cleanupError) {
   };
 }
 const change = (file, content, expectedSha256 = null) => ({ path: file, content, expectedSha256 });
+
+test('native edits require an explicit fresh scope before a tracked action can run', async t => {
+  const f = setup(t, async ({ kernel, tools }) => {
+    const stateId = kernel.getScope().stateId;
+    fs.writeFileSync(path.join(f.project.path, 'native.txt'), 'native');
+    const call = tools.find(tool => tool.name === 'industrial_action_call');
+    const stale = JSON.parse(
+      (
+        await call.handler({
+          toolId: 'project.files.apply',
+          inputs: { changes: [change('should-not-exist.txt', 'old scope')] },
+          expectedStateId: stateId,
+        })
+      ).output,
+    );
+    assert.equal(stale.actionStatus, 'failed');
+    assert.equal(fs.existsSync(path.join(f.project.path, 'should-not-exist.txt')), false);
+    fs.writeFileSync(path.join(f.project.path, 'native.txt'), 'native-again');
+    const fresh = JSON.parse(
+      (await tools.find(tool => tool.name === 'industrial_state_inspect').handler({})).output,
+    );
+    assert.notEqual(fresh.state.id, stateId);
+    assert.equal(fresh.state.id, kernel.getScope().stateId);
+    assert.ok(fresh.allowedTools.includes('project.files.apply'));
+    const applied = JSON.parse(
+      (
+        await call.handler({
+          toolId: 'project.files.apply',
+          inputs: { changes: [change('after-refresh.txt', 'fresh scope')] },
+          expectedStateId: fresh.state.id,
+        })
+      ).output,
+    );
+    assert.equal(applied.actionStatus, 'completed');
+  });
+  await f.run('inspect native changes and record an edit');
+});
+
+test('offline history and evidence refresh detect changed inputs without changing canonical verdicts or permitting current selection', async t => {
+  const f = setup(t, async () => {});
+  const file = path.join(f.project.path, 'source');
+  fs.writeFileSync(file, 'before');
+  const hash = bytes => require('node:crypto').createHash('sha256').update(bytes).digest('hex');
+  const runtime = new IndustrialRuntime(f.project.path, f.project.domain, {
+    directory: path.join(path.dirname(f.project.path), 'state'),
+    stateProvider: async () => ({
+      stage: null,
+      inputHashes: { source: hash(fs.readFileSync(file)) },
+    }),
+    tools: [
+      {
+        descriptor: {
+          schemaVersion: '1',
+          id: 'fixture.check',
+          version: '1',
+          risk: 'mutating',
+          verification: ['fixture'],
+        },
+        execute: () => {
+          fs.writeFileSync(path.join(f.project.path, 'report.txt'), 'Recorded report');
+          return {
+            executionSucceeded: true,
+            artifacts: [{ localId: 'report', file: 'report.txt', kind: 'text' }],
+            presentation: {
+              schemaVersion: '1',
+              groups: [{ key: 'report', title: 'Report', primary: 'report' }],
+            },
+          };
+        },
+      },
+    ],
+    verifiers: { fixture: () => ({ status: 'passed', reason: 'Test verifier', metrics: {} }) },
+  });
+  // setup's after hook removes the fixture directory. Close this separately
+  // owned SQLite runtime first, including when an assertion fails (Windows).
+  try {
+    const state = await runtime.inspect();
+    const result = await runtime.execute(
+      { toolId: 'fixture.check', inputs: {}, expectedStateId: state.id },
+      {
+        approval: true,
+        scope: {
+          domain: f.project.domain,
+          projectId: state.projectId,
+          stateId: state.id,
+          tools: ['fixture.check'],
+        },
+      },
+    );
+    const turnId = f.tasks.chats.beginTurn(f.entry.id, 'verify', null, false);
+    const context = new TaskResults(f.tasks.chats, f.entry, turnId, runtime, event =>
+      f.tasks.chats.append(turnId, event),
+    );
+    f.entry.resultContext = context;
+    context.register(result);
+    f.tasks.chats.append(turnId, { type: 'industrial-result', ...result });
+    context.settle('completed');
+    f.tasks.chats.finish(turnId, 'completed');
+    f.tasks.registry = () => {
+      throw Error('Read-only refresh must not load Packs');
+    };
+    const before = JSON.stringify(runtime.get('action', result.action.id));
+    const eventsBefore = JSON.stringify(f.tasks.chats.turnEvents(f.entry.id, turnId));
+    const refresh = () => f.tasks.refreshEvidence(f.project, f.entry.id, [turnId])[0];
+    assert.equal(refresh().actions[result.action.id].status, 'matches');
+    fs.writeFileSync(file, 'after!');
+    const observed = refresh();
+    assert.equal(observed.actions[result.action.id].status, 'changed');
+    assert.equal(observed.verifications[result.verification.id].status, 'changed');
+    const events = f.tasks.history(f.project, f.entry.id).turns[0].events;
+    const actionEvent = events.find(event => event.type === 'industrial-result');
+    assert.equal(actionEvent.verification.status, 'passed');
+    assert.equal(actionEvent.inputStatus.status, 'changed');
+    const results = events.findLast(event => event.type === 'results-ready').results;
+    assert.equal(results.groups[0].verifications[0].inputStatus.status, 'changed');
+    assert.throws(
+      () => context.select({ revision: results.revision, groupIds: [results.groups[0].id] }),
+      /inputs changed/,
+    );
+    assert.equal(JSON.stringify(runtime.get('action', result.action.id)), before);
+    assert.equal(JSON.stringify(f.tasks.chats.turnEvents(f.entry.id, turnId)), eventsBefore);
+    assert.equal(
+      context.select({
+        revision: results.revision,
+        groupIds: [results.groups[0].id],
+        historical: true,
+      }).selection.historical,
+      true,
+    );
+    assert.equal(f.tasks.projects.bundles.size, 0);
+    const other = f.tasks.chats.create(f.project.path, f.project.domain);
+    assert.throws(() => f.tasks.refreshEvidence(f.project, other.id, [turnId]), /another chat/);
+    assert.throws(
+      () =>
+        f.tasks.refreshEvidence({ ...f.project, path: path.dirname(f.project.path) }, f.entry.id, [
+          turnId,
+        ]),
+      /project/,
+    );
+    fs.unlinkSync(file);
+    assert.equal(refresh().actions[result.action.id].status, 'changed');
+  } finally {
+    await runtime.close();
+  }
+});
 
 test('empty and text-only remote histories do not require execution setup or load Packs', async t => {
   const f = setup(t, async () => {});

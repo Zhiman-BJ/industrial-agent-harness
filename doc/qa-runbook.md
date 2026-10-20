@@ -14,4 +14,6 @@
 
 模块页：[工作台、项目与聊天](qa-runbook/workbench-project-chat.md) · [模型与账号](qa-runbook/models-account.md) · [领域安装、资源与 MCP](qa-runbook/domains-resources-mcp.md) · [远程执行](qa-runbook/remote-execution.md) · [Viewer 与成果](qa-runbook/viewers-results.md) · [诊断与打包](qa-runbook/diagnostics-packaging.md) · [性能、崩溃与恢复](qa-runbook/performance-recovery.md)。
 
+声明式本地任务的定向入口见[真实沙箱与输入绑定验收](qa-runbook/workspace-sandbox.md)：一条命令运行真实任务、并发输入变化、写入/网络边界与生命周期检查并保留报告；不替代完整 native suite。
+
 完成标准见 [Definition of Done](04-definition-of-done-and-architecture-tests.md)，职责见 [IH-ARCH-001](architecture-contract.md)，托管平台见 [CI 回归](ci-regression.md)，交互依据见[产品决策](product-decisions.md)。本次拆分不改变产品决定、工业契约、架构例外或平台支持声明。

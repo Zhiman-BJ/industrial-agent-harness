@@ -381,6 +381,11 @@ export interface ViewerHostApi {
   ): Promise<{ projects: ProjectBinding[]; activeId: string | null; projectDir: string | null }>;
   chats(): Promise<{ chats: ChatSummary[]; activeId: string | null; sessions: SessionStatus[] }>;
   chatHistory(request: { id: string; before?: string | null }): Promise<ChatHistory>;
+  refreshEvidence(request: {
+    projectId: string;
+    chatId: string;
+    turnIds: string[];
+  }): Promise<EvidenceRefresh[]>;
   selectChat(id: string): Promise<ChatHistory>;
   deleteChat(
     id: string,
@@ -641,6 +646,15 @@ export interface ResultOpenRequest {
   previewOnly?: boolean;
   revealOnly?: boolean;
 }
+export interface EvidenceInputStatus {
+  status: 'matches' | 'changed' | 'unavailable' | 'unchecked';
+  changedPaths: string[];
+}
+export interface EvidenceRefresh {
+  turnId: string;
+  actions: Record<string, EvidenceInputStatus>;
+  verifications: Record<string, EvidenceInputStatus>;
+}
 export interface TaskResultView {
   schemaVersion: '1';
   projectId: string;
@@ -667,6 +681,7 @@ export interface TaskResultView {
     artifacts: ResultArtifactRef[];
     verifications: Array<{
       id: string;
+      inputStatus?: EvidenceInputStatus;
       status: 'passed' | 'failed' | 'not_run' | 'insufficient_evidence';
       reason: string;
     }>;
@@ -784,6 +799,7 @@ export type AgentEvent = {
     }
   | {
       type: 'industrial-result';
+      inputStatus?: EvidenceInputStatus;
       action: { id: string; status: string };
       artifacts?: ResultArtifactRef[];
       verification: {

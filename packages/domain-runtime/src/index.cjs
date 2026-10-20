@@ -279,6 +279,7 @@ module.exports = {
   defaultStateDirectory,
   ...require('./actions.cjs'),
   ...require('./industrial.cjs'),
+  createEvidenceInspector: require('./evidence-inputs.cjs').createEvidenceInspector,
   ...require('./workspace.cjs'),
   ...require('./remote-client.cjs'),
   ...require('./remote-gateway-client.cjs'),

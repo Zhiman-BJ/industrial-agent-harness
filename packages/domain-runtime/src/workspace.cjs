@@ -7,6 +7,7 @@ const {
   ProjectTaskRunRequestSchema,
   ProjectTaskCheckReportSchema,
   ProjectPathSchema,
+  ProjectTaskManifestSchema,
 } = require('@industrial-agent-harness/contracts');
 const {
   hash,
@@ -18,6 +19,7 @@ const {
   readBytes,
 } = require('./workspace-files.cjs');
 const { executeTask } = require('./task-process.cjs');
+const { bindSnapshotResult } = require('./evidence-inputs.cjs');
 const { preflight } = require('./preflight.cjs');
 const VERSION = '1.0.0';
 const fileVerifier = 'project.files.integrity',
@@ -270,7 +272,13 @@ function createWorkspacePlugin({
         'mutating',
         async ({ projectDir, inputs, action, state, signal }) => {
           const request = ProjectTaskRunRequestSchema.parse(inputs);
-          const task = manifest(projectDir, protectedPaths).tasks[request.task];
+          const manifestBytes = readBytes(
+            projectFile(projectDir, 'harness.tasks.json', protectedPaths),
+          );
+          if (hash(manifestBytes) !== state.inputHashes['harness.tasks.json'])
+            throw Error('Task declaration differs from the approved input state.');
+          const task = ProjectTaskManifestSchema.parse(JSON.parse(manifestBytes.toString('utf8')))
+            .tasks[request.task];
           if (!task) throw Error('Task is not declared in harness.tasks.json.');
           const directory = runDirectory(projectDir, action.id),
             input = path.join(directory, 'input'),
@@ -330,6 +338,20 @@ function createWorkspacePlugin({
               { kind: 'report.execution', file: report },
             ],
             diagnostics = [];
+          let snapshotIntact = true;
+          for (const name of task.inputs) {
+            try {
+              if (
+                fs.lstatSync(input).isSymbolicLink() ||
+                hash(readBytes(projectFile(input, name), 64 * 1024 * 1024)) !==
+                  state.inputHashes[name]
+              )
+                throw Error('Snapshot content differs from the recorded input.');
+            } catch {
+              snapshotIntact = false;
+              diagnostics.push('Captured task input changed or became unavailable: ' + name);
+            }
+          }
           for (const output of [
             ...task.outputs,
             ...(task.verification
@@ -344,12 +366,14 @@ function createWorkspacePlugin({
               diagnostics.push(error.message);
             }
           }
-          return {
-            executionSucceeded: execution.status === 'COMPLETED',
+          const result = {
+            executionSucceeded: execution.status === 'COMPLETED' && snapshotIntact,
+            inputSnapshotChanged: !snapshotIntact,
             artifacts,
             diagnostics,
             toolVersion: execution.identity?.imageId || execution.identity?.sha256 || VERSION,
           };
+          return snapshotIntact ? bindSnapshotResult(result, action) : result;
         },
       ),
     ],
@@ -362,6 +386,11 @@ function createWorkspacePlugin({
       }),
       [taskVerifier]: ({ artifacts, readArtifact, result }) => {
         const assessed = (status, reason, metrics = {}) => ({ status, reason, metrics });
+        if (result.inputSnapshotChanged)
+          return assessed(
+            'insufficient_evidence',
+            'Captured task inputs changed during execution; the reported checks cannot be bound to the recorded inputs.',
+          );
         const execution = JSON.parse(
           readArtifact(artifacts.find(a => a.kind === 'report.execution')).toString('utf8'),
         );

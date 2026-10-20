@@ -1,4 +1,5 @@
 const { resultContentStatus } = require('./result-artifacts.cjs');
+const { createEvidenceInspector } = require('@industrial-agent-harness/domain-runtime');
 const {
   ResultGroupSchema,
   ResultSelectionRequestSchema,
@@ -100,6 +101,7 @@ class TaskResults {
     const replaced = new Set(
       this.all().flatMap(result => result.groups.flatMap(group => group.supersedes)),
     );
+    const inspect = createEvidenceInspector(this.entry.project.path);
     for (const id of parsed.groupIds) {
       const group = known.find(group => group.id === id);
       if (
@@ -110,6 +112,21 @@ class TaskResults {
       )
         throw Error('Unknown, out-of-scope or superseded result; call list_results and retry.');
       const primary = this.runtime?.get('artifact', group.primaryArtifactId);
+      if (!parsed.historical) {
+        const checks = this.all()
+          .flatMap(result => result.checks || [])
+          .filter(check => check.groupId === group.id);
+        for (const ref of [...group.verificationRefs, ...checks]) {
+          const verification = this.runtime?.get('verification', ref.verificationId);
+          if (
+            verification?.status === 'passed' &&
+            inspect(verification.evidence?.inputHashes).status !== 'matches'
+          )
+            throw Error(
+              'Verification inputs changed or could not be checked; rerun checks or choose a historical version.',
+            );
+        }
+      }
       if (
         !parsed.historical &&
         (!primary ||
@@ -148,7 +165,11 @@ class TaskResults {
       });
     this.wasBackground ||= background;
   }
-  view(value = this.snapshot(), contentStatuses = new Map()) {
+  view(
+    value = this.snapshot(),
+    contentStatuses = new Map(),
+    inspect = createEvidenceInspector(this.entry.project.path),
+  ) {
     const all = this.all();
     const groups = all.flatMap(result => result.groups);
     const checks = all.flatMap(result => result.checks || []);
@@ -178,7 +199,9 @@ class TaskResults {
           contentStatuses.set(primary.id, resultContentStatus(this.runtime, primary));
         return {
           ...group,
-          historical: group.turnId !== this.turnId,
+          historical:
+            group.turnId !== this.turnId ||
+            (selected.has(group.id) && value.selection?.historical === true),
           superseded: replaced.has(group.id),
           selected: selected.has(group.id),
           artifacts: [
@@ -198,7 +221,11 @@ class TaskResults {
           contentStatus: primary ? contentStatuses.get(primary.id) : 'unavailable',
           verifications: [...new Set(refs.map(ref => ref.verificationId))]
             .map(id => this.runtime?.get('verification', id))
-            .filter(Boolean),
+            .filter(Boolean)
+            .map(verification => ({
+              ...verification,
+              inputStatus: inspect(verification.evidence?.inputHashes),
+            })),
         };
       }),
       executionStatus: !['completed', 'finished'].includes(value.requestStatus)

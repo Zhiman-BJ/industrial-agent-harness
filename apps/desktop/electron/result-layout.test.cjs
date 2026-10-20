@@ -1,6 +1,40 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
+test('freshness refresh merges by canonical identity without replaying results or changing historical verdicts', async () => {
+  const { refreshEventEvidence, evidenceLabel } = await import('../src/evidence-refresh.ts');
+  const original = [
+    { type: 'answer', text: 'Keep streaming' },
+    {
+      type: 'industrial-result',
+      action: { id: 'a' },
+      verification: { status: 'passed' },
+      inputStatus: { status: 'matches', changedPaths: [] },
+    },
+    {
+      type: 'results-ready',
+      results: { groups: [{ id: 'g', verifications: [{ id: 'v', status: 'passed' }] }] },
+    },
+    { type: 'industrial-result', action: { id: 'new' }, verification: { status: 'passed' } },
+  ];
+  const changed = { status: 'changed', changedPaths: ['source'] };
+  const refresh = { turnId: 'turn', actions: { a: changed }, verifications: { v: changed } };
+  const next = refreshEventEvidence(original, refresh);
+  assert.equal(next[0], original[0]);
+  assert.equal(next[3], original[3], 'An observation cannot overwrite events which arrived later.');
+  assert.equal(next[1].verification, original[1].verification);
+  assert.equal(next[1].inputStatus.status, 'changed');
+  assert.equal(next[2].results.groups[0].verifications[0].status, 'passed');
+  assert.equal(
+    refreshEventEvidence(next, refresh),
+    next,
+    'Unchanged observations preserve React identities.',
+  );
+  assert.equal(refreshEventEvidence(next, null)[1].inputStatus.status, 'unavailable');
+  assert.match(evidenceLabel(changed), /rerun checks/);
+  assert.match(evidenceLabel(), /not been checked/);
+});
+
 function group(id, options = {}) {
   return {
     id,

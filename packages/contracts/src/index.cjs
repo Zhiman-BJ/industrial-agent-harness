@@ -145,6 +145,7 @@ const IndustrialVerificationResultSchema = z
   );
 const IndustrialActionRecordSchema = ActionRecordSchema.extend({
   schemaVersion: version,
+  inputBinding: z.literal('snapshot').optional(),
   toolVersion: z.string().min(1),
   stateId: uuid,
   inputHashes,

@@ -1,6 +1,7 @@
 import type { AgentEvent } from '@industrial-agent-harness/viewer-builtin/api';
 import { useDisplayText } from '@industrial-agent-harness/viewer-builtin/text';
 import { useRef, useState } from 'react';
+import { evidenceLabel } from '../evidence-refresh';
 
 type ResultEvent = Extract<AgentEvent, { type: 'industrial-result' }>;
 
@@ -17,20 +18,14 @@ export function IndustrialResult({
   const submitting = useRef(false);
   const [opening, setOpening] = useState<string | null>(null);
   const [error, setError] = useState('');
-  const verified =
-    event.action.status === 'completed' &&
-    event.verification.status === 'passed' &&
-    event.state.status === 'verified';
-  const title =
-    event.state.status === 'stale'
-      ? 'Engineering evidence is stale'
-      : verified
-        ? 'Engineering verification passed'
-        : event.verification.status === 'failed'
-          ? 'Engineering verification failed'
-          : event.verification.status === 'not_run'
-            ? 'Engineering verification was not run'
-            : 'Engineering evidence is insufficient';
+  const verified = event.action.status === 'completed' && event.verification.status === 'passed';
+  const title = verified
+    ? 'Recorded version passed verification'
+    : event.verification.status === 'failed'
+      ? 'Engineering verification failed'
+      : event.verification.status === 'not_run'
+        ? 'Engineering verification was not run'
+        : 'Engineering evidence is insufficient';
   const execution =
     event.action.status === 'completed'
       ? 'Execution completed'
@@ -56,7 +51,9 @@ export function IndustrialResult({
       className={`ia-agent-tool ia-industrial-result ${event.action.status === 'failed' || event.verification.status === 'failed' ? 'error' : ''}`}
       data-action-id={event.action.id}
     >
-      <summary>{t(title)}</summary>
+      <summary>
+        {t(title)} · {t(evidenceLabel(event.inputStatus))}
+      </summary>
       <p className="ia-result-execution">{t(execution)}</p>
       <p>{event.verification.reason}</p>
       <small>{t('Verification applies to the inputs recorded for this action.')}</small>

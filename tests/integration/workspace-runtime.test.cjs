@@ -13,7 +13,7 @@ const { boundaryMatches } = require('./fixtures/execution-boundary.cjs');
 const scenario = require('./fixtures/workspace-scenario.cjs');
 const execute = promisify(execFile),
   root = path.resolve(__dirname, '../..');
-function workspace(t) {
+function workspace(t, environment = {}) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-workspace-native-')),
     project = path.join(directory, 'project');
   fs.mkdirSync(project);
@@ -22,11 +22,53 @@ function workspace(t) {
     domain: 'example',
     directory: path.join(directory, 'state'),
     registry: { runtimePacks: [] },
-    environment: { ...process.env, INDUSTRIAL_HARNESS_CONFIG_DIR: path.join(directory, 'config') },
+    environment: {
+      ...process.env,
+      ...environment,
+      INDUSTRIAL_HARNESS_CONFIG_DIR: path.join(directory, 'config'),
+    },
   });
   t.after(() => {
-    bundle.runtime.close();
-    fs.rmSync(directory, { recursive: true, force: true });
+    try {
+      // The focused native runner retains canonical records and report bytes
+      // before cleanup. No model configuration or user project is copied.
+      if (process.env.HARNESS_WORKSPACE_ACCEPTANCE_EVIDENCE) {
+        const evidence = path.join(
+          process.env.HARNESS_WORKSPACE_ACCEPTANCE_EVIDENCE,
+          path.basename(directory),
+        );
+        fs.mkdirSync(evidence, { recursive: true });
+        const actions = bundle.runtime.listActions();
+        const artifacts = [...new Set(actions.flatMap(action => action.artifactIds))].map(id =>
+          bundle.runtime.get('artifact', id),
+        );
+        fs.writeFileSync(
+          path.join(evidence, 'records.json'),
+          JSON.stringify(
+            {
+              test: t.name,
+              actions,
+              artifacts,
+              verifications: bundle.runtime.listVerifications(),
+              checkpoints: bundle.runtime.listCheckpoints(),
+            },
+            null,
+            2,
+          ) + '\n',
+        );
+        for (const artifact of artifacts) {
+          if (!['report.execution', 'report.task-checks', 'log.task'].includes(artifact.kind))
+            continue;
+          fs.writeFileSync(
+            path.join(evidence, artifact.id),
+            bundle.runtime.readArtifact(artifact.id).content,
+          );
+        }
+      }
+    } finally {
+      bundle.runtime.close();
+      fs.rmSync(directory, { recursive: true, force: true });
+    }
   });
   const run = async (toolId, inputs, approval = true) => {
     const state = await bundle.runtime.inspect(),
@@ -79,16 +121,123 @@ test('real protected local task: empty project → create → pass → edit → 
       .listCheckpoints()
       .some(c => c.id === passed.checkpoint.id && c.state.status === 'verified'),
   );
+  // The real child waits after its immutable input copy exists. An external
+  // writer then changes the live source; the checks must still read the copy.
+  fs.writeFileSync(
+    path.join(project, 'tests/check.cjs'),
+    [
+      "const fsWait = require('node:fs'), pathWait = require('node:path');",
+      "fsWait.writeFileSync(pathWait.join(process.env.HARNESS_OUTPUT_DIR, 'ready'), 'ready');",
+      "const wait = setInterval(() => { if (!fsWait.existsSync(pathWait.join(process.env.HARNESS_OUTPUT_DIR, 'release'))) return; clearInterval(wait);",
+      scenario.checks,
+      '}, 10);',
+    ].join('\n'),
+  );
+  const waitingChecks = fs.readFileSync(path.join(project, 'tests/check.cjs'));
+  async function startPausedTask() {
+    const running = run('project.task.run', { task: 'test' });
+    const deadline = Date.now() + 4000;
+    while (Date.now() < deadline) {
+      const action = bundle.runtime.listActions().find(action => action.status === 'running');
+      const work = action && path.join(project, '.harness-runs', action.id, 'work');
+      if (work && fs.existsSync(path.join(work, 'ready'))) return { running, work };
+      await new Promise(resolve => setTimeout(resolve, 10));
+    }
+    const result = await running;
+    assert.fail('Real task did not become ready: ' + JSON.stringify(result));
+  }
+  const { running, work } = await startPausedTask();
+  fs.writeFileSync(path.join(project, 'src/calculate.cjs'), scenario.broken);
+  fs.writeFileSync(path.join(work, 'release'), 'release');
+  const historical = await running;
+  assert.equal(historical.action.inputBinding, 'snapshot');
+  assert.equal(historical.verification.status, 'passed');
+  assert.equal(historical.state.status, 'stale');
+  assert.equal(
+    historical.verification.evidence.inputHashes['src/calculate.cjs'],
+    scenario.hash(scenario.source),
+  );
+  fs.writeFileSync(path.join(project, 'tests/check.cjs'), scenario.checks);
+  assert.equal((await run('project.task.run', { task: 'test' })).verification.status, 'failed');
+  // Passing child checks must be rejected if a host writer changes their input copy.
+  fs.writeFileSync(path.join(project, 'src/calculate.cjs'), scenario.source);
+  fs.writeFileSync(path.join(project, 'tests/check.cjs'), waitingChecks);
+  const tampered = await startPausedTask();
+  const copy = path.resolve(tampered.work, '../input/src/calculate.cjs');
+  fs.chmodSync(copy, 0o600);
+  fs.writeFileSync(copy, scenario.source + '// external change to captured bytes\n');
+  fs.writeFileSync(path.join(tampered.work, 'release'), 'release');
+  const rejected = await tampered.running;
+  assert.equal(rejected.action.status, 'failed');
+  assert.equal(rejected.verification.status, 'insufficient_evidence');
+  assert.equal(rejected.action.inputBinding, undefined);
+  assert.notEqual(rejected.state.status, 'verified');
+  const checks = JSON.parse(
+    bundle.runtime.readArtifact(
+      rejected.artifacts.find(artifact => artifact.kind === 'report.task-checks').id,
+    ).content,
+  );
+  assert.ok(
+    checks.checks.length > 0 && checks.checks.every(check => check.passed),
+    'Actual child checks passed, but their changed input copy is rejected.',
+  );
+  assert.equal(fs.readFileSync(path.join(project, 'src/calculate.cjs'), 'utf8'), scenario.source);
 });
 test('real task cannot write source, runtime evidence, input snapshots or contact host sockets; no inherited credentials', async t => {
-  const { project, bundle, run } = workspace(t);
+  const { project, bundle, run } = workspace(t, {
+    HARNESS_ACCEPTANCE_SECRET: 'controlled-credential-marker',
+  });
+  const net = require('node:net');
+  const connections = { tcp: 0, unix: 0 };
+  const tcp = net.createServer(socket => {
+    connections.tcp++;
+    socket.end();
+  });
+  const unix = net.createServer(socket => {
+    connections.unix++;
+    socket.end();
+  });
+  // Keep Unix socket names below macOS sun_path's limit, including long TMPDIRs.
+  const socketPath = path.join('/tmp', 'ih-net-' + require('node:crypto').randomUUID() + '.sock');
+  async function listen(server, options) {
+    await new Promise((resolve, reject) => {
+      server.once('error', reject);
+      server.listen(options, resolve);
+    });
+    t.after(() => new Promise(resolve => server.close(resolve)));
+  }
+  await listen(tcp, { host: '127.0.0.1', port: 0 });
+  await listen(unix, socketPath);
+  // A live endpoint is the positive control: an absent server cannot count as isolation.
+  for (const endpoint of [{ host: '127.0.0.1', port: tcp.address().port }, { path: socketPath }]) {
+    await new Promise((resolve, reject) => {
+      const socket = net.connect(endpoint, () => socket.end());
+      socket.once('error', reject);
+      socket.once('close', resolve);
+    });
+  }
+  assert.deepEqual(connections, { tcp: 1, unix: 1 });
   const stateFile = bundle.runtime.file;
-  const script = `const fs=require('node:fs'),path=require('node:path');
+  const script = `const fs=require('node:fs'),path=require('node:path'),net=require('node:net');
+    function deniedConnection(options) { return new Promise(resolve => {
+      const socket=net.connect(options);
+      const timer=setTimeout(()=>{socket.destroy();resolve(false)},1500);
+      socket.once('connect',()=>{clearTimeout(timer);socket.destroy();resolve(false)});
+      socket.once('error',error=>{clearTimeout(timer);resolve(['EPERM','EACCES'].includes(error.code))});
+    });}
     const paths=${JSON.stringify([path.join(fs.realpathSync(project), 'src/probe.cjs'), stateFile])};
     paths.push(path.join(process.env.HARNESS_INPUT_DIR,'src/probe.cjs'));
     const denied=paths.every(file=>{try{fs.writeFileSync(file,'bypass');return false}catch{return true}});
     const clean=!Object.keys(process.env).some(name=>/token|api.?key|password|secret/i.test(name));
-    fs.writeFileSync(path.join(process.env.HARNESS_OUTPUT_DIR,'checks.json'),JSON.stringify({schemaVersion:'1',checks:[{name:'write boundaries',passed:denied},{name:'credentials',passed:clean}]}));`;
+    Promise.all([
+      deniedConnection(${JSON.stringify({ host: '127.0.0.1', port: tcp.address().port })}),
+      deniedConnection(${JSON.stringify({ path: socketPath })})
+    ]).then(([tcpDenied,unixDenied])=>{
+      fs.writeFileSync(path.join(process.env.HARNESS_OUTPUT_DIR,'checks.json'),JSON.stringify({schemaVersion:'1',checks:[
+        {name:'write boundaries',passed:denied},{name:'credentials',passed:clean},
+        {name:'host TCP denied',passed:tcpDenied},{name:'host Unix socket denied',passed:unixDenied}
+      ]}));
+    });`;
   fs.mkdirSync(path.join(project, 'src'));
   fs.writeFileSync(path.join(project, 'src/probe.cjs'), script);
   fs.writeFileSync(
@@ -107,10 +256,38 @@ test('real task cannot write source, runtime evidence, input snapshots or contac
   const result = await run('project.task.run', { task: 'test' });
   assert.equal(result.verification.status, 'passed', JSON.stringify(result));
   assert.equal(fs.readFileSync(path.join(project, 'src/probe.cjs'), 'utf8'), script);
+  assert.deepEqual(
+    connections,
+    { tcp: 1, unix: 1 },
+    'Only host positive controls may reach the listeners.',
+  );
 });
 
 test('real local task reads only its snapshot, runtime libraries and explicitly granted dependency directories', async t => {
   const { directory, project, bundle, run } = workspace(t);
+  // Call the production backend through a directory alias, as with macOS TMPDIR.
+  // A canonicalized project path can otherwise hide an incorrect Seatbelt grant.
+  const { executeTask } = require('../../packages/domain-runtime/src/task-process.cjs');
+  const alias = path.join(directory, 'backend-alias');
+  fs.symlinkSync(directory, alias, 'dir');
+  const input = path.join(alias, 'input'),
+    work = path.join(alias, 'work');
+  fs.mkdirSync(input);
+  fs.mkdirSync(work);
+  const aliased = await executeTask(
+    {
+      command: [
+        process.execPath,
+        '-e',
+        "require('node:fs').writeFileSync(require('node:path').join(process.env.HARNESS_OUTPUT_DIR, 'ran'), 'aliased-output')",
+      ],
+      runtime: { kind: 'local' },
+      timeoutMs: 5000,
+    },
+    { directory: alias, input, work, actionId: 'aliased-output', environment: process.env },
+  );
+  assert.equal(aliased.exitCode, 0, JSON.stringify(aliased));
+  assert.equal(fs.readFileSync(path.join(work, 'ran'), 'utf8'), 'aliased-output');
   const dependencies = path.join(directory, 'dependencies'),
     outside = path.join(directory, 'private.txt');
   fs.mkdirSync(dependencies);

@@ -78,6 +78,7 @@ import { DomainPill } from './components/DomainPill';
 import { MessageActions } from './components/MessageActions';
 import { appendDisplayEvents, latestEvent } from './agent-events';
 import { mergeHistoryEvents } from './chat-history';
+import { refreshEventEvidence } from './evidence-refresh';
 import { useLanguage } from './i18n/I18nProvider';
 import { languageOptions, normalizePreference } from './i18n/core';
 
@@ -325,6 +326,71 @@ export function App() {
   useEffect(() => setRemoteToolIds([]), [activeProjectId]);
   const chatIdRef = useRef<string | null>(null);
   const [turns, setTurns] = useState<ChatTurn[]>([]);
+  const turnsRef = useRef(turns);
+  turnsRef.current = turns;
+  useEffect(() => {
+    const host = window.viewerHost;
+    if (!host || !activeProjectId || !activeChatId) return;
+    let disposed = false;
+    let pending = false;
+    async function refresh() {
+      if (disposed || pending || document.hidden || navigationPending.current) return;
+      const turnIds = turnsRef.current
+        .filter(turn =>
+          turn.events.some(event =>
+            ['industrial-result', 'results-ready', 'results-changed'].includes(event.type),
+          ),
+        )
+        .slice(-100)
+        .map(turn => turn.id);
+      if (!turnIds.length) return;
+      const navigation = navigationRevision.current;
+      pending = true;
+      try {
+        const observations = await host!.refreshEvidence({
+          projectId: activeProjectId!,
+          chatId: activeChatId!,
+          turnIds,
+        });
+        if (disposed || navigation !== navigationRevision.current) return;
+        const byTurn = new Map(observations.map(item => [item.turnId, item]));
+        setTurns(current => {
+          let changed = false;
+          const updated = current.map(turn => {
+            const observation = byTurn.get(turn.id);
+            if (!observation) return turn;
+            const events = refreshEventEvidence(turn.events, observation);
+            if (events === turn.events) return turn;
+            changed = true;
+            return { ...turn, events };
+          });
+          return changed ? updated : current;
+        });
+      } catch {
+        if (disposed || navigation !== navigationRevision.current) return;
+        setTurns(current =>
+          current.map(turn =>
+            turnIds.includes(turn.id)
+              ? { ...turn, events: refreshEventEvidence(turn.events, null) }
+              : turn,
+          ),
+        );
+      } finally {
+        pending = false;
+      }
+    }
+    void refresh();
+    const timer = window.setInterval(() => void refresh(), 5000);
+    const onFocus = () => void refresh();
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onFocus);
+    return () => {
+      disposed = true;
+      clearInterval(timer);
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onFocus);
+    };
+  }, [activeProjectId, activeChatId]);
   const [historyBefore, setHistoryBefore] = useState<string | null>(null);
   const [hasEarlier, setHasEarlier] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
