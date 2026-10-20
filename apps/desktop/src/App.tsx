@@ -5,7 +5,6 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import {
   Activity,
   ArrowUp,
-  BrainCircuit,
   Bug,
   ChevronDown,
   ChevronRight,
@@ -2067,8 +2066,8 @@ export function App() {
                               onClick={() => setModelSettingsOpen(true)}
                               title={contextUsageTitle(t, modelProfile, contextUsage)}
                               aria-label={contextUsageTitle(t, modelProfile, contextUsage)}
+                              aria-haspopup="dialog"
                             >
-                              <BrainCircuit size={13} aria-hidden="true" />
                               <span className="ia-model-pill-name">
                                 {modelProfile?.model || t('Model')}
                               </span>
@@ -2089,6 +2088,7 @@ export function App() {
                                   {Math.min(100, Math.round(contextUsage.fraction * 100))}%
                                 </span>
                               )}
+                              <ChevronDown size={12} aria-hidden="true" />
                             </button>
                           </div>
                           <div className="ia-send-actions">
