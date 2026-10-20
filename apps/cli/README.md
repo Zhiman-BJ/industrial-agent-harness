@@ -80,6 +80,8 @@ KIMI_API_KEY=... KIMI_EXECUTABLE=/path/to/kimi pnpm cli run \
 
 输出为 JSON Lines，每条含 `schemaVersion` 和 `runId`。首条 `scope` 带 Broker Scope、匹配能力及 L0–L3 披露 Trace；后续为 `agent_event`、按需 `disclosure` 和最终 `result`。`--approval` 可选 `reject`、`approve`、`approve_for_session`、`auto`，默认拒绝；`auto` 启用原生 Kimi 自动审批。无交互输入的 CLI 遇到 `AskUserQuestion` 时保存问题，输出 `needs_input` 与最终 `result.status=needs_input`，停止本轮并以退出码 2 返回。使用同一 `--chat-id` 另起一轮提供明确说明；CLI 不代替用户跳过问题。密钥只从环境变量读取，不作为命令行参数传入。
 
+`auto` 模式下仍要求显式批准的操作（例如远程任务的批量准备）同样输出 `needs_input`，包含原审批预览，停止本轮并返回 2。CLI 不把 `auto` 当成对这份文件和工具清单的确认；`approve`、`approve_for_session` 与 `reject` 的显式策略保持原有行为。
+
 可用 `--artifact-manifest FILE` 提供 Viewer 之外的工件元数据。文件为 `{id, kind, path}` 对象数组，路径必须位于项目目录内；CLI 记录内容哈希，并在工具调用时重新核验。CLI 的读取不代表工程验证通过。
 
 每次 Agent 运行会发出 `diagnostic-log` 事件，指向完整 JSONL 诊断日志。日志包括 Broker Trace、实际提示词、SDK 暴露的原始事件、完整工具返回、压缩事件、审批和上下文统计；界面展示的长结果仍会缩短。默认日志位于 `~/.industrial-agent-harness/logs/`，观察状态数据库位于 `~/.industrial-agent-harness/state/`，可用 `--log-dir`、`--state-dir` 或同名 `INDUSTRIAL_HARNESS_LOG_DIR`、`INDUSTRIAL_HARNESS_STATE_DIR` 环境变量覆盖。日志文件权限为 `0600`，目录为 `0700`，已知模型 API Key 会脱敏；日志仍可能包含用户任务、思考内容和工具读取的工程数据，应按项目资料管理。`bench` 将两者放在输出目录下。
@@ -120,7 +122,11 @@ Managed runtime dependencies declared by a Pack are prepared by `domains install
 
 ## 内置远程体验
 
-`remote status|connect|use|rebind|sync|session|task|terminate|artifacts|download` 与桌面共用 Gateway v1.1 项目/聊天配置。Kimi/Agent 留本地，专业软件、领域 MCP 和执行沙箱由远端服务提供；用户无需手填服务名或 URL。`sync` 默认仅预览，每次实际上传都需 `--confirm-upload`，本地文件变化后须重新上传。`session` / `task` 需要 `--chat-id`；`terminate` 另需查询所得的 `--session-id`。`artifacts` 列出远端产物；`download --artifact-id UUID --destination project-relative/path` 核验大小和摘要并拒绝覆盖本地文件。
+`remote status|connect|use|rebind|sync|session|task|terminate|artifacts|download` 与桌面共用项目/聊天配置。Kimi/Agent 留本地，专业软件、领域 MCP 和执行沙箱由远端服务提供；用户无需手填服务名或 URL。选择远端后，无需先手动 `remote sync` 才能运行本地 Agent 规划：当前 `mcp-v1` 路径支持 Agent 先受控读取/编辑工程，再用 `project.remote.plan` 固定任务文件、摘要、目的地与具名工具，通过 `project.remote.prepare` 一次批量批准后上传并检查实时工具能力。未连接或未同步不阻塞本地规划，真正的远端调用仍受准备、工具范围与审批限制。
+
+对话准备可记住用户批准的精确文件路径，后续调用前自动同步这些路径的新内容；新增文件或工具需要新的批量批准。`--approval auto` 不能代替这次显式确认，需确认时保存完整预览并以 `needs_input` / 退出码 2 结束；不会自动上传该批文件。手工 `sync` 保留为高级入口：默认仅预览，实际上传需 `--confirm-upload`，默认不记住后续同步授权，内容变化仍需重新确认上传，也不自动获得对话任务的工具授权。历史 canonical gateway 保留原手工管理路径。
+
+`session` / `task` 需要 `--chat-id`；`terminate` 另需查询所得的 `--session-id`。`artifacts` 列出已记录的远端产物；`download --artifact-id UUID --destination project-relative/path` 核验大小和摘要并拒绝覆盖本地文件。
 
 `rebind --project-dir DIR --domain DOMAIN` 默认只预览；显式增加 `--confirm-new-project` 后检查当前服务并创建新远端项目，保留当前项目的旧绑定历史，不改其他项目，不迁移旧 job/工程事实。存在旧运行中或未知调用时拒绝重绑；新绑定必须重新确认上传文件。
 

@@ -274,6 +274,24 @@ async function run(
         }
         send({ type: 'agent_event', event });
         if (event.type === 'approval') {
+          // Auto mode has already handled ordinary approvals. A remaining
+          // request needs explicit consent, which this headless run cannot give.
+          if (options.approval === 'auto') {
+            send({
+              type: 'needs_input',
+              id: event.id,
+              reason: 'explicit_approval_required',
+              action: event.action,
+              description: event.description,
+              preview: event.preview,
+            });
+            queueMicrotask(() =>
+              Promise.resolve()
+                .then(() => tasks.cancel(entry, 'needs_input'))
+                .catch(error => send({ type: 'interrupt_error', message: String(error) })),
+            );
+            return;
+          }
           const decision = options.approval || 'reject';
           send({ type: 'approval_decision', id: event.id, decision });
           queueMicrotask(() =>

@@ -1,6 +1,6 @@
 # 聊天优先与批量远端准备验证
 
-日期：2026-10-19。范围：本地源码实现及受控协议集成；未部署到生产服务。
+日期：2026-10-19；2026-10-20 合入 main `073e72a` 后复验。范围：本地源码实现及受控协议集成；未部署到生产服务。
 
 ## 已实现
 
@@ -16,18 +16,22 @@
 
 | 检查 | 结果 |
 | --- | --- |
-| 远端准备、当前 Runtime、规划 facade、会话释放、工程底座、Kimi 授权、共享 TaskService、桌面状态专项组合 | 147/147 通过 |
-| 补充准备会话释放检查（含真实客户端的成功、失败、重取环境链路） | 9/9 通过，其中 2 项在上述组合完成后新增 |
+| 远端准备、当前 Runtime、规划 facade、会话释放、工程底座、Kimi 授权、共享 TaskService、桌面状态专项组合 | 合入最新 main 后 149/149 通过 |
+| 准备会话释放检查（含真实客户端的成功、失败、重取环境链路） | 9/9 通过，已计入上述组合 |
+| 最新 main 的 Windows 项目工作区、进程启动、平台策略、配置及会话目录兼容测试 | 22/22 通过；在当前 macOS 主机运行平台模拟与配置测试，不代表 Windows 原生验收 |
+| CLI 强制审批与 General 集成回归 | 5/5 通过；`auto` 遇到显式批量确认返回 `needs_input` / 退出码 2，不再留下挂起审批 |
 | Desktop TypeScript 与 Vite 生产构建 | 通过 |
 | Desktop 完整单测 | 81/82；既有账号测试因 loopback 监听被拒绝而失败 |
 | 共享 application 完整单测 | 26/27；既有 MCP bridge 测试因 loopback 监听被拒绝而失败 |
 | 架构契约与版本边界静态检查 | 通过 |
 | 架构回归 | 47/48；既有 candidate-fetch 边界测试得到 `spawnSync git ENOBUFS`，与预期 `/size limit/` 不符 |
 | 真实工业 vertical slice 扩展检查 | 未通过：缺少已安装 Pack 的 Python 运行时，部分用例受 loopback `EPERM` 限制 |
-| 原生 Electron UI selftest | 启动即 `SIGABRT`，未完成实际界面验收 |
+| 原生 Electron UI selftest | 2026-10-20 再次在应用启动前 `SIGABRT`，未完成实际界面验收；待 PR 的原生 Desktop CI 补充 |
 
 受控集成使用真实 RemoteSettings、RemoteGatewayClient、共享 TaskService 和 IndustrialRuntime，通过注入 transport 返回 HTTP/MCP 响应，不依赖被环境禁止的 TCP listener。覆盖批量计划零上传、批准前内容变化、任务/聊天/工具隔离、自动同步、真实受保护发现、能力变化、未知结果不重放、失败后继续本地对话、托管路径限制及工作区替换。工程通过结果来自测试 fixture，不能作为专业软件资格。
 
 UI selftest 源码已更新，覆盖上传前、未配置、重新加载和查询失败时仍可输入并发送，但该脚本本轮未完成原生执行。仍需在可运行 Electron 的环境及目标部署完成真实模型、真实领域 Pack 和远端软件的整条验收。
+
+2026-10-20 独立审查发现 CLI 将 `auto` 原样传给强制审批接口会抛错并留下挂起请求，已修复并通过真实 CLI → TaskService → KimiSession 审批/中断/关闭路径验证。测试仅替代模型执行体与预览源，覆盖原始预览保留、持久 `needs_input`、审批过期、锁释放及显式 approve / approve_for_session / reject 策略。完整旧 CLI 套件另有 5 项受默认用户目录 `chmod EPERM` 限制。未发现其他具体审查阻断；静态可移植性审查不代替 Windows/Linux 原生运行。
 
 输入依赖由 Agent 根据工程内容与任务选择；本轮没有新增各领域确定性依赖解析器，现行服务不支持空文件快照。历史 canonical gateway 保留其兼容路径，本轮聊天规划针对当前 `mcp-v1` 及尚未绑定的项目。
