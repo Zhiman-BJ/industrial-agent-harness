@@ -46,6 +46,12 @@ timeout-bounded login-shell PATH capture for GUI launches whose environment lack
 message lists every searched location.
 Installing images does not configure a project's execution profile or qualify an engineering task.
 
+Qualification hosts that cannot run Docker (GitHub-hosted macOS runners) build their bundles with
+`HARNESS_PACK_OMIT_CONTAINER_IMAGES=1` and `HARNESS_PACK_SIGNING_KEY_ID=qualification`: the bundle
+keeps the owner lock verbatim but advertises no container images, so `prepareRuntime` prepares the
+native applications only. The switch is refused for every other signing identity and therefore
+never reaches production catalogs; container image preparation is qualified on Linux hosts.
+
 Container preparation streams bytes to disk while checking the exact size and SHA-256. It reads
 bounded OCI metadata without extracting layers, verifies the locked config digest and platform,
 and derives the archived manifest digest. These identities differ from a registry index digest.

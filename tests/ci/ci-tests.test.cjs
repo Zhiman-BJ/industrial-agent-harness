@@ -72,7 +72,7 @@ test('native lanes retain the complete acceptance catalog without overlap or red
     'tests/integration/freecad-installed.test.cjs',
     'tests/integration/pcb-godot-installed.test.cjs',
   ]);
-  assert.deepEqual(nativeTestCounts, { native: 68, 'native-installed': 3 });
+  assert.deepEqual(nativeTestCounts, { native: 70, 'native-installed': 3 });
   for (const count of Object.values(nativeTestCounts)) {
     const summary = tests => ({
       success: true,

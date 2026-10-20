@@ -39,7 +39,7 @@ const nativeInstalledFiles = [
   'tests/integration/freecad-installed.test.cjs',
   'tests/integration/pcb-godot-installed.test.cjs',
 ];
-const nativeTestCounts = { native: 68, 'native-installed': 3 };
+const nativeTestCounts = { native: 70, 'native-installed': 3 };
 function testConcurrency(suite) {
   return suite === 'native-installed' ? 1 : suite.startsWith('native') ? 2 : 4;
 }
@@ -100,6 +100,7 @@ function portableFiles() {
       'tests/ci/qa-cleanup.test.cjs',
       'tests/ci/smoke-packaged-cad-fixture.test.cjs',
       'tests/ci/release-desktop.test.cjs',
+      'tests/ci/pack-distribution-native-only.test.cjs',
     ]),
   ]
     .filter(
