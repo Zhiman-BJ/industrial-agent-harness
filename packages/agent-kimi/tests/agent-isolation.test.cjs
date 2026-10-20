@@ -6,9 +6,21 @@ const path = require('node:path');
 const net = require('node:net');
 const { once } = require('node:events');
 const { createProcessSandbox } = require('../src/process-sandbox.cjs');
-const { buildIsolationPolicy } = require('../src/agent-isolation.cjs');
+const {
+  buildIsolationPolicy,
+  detectIsolation,
+  orderedWriteRules,
+  seccompUnixSocketFilter,
+  seatbeltProfile,
+  bubblewrapArgs,
+} = require('../src/agent-isolation.cjs');
 
 const darwin = { skip: process.platform !== 'darwin', timeout: 15000 };
+// Linux-only functional tests need a working bubblewrap on the host.
+const linuxBwrap = {
+  skip: process.platform !== 'linux' || !detectIsolation('linux', process.env),
+  timeout: 15000,
+};
 
 function fixture(t, options = {}) {
   const directory = fs.realpathSync(
@@ -171,6 +183,134 @@ test(
     assert.equal(f.launcher.boundary.mechanism, 'current-user');
     assert.equal(f.launcher.boundary.projectWritable, true);
     assert.deepEqual(fs.readdirSync(f.launcher.directory), ['scratch']);
+  },
+);
+
+test(
+  'isolated descendant cannot write a protected root nested inside the writable project',
+  darwin,
+  async t => {
+    // A domain pack can seal directories INSIDE the project
+    // (workspaceProtectedPaths): the broad project allowance must not
+    // re-open them. Regression coverage for the shallow-to-deep rule order.
+    const f = fixture(t);
+    const sealed = path.join(f.project, '.eda');
+    fs.mkdirSync(sealed);
+    const launcher = createProcessSandbox({
+      executable: process.execPath,
+      projectDir: f.project,
+      shareDir: f.share,
+      protectedPaths: [f.settings, sealed],
+      sensitiveReadPaths: [f.secrets],
+    });
+    t.after(() => launcher.close());
+    const result = await capture(
+      launcher.spawn(
+        process.execPath,
+        [
+          '-e',
+          PROBE,
+          JSON.stringify({
+            project: path.join(f.project, 'open.txt'),
+            sealed: path.join(sealed, 'golden.txt'),
+            settings: path.join(f.settings, 'state.sqlite'),
+          }),
+          '{}',
+        ],
+        { stdio: ['ignore', 'pipe', 'pipe'] },
+      ),
+    );
+    assert.equal(result.code, 0, result.stderr);
+    assert.deepEqual(JSON.parse(result.stdout), {
+      project: true,
+      sealed: false,
+      settings: false,
+    });
+  },
+);
+
+test('emitters order write rules shallow-to-deep so nested denies survive', () => {
+  const policy = buildIsolationPolicy({
+    project: '/work/project',
+    share: '/work/settings/chats/session',
+    scratch: '/tmp/scratch',
+    protectedRoots: ['/work/settings', '/work/project/.eda'],
+    sensitiveReadPaths: [],
+  });
+  const ordered = orderedWriteRules(policy).map(
+    rule => `${rule.allow ? 'allow' : 'deny'}:${rule.file}`,
+  );
+  assert.deepEqual(ordered, [
+    'allow:/work/project',
+    'allow:/tmp/scratch',
+    'deny:/work/settings',
+    'deny:/work/project/.eda',
+    'allow:/work/settings/chats/session',
+  ]);
+  const args = bubblewrapArgs(policy, { workDir: '/work/settings/chats/session' });
+  const at = flag => args.indexOf(flag);
+  assert.ok(args.indexOf('/work/settings') < args.lastIndexOf('/work/settings/chats/session'));
+  assert.ok(args.indexOf('/work/project') < args.lastIndexOf('/work/project/.eda'));
+  assert.equal(args[at('--seccomp')], undefined);
+  const withFilter = bubblewrapArgs(policy, { workDir: '/w', seccompFd: 3 });
+  assert.equal(withFilter[withFilter.indexOf('--seccomp') + 1], '3');
+  assert.ok(withFilter.indexOf('--seccomp') < withFilter.indexOf('--chdir'));
+  const profile = seatbeltProfile(policy);
+  const allowProject = profile.indexOf('(allow file-write* (subpath "/work/project"))');
+  const denySealed = profile.indexOf('(deny file-write* (subpath "/work/project/.eda"))');
+  const denySettings = profile.indexOf('(deny file-write* (subpath "/work/settings"))');
+  const allowShare = profile.indexOf(
+    '(allow file-write* (subpath "/work/settings/chats/session"))',
+  );
+  assert.ok(allowProject !== -1 && denySealed > allowProject, profile);
+  assert.ok(denySettings !== -1 && allowShare > denySettings, profile);
+});
+
+test('seccomp filter blocks AF_UNIX socket creation on x64 and arm64 only', () => {
+  for (const arch of ['x64', 'arm64']) {
+    const program = seccompUnixSocketFilter(arch);
+    assert.ok(Buffer.isBuffer(program));
+    assert.equal(program.length % 8, 0);
+    assert.equal(program.length, 14 * 8);
+  }
+  assert.equal(seccompUnixSocketFilter('ia32'), null);
+  assert.equal(seccompUnixSocketFilter('arm'), null);
+});
+
+test('isolation detection probes a real launch instead of mere existence', async t => {
+  if (process.platform !== 'linux') return t.skip('bubblewrap probing is linux-only');
+  // Probe results are cached per command path, so each variant gets its own.
+  const brokenBin = fs.mkdtempSync(path.join(os.tmpdir(), 'fake-bwrap-broken-'));
+  const workingBin = fs.mkdtempSync(path.join(os.tmpdir(), 'fake-bwrap-working-'));
+  t.after(() => {
+    fs.rmSync(brokenBin, { recursive: true, force: true });
+    fs.rmSync(workingBin, { recursive: true, force: true });
+  });
+  fs.writeFileSync(path.join(brokenBin, 'bwrap'), '#!/bin/sh\nexit 1\n', { mode: 0o755 });
+  fs.writeFileSync(path.join(workingBin, 'bwrap'), '#!/bin/sh\nexit 0\n', { mode: 0o755 });
+  assert.equal(detectIsolation('linux', { PATH: brokenBin }), null);
+  const detected = detectIsolation('linux', { PATH: workingBin });
+  assert.equal(detected?.mechanism, 'bubblewrap');
+});
+
+test(
+  'isolated descendant cannot create unix sockets under the seccomp filter',
+  linuxBwrap,
+  async t => {
+    const f = fixture(t);
+    assert.equal(f.launcher.boundary.mechanism, 'bubblewrap');
+    assert.equal(f.launcher.boundary.unixSocketsFiltered, true);
+    const socketPath = path.join(f.directory, 'runtime.sock');
+    const server = net.createServer().listen(socketPath);
+    await once(server, 'listening');
+    t.after(() => server.close());
+    const result = await capture(
+      f.launcher.spawn(process.execPath, ['-e', PROBE, '{}', '{}', socketPath], {
+        stdio: ['ignore', 'pipe', 'pipe'],
+      }),
+    );
+    assert.equal(result.code, 0, result.stderr);
+    assert.deepEqual(JSON.parse(result.stdout), { unixSocket: false });
   },
 );
 
