@@ -5,12 +5,18 @@ const path = require('node:path');
 const os = require('node:os');
 const { randomUUID } = require('node:crypto');
 const { RemoteSettings } = require('../src/remote-settings.cjs');
-const { createRemoteRuntime, hash } = require('@industrial-agent-harness/domain-runtime');
+const {
+  createRemoteRuntime,
+  createWorkspacePlugin,
+  IndustrialRuntime,
+  hash,
+} = require('@industrial-agent-harness/domain-runtime');
 const json = value =>
   new Response(JSON.stringify(value), { headers: { 'Content-Type': 'application/json' } });
 async function setup(
   t,
   {
+    serviceVersion = '1.1.0',
     corrupt = false,
     disconnect = false,
     metadataOnly = false,
@@ -23,6 +29,8 @@ async function setup(
     releaseSessionChange = {},
     unconfirmedStop = false,
     sessionLimit = 1,
+    sharedWorkspace = false,
+    prepareInputs,
   } = {},
 ) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'current-runtime-'));
@@ -59,7 +67,7 @@ async function setup(
     }
     if (route === '/v1/service-info')
       return json({
-        version: '1.1.0',
+        version: serviceVersion,
         domains: ['test'],
         domainCatalog: [
           {
@@ -205,12 +213,47 @@ async function setup(
     domain: 'test',
     directory: path.join(root, 'runtime'),
     registry: { capabilities: [] },
+    prepareInputs: prepareInputs && (context => prepareInputs(context, { settings, projectDir })),
   };
+  if (sharedWorkspace) {
+    const plugin = createWorkspacePlugin({
+      domain: 'test',
+      protectedPaths: [path.join(projectDir, 'remote-results')],
+    });
+    plugin.tools = plugin.tools.filter(tool => tool.descriptor.id !== 'project.task.run');
+    plugin.tools.push({
+      descriptor: {
+        schemaVersion: '1',
+        id: 'remote.plan',
+        version: '1',
+        risk: 'read-only',
+        verification: [],
+      },
+      execute: async () => ({ artifacts: [], diagnostics: ['local planning is available'] }),
+      preview: () => ({ title: 'Plan remote inputs', text: 'Only the proposed input list.' }),
+    });
+    options.workspaceRuntime = new IndustrialRuntime(projectDir, 'test', {
+      directory: path.join(root, 'runtime', 'remote-workspaces'),
+      projectRef: {
+        schemaVersion: '1',
+        projectId: settings.project(projectDir, 'test').canonicalProjectId,
+        domain: 'test',
+      },
+      stateProvider: plugin.stateProvider,
+      tools: plugin.tools,
+      verifiers: plugin.verifiers,
+    });
+    options.workspaceCapabilities = [
+      ...plugin.capabilities,
+      { id: 'remote.planning', tools: [{ id: 'remote.plan', summary: 'Plan remote inputs' }] },
+    ];
+  }
   let bundle = createRemoteRuntime(options);
   const chatId = randomUUID();
   let runtime = bundle.runtime.forSession(chatId);
   t.after(async () => {
     await bundle.runtime.close();
+    if (options.workspaceRuntime) await options.workspaceRuntime.close();
     fs.rmSync(root, { recursive: true, force: true });
   });
   return {
@@ -219,11 +262,15 @@ async function setup(
     chatId,
     urls,
     sessions,
+    options,
     get terminations() {
       return terminations;
     },
     get runtime() {
       return runtime;
+    },
+    get ownerRuntime() {
+      return bundle.runtime;
     },
     get calls() {
       return calls;
@@ -245,8 +292,8 @@ async function invoke(f, approval = true) {
     },
   );
 }
-test('shared runtime persists canonical local records from the current server receipt and restores them', async t => {
-  const f = await setup(t);
+test('MCP v1 service 1.2.1 retains approval, canonical receipt persistence and restore', async t => {
+  const f = await setup(t, { serviceVersion: '1.2.1' });
   const denied = await invoke(f, false);
   assert.equal(denied.action.status, 'failed');
   assert.equal(f.calls, 0);
@@ -633,3 +680,156 @@ for (const failure of ['corrupt', 'disconnect'])
     assert.equal(await f.settings.releaseCompletedSession(f.projectDir, 'test', f.chatId), null);
     assert.equal(f.terminations, 0);
   });
+
+test('an injected workspace keeps local planning State, tools and previews across remote reopen', async t => {
+  const f = await setup(t, { sharedWorkspace: true });
+  const workspace = f.options.workspaceRuntime;
+  assert.equal(f.runtime.workspace, workspace);
+  assert.equal(f.runtime.ownsWorkspace, false);
+  fs.writeFileSync(path.join(f.projectDir, 'planning.txt'), 'local unsynced planning notes');
+  const state = await f.runtime.inspect();
+  assert.equal(state.inputHashes['planning.txt'], hash('local unsynced planning notes'));
+  assert.ok(f.runtime.descriptors().some(tool => tool.id === 'remote.plan'));
+  assert.ok(f.runtime.capabilities.some(capability => capability.id === 'remote.planning'));
+  assert.equal(
+    f.runtime.approvalPreview({ toolId: 'remote.plan', inputs: {}, expectedStateId: state.id })
+      .title,
+    'Plan remote inputs',
+  );
+  const remoteTool = workspace.tools.get('test.run');
+  assert.ok(remoteTool);
+  await f.reopen();
+  assert.equal(f.runtime.workspace, workspace);
+  assert.ok(workspace.db, 'transport teardown must not close the shared canonical store');
+  assert.equal(workspace.tools.has('test.run'), false, 'old transport callbacks are removed');
+  assert.ok(workspace.tools.has('remote.plan'));
+  assert.equal((await f.runtime.inspect()).id, state.id);
+  assert.notEqual(workspace.tools.get('test.run'), remoteTool);
+});
+
+test('transport close failures remove owned callbacks and preserve the injected workspace', async t => {
+  const f = await setup(t, { sharedWorkspace: true });
+  await f.runtime.inspect();
+  const workspace = f.options.workspaceRuntime;
+  const client = f.runtime.context(f.chatId).client;
+  const close = client.close.bind(client);
+  client.close = async () => {
+    await close();
+    throw Error('Injected transport close failure');
+  };
+  try {
+    await assert.rejects(f.ownerRuntime.close(), /Injected transport close failure/);
+    assert.ok(workspace.db);
+    assert.equal(workspace.tools.has('test.run'), false);
+    assert.ok(workspace.tools.has('remote.plan'));
+    await workspace.inspect();
+  } finally {
+    client.close = close;
+  }
+});
+
+for (const mismatch of ['projectId', 'domain', 'projectDir', 'closed'])
+  test(`shared workspace rejects mismatched ${mismatch} before opening a second store`, async t => {
+    const f = await setup(t, { sharedWorkspace: true });
+    const workspace = Object.create(f.options.workspaceRuntime);
+    if (mismatch === 'projectId')
+      workspace.project = { ...workspace.project, projectId: randomUUID() };
+    if (mismatch === 'domain') workspace.project = { ...workspace.project, domain: 'foreign' };
+    if (mismatch === 'projectDir') workspace.projectDir = path.dirname(f.projectDir);
+    if (mismatch === 'closed') workspace.db = null;
+    assert.throws(
+      () => createRemoteRuntime({ ...f.options, workspaceRuntime: workspace }),
+      /Shared workspace does not match/,
+    );
+    assert.ok(f.options.workspaceRuntime.db);
+    assert.equal(f.calls, 0);
+  });
+
+test('approved remote execution prepares modified inputs using the shared local State', async t => {
+  let preparations = 0;
+  const f = await setup(t, {
+    sharedWorkspace: true,
+    prepareInputs: async (context, { settings, projectDir }) => {
+      preparations++;
+      assert.equal(context.request.toolId, 'test.run');
+      assert.equal(context.chatId, f.chatId);
+      assert.equal(context.signal.aborted, false);
+      const review = await settings.review(projectDir, 'test', ['input.txt']);
+      await settings.sync(projectDir, 'test', review.id);
+    },
+  });
+  await f.runtime.inspect();
+  fs.writeFileSync(path.join(f.projectDir, 'input.txt'), 'updated input approved for execution');
+  const state = await f.runtime.workspace.inspect();
+  const result = await executeFrom(f, state);
+  assert.equal(result.action.status, 'completed', result.action.diagnostics.join('\n'));
+  assert.equal(result.verification.status, 'passed');
+  assert.equal(preparations, 1);
+  assert.equal(f.calls, 1);
+  assert.equal(
+    result.action.inputHashes['input.txt'],
+    hash('updated input approved for execution'),
+  );
+});
+
+for (const invalid of ['approval', 'tool', 'project', 'domain', 'scopeState', 'requestState'])
+  test(`input preparation cannot upload for invalid ${invalid}`, async t => {
+    let preparations = 0;
+    const f = await setup(t, {
+      sharedWorkspace: true,
+      prepareInputs: async () => preparations++,
+    });
+    const state = await f.runtime.inspect();
+    const request = { toolId: 'test.run', inputs: {}, expectedStateId: state.id };
+    const policy = {
+      approval: true,
+      scope: { projectId: state.projectId, domain: 'test', stateId: state.id, tools: ['test.run'] },
+    };
+    if (invalid === 'approval') policy.approval = false;
+    if (invalid === 'tool') policy.scope.tools = [];
+    if (invalid === 'project') policy.scope.projectId = randomUUID();
+    if (invalid === 'domain') policy.scope.domain = 'foreign';
+    if (invalid === 'scopeState') policy.scope.stateId = randomUUID();
+    if (invalid === 'requestState') request.expectedStateId = randomUUID();
+    const result = await f.runtime.execute(request, policy);
+    assert.equal(result.action.status, 'failed');
+    assert.match(result.action.diagnostics.join('\n'), /scope|approval/i);
+    assert.equal(preparations, 0);
+    assert.equal(f.calls, 0);
+  });
+
+test('cancellation during input preparation never submits an engineering mutation', async t => {
+  const entered = gate(),
+    release = gate();
+  const f = await setup(t, {
+    sharedWorkspace: true,
+    prepareInputs: async () => {
+      entered.resolve();
+      await release.promise;
+    },
+  });
+  const state = await f.runtime.inspect();
+  const pending = executeFrom(f, state);
+  await entered.promise;
+  f.runtime.cancel();
+  release.resolve();
+  const result = await pending;
+  assert.equal(result.action.status, 'failed');
+  assert.equal(f.calls, 0);
+  assert.equal(f.runtime.status(), null);
+});
+
+test('input preparation cannot rebind execution to another remote project', async t => {
+  const f = await setup(t, {
+    sharedWorkspace: true,
+    prepareInputs: async (_context, { settings }) => {
+      const read = settings.project.bind(settings);
+      settings.project = (...args) => ({ ...read(...args), remoteProjectId: randomUUID() });
+    },
+  });
+  const state = await f.runtime.inspect();
+  const result = await executeFrom(f, state);
+  assert.equal(result.action.status, 'failed');
+  assert.match(result.action.diagnostics.join('\n'), /configuration changed/);
+  assert.equal(f.calls, 0);
+});

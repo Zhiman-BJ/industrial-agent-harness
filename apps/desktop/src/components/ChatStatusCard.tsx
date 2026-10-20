@@ -24,14 +24,13 @@ export type RemoteStatusProps = {
   projectId: string;
   domain: string;
   chatId: string | null;
-  onReady: (ready: boolean) => void;
   onTools: (tools: string[]) => void;
   onConfigure: () => void;
 };
 
 // 合并状态卡：远程环境 + 任务。折叠时是右上角的一枚小药丸，对话流保持居中；
 // 宽聊天栏展开为侧栏，窄栏在消息上方占位；设置页隐藏呈现但保留轮询。
-// 远程轮询在折叠时也保持运行（composer 就绪门禁依赖它）。
+// 远程轮询在折叠时也保持运行，只报告状态，不阻塞本地对话。
 export function ChatStatusCard({
   remote,
   todo,
@@ -72,10 +71,9 @@ export function ChatStatusCard({
 
   useEffect(() => {
     if (!remote) return;
-    const { projectId, domain, chatId, onReady, onTools } = remote;
+    const { projectId, chatId, onTools } = remote;
     let alive = true,
       timer: ReturnType<typeof setTimeout>;
-    onReady(false);
     setProject(undefined);
     setTask(null);
     setSession(null);
@@ -105,20 +103,10 @@ export function ChatStatusCard({
           setSession(remoteSession);
           setTask(value);
           setError('');
-          onReady(
-            state.service.status === 'connected' &&
-              Boolean(state.syncedAt) &&
-              (state.service.executableDomains?.includes(domain) === true ||
-                state.service.capabilities?.runtimeDiscovery === true) &&
-              !['stopped', 'expired', 'failed'].includes(remoteSession?.status || '') &&
-              !value?.needsImport &&
-              !['submitting', 'running', 'unknown'].includes(value?.status || ''),
-          );
         }
       } catch (reason) {
         if (alive) {
           setError(String(reason));
-          onReady(false);
         }
       }
       if (alive) timer = setTimeout(() => void poll(), 5000);
@@ -229,6 +217,11 @@ export function ChatStatusCard({
                 </span>
               </button>
               <div className="ia-status-body" id={remoteBodyId} hidden={!remoteOpen}>
+                <p className="ia-status-detail">
+                  {t(
+                    'You can keep chatting. Agent prepares the files and remote tools for one approval before execution.',
+                  )}
+                </p>
                 {project?.syncedAt && (
                   <p className="ia-status-detail">
                     {t('{0} files synced', { '0': String(project.files.length) })}
@@ -262,7 +255,6 @@ export function ChatStatusCard({
                           })
                           .then(value => {
                             setSession(value);
-                            remote.onReady(false);
                           })
                           .catch(reason => setError(String(reason)))
                           .finally(() => setEnding(false));

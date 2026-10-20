@@ -99,7 +99,11 @@ test('empty and text-only remote histories do not require execution setup or loa
   });
   settings.setLocation(f.project.path, f.project.domain, 'remote');
   await f.reopen({ remoteSettings: settings });
-  assert.throws(() => f.tasks.projects.get(f.project, f.tasks.registry()), /confirm files/);
+  assert.equal(
+    f.tasks.projects.bundles.size,
+    0,
+    'History must not instantiate an execution runtime.',
+  );
   f.tasks.registry = () => {
     throw Error('History must not load execution Packs.');
   };
@@ -141,7 +145,11 @@ test('persisted remote result records remain readable before remote execution is
     canonicalProjectId: projectId,
   });
   await f.reopen({ remoteSettings: settings });
-  assert.throws(() => f.tasks.projects.get(f.project, f.tasks.registry()), /confirm files/);
+  assert.equal(
+    f.tasks.projects.bundles.size,
+    0,
+    'History must not instantiate an execution runtime.',
+  );
   f.tasks.registry = () => {
     throw Error('History must not load execution Packs.');
   };

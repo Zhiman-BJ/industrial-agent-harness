@@ -380,7 +380,11 @@ for (const domain of ['chip', 'pcb'])
       assert.ok(rows[0].scope.skills.includes('project.work'));
       assert.ok(
         rows.some(
-          row => row.event?.type === 'execution-boundary' && row.event.projectWritable === false,
+          row =>
+            row.event?.type === 'execution-boundary' &&
+            row.event.mechanism === 'current-user' &&
+            row.event.osIsolation === false &&
+            row.event.projectWritable === true,
         ),
       );
       assert.equal(

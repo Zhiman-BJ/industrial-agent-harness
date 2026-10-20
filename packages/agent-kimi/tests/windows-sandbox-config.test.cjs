@@ -101,7 +101,7 @@ test('Windows current-user launch accepts nested settings storage and reports no
     hostOnlyEnv: ['service_token'],
   });
   t.after(() => launcher.close());
-  assert.equal(launcher.boundary.mechanism, 'windows-current-user');
+  assert.equal(launcher.boundary.mechanism, 'current-user');
   assert.equal(launcher.boundary.osIsolation, false);
   assert.equal(launcher.boundary.projectWritable, true);
   assert.equal(launcher.envIsolated, true);

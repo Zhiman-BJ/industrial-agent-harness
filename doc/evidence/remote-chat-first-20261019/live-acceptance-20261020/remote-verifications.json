@@ -1,0 +1,1546 @@
+[
+  {
+    "action": {
+      "id": "942a41b3-b7c0-46d0-86d3-ea4b1a7e532e",
+      "runId": "bc68bb6b-ac13-424b-b96f-ba8d052abfd5",
+      "projectId": "cf39ed396b372d9f6ee425f1f3bb862e13978a68613e1d6c746d80fb6889cc16",
+      "domain": "cad",
+      "toolId": "cad.freecad.build",
+      "schemaVersion": "1",
+      "toolVersion": "sha256:ab4f32aef70022813f0699e034bb11c4caa1655cb766d12985c783a4de04a54d",
+      "stateId": "1e199d20-ec7d-4cd3-93fc-eccedadf56cb",
+      "inputHashes": {
+        "recipe.json": "1f9fdd40a5e462caec414574042f97e5dba38fe20490cbc7a8517d784cc15b82"
+      },
+      "inputs": {
+        "recipe": {
+          "parameters": {
+            "L": 40,
+            "W": 20,
+            "T": 5,
+            "R": 2
+          },
+          "features": [
+            {
+              "id": "Plate",
+              "op": "box",
+              "length": "L",
+              "width": "W",
+              "height": "T"
+            },
+            {
+              "id": "Drilled",
+              "op": "hole",
+              "base": "Plate",
+              "radius": "R",
+              "height": "T",
+              "origin": [
+                10,
+                10,
+                0
+              ]
+            }
+          ],
+          "result": "Drilled"
+        },
+        "expect": {
+          "volume": 3937.1681469282044,
+          "solids": 1,
+          "bounds": [
+            40,
+            20,
+            5
+          ]
+        }
+      },
+      "startedAt": "2026-10-20T05:24:01.417Z",
+      "endedAt": "2026-10-20T05:24:12.116Z",
+      "status": "completed",
+      "diagnostics": [
+        "Remote request 4a280f91-077d-464e-934c-cdf9c5714730; source verifier 9cfd6283-00d0-44ff-bbb3-b772564c76b4."
+      ],
+      "artifactIds": [
+        "475a8923-711c-4010-a3db-23adb4d26250",
+        "55151c11-783b-41a0-88ca-5ed2ab62aef2",
+        "dcaa2866-a24a-40af-be09-ff2caefb2779",
+        "0c1adf28-6755-4bbc-bf97-5e404e36431d",
+        "67acb64a-ba90-49f1-b916-fbeb664e3d7b",
+        "be761ce9-8d9a-47fb-b092-49f58f03c4c2",
+        "cba3dda9-070d-4af9-a382-734eaf0168d7",
+        "359de4c6-b689-4192-bd69-6494f0e57736",
+        "ebafee5d-97a2-4773-bf93-d3594e84f886",
+        "22bdf553-89da-4bd1-99f8-287557b6d200",
+        "4db25960-67d2-4e07-8da5-70c9873cd447"
+      ],
+      "verification": {
+        "schemaVersion": "1",
+        "id": "6388e146-a503-4dc0-8ded-d0ea4ddef339",
+        "status": "passed",
+        "verifierId": "remote.reported",
+        "reason": "Remote verifier cad.freecad.geometry: Separate FreeCAD readback confirms valid solids, constrained sketches and matching FCStd/STEP/BREP geometry. Supplied dimensional expectations passed. This checks geometry, not mechanical strength or manufacturability.",
+        "metrics": {
+          "nativeValid": true,
+          "stepValid": true,
+          "brepValid": true,
+          "brepAgreement": true,
+          "positiveVolume": true,
+          "solidPresent": true,
+          "meshPresent": true,
+          "sketchesConstrained": true,
+          "exportAgreement": true,
+          "artifactsPresent": true,
+          "inputUnchanged": true,
+          "expectedVolume": true,
+          "expectedSolids": true,
+          "expectedBounds": true,
+          "volume": 3937.1681469282034,
+          "solids": 1,
+          "boundsX": 40,
+          "boundsY": 20,
+          "boundsZ": 5
+        },
+        "evidence": {
+          "artifactIds": [
+            "475a8923-711c-4010-a3db-23adb4d26250",
+            "55151c11-783b-41a0-88ca-5ed2ab62aef2",
+            "dcaa2866-a24a-40af-be09-ff2caefb2779",
+            "0c1adf28-6755-4bbc-bf97-5e404e36431d",
+            "67acb64a-ba90-49f1-b916-fbeb664e3d7b",
+            "be761ce9-8d9a-47fb-b092-49f58f03c4c2",
+            "cba3dda9-070d-4af9-a382-734eaf0168d7",
+            "359de4c6-b689-4192-bd69-6494f0e57736",
+            "ebafee5d-97a2-4773-bf93-d3594e84f886",
+            "22bdf553-89da-4bd1-99f8-287557b6d200",
+            "4db25960-67d2-4e07-8da5-70c9873cd447"
+          ],
+          "inputHashes": {
+            "recipe.json": "1f9fdd40a5e462caec414574042f97e5dba38fe20490cbc7a8517d784cc15b82"
+          }
+        }
+      }
+    },
+    "verification": {
+      "schemaVersion": "1",
+      "id": "6388e146-a503-4dc0-8ded-d0ea4ddef339",
+      "status": "passed",
+      "verifierId": "remote.reported",
+      "reason": "Remote verifier cad.freecad.geometry: Separate FreeCAD readback confirms valid solids, constrained sketches and matching FCStd/STEP/BREP geometry. Supplied dimensional expectations passed. This checks geometry, not mechanical strength or manufacturability.",
+      "metrics": {
+        "nativeValid": true,
+        "stepValid": true,
+        "brepValid": true,
+        "brepAgreement": true,
+        "positiveVolume": true,
+        "solidPresent": true,
+        "meshPresent": true,
+        "sketchesConstrained": true,
+        "exportAgreement": true,
+        "artifactsPresent": true,
+        "inputUnchanged": true,
+        "expectedVolume": true,
+        "expectedSolids": true,
+        "expectedBounds": true,
+        "volume": 3937.1681469282034,
+        "solids": 1,
+        "boundsX": 40,
+        "boundsY": 20,
+        "boundsZ": 5
+      },
+      "evidence": {
+        "artifactIds": [
+          "475a8923-711c-4010-a3db-23adb4d26250",
+          "55151c11-783b-41a0-88ca-5ed2ab62aef2",
+          "dcaa2866-a24a-40af-be09-ff2caefb2779",
+          "0c1adf28-6755-4bbc-bf97-5e404e36431d",
+          "67acb64a-ba90-49f1-b916-fbeb664e3d7b",
+          "be761ce9-8d9a-47fb-b092-49f58f03c4c2",
+          "cba3dda9-070d-4af9-a382-734eaf0168d7",
+          "359de4c6-b689-4192-bd69-6494f0e57736",
+          "ebafee5d-97a2-4773-bf93-d3594e84f886",
+          "22bdf553-89da-4bd1-99f8-287557b6d200",
+          "4db25960-67d2-4e07-8da5-70c9873cd447"
+        ],
+        "inputHashes": {
+          "recipe.json": "1f9fdd40a5e462caec414574042f97e5dba38fe20490cbc7a8517d784cc15b82"
+        }
+      }
+    },
+    "state": {
+      "schemaVersion": "1",
+      "id": "03a7ec09-00d4-4669-8772-81b73f7bb385",
+      "projectId": "cf39ed396b372d9f6ee425f1f3bb862e13978a68613e1d6c746d80fb6889cc16",
+      "domain": "cad",
+      "stage": null,
+      "status": "verified",
+      "artifacts": [
+        {
+          "schemaVersion": "1",
+          "id": "475a8923-711c-4010-a3db-23adb4d26250",
+          "projectId": "cf39ed396b372d9f6ee425f1f3bb862e13978a68613e1d6c746d80fb6889cc16",
+          "runId": "bc68bb6b-ac13-424b-b96f-ba8d052abfd5",
+          "actionId": "942a41b3-b7c0-46d0-86d3-ea4b1a7e532e",
+          "kind": "log.tool",
+          "relativePath": "remote-results/4a280f91-077d-464e-934c-cdf9c5714730/0-log.tool.log",
+          "sha256": "3fc93277416ab58b83c920e9f4af268f7d07c146efde906bf953dbbdff46a53a",
+          "sizeBytes": 1034,
+          "source": "domain-tool",
+          "inputHashes": {
+            "recipe.json": "1f9fdd40a5e462caec414574042f97e5dba38fe20490cbc7a8517d784cc15b82"
+          }
+        },
+        {
+          "schemaVersion": "1",
+          "id": "55151c11-783b-41a0-88ca-5ed2ab62aef2",
+          "projectId": "cf39ed396b372d9f6ee425f1f3bb862e13978a68613e1d6c746d80fb6889cc16",
+          "runId": "bc68bb6b-ac13-424b-b96f-ba8d052abfd5",
+          "actionId": "942a41b3-b7c0-46d0-86d3-ea4b1a7e532e",
+          "kind": "report.cad.execution",
+          "relativePath": "remote-results/4a280f91-077d-464e-934c-cdf9c5714730/1-report.cad.execution.json",
+          "sha256": "3e1abd7b2f3ed58708446ea6237a23004f85bf3f8ad710cf8a3e9eb9bc075f60",
+          "sizeBytes": 278,
+          "source": "domain-tool",
+          "inputHashes": {
+            "recipe.json": "1f9fdd40a5e462caec414574042f97e5dba38fe20490cbc7a8517d784cc15b82"
+          }
+        },
+        {
+          "schemaVersion": "1",
+          "id": "dcaa2866-a24a-40af-be09-ff2caefb2779",
+          "projectId": "cf39ed396b372d9f6ee425f1f3bb862e13978a68613e1d6c746d80fb6889cc16",
+          "runId": "bc68bb6b-ac13-424b-b96f-ba8d052abfd5",
+          "actionId": "942a41b3-b7c0-46d0-86d3-ea4b1a7e532e",
+          "kind": "report.cad.build",
+          "relativePath": "remote-results/4a280f91-077d-464e-934c-cdf9c5714730/2-report.cad.build.json",
+          "sha256": "d8ff2ee5b906bdc89e7d0577af55c1a96595d4308f14e27367f9885b58eb9919",
+          "sizeBytes": 646,
+          "source": "domain-tool",
+          "inputHashes": {
+            "recipe.json": "1f9fdd40a5e462caec414574042f97e5dba38fe20490cbc7a8517d784cc15b82"
+          }
+        },
+        {
+          "schemaVersion": "1",
+          "id": "0c1adf28-6755-4bbc-bf97-5e404e36431d",
+          "projectId": "cf39ed396b372d9f6ee425f1f3bb862e13978a68613e1d6c746d80fb6889cc16",
+          "runId": "bc68bb6b-ac13-424b-b96f-ba8d052abfd5",
+          "actionId": "942a41b3-b7c0-46d0-86d3-ea4b1a7e532e",
+          "kind": "report.cad.readback",
+          "relativePath": "remote-results/4a280f91-077d-464e-934c-cdf9c5714730/3-report.cad.readback.json",
+          "sha256": "b24cb890e65c346b1dc64bb70c56f50d133bcbb59784a04c7c27d310d2f87a25",
+          "sizeBytes": 997,
+          "source": "domain-tool",
+          "inputHashes": {
+            "recipe.json": "1f9fdd40a5e462caec414574042f97e5dba38fe20490cbc7a8517d784cc15b82"
+          }
+        },
+        {
+          "schemaVersion": "1",
+          "id": "67acb64a-ba90-49f1-b916-fbeb664e3d7b",
+          "projectId": "cf39ed396b372d9f6ee425f1f3bb862e13978a68613e1d6c746d80fb6889cc16",
+          "runId": "bc68bb6b-ac13-424b-b96f-ba8d052abfd5",
+          "actionId": "942a41b3-b7c0-46d0-86d3-ea4b1a7e532e",
+          "kind": "model.cad.fcstd",
+          "relativePath": "remote-results/4a280f91-077d-464e-934c-cdf9c5714730/4-model.cad.fcstd.fcstd",
+          "sha256": "1040c01a002b1c329a0142929f5619be3e81cc8cee170b6287e6ba3963472d63",
+          "sizeBytes": 6671,
+          "source": "domain-tool",
+          "inputHashes": {
+            "recipe.json": "1f9fdd40a5e462caec414574042f97e5dba38fe20490cbc7a8517d784cc15b82"
+          }
+        },
+        {
+          "schemaVersion": "1",
+          "id": "be761ce9-8d9a-47fb-b092-49f58f03c4c2",
+          "projectId": "cf39ed396b372d9f6ee425f1f3bb862e13978a68613e1d6c746d80fb6889cc16",
+          "runId": "bc68bb6b-ac13-424b-b96f-ba8d052abfd5",
+          "actionId": "942a41b3-b7c0-46d0-86d3-ea4b1a7e532e",
+          "kind": "model.cad.step",
+          "relativePath": "remote-results/4a280f91-077d-464e-934c-cdf9c5714730/5-model.cad.step.step",
+          "sha256": "cf75a375df05060d3bc44796975d32a745c000641d3fa9b23350a0b7335be57b",
+          "sizeBytes": 8288,
+          "source": "domain-tool",
+          "inputHashes": {
+            "recipe.json": "1f9fdd40a5e462caec414574042f97e5dba38fe20490cbc7a8517d784cc15b82"
+          }
+        },
+        {
+          "schemaVersion": "1",
+          "id": "cba3dda9-070d-4af9-a382-734eaf0168d7",
+          "projectId": "cf39ed396b372d9f6ee425f1f3bb862e13978a68613e1d6c746d80fb6889cc16",
+          "runId": "bc68bb6b-ac13-424b-b96f-ba8d052abfd5",
+          "actionId": "942a41b3-b7c0-46d0-86d3-ea4b1a7e532e",
+          "kind": "model.cad.stl",
+          "relativePath": "remote-results/4a280f91-077d-464e-934c-cdf9c5714730/6-model.cad.stl.stl",
+          "sha256": "f632d2532da29ad4989c5b9bdfe62983c474aa4edcf5fe9ba8acc5ff5979c611",
+          "sizeBytes": 26084,
+          "source": "domain-tool",
+          "inputHashes": {
+            "recipe.json": "1f9fdd40a5e462caec414574042f97e5dba38fe20490cbc7a8517d784cc15b82"
+          }
+        },
+        {
+          "schemaVersion": "1",
+          "id": "359de4c6-b689-4192-bd69-6494f0e57736",
+          "projectId": "cf39ed396b372d9f6ee425f1f3bb862e13978a68613e1d6c746d80fb6889cc16",
+          "runId": "bc68bb6b-ac13-424b-b96f-ba8d052abfd5",
+          "actionId": "942a41b3-b7c0-46d0-86d3-ea4b1a7e532e",
+          "kind": "display.cad.brep",
+          "relativePath": "remote-results/4a280f91-077d-464e-934c-cdf9c5714730/7-display.cad.brep.brep",
+          "sha256": "5c8bd8fc41bbc557da9126a611e456e4aa83a2fa491da333f34916c6e971b06d",
+          "sizeBytes": 4631,
+          "source": "domain-tool",
+          "inputHashes": {
+            "recipe.json": "1f9fdd40a5e462caec414574042f97e5dba38fe20490cbc7a8517d784cc15b82"
+          }
+        },
+        {
+          "schemaVersion": "1",
+          "id": "ebafee5d-97a2-4773-bf93-d3594e84f886",
+          "projectId": "cf39ed396b372d9f6ee425f1f3bb862e13978a68613e1d6c746d80fb6889cc16",
+          "runId": "bc68bb6b-ac13-424b-b96f-ba8d052abfd5",
+          "actionId": "942a41b3-b7c0-46d0-86d3-ea4b1a7e532e",
+          "kind": "display.cad.sketches",
+          "relativePath": "remote-results/4a280f91-077d-464e-934c-cdf9c5714730/8-display.cad.sketches.sketches",
+          "sha256": "42cde04ee9ee2d59287a1307913d5a5bdd3e6053cf742ccfc0260a1edc9132ec",
+          "sizeBytes": 145,
+          "source": "domain-tool",
+          "inputHashes": {
+            "recipe.json": "1f9fdd40a5e462caec414574042f97e5dba38fe20490cbc7a8517d784cc15b82"
+          }
+        },
+        {
+          "schemaVersion": "1",
+          "id": "22bdf553-89da-4bd1-99f8-287557b6d200",
+          "projectId": "cf39ed396b372d9f6ee425f1f3bb862e13978a68613e1d6c746d80fb6889cc16",
+          "runId": "bc68bb6b-ac13-424b-b96f-ba8d052abfd5",
+          "actionId": "942a41b3-b7c0-46d0-86d3-ea4b1a7e532e",
+          "kind": "display.cad.manifest",
+          "relativePath": "remote-results/4a280f91-077d-464e-934c-cdf9c5714730/9-display.cad.manifest.manifest",
+          "sha256": "06f6cdd4c2e1226237158c0006f5de705cdc18fe04839bc6dca99c5082d7a1e9",
+          "sizeBytes": 1683,
+          "source": "domain-tool",
+          "inputHashes": {
+            "recipe.json": "1f9fdd40a5e462caec414574042f97e5dba38fe20490cbc7a8517d784cc15b82"
+          }
+        },
+        {
+          "schemaVersion": "1",
+          "id": "4db25960-67d2-4e07-8da5-70c9873cd447",
+          "projectId": "cf39ed396b372d9f6ee425f1f3bb862e13978a68613e1d6c746d80fb6889cc16",
+          "runId": "bc68bb6b-ac13-424b-b96f-ba8d052abfd5",
+          "actionId": "942a41b3-b7c0-46d0-86d3-ea4b1a7e532e",
+          "kind": "input.cad.recipe",
+          "relativePath": "remote-results/4a280f91-077d-464e-934c-cdf9c5714730/10-input.cad.recipe.recipe",
+          "sha256": "efe9f517645075e1999b2809a1c746965c64f04da0a18b0f679a00728589b4cf",
+          "sizeBytes": 412,
+          "source": "domain-tool",
+          "inputHashes": {
+            "recipe.json": "1f9fdd40a5e462caec414574042f97e5dba38fe20490cbc7a8517d784cc15b82"
+          }
+        }
+      ],
+      "inputHashes": {
+        "recipe.json": "1f9fdd40a5e462caec414574042f97e5dba38fe20490cbc7a8517d784cc15b82"
+      },
+      "verificationIds": [
+        "6388e146-a503-4dc0-8ded-d0ea4ddef339"
+      ],
+      "createdAt": "2026-10-20T05:24:12.116Z"
+    },
+    "checkpoint": {
+      "schemaVersion": "1",
+      "id": "f2acfefa-25b7-416f-9eed-e24a7980609c",
+      "parentId": "ad2e27c7-2e40-4027-b100-6c795b8df744",
+      "stateHash": "08ed644d75bae8e1a108b33f93c5976b189c8e8870ffa68b38615dacc483668e",
+      "createdAt": "2026-10-20T05:24:12.120Z",
+      "state": {
+        "schemaVersion": "1",
+        "id": "03a7ec09-00d4-4669-8772-81b73f7bb385",
+        "projectId": "cf39ed396b372d9f6ee425f1f3bb862e13978a68613e1d6c746d80fb6889cc16",
+        "domain": "cad",
+        "stage": null,
+        "status": "verified",
+        "artifacts": [
+          {
+            "schemaVersion": "1",
+            "id": "475a8923-711c-4010-a3db-23adb4d26250",
+            "projectId": "cf39ed396b372d9f6ee425f1f3bb862e13978a68613e1d6c746d80fb6889cc16",
+            "runId": "bc68bb6b-ac13-424b-b96f-ba8d052abfd5",
+            "actionId": "942a41b3-b7c0-46d0-86d3-ea4b1a7e532e",
+            "kind": "log.tool",
+            "relativePath": "remote-results/4a280f91-077d-464e-934c-cdf9c5714730/0-log.tool.log",
+            "sha256": "3fc93277416ab58b83c920e9f4af268f7d07c146efde906bf953dbbdff46a53a",
+            "sizeBytes": 1034,
+            "source": "domain-tool",
+            "inputHashes": {
+              "recipe.json": "1f9fdd40a5e462caec414574042f97e5dba38fe20490cbc7a8517d784cc15b82"
+            }
+          },
+          {
+            "schemaVersion": "1",
+            "id": "55151c11-783b-41a0-88ca-5ed2ab62aef2",
+            "projectId": "cf39ed396b372d9f6ee425f1f3bb862e13978a68613e1d6c746d80fb6889cc16",
+            "runId": "bc68bb6b-ac13-424b-b96f-ba8d052abfd5",
+            "actionId": "942a41b3-b7c0-46d0-86d3-ea4b1a7e532e",
+            "kind": "report.cad.execution",
+            "relativePath": "remote-results/4a280f91-077d-464e-934c-cdf9c5714730/1-report.cad.execution.json",
+            "sha256": "3e1abd7b2f3ed58708446ea6237a23004f85bf3f8ad710cf8a3e9eb9bc075f60",
+            "sizeBytes": 278,
+            "source": "domain-tool",
+            "inputHashes": {
+              "recipe.json": "1f9fdd40a5e462caec414574042f97e5dba38fe20490cbc7a8517d784cc15b82"
+            }
+          },
+          {
+            "schemaVersion": "1",
+            "id": "dcaa2866-a24a-40af-be09-ff2caefb2779",
+            "projectId": "cf39ed396b372d9f6ee425f1f3bb862e13978a68613e1d6c746d80fb6889cc16",
+            "runId": "bc68bb6b-ac13-424b-b96f-ba8d052abfd5",
+            "actionId": "942a41b3-b7c0-46d0-86d3-ea4b1a7e532e",
+            "kind": "report.cad.build",
+            "relativePath": "remote-results/4a280f91-077d-464e-934c-cdf9c5714730/2-report.cad.build.json",
+            "sha256": "d8ff2ee5b906bdc89e7d0577af55c1a96595d4308f14e27367f9885b58eb9919",
+            "sizeBytes": 646,
+            "source": "domain-tool",
+            "inputHashes": {
+              "recipe.json": "1f9fdd40a5e462caec414574042f97e5dba38fe20490cbc7a8517d784cc15b82"
+            }
+          },
+          {
+            "schemaVersion": "1",
+            "id": "0c1adf28-6755-4bbc-bf97-5e404e36431d",
+            "projectId": "cf39ed396b372d9f6ee425f1f3bb862e13978a68613e1d6c746d80fb6889cc16",
+            "runId": "bc68bb6b-ac13-424b-b96f-ba8d052abfd5",
+            "actionId": "942a41b3-b7c0-46d0-86d3-ea4b1a7e532e",
+            "kind": "report.cad.readback",
+            "relativePath": "remote-results/4a280f91-077d-464e-934c-cdf9c5714730/3-report.cad.readback.json",
+            "sha256": "b24cb890e65c346b1dc64bb70c56f50d133bcbb59784a04c7c27d310d2f87a25",
+            "sizeBytes": 997,
+            "source": "domain-tool",
+            "inputHashes": {
+              "recipe.json": "1f9fdd40a5e462caec414574042f97e5dba38fe20490cbc7a8517d784cc15b82"
+            }
+          },
+          {
+            "schemaVersion": "1",
+            "id": "67acb64a-ba90-49f1-b916-fbeb664e3d7b",
+            "projectId": "cf39ed396b372d9f6ee425f1f3bb862e13978a68613e1d6c746d80fb6889cc16",
+            "runId": "bc68bb6b-ac13-424b-b96f-ba8d052abfd5",
+            "actionId": "942a41b3-b7c0-46d0-86d3-ea4b1a7e532e",
+            "kind": "model.cad.fcstd",
+            "relativePath": "remote-results/4a280f91-077d-464e-934c-cdf9c5714730/4-model.cad.fcstd.fcstd",
+            "sha256": "1040c01a002b1c329a0142929f5619be3e81cc8cee170b6287e6ba3963472d63",
+            "sizeBytes": 6671,
+            "source": "domain-tool",
+            "inputHashes": {
+              "recipe.json": "1f9fdd40a5e462caec414574042f97e5dba38fe20490cbc7a8517d784cc15b82"
+            }
+          },
+          {
+            "schemaVersion": "1",
+            "id": "be761ce9-8d9a-47fb-b092-49f58f03c4c2",
+            "projectId": "cf39ed396b372d9f6ee425f1f3bb862e13978a68613e1d6c746d80fb6889cc16",
+            "runId": "bc68bb6b-ac13-424b-b96f-ba8d052abfd5",
+            "actionId": "942a41b3-b7c0-46d0-86d3-ea4b1a7e532e",
+            "kind": "model.cad.step",
+            "relativePath": "remote-results/4a280f91-077d-464e-934c-cdf9c5714730/5-model.cad.step.step",
+            "sha256": "cf75a375df05060d3bc44796975d32a745c000641d3fa9b23350a0b7335be57b",
+            "sizeBytes": 8288,
+            "source": "domain-tool",
+            "inputHashes": {
+              "recipe.json": "1f9fdd40a5e462caec414574042f97e5dba38fe20490cbc7a8517d784cc15b82"
+            }
+          },
+          {
+            "schemaVersion": "1",
+            "id": "cba3dda9-070d-4af9-a382-734eaf0168d7",
+            "projectId": "cf39ed396b372d9f6ee425f1f3bb862e13978a68613e1d6c746d80fb6889cc16",
+            "runId": "bc68bb6b-ac13-424b-b96f-ba8d052abfd5",
+            "actionId": "942a41b3-b7c0-46d0-86d3-ea4b1a7e532e",
+            "kind": "model.cad.stl",
+            "relativePath": "remote-results/4a280f91-077d-464e-934c-cdf9c5714730/6-model.cad.stl.stl",
+            "sha256": "f632d2532da29ad4989c5b9bdfe62983c474aa4edcf5fe9ba8acc5ff5979c611",
+            "sizeBytes": 26084,
+            "source": "domain-tool",
+            "inputHashes": {
+              "recipe.json": "1f9fdd40a5e462caec414574042f97e5dba38fe20490cbc7a8517d784cc15b82"
+            }
+          },
+          {
+            "schemaVersion": "1",
+            "id": "359de4c6-b689-4192-bd69-6494f0e57736",
+            "projectId": "cf39ed396b372d9f6ee425f1f3bb862e13978a68613e1d6c746d80fb6889cc16",
+            "runId": "bc68bb6b-ac13-424b-b96f-ba8d052abfd5",
+            "actionId": "942a41b3-b7c0-46d0-86d3-ea4b1a7e532e",
+            "kind": "display.cad.brep",
+            "relativePath": "remote-results/4a280f91-077d-464e-934c-cdf9c5714730/7-display.cad.brep.brep",
+            "sha256": "5c8bd8fc41bbc557da9126a611e456e4aa83a2fa491da333f34916c6e971b06d",
+            "sizeBytes": 4631,
+            "source": "domain-tool",
+            "inputHashes": {
+              "recipe.json": "1f9fdd40a5e462caec414574042f97e5dba38fe20490cbc7a8517d784cc15b82"
+            }
+          },
+          {
+            "schemaVersion": "1",
+            "id": "ebafee5d-97a2-4773-bf93-d3594e84f886",
+            "projectId": "cf39ed396b372d9f6ee425f1f3bb862e13978a68613e1d6c746d80fb6889cc16",
+            "runId": "bc68bb6b-ac13-424b-b96f-ba8d052abfd5",
+            "actionId": "942a41b3-b7c0-46d0-86d3-ea4b1a7e532e",
+            "kind": "display.cad.sketches",
+            "relativePath": "remote-results/4a280f91-077d-464e-934c-cdf9c5714730/8-display.cad.sketches.sketches",
+            "sha256": "42cde04ee9ee2d59287a1307913d5a5bdd3e6053cf742ccfc0260a1edc9132ec",
+            "sizeBytes": 145,
+            "source": "domain-tool",
+            "inputHashes": {
+              "recipe.json": "1f9fdd40a5e462caec414574042f97e5dba38fe20490cbc7a8517d784cc15b82"
+            }
+          },
+          {
+            "schemaVersion": "1",
+            "id": "22bdf553-89da-4bd1-99f8-287557b6d200",
+            "projectId": "cf39ed396b372d9f6ee425f1f3bb862e13978a68613e1d6c746d80fb6889cc16",
+            "runId": "bc68bb6b-ac13-424b-b96f-ba8d052abfd5",
+            "actionId": "942a41b3-b7c0-46d0-86d3-ea4b1a7e532e",
+            "kind": "display.cad.manifest",
+            "relativePath": "remote-results/4a280f91-077d-464e-934c-cdf9c5714730/9-display.cad.manifest.manifest",
+            "sha256": "06f6cdd4c2e1226237158c0006f5de705cdc18fe04839bc6dca99c5082d7a1e9",
+            "sizeBytes": 1683,
+            "source": "domain-tool",
+            "inputHashes": {
+              "recipe.json": "1f9fdd40a5e462caec414574042f97e5dba38fe20490cbc7a8517d784cc15b82"
+            }
+          },
+          {
+            "schemaVersion": "1",
+            "id": "4db25960-67d2-4e07-8da5-70c9873cd447",
+            "projectId": "cf39ed396b372d9f6ee425f1f3bb862e13978a68613e1d6c746d80fb6889cc16",
+            "runId": "bc68bb6b-ac13-424b-b96f-ba8d052abfd5",
+            "actionId": "942a41b3-b7c0-46d0-86d3-ea4b1a7e532e",
+            "kind": "input.cad.recipe",
+            "relativePath": "remote-results/4a280f91-077d-464e-934c-cdf9c5714730/10-input.cad.recipe.recipe",
+            "sha256": "efe9f517645075e1999b2809a1c746965c64f04da0a18b0f679a00728589b4cf",
+            "sizeBytes": 412,
+            "source": "domain-tool",
+            "inputHashes": {
+              "recipe.json": "1f9fdd40a5e462caec414574042f97e5dba38fe20490cbc7a8517d784cc15b82"
+            }
+          }
+        ],
+        "inputHashes": {
+          "recipe.json": "1f9fdd40a5e462caec414574042f97e5dba38fe20490cbc7a8517d784cc15b82"
+        },
+        "verificationIds": [
+          "6388e146-a503-4dc0-8ded-d0ea4ddef339"
+        ],
+        "createdAt": "2026-10-20T05:24:12.116Z"
+      },
+      "runId": "bc68bb6b-ac13-424b-b96f-ba8d052abfd5",
+      "actionIds": [
+        "942a41b3-b7c0-46d0-86d3-ea4b1a7e532e"
+      ],
+      "artifactIds": [
+        "475a8923-711c-4010-a3db-23adb4d26250",
+        "55151c11-783b-41a0-88ca-5ed2ab62aef2",
+        "dcaa2866-a24a-40af-be09-ff2caefb2779",
+        "0c1adf28-6755-4bbc-bf97-5e404e36431d",
+        "67acb64a-ba90-49f1-b916-fbeb664e3d7b",
+        "be761ce9-8d9a-47fb-b092-49f58f03c4c2",
+        "cba3dda9-070d-4af9-a382-734eaf0168d7",
+        "359de4c6-b689-4192-bd69-6494f0e57736",
+        "ebafee5d-97a2-4773-bf93-d3594e84f886",
+        "22bdf553-89da-4bd1-99f8-287557b6d200",
+        "4db25960-67d2-4e07-8da5-70c9873cd447"
+      ]
+    },
+    "remoteRun": {
+      "actionId": "942a41b3-b7c0-46d0-86d3-ea4b1a7e532e",
+      "requestId": "4a280f91-077d-464e-934c-cdf9c5714730",
+      "snapshotId": "6339e3ab-f054-448b-a808-d2867a3af599",
+      "verification": "passed",
+      "release": {
+        "status": "released",
+        "sessionId": "5bda1f6c-23fc-46b5-be6d-6149d38f1f88"
+      },
+      "artifactChecks": [
+        {
+          "id": "475a8923-711c-4010-a3db-23adb4d26250",
+          "kind": "log.tool",
+          "sha256": "3fc93277416ab58b83c920e9f4af268f7d07c146efde906bf953dbbdff46a53a",
+          "sizeBytes": 1034
+        },
+        {
+          "id": "55151c11-783b-41a0-88ca-5ed2ab62aef2",
+          "kind": "report.cad.execution",
+          "sha256": "3e1abd7b2f3ed58708446ea6237a23004f85bf3f8ad710cf8a3e9eb9bc075f60",
+          "sizeBytes": 278
+        },
+        {
+          "id": "dcaa2866-a24a-40af-be09-ff2caefb2779",
+          "kind": "report.cad.build",
+          "sha256": "d8ff2ee5b906bdc89e7d0577af55c1a96595d4308f14e27367f9885b58eb9919",
+          "sizeBytes": 646
+        },
+        {
+          "id": "0c1adf28-6755-4bbc-bf97-5e404e36431d",
+          "kind": "report.cad.readback",
+          "sha256": "b24cb890e65c346b1dc64bb70c56f50d133bcbb59784a04c7c27d310d2f87a25",
+          "sizeBytes": 997
+        },
+        {
+          "id": "67acb64a-ba90-49f1-b916-fbeb664e3d7b",
+          "kind": "model.cad.fcstd",
+          "sha256": "1040c01a002b1c329a0142929f5619be3e81cc8cee170b6287e6ba3963472d63",
+          "sizeBytes": 6671
+        },
+        {
+          "id": "be761ce9-8d9a-47fb-b092-49f58f03c4c2",
+          "kind": "model.cad.step",
+          "sha256": "cf75a375df05060d3bc44796975d32a745c000641d3fa9b23350a0b7335be57b",
+          "sizeBytes": 8288
+        },
+        {
+          "id": "cba3dda9-070d-4af9-a382-734eaf0168d7",
+          "kind": "model.cad.stl",
+          "sha256": "f632d2532da29ad4989c5b9bdfe62983c474aa4edcf5fe9ba8acc5ff5979c611",
+          "sizeBytes": 26084
+        },
+        {
+          "id": "359de4c6-b689-4192-bd69-6494f0e57736",
+          "kind": "display.cad.brep",
+          "sha256": "5c8bd8fc41bbc557da9126a611e456e4aa83a2fa491da333f34916c6e971b06d",
+          "sizeBytes": 4631
+        },
+        {
+          "id": "ebafee5d-97a2-4773-bf93-d3594e84f886",
+          "kind": "display.cad.sketches",
+          "sha256": "42cde04ee9ee2d59287a1307913d5a5bdd3e6053cf742ccfc0260a1edc9132ec",
+          "sizeBytes": 145
+        },
+        {
+          "id": "22bdf553-89da-4bd1-99f8-287557b6d200",
+          "kind": "display.cad.manifest",
+          "sha256": "06f6cdd4c2e1226237158c0006f5de705cdc18fe04839bc6dca99c5082d7a1e9",
+          "sizeBytes": 1683
+        },
+        {
+          "id": "4db25960-67d2-4e07-8da5-70c9873cd447",
+          "kind": "input.cad.recipe",
+          "sha256": "efe9f517645075e1999b2809a1c746965c64f04da0a18b0f679a00728589b4cf",
+          "sizeBytes": 412
+        }
+      ],
+      "inputHashes": {
+        "recipe.json": "1f9fdd40a5e462caec414574042f97e5dba38fe20490cbc7a8517d784cc15b82"
+      }
+    },
+    "journal": {
+      "status": "completed",
+      "outcome": "completed",
+      "needsImport": false,
+      "sessionRelease": {
+        "status": "released",
+        "sessionId": "5bda1f6c-23fc-46b5-be6d-6149d38f1f88"
+      }
+    },
+    "receipt": {
+      "requestId": "4a280f91-077d-464e-934c-cdf9c5714730",
+      "snapshotId": "6339e3ab-f054-448b-a808-d2867a3af599",
+      "status": "completed",
+      "persisted": true,
+      "verification": {
+        "id": "9cfd6283-00d0-44ff-bbb3-b772564c76b4",
+        "schemaVersion": "1",
+        "status": "passed",
+        "verifierId": "cad.freecad.geometry",
+        "reason": "Separate FreeCAD readback confirms valid solids, constrained sketches and matching FCStd/STEP/BREP geometry. Supplied dimensional expectations passed. This checks geometry, not mechanical strength or manufacturability.",
+        "metrics": {
+          "nativeValid": true,
+          "stepValid": true,
+          "brepValid": true,
+          "brepAgreement": true,
+          "positiveVolume": true,
+          "solidPresent": true,
+          "meshPresent": true,
+          "sketchesConstrained": true,
+          "exportAgreement": true,
+          "artifactsPresent": true,
+          "inputUnchanged": true,
+          "expectedVolume": true,
+          "expectedSolids": true,
+          "expectedBounds": true,
+          "volume": 3937.1681469282034,
+          "solids": 1,
+          "boundsX": 40,
+          "boundsY": 20,
+          "boundsZ": 5
+        },
+        "evidence": {
+          "artifactIds": [
+            "b1c8c00a-83e8-4d2d-b690-04e0ed4bd3f6",
+            "ce380884-78fc-4913-bdac-7fa196ebef1e",
+            "c4235c73-384f-41e0-86da-755492b87fba",
+            "cd72cbd0-8bab-4395-8a9b-e6544ae3d933",
+            "13531092-1051-459f-aa9a-f0c5597c606a",
+            "7d056beb-3b86-460a-809d-fd4cdeb2e397",
+            "2c4010aa-f255-448c-9986-c3d4a4b026aa",
+            "1bcb109c-40d9-408a-9565-e0a43a077a2d",
+            "c06b06e8-1489-49a6-96ae-6f825c63d968",
+            "d2ad9cfa-53f8-4f7b-bff3-3a6b2f1fac9f",
+            "7a4bc847-0415-4366-a199-ac73bbe7ccf2"
+          ],
+          "inputHashes": {
+            "invocation.json": "1f823d2dec2be628f95c974082a8804dcbedd027c3927de91ede8597ef2074f1"
+          }
+        },
+        "checks": [
+          {
+            "name": "log.tool.sha256",
+            "passed": true
+          },
+          {
+            "name": "report.cad.execution.sha256",
+            "passed": true
+          },
+          {
+            "name": "report.cad.build.sha256",
+            "passed": true
+          },
+          {
+            "name": "report.cad.readback.sha256",
+            "passed": true
+          },
+          {
+            "name": "model.cad.fcstd.sha256",
+            "passed": true
+          },
+          {
+            "name": "model.cad.step.sha256",
+            "passed": true
+          },
+          {
+            "name": "model.cad.stl.sha256",
+            "passed": true
+          },
+          {
+            "name": "display.cad.brep.sha256",
+            "passed": true
+          },
+          {
+            "name": "display.cad.sketches.sha256",
+            "passed": true
+          },
+          {
+            "name": "display.cad.manifest.sha256",
+            "passed": true
+          },
+          {
+            "name": "input.cad.recipe.sha256",
+            "passed": true
+          }
+        ]
+      }
+    },
+    "copiedArtifacts": [
+      {
+        "file": "cad-1-readback.json",
+        "artifact": {
+          "schemaVersion": "1",
+          "id": "0c1adf28-6755-4bbc-bf97-5e404e36431d",
+          "projectId": "cf39ed396b372d9f6ee425f1f3bb862e13978a68613e1d6c746d80fb6889cc16",
+          "runId": "bc68bb6b-ac13-424b-b96f-ba8d052abfd5",
+          "actionId": "942a41b3-b7c0-46d0-86d3-ea4b1a7e532e",
+          "kind": "report.cad.readback",
+          "relativePath": "remote-results/4a280f91-077d-464e-934c-cdf9c5714730/3-report.cad.readback.json",
+          "sha256": "b24cb890e65c346b1dc64bb70c56f50d133bcbb59784a04c7c27d310d2f87a25",
+          "sizeBytes": 997,
+          "source": "domain-tool",
+          "inputHashes": {
+            "recipe.json": "1f9fdd40a5e462caec414574042f97e5dba38fe20490cbc7a8517d784cc15b82"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "action": {
+      "id": "1081d29e-0aee-495f-9faa-60a8c66ba787",
+      "runId": "1a2cb722-4f5b-4d1e-873a-0e99b2085dc2",
+      "projectId": "cf39ed396b372d9f6ee425f1f3bb862e13978a68613e1d6c746d80fb6889cc16",
+      "domain": "cad",
+      "toolId": "cad.freecad.build",
+      "schemaVersion": "1",
+      "toolVersion": "sha256:ab4f32aef70022813f0699e034bb11c4caa1655cb766d12985c783a4de04a54d",
+      "stateId": "87815516-800d-4375-909c-9446c76b6407",
+      "inputHashes": {
+        "recipe.json": "f14e61eb18b1639e715a849e496ec7c7d7f0a87873771337755d48088e83f9c2"
+      },
+      "inputs": {
+        "recipe": {
+          "parameters": {
+            "L": 40,
+            "W": 20,
+            "T": 5,
+            "R": 2
+          },
+          "features": [
+            {
+              "id": "Plate",
+              "op": "box",
+              "length": "L",
+              "width": "W",
+              "height": "T"
+            },
+            {
+              "id": "Drilled",
+              "op": "hole",
+              "base": "Plate",
+              "radius": "R",
+              "height": "T",
+              "origin": [
+                10,
+                10,
+                0
+              ]
+            }
+          ],
+          "result": "Drilled"
+        },
+        "expect": {
+          "volume": 3937.1681469282044,
+          "solids": 1,
+          "bounds": [
+            40,
+            20,
+            5
+          ]
+        }
+      },
+      "startedAt": "2026-10-20T05:24:14.261Z",
+      "endedAt": "2026-10-20T05:24:24.895Z",
+      "status": "completed",
+      "diagnostics": [
+        "Remote request fe4bdbd5-ec74-47b2-bc70-7efe35619f05; source verifier 07cf04af-d1db-4632-b9fb-dd63b559b493."
+      ],
+      "artifactIds": [
+        "e75c7275-f3ec-4d48-9ff2-0648838d396d",
+        "186f29e7-8e91-41d7-8a43-48c34fc3653e",
+        "97725fd4-d408-475c-86cf-b946911eb60c",
+        "20dc5e1e-bfbd-4051-93a3-d5958633c1f5",
+        "7d1930ef-99da-4c2b-9a2b-6fe6991e68c9",
+        "06a41e25-744e-4d46-a5e8-d0c9f3c5ca50",
+        "ba6b4955-0a74-46fc-9fbf-b43196d27743",
+        "dfad4317-d1e2-43c0-9396-05e1648cbc79",
+        "a30a9c01-11de-4ccc-875a-c06b1d7242d3",
+        "da5897dd-d19d-4fd6-8ef3-1e3e8f7134ff",
+        "9eecedbe-3a9f-4951-a957-9432a5b232bc"
+      ],
+      "verification": {
+        "schemaVersion": "1",
+        "id": "39423edf-16c6-4756-b7a8-05065d8542ce",
+        "status": "passed",
+        "verifierId": "remote.reported",
+        "reason": "Remote verifier cad.freecad.geometry: Separate FreeCAD readback confirms valid solids, constrained sketches and matching FCStd/STEP/BREP geometry. Supplied dimensional expectations passed. This checks geometry, not mechanical strength or manufacturability.",
+        "metrics": {
+          "nativeValid": true,
+          "stepValid": true,
+          "brepValid": true,
+          "brepAgreement": true,
+          "positiveVolume": true,
+          "solidPresent": true,
+          "meshPresent": true,
+          "sketchesConstrained": true,
+          "exportAgreement": true,
+          "artifactsPresent": true,
+          "inputUnchanged": true,
+          "expectedVolume": true,
+          "expectedSolids": true,
+          "expectedBounds": true,
+          "volume": 3937.1681469282034,
+          "solids": 1,
+          "boundsX": 40,
+          "boundsY": 20,
+          "boundsZ": 5
+        },
+        "evidence": {
+          "artifactIds": [
+            "e75c7275-f3ec-4d48-9ff2-0648838d396d",
+            "186f29e7-8e91-41d7-8a43-48c34fc3653e",
+            "97725fd4-d408-475c-86cf-b946911eb60c",
+            "20dc5e1e-bfbd-4051-93a3-d5958633c1f5",
+            "7d1930ef-99da-4c2b-9a2b-6fe6991e68c9",
+            "06a41e25-744e-4d46-a5e8-d0c9f3c5ca50",
+            "ba6b4955-0a74-46fc-9fbf-b43196d27743",
+            "dfad4317-d1e2-43c0-9396-05e1648cbc79",
+            "a30a9c01-11de-4ccc-875a-c06b1d7242d3",
+            "da5897dd-d19d-4fd6-8ef3-1e3e8f7134ff",
+            "9eecedbe-3a9f-4951-a957-9432a5b232bc"
+          ],
+          "inputHashes": {
+            "recipe.json": "f14e61eb18b1639e715a849e496ec7c7d7f0a87873771337755d48088e83f9c2"
+          }
+        }
+      }
+    },
+    "verification": {
+      "schemaVersion": "1",
+      "id": "39423edf-16c6-4756-b7a8-05065d8542ce",
+      "status": "passed",
+      "verifierId": "remote.reported",
+      "reason": "Remote verifier cad.freecad.geometry: Separate FreeCAD readback confirms valid solids, constrained sketches and matching FCStd/STEP/BREP geometry. Supplied dimensional expectations passed. This checks geometry, not mechanical strength or manufacturability.",
+      "metrics": {
+        "nativeValid": true,
+        "stepValid": true,
+        "brepValid": true,
+        "brepAgreement": true,
+        "positiveVolume": true,
+        "solidPresent": true,
+        "meshPresent": true,
+        "sketchesConstrained": true,
+        "exportAgreement": true,
+        "artifactsPresent": true,
+        "inputUnchanged": true,
+        "expectedVolume": true,
+        "expectedSolids": true,
+        "expectedBounds": true,
+        "volume": 3937.1681469282034,
+        "solids": 1,
+        "boundsX": 40,
+        "boundsY": 20,
+        "boundsZ": 5
+      },
+      "evidence": {
+        "artifactIds": [
+          "e75c7275-f3ec-4d48-9ff2-0648838d396d",
+          "186f29e7-8e91-41d7-8a43-48c34fc3653e",
+          "97725fd4-d408-475c-86cf-b946911eb60c",
+          "20dc5e1e-bfbd-4051-93a3-d5958633c1f5",
+          "7d1930ef-99da-4c2b-9a2b-6fe6991e68c9",
+          "06a41e25-744e-4d46-a5e8-d0c9f3c5ca50",
+          "ba6b4955-0a74-46fc-9fbf-b43196d27743",
+          "dfad4317-d1e2-43c0-9396-05e1648cbc79",
+          "a30a9c01-11de-4ccc-875a-c06b1d7242d3",
+          "da5897dd-d19d-4fd6-8ef3-1e3e8f7134ff",
+          "9eecedbe-3a9f-4951-a957-9432a5b232bc"
+        ],
+        "inputHashes": {
+          "recipe.json": "f14e61eb18b1639e715a849e496ec7c7d7f0a87873771337755d48088e83f9c2"
+        }
+      }
+    },
+    "state": {
+      "schemaVersion": "1",
+      "id": "a16968de-0cf9-4b9f-a4f0-ec9d8b1e3cf2",
+      "projectId": "cf39ed396b372d9f6ee425f1f3bb862e13978a68613e1d6c746d80fb6889cc16",
+      "domain": "cad",
+      "stage": null,
+      "status": "verified",
+      "artifacts": [
+        {
+          "schemaVersion": "1",
+          "id": "e75c7275-f3ec-4d48-9ff2-0648838d396d",
+          "projectId": "cf39ed396b372d9f6ee425f1f3bb862e13978a68613e1d6c746d80fb6889cc16",
+          "runId": "1a2cb722-4f5b-4d1e-873a-0e99b2085dc2",
+          "actionId": "1081d29e-0aee-495f-9faa-60a8c66ba787",
+          "kind": "log.tool",
+          "relativePath": "remote-results/fe4bdbd5-ec74-47b2-bc70-7efe35619f05/0-log.tool.log",
+          "sha256": "3c1c8fad27fd17ec26e800f96b37a0f09aa2c400448a94e6e419d23c9ce69aff",
+          "sizeBytes": 1034,
+          "source": "domain-tool",
+          "inputHashes": {
+            "recipe.json": "f14e61eb18b1639e715a849e496ec7c7d7f0a87873771337755d48088e83f9c2"
+          }
+        },
+        {
+          "schemaVersion": "1",
+          "id": "186f29e7-8e91-41d7-8a43-48c34fc3653e",
+          "projectId": "cf39ed396b372d9f6ee425f1f3bb862e13978a68613e1d6c746d80fb6889cc16",
+          "runId": "1a2cb722-4f5b-4d1e-873a-0e99b2085dc2",
+          "actionId": "1081d29e-0aee-495f-9faa-60a8c66ba787",
+          "kind": "report.cad.execution",
+          "relativePath": "remote-results/fe4bdbd5-ec74-47b2-bc70-7efe35619f05/1-report.cad.execution.json",
+          "sha256": "3e1abd7b2f3ed58708446ea6237a23004f85bf3f8ad710cf8a3e9eb9bc075f60",
+          "sizeBytes": 278,
+          "source": "domain-tool",
+          "inputHashes": {
+            "recipe.json": "f14e61eb18b1639e715a849e496ec7c7d7f0a87873771337755d48088e83f9c2"
+          }
+        },
+        {
+          "schemaVersion": "1",
+          "id": "97725fd4-d408-475c-86cf-b946911eb60c",
+          "projectId": "cf39ed396b372d9f6ee425f1f3bb862e13978a68613e1d6c746d80fb6889cc16",
+          "runId": "1a2cb722-4f5b-4d1e-873a-0e99b2085dc2",
+          "actionId": "1081d29e-0aee-495f-9faa-60a8c66ba787",
+          "kind": "report.cad.build",
+          "relativePath": "remote-results/fe4bdbd5-ec74-47b2-bc70-7efe35619f05/2-report.cad.build.json",
+          "sha256": "65732bb39779e398168c058fbb5b19afa9897f65b591355df81a9fab72eb2aa9",
+          "sizeBytes": 646,
+          "source": "domain-tool",
+          "inputHashes": {
+            "recipe.json": "f14e61eb18b1639e715a849e496ec7c7d7f0a87873771337755d48088e83f9c2"
+          }
+        },
+        {
+          "schemaVersion": "1",
+          "id": "20dc5e1e-bfbd-4051-93a3-d5958633c1f5",
+          "projectId": "cf39ed396b372d9f6ee425f1f3bb862e13978a68613e1d6c746d80fb6889cc16",
+          "runId": "1a2cb722-4f5b-4d1e-873a-0e99b2085dc2",
+          "actionId": "1081d29e-0aee-495f-9faa-60a8c66ba787",
+          "kind": "report.cad.readback",
+          "relativePath": "remote-results/fe4bdbd5-ec74-47b2-bc70-7efe35619f05/3-report.cad.readback.json",
+          "sha256": "849a27e61d97634cd5107856a99e8d6657705186f064f5724a8a9d2568198d3c",
+          "sizeBytes": 997,
+          "source": "domain-tool",
+          "inputHashes": {
+            "recipe.json": "f14e61eb18b1639e715a849e496ec7c7d7f0a87873771337755d48088e83f9c2"
+          }
+        },
+        {
+          "schemaVersion": "1",
+          "id": "7d1930ef-99da-4c2b-9a2b-6fe6991e68c9",
+          "projectId": "cf39ed396b372d9f6ee425f1f3bb862e13978a68613e1d6c746d80fb6889cc16",
+          "runId": "1a2cb722-4f5b-4d1e-873a-0e99b2085dc2",
+          "actionId": "1081d29e-0aee-495f-9faa-60a8c66ba787",
+          "kind": "model.cad.fcstd",
+          "relativePath": "remote-results/fe4bdbd5-ec74-47b2-bc70-7efe35619f05/4-model.cad.fcstd.fcstd",
+          "sha256": "0edde88b5f8d6918b7e21b183992322efebebe79226600ae7ed3d17e68233660",
+          "sizeBytes": 6667,
+          "source": "domain-tool",
+          "inputHashes": {
+            "recipe.json": "f14e61eb18b1639e715a849e496ec7c7d7f0a87873771337755d48088e83f9c2"
+          }
+        },
+        {
+          "schemaVersion": "1",
+          "id": "06a41e25-744e-4d46-a5e8-d0c9f3c5ca50",
+          "projectId": "cf39ed396b372d9f6ee425f1f3bb862e13978a68613e1d6c746d80fb6889cc16",
+          "runId": "1a2cb722-4f5b-4d1e-873a-0e99b2085dc2",
+          "actionId": "1081d29e-0aee-495f-9faa-60a8c66ba787",
+          "kind": "model.cad.step",
+          "relativePath": "remote-results/fe4bdbd5-ec74-47b2-bc70-7efe35619f05/5-model.cad.step.step",
+          "sha256": "59fa2d41fcf304feb3a8deb9839373d71048a11ca0d58d161aede69c2697e372",
+          "sizeBytes": 8288,
+          "source": "domain-tool",
+          "inputHashes": {
+            "recipe.json": "f14e61eb18b1639e715a849e496ec7c7d7f0a87873771337755d48088e83f9c2"
+          }
+        },
+        {
+          "schemaVersion": "1",
+          "id": "ba6b4955-0a74-46fc-9fbf-b43196d27743",
+          "projectId": "cf39ed396b372d9f6ee425f1f3bb862e13978a68613e1d6c746d80fb6889cc16",
+          "runId": "1a2cb722-4f5b-4d1e-873a-0e99b2085dc2",
+          "actionId": "1081d29e-0aee-495f-9faa-60a8c66ba787",
+          "kind": "model.cad.stl",
+          "relativePath": "remote-results/fe4bdbd5-ec74-47b2-bc70-7efe35619f05/6-model.cad.stl.stl",
+          "sha256": "f632d2532da29ad4989c5b9bdfe62983c474aa4edcf5fe9ba8acc5ff5979c611",
+          "sizeBytes": 26084,
+          "source": "domain-tool",
+          "inputHashes": {
+            "recipe.json": "f14e61eb18b1639e715a849e496ec7c7d7f0a87873771337755d48088e83f9c2"
+          }
+        },
+        {
+          "schemaVersion": "1",
+          "id": "dfad4317-d1e2-43c0-9396-05e1648cbc79",
+          "projectId": "cf39ed396b372d9f6ee425f1f3bb862e13978a68613e1d6c746d80fb6889cc16",
+          "runId": "1a2cb722-4f5b-4d1e-873a-0e99b2085dc2",
+          "actionId": "1081d29e-0aee-495f-9faa-60a8c66ba787",
+          "kind": "display.cad.brep",
+          "relativePath": "remote-results/fe4bdbd5-ec74-47b2-bc70-7efe35619f05/7-display.cad.brep.brep",
+          "sha256": "5c8bd8fc41bbc557da9126a611e456e4aa83a2fa491da333f34916c6e971b06d",
+          "sizeBytes": 4631,
+          "source": "domain-tool",
+          "inputHashes": {
+            "recipe.json": "f14e61eb18b1639e715a849e496ec7c7d7f0a87873771337755d48088e83f9c2"
+          }
+        },
+        {
+          "schemaVersion": "1",
+          "id": "a30a9c01-11de-4ccc-875a-c06b1d7242d3",
+          "projectId": "cf39ed396b372d9f6ee425f1f3bb862e13978a68613e1d6c746d80fb6889cc16",
+          "runId": "1a2cb722-4f5b-4d1e-873a-0e99b2085dc2",
+          "actionId": "1081d29e-0aee-495f-9faa-60a8c66ba787",
+          "kind": "display.cad.sketches",
+          "relativePath": "remote-results/fe4bdbd5-ec74-47b2-bc70-7efe35619f05/8-display.cad.sketches.sketches",
+          "sha256": "3375d0456e3c763c17da93b93ec7f1116c7a910f71c3a0f03019068bb5b80fdf",
+          "sizeBytes": 145,
+          "source": "domain-tool",
+          "inputHashes": {
+            "recipe.json": "f14e61eb18b1639e715a849e496ec7c7d7f0a87873771337755d48088e83f9c2"
+          }
+        },
+        {
+          "schemaVersion": "1",
+          "id": "da5897dd-d19d-4fd6-8ef3-1e3e8f7134ff",
+          "projectId": "cf39ed396b372d9f6ee425f1f3bb862e13978a68613e1d6c746d80fb6889cc16",
+          "runId": "1a2cb722-4f5b-4d1e-873a-0e99b2085dc2",
+          "actionId": "1081d29e-0aee-495f-9faa-60a8c66ba787",
+          "kind": "display.cad.manifest",
+          "relativePath": "remote-results/fe4bdbd5-ec74-47b2-bc70-7efe35619f05/9-display.cad.manifest.manifest",
+          "sha256": "e961583251dfdaa696add429fb7c127f895f8f83837506a0708a8161402f0e6f",
+          "sizeBytes": 1683,
+          "source": "domain-tool",
+          "inputHashes": {
+            "recipe.json": "f14e61eb18b1639e715a849e496ec7c7d7f0a87873771337755d48088e83f9c2"
+          }
+        },
+        {
+          "schemaVersion": "1",
+          "id": "9eecedbe-3a9f-4951-a957-9432a5b232bc",
+          "projectId": "cf39ed396b372d9f6ee425f1f3bb862e13978a68613e1d6c746d80fb6889cc16",
+          "runId": "1a2cb722-4f5b-4d1e-873a-0e99b2085dc2",
+          "actionId": "1081d29e-0aee-495f-9faa-60a8c66ba787",
+          "kind": "input.cad.recipe",
+          "relativePath": "remote-results/fe4bdbd5-ec74-47b2-bc70-7efe35619f05/10-input.cad.recipe.recipe",
+          "sha256": "efe9f517645075e1999b2809a1c746965c64f04da0a18b0f679a00728589b4cf",
+          "sizeBytes": 412,
+          "source": "domain-tool",
+          "inputHashes": {
+            "recipe.json": "f14e61eb18b1639e715a849e496ec7c7d7f0a87873771337755d48088e83f9c2"
+          }
+        }
+      ],
+      "inputHashes": {
+        "recipe.json": "f14e61eb18b1639e715a849e496ec7c7d7f0a87873771337755d48088e83f9c2"
+      },
+      "verificationIds": [
+        "39423edf-16c6-4756-b7a8-05065d8542ce"
+      ],
+      "createdAt": "2026-10-20T05:24:24.895Z"
+    },
+    "checkpoint": {
+      "schemaVersion": "1",
+      "id": "7f490ced-1bb4-4241-99b6-2d388a4baf53",
+      "parentId": "addf0afd-a943-4c56-a343-83f3417f1fbd",
+      "stateHash": "d1cb8a039085f283177579c89219d0bf7ca9801bbfbfd24ffa5a02b8f9a8e4e1",
+      "createdAt": "2026-10-20T05:24:24.896Z",
+      "state": {
+        "schemaVersion": "1",
+        "id": "a16968de-0cf9-4b9f-a4f0-ec9d8b1e3cf2",
+        "projectId": "cf39ed396b372d9f6ee425f1f3bb862e13978a68613e1d6c746d80fb6889cc16",
+        "domain": "cad",
+        "stage": null,
+        "status": "verified",
+        "artifacts": [
+          {
+            "schemaVersion": "1",
+            "id": "e75c7275-f3ec-4d48-9ff2-0648838d396d",
+            "projectId": "cf39ed396b372d9f6ee425f1f3bb862e13978a68613e1d6c746d80fb6889cc16",
+            "runId": "1a2cb722-4f5b-4d1e-873a-0e99b2085dc2",
+            "actionId": "1081d29e-0aee-495f-9faa-60a8c66ba787",
+            "kind": "log.tool",
+            "relativePath": "remote-results/fe4bdbd5-ec74-47b2-bc70-7efe35619f05/0-log.tool.log",
+            "sha256": "3c1c8fad27fd17ec26e800f96b37a0f09aa2c400448a94e6e419d23c9ce69aff",
+            "sizeBytes": 1034,
+            "source": "domain-tool",
+            "inputHashes": {
+              "recipe.json": "f14e61eb18b1639e715a849e496ec7c7d7f0a87873771337755d48088e83f9c2"
+            }
+          },
+          {
+            "schemaVersion": "1",
+            "id": "186f29e7-8e91-41d7-8a43-48c34fc3653e",
+            "projectId": "cf39ed396b372d9f6ee425f1f3bb862e13978a68613e1d6c746d80fb6889cc16",
+            "runId": "1a2cb722-4f5b-4d1e-873a-0e99b2085dc2",
+            "actionId": "1081d29e-0aee-495f-9faa-60a8c66ba787",
+            "kind": "report.cad.execution",
+            "relativePath": "remote-results/fe4bdbd5-ec74-47b2-bc70-7efe35619f05/1-report.cad.execution.json",
+            "sha256": "3e1abd7b2f3ed58708446ea6237a23004f85bf3f8ad710cf8a3e9eb9bc075f60",
+            "sizeBytes": 278,
+            "source": "domain-tool",
+            "inputHashes": {
+              "recipe.json": "f14e61eb18b1639e715a849e496ec7c7d7f0a87873771337755d48088e83f9c2"
+            }
+          },
+          {
+            "schemaVersion": "1",
+            "id": "97725fd4-d408-475c-86cf-b946911eb60c",
+            "projectId": "cf39ed396b372d9f6ee425f1f3bb862e13978a68613e1d6c746d80fb6889cc16",
+            "runId": "1a2cb722-4f5b-4d1e-873a-0e99b2085dc2",
+            "actionId": "1081d29e-0aee-495f-9faa-60a8c66ba787",
+            "kind": "report.cad.build",
+            "relativePath": "remote-results/fe4bdbd5-ec74-47b2-bc70-7efe35619f05/2-report.cad.build.json",
+            "sha256": "65732bb39779e398168c058fbb5b19afa9897f65b591355df81a9fab72eb2aa9",
+            "sizeBytes": 646,
+            "source": "domain-tool",
+            "inputHashes": {
+              "recipe.json": "f14e61eb18b1639e715a849e496ec7c7d7f0a87873771337755d48088e83f9c2"
+            }
+          },
+          {
+            "schemaVersion": "1",
+            "id": "20dc5e1e-bfbd-4051-93a3-d5958633c1f5",
+            "projectId": "cf39ed396b372d9f6ee425f1f3bb862e13978a68613e1d6c746d80fb6889cc16",
+            "runId": "1a2cb722-4f5b-4d1e-873a-0e99b2085dc2",
+            "actionId": "1081d29e-0aee-495f-9faa-60a8c66ba787",
+            "kind": "report.cad.readback",
+            "relativePath": "remote-results/fe4bdbd5-ec74-47b2-bc70-7efe35619f05/3-report.cad.readback.json",
+            "sha256": "849a27e61d97634cd5107856a99e8d6657705186f064f5724a8a9d2568198d3c",
+            "sizeBytes": 997,
+            "source": "domain-tool",
+            "inputHashes": {
+              "recipe.json": "f14e61eb18b1639e715a849e496ec7c7d7f0a87873771337755d48088e83f9c2"
+            }
+          },
+          {
+            "schemaVersion": "1",
+            "id": "7d1930ef-99da-4c2b-9a2b-6fe6991e68c9",
+            "projectId": "cf39ed396b372d9f6ee425f1f3bb862e13978a68613e1d6c746d80fb6889cc16",
+            "runId": "1a2cb722-4f5b-4d1e-873a-0e99b2085dc2",
+            "actionId": "1081d29e-0aee-495f-9faa-60a8c66ba787",
+            "kind": "model.cad.fcstd",
+            "relativePath": "remote-results/fe4bdbd5-ec74-47b2-bc70-7efe35619f05/4-model.cad.fcstd.fcstd",
+            "sha256": "0edde88b5f8d6918b7e21b183992322efebebe79226600ae7ed3d17e68233660",
+            "sizeBytes": 6667,
+            "source": "domain-tool",
+            "inputHashes": {
+              "recipe.json": "f14e61eb18b1639e715a849e496ec7c7d7f0a87873771337755d48088e83f9c2"
+            }
+          },
+          {
+            "schemaVersion": "1",
+            "id": "06a41e25-744e-4d46-a5e8-d0c9f3c5ca50",
+            "projectId": "cf39ed396b372d9f6ee425f1f3bb862e13978a68613e1d6c746d80fb6889cc16",
+            "runId": "1a2cb722-4f5b-4d1e-873a-0e99b2085dc2",
+            "actionId": "1081d29e-0aee-495f-9faa-60a8c66ba787",
+            "kind": "model.cad.step",
+            "relativePath": "remote-results/fe4bdbd5-ec74-47b2-bc70-7efe35619f05/5-model.cad.step.step",
+            "sha256": "59fa2d41fcf304feb3a8deb9839373d71048a11ca0d58d161aede69c2697e372",
+            "sizeBytes": 8288,
+            "source": "domain-tool",
+            "inputHashes": {
+              "recipe.json": "f14e61eb18b1639e715a849e496ec7c7d7f0a87873771337755d48088e83f9c2"
+            }
+          },
+          {
+            "schemaVersion": "1",
+            "id": "ba6b4955-0a74-46fc-9fbf-b43196d27743",
+            "projectId": "cf39ed396b372d9f6ee425f1f3bb862e13978a68613e1d6c746d80fb6889cc16",
+            "runId": "1a2cb722-4f5b-4d1e-873a-0e99b2085dc2",
+            "actionId": "1081d29e-0aee-495f-9faa-60a8c66ba787",
+            "kind": "model.cad.stl",
+            "relativePath": "remote-results/fe4bdbd5-ec74-47b2-bc70-7efe35619f05/6-model.cad.stl.stl",
+            "sha256": "f632d2532da29ad4989c5b9bdfe62983c474aa4edcf5fe9ba8acc5ff5979c611",
+            "sizeBytes": 26084,
+            "source": "domain-tool",
+            "inputHashes": {
+              "recipe.json": "f14e61eb18b1639e715a849e496ec7c7d7f0a87873771337755d48088e83f9c2"
+            }
+          },
+          {
+            "schemaVersion": "1",
+            "id": "dfad4317-d1e2-43c0-9396-05e1648cbc79",
+            "projectId": "cf39ed396b372d9f6ee425f1f3bb862e13978a68613e1d6c746d80fb6889cc16",
+            "runId": "1a2cb722-4f5b-4d1e-873a-0e99b2085dc2",
+            "actionId": "1081d29e-0aee-495f-9faa-60a8c66ba787",
+            "kind": "display.cad.brep",
+            "relativePath": "remote-results/fe4bdbd5-ec74-47b2-bc70-7efe35619f05/7-display.cad.brep.brep",
+            "sha256": "5c8bd8fc41bbc557da9126a611e456e4aa83a2fa491da333f34916c6e971b06d",
+            "sizeBytes": 4631,
+            "source": "domain-tool",
+            "inputHashes": {
+              "recipe.json": "f14e61eb18b1639e715a849e496ec7c7d7f0a87873771337755d48088e83f9c2"
+            }
+          },
+          {
+            "schemaVersion": "1",
+            "id": "a30a9c01-11de-4ccc-875a-c06b1d7242d3",
+            "projectId": "cf39ed396b372d9f6ee425f1f3bb862e13978a68613e1d6c746d80fb6889cc16",
+            "runId": "1a2cb722-4f5b-4d1e-873a-0e99b2085dc2",
+            "actionId": "1081d29e-0aee-495f-9faa-60a8c66ba787",
+            "kind": "display.cad.sketches",
+            "relativePath": "remote-results/fe4bdbd5-ec74-47b2-bc70-7efe35619f05/8-display.cad.sketches.sketches",
+            "sha256": "3375d0456e3c763c17da93b93ec7f1116c7a910f71c3a0f03019068bb5b80fdf",
+            "sizeBytes": 145,
+            "source": "domain-tool",
+            "inputHashes": {
+              "recipe.json": "f14e61eb18b1639e715a849e496ec7c7d7f0a87873771337755d48088e83f9c2"
+            }
+          },
+          {
+            "schemaVersion": "1",
+            "id": "da5897dd-d19d-4fd6-8ef3-1e3e8f7134ff",
+            "projectId": "cf39ed396b372d9f6ee425f1f3bb862e13978a68613e1d6c746d80fb6889cc16",
+            "runId": "1a2cb722-4f5b-4d1e-873a-0e99b2085dc2",
+            "actionId": "1081d29e-0aee-495f-9faa-60a8c66ba787",
+            "kind": "display.cad.manifest",
+            "relativePath": "remote-results/fe4bdbd5-ec74-47b2-bc70-7efe35619f05/9-display.cad.manifest.manifest",
+            "sha256": "e961583251dfdaa696add429fb7c127f895f8f83837506a0708a8161402f0e6f",
+            "sizeBytes": 1683,
+            "source": "domain-tool",
+            "inputHashes": {
+              "recipe.json": "f14e61eb18b1639e715a849e496ec7c7d7f0a87873771337755d48088e83f9c2"
+            }
+          },
+          {
+            "schemaVersion": "1",
+            "id": "9eecedbe-3a9f-4951-a957-9432a5b232bc",
+            "projectId": "cf39ed396b372d9f6ee425f1f3bb862e13978a68613e1d6c746d80fb6889cc16",
+            "runId": "1a2cb722-4f5b-4d1e-873a-0e99b2085dc2",
+            "actionId": "1081d29e-0aee-495f-9faa-60a8c66ba787",
+            "kind": "input.cad.recipe",
+            "relativePath": "remote-results/fe4bdbd5-ec74-47b2-bc70-7efe35619f05/10-input.cad.recipe.recipe",
+            "sha256": "efe9f517645075e1999b2809a1c746965c64f04da0a18b0f679a00728589b4cf",
+            "sizeBytes": 412,
+            "source": "domain-tool",
+            "inputHashes": {
+              "recipe.json": "f14e61eb18b1639e715a849e496ec7c7d7f0a87873771337755d48088e83f9c2"
+            }
+          }
+        ],
+        "inputHashes": {
+          "recipe.json": "f14e61eb18b1639e715a849e496ec7c7d7f0a87873771337755d48088e83f9c2"
+        },
+        "verificationIds": [
+          "39423edf-16c6-4756-b7a8-05065d8542ce"
+        ],
+        "createdAt": "2026-10-20T05:24:24.895Z"
+      },
+      "runId": "1a2cb722-4f5b-4d1e-873a-0e99b2085dc2",
+      "actionIds": [
+        "1081d29e-0aee-495f-9faa-60a8c66ba787"
+      ],
+      "artifactIds": [
+        "e75c7275-f3ec-4d48-9ff2-0648838d396d",
+        "186f29e7-8e91-41d7-8a43-48c34fc3653e",
+        "97725fd4-d408-475c-86cf-b946911eb60c",
+        "20dc5e1e-bfbd-4051-93a3-d5958633c1f5",
+        "7d1930ef-99da-4c2b-9a2b-6fe6991e68c9",
+        "06a41e25-744e-4d46-a5e8-d0c9f3c5ca50",
+        "ba6b4955-0a74-46fc-9fbf-b43196d27743",
+        "dfad4317-d1e2-43c0-9396-05e1648cbc79",
+        "a30a9c01-11de-4ccc-875a-c06b1d7242d3",
+        "da5897dd-d19d-4fd6-8ef3-1e3e8f7134ff",
+        "9eecedbe-3a9f-4951-a957-9432a5b232bc"
+      ]
+    },
+    "remoteRun": {
+      "actionId": "1081d29e-0aee-495f-9faa-60a8c66ba787",
+      "requestId": "fe4bdbd5-ec74-47b2-bc70-7efe35619f05",
+      "snapshotId": "61986c1d-c84a-493b-92da-d829cfc3818f",
+      "verification": "passed",
+      "release": {
+        "status": "released",
+        "sessionId": "e7355e45-0490-4b7b-87e8-226713742666"
+      },
+      "artifactChecks": [
+        {
+          "id": "e75c7275-f3ec-4d48-9ff2-0648838d396d",
+          "kind": "log.tool",
+          "sha256": "3c1c8fad27fd17ec26e800f96b37a0f09aa2c400448a94e6e419d23c9ce69aff",
+          "sizeBytes": 1034
+        },
+        {
+          "id": "186f29e7-8e91-41d7-8a43-48c34fc3653e",
+          "kind": "report.cad.execution",
+          "sha256": "3e1abd7b2f3ed58708446ea6237a23004f85bf3f8ad710cf8a3e9eb9bc075f60",
+          "sizeBytes": 278
+        },
+        {
+          "id": "97725fd4-d408-475c-86cf-b946911eb60c",
+          "kind": "report.cad.build",
+          "sha256": "65732bb39779e398168c058fbb5b19afa9897f65b591355df81a9fab72eb2aa9",
+          "sizeBytes": 646
+        },
+        {
+          "id": "20dc5e1e-bfbd-4051-93a3-d5958633c1f5",
+          "kind": "report.cad.readback",
+          "sha256": "849a27e61d97634cd5107856a99e8d6657705186f064f5724a8a9d2568198d3c",
+          "sizeBytes": 997
+        },
+        {
+          "id": "7d1930ef-99da-4c2b-9a2b-6fe6991e68c9",
+          "kind": "model.cad.fcstd",
+          "sha256": "0edde88b5f8d6918b7e21b183992322efebebe79226600ae7ed3d17e68233660",
+          "sizeBytes": 6667
+        },
+        {
+          "id": "06a41e25-744e-4d46-a5e8-d0c9f3c5ca50",
+          "kind": "model.cad.step",
+          "sha256": "59fa2d41fcf304feb3a8deb9839373d71048a11ca0d58d161aede69c2697e372",
+          "sizeBytes": 8288
+        },
+        {
+          "id": "ba6b4955-0a74-46fc-9fbf-b43196d27743",
+          "kind": "model.cad.stl",
+          "sha256": "f632d2532da29ad4989c5b9bdfe62983c474aa4edcf5fe9ba8acc5ff5979c611",
+          "sizeBytes": 26084
+        },
+        {
+          "id": "dfad4317-d1e2-43c0-9396-05e1648cbc79",
+          "kind": "display.cad.brep",
+          "sha256": "5c8bd8fc41bbc557da9126a611e456e4aa83a2fa491da333f34916c6e971b06d",
+          "sizeBytes": 4631
+        },
+        {
+          "id": "a30a9c01-11de-4ccc-875a-c06b1d7242d3",
+          "kind": "display.cad.sketches",
+          "sha256": "3375d0456e3c763c17da93b93ec7f1116c7a910f71c3a0f03019068bb5b80fdf",
+          "sizeBytes": 145
+        },
+        {
+          "id": "da5897dd-d19d-4fd6-8ef3-1e3e8f7134ff",
+          "kind": "display.cad.manifest",
+          "sha256": "e961583251dfdaa696add429fb7c127f895f8f83837506a0708a8161402f0e6f",
+          "sizeBytes": 1683
+        },
+        {
+          "id": "9eecedbe-3a9f-4951-a957-9432a5b232bc",
+          "kind": "input.cad.recipe",
+          "sha256": "efe9f517645075e1999b2809a1c746965c64f04da0a18b0f679a00728589b4cf",
+          "sizeBytes": 412
+        }
+      ],
+      "inputHashes": {
+        "recipe.json": "f14e61eb18b1639e715a849e496ec7c7d7f0a87873771337755d48088e83f9c2"
+      }
+    },
+    "journal": {
+      "status": "completed",
+      "outcome": "completed",
+      "needsImport": false,
+      "sessionRelease": {
+        "status": "released",
+        "sessionId": "e7355e45-0490-4b7b-87e8-226713742666"
+      }
+    },
+    "receipt": {
+      "requestId": "fe4bdbd5-ec74-47b2-bc70-7efe35619f05",
+      "snapshotId": "61986c1d-c84a-493b-92da-d829cfc3818f",
+      "status": "completed",
+      "persisted": true,
+      "verification": {
+        "id": "07cf04af-d1db-4632-b9fb-dd63b559b493",
+        "schemaVersion": "1",
+        "status": "passed",
+        "verifierId": "cad.freecad.geometry",
+        "reason": "Separate FreeCAD readback confirms valid solids, constrained sketches and matching FCStd/STEP/BREP geometry. Supplied dimensional expectations passed. This checks geometry, not mechanical strength or manufacturability.",
+        "metrics": {
+          "nativeValid": true,
+          "stepValid": true,
+          "brepValid": true,
+          "brepAgreement": true,
+          "positiveVolume": true,
+          "solidPresent": true,
+          "meshPresent": true,
+          "sketchesConstrained": true,
+          "exportAgreement": true,
+          "artifactsPresent": true,
+          "inputUnchanged": true,
+          "expectedVolume": true,
+          "expectedSolids": true,
+          "expectedBounds": true,
+          "volume": 3937.1681469282034,
+          "solids": 1,
+          "boundsX": 40,
+          "boundsY": 20,
+          "boundsZ": 5
+        },
+        "evidence": {
+          "artifactIds": [
+            "40efe335-d50e-4f21-8d7a-24de79aeb60a",
+            "951f9d02-da40-4bd9-893a-a1bf4537c359",
+            "c2cf8a7f-9077-4da5-8ad1-23c7f01dbe30",
+            "825f1717-d2fb-4157-aefd-55ed3ce2a06d",
+            "e7f57ca7-0646-4025-aa0e-0f10edb0eb03",
+            "4e9b7640-b2db-4e2c-b71e-c4ed4dffdd13",
+            "427de343-31a0-479a-b880-547b08827aa4",
+            "841b3b80-67fa-4fa2-9b62-b6acf6cb4c3c",
+            "5a7c30d7-70ba-4eb0-bf6b-bd8ee86b2a11",
+            "62808a65-a80f-4a08-a504-6ef4e3069cd7",
+            "b45c07f3-c242-4c0e-b275-694ce8a73e9f"
+          ],
+          "inputHashes": {
+            "invocation.json": "fa6a0086c582414705cafcc0f51a3f6d35c31c38551bd432d3d65f595ae5d7e2"
+          }
+        },
+        "checks": [
+          {
+            "name": "log.tool.sha256",
+            "passed": true
+          },
+          {
+            "name": "report.cad.execution.sha256",
+            "passed": true
+          },
+          {
+            "name": "report.cad.build.sha256",
+            "passed": true
+          },
+          {
+            "name": "report.cad.readback.sha256",
+            "passed": true
+          },
+          {
+            "name": "model.cad.fcstd.sha256",
+            "passed": true
+          },
+          {
+            "name": "model.cad.step.sha256",
+            "passed": true
+          },
+          {
+            "name": "model.cad.stl.sha256",
+            "passed": true
+          },
+          {
+            "name": "display.cad.brep.sha256",
+            "passed": true
+          },
+          {
+            "name": "display.cad.sketches.sha256",
+            "passed": true
+          },
+          {
+            "name": "display.cad.manifest.sha256",
+            "passed": true
+          },
+          {
+            "name": "input.cad.recipe.sha256",
+            "passed": true
+          }
+        ]
+      }
+    },
+    "copiedArtifacts": [
+      {
+        "file": "cad-2-execution.json",
+        "artifact": {
+          "schemaVersion": "1",
+          "id": "186f29e7-8e91-41d7-8a43-48c34fc3653e",
+          "projectId": "cf39ed396b372d9f6ee425f1f3bb862e13978a68613e1d6c746d80fb6889cc16",
+          "runId": "1a2cb722-4f5b-4d1e-873a-0e99b2085dc2",
+          "actionId": "1081d29e-0aee-495f-9faa-60a8c66ba787",
+          "kind": "report.cad.execution",
+          "relativePath": "remote-results/fe4bdbd5-ec74-47b2-bc70-7efe35619f05/1-report.cad.execution.json",
+          "sha256": "3e1abd7b2f3ed58708446ea6237a23004f85bf3f8ad710cf8a3e9eb9bc075f60",
+          "sizeBytes": 278,
+          "source": "domain-tool",
+          "inputHashes": {
+            "recipe.json": "f14e61eb18b1639e715a849e496ec7c7d7f0a87873771337755d48088e83f9c2"
+          }
+        }
+      },
+      {
+        "file": "cad-2-readback.json",
+        "artifact": {
+          "schemaVersion": "1",
+          "id": "20dc5e1e-bfbd-4051-93a3-d5958633c1f5",
+          "projectId": "cf39ed396b372d9f6ee425f1f3bb862e13978a68613e1d6c746d80fb6889cc16",
+          "runId": "1a2cb722-4f5b-4d1e-873a-0e99b2085dc2",
+          "actionId": "1081d29e-0aee-495f-9faa-60a8c66ba787",
+          "kind": "report.cad.readback",
+          "relativePath": "remote-results/fe4bdbd5-ec74-47b2-bc70-7efe35619f05/3-report.cad.readback.json",
+          "sha256": "849a27e61d97634cd5107856a99e8d6657705186f064f5724a8a9d2568198d3c",
+          "sizeBytes": 997,
+          "source": "domain-tool",
+          "inputHashes": {
+            "recipe.json": "f14e61eb18b1639e715a849e496ec7c7d7f0a87873771337755d48088e83f9c2"
+          }
+        }
+      }
+    ]
+  }
+]

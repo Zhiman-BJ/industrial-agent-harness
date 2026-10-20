@@ -25,7 +25,6 @@ export function ProjectDetails({
 }) {
   const { t } = useDisplayText();
   const [domain, setDomain] = useState(project.domain || '');
-  const [executionReady, setExecutionReady] = useState(project.executionLocation !== 'remote');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   useEffect(() => {
@@ -55,7 +54,7 @@ export function ProjectDetails({
           <button
             className="ia-project-start"
             onClick={() => void onNewChat()}
-            disabled={busy || !project.domain || !executionReady}
+            disabled={busy || !project.domain}
           >
             <MessageSquarePlus size={15} />
             {t('New chat')}
@@ -101,12 +100,7 @@ export function ProjectDetails({
           </div>
         </div>
         {project.domain && (
-          <ProjectExecution
-            project={project}
-            busy={busy}
-            onChanged={onResourcesChanged}
-            onReady={setExecutionReady}
-          />
+          <ProjectExecution project={project} busy={busy} onChanged={onResourcesChanged} />
         )}
         {project.executionLocation !== 'remote' && (
           <>

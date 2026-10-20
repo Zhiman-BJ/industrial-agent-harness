@@ -1,0 +1,154 @@
+{
+  "kind": "electron-window-readiness-probe",
+  "commit": "a283fec5bbe47dbdd1c263da38c25258b4a95105",
+  "startedAt": "2026-10-20T05:35:36.451Z",
+  "finishedAt": "2026-10-20T05:35:37.683Z",
+  "platform": "darwin",
+  "arch": "arm64",
+  "node": "v26.10.0",
+  "verdict": "blocked",
+  "scope": "Current workspace build and one bounded Electron launch; no click acceptance or remote execution performed.",
+  "initialCommand": {
+    "command": "pnpm --filter @industrial-agent-harness/desktop build",
+    "exitCode": 1,
+    "error": "tsc: command not found",
+    "remediation": "Used package-declared executable files directly for the readiness probe; did not reinstall or alter the shared dependencies."
+  },
+  "dependencyContext": {
+    "mode": "existing shared node_modules",
+    "typescript": "7.0.2",
+    "vite": "8.2.2",
+    "electron": "44.0.0",
+    "note": "Missing .bin wrappers; invoked installed package manifest bin entries directly. No dependency installation or mutation. This probe does not certify a clean frozen-lockfile installation."
+  },
+  "steps": [
+    {
+      "name": "typescript",
+      "args": [
+        "--noEmit"
+      ],
+      "exitCode": 0,
+      "signal": null,
+      "verdict": "pass"
+    },
+    {
+      "name": "vite",
+      "args": [
+        "build"
+      ],
+      "exitCode": 0,
+      "signal": null,
+      "verdict": "pass"
+    },
+    {
+      "name": "electron-start",
+      "args": [
+        ".",
+        "--remote-ui-selftest"
+      ],
+      "exitCode": null,
+      "signal": "SIGABRT",
+      "verdict": "blocked",
+      "timeoutMs": 45000
+    }
+  ],
+  "desktopObservation": {
+    "method": "native application inventory before and after probe",
+    "harnessRunning": false,
+    "clickableHarnessWindow": false
+  },
+  "inferenceBoundary": "SIGABRT is newly observed. No new crash stack was collected; this record does not newly attribute the failure to _RegisterApplication or a specific OS policy.",
+  "evidence": {
+    "report.json": {
+      "sha256": "c50ee0dba3b52b8afec9ce3c8b5793061bdfc9579c53f147b666382d86a0ae94",
+      "bytes": 1468
+    },
+    "typescript.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "vite.log": {
+      "sha256": "e7fd1cebd98c87df87ed603fdaa8456abc3b6ac7ff649c03216929e3134b8e91",
+      "bytes": 2143
+    },
+    "electron-start.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    }
+  },
+  "runtimeBoundaries": {
+    "headlessLiveAcceptance": "passed separately",
+    "electronClickAcceptance": "blocked",
+    "modelAndRemoteDuringProbe": "not invoked"
+  },
+  "nextStep": "Run the Electron click matrix in a host GUI session that supplies a running current-build window, then record screenshots and real canonical remote evidence separately.",
+  "rawReport": "dist/ci-reports/electron-click-probe-20261020-qaJpFl/report.json",
+  "cases": [
+    {
+      "id": "RE-E01",
+      "status": "blocked",
+      "reason": "electron-window-unavailable",
+      "actualClickCount": 0
+    },
+    {
+      "id": "RE-E02",
+      "status": "blocked",
+      "reason": "electron-window-unavailable",
+      "actualClickCount": 0
+    },
+    {
+      "id": "RE-E03",
+      "status": "blocked",
+      "reason": "electron-window-unavailable",
+      "actualClickCount": 0
+    },
+    {
+      "id": "RE-E04",
+      "status": "blocked",
+      "reason": "electron-window-unavailable",
+      "actualClickCount": 0
+    },
+    {
+      "id": "RE-E05",
+      "status": "blocked",
+      "reason": "electron-window-unavailable",
+      "actualClickCount": 0
+    },
+    {
+      "id": "RE-E06",
+      "status": "blocked",
+      "reason": "electron-window-unavailable",
+      "actualClickCount": 0
+    },
+    {
+      "id": "RE-E07",
+      "status": "blocked",
+      "reason": "electron-window-unavailable",
+      "actualClickCount": 0
+    },
+    {
+      "id": "RE-E08",
+      "status": "blocked",
+      "reason": "electron-window-unavailable",
+      "actualClickCount": 0
+    },
+    {
+      "id": "RE-E09",
+      "status": "blocked",
+      "reason": "electron-window-unavailable",
+      "actualClickCount": 0
+    },
+    {
+      "id": "RE-E10",
+      "status": "blocked",
+      "reason": "electron-window-unavailable",
+      "actualClickCount": 0
+    },
+    {
+      "id": "RE-E11",
+      "status": "blocked",
+      "reason": "electron-window-unavailable",
+      "actualClickCount": 0
+    }
+  ]
+}

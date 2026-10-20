@@ -97,6 +97,8 @@ function portableFiles() {
       'tests/ci/ci-areas.test.cjs',
       'tests/ci/native-evidence.test.cjs',
       'tests/ci/runtime-archives.test.cjs',
+      'tests/ci/current-user-installers.test.cjs',
+      'tests/ci/remote-chat-model-fixture.test.cjs',
       'tests/ci/qa-cleanup.test.cjs',
       'tests/ci/smoke-packaged-cad-fixture.test.cjs',
       'tests/ci/release-desktop.test.cjs',
@@ -125,6 +127,16 @@ function allowedSkips(suite, platform = process.platform) {
       'natural parent exit also cleans up orphaned tools before close',
       'a real login shell reports its PATH between the markers',
       'a hanging login shell is abandoned after the timeout',
+      'POSIX platform selection has no bubblewrap or Seatbelt prerequisite',
+    );
+  }
+  if (['darwin', 'linux'].includes(platform)) {
+    skips.push(
+      'Windows current-user launch supports null-device I/O and headless subprocess primitives',
+      'Windows current-user descendants preserve argv and pipes and retain normal user file permissions',
+      'Windows current-user cancellation stops the live process tree',
+      'Windows current-user execution runs pinned Kimi tools and resumes the same real conversation',
+      'Windows shared Agent starts a chat with nested settings storage and reports current-user permissions',
     );
   }
   return skips;

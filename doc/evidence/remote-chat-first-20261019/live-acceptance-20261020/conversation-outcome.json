@@ -1,0 +1,119 @@
+{
+  "text": "两次真实远端 CAD 验证均为 passed。actionId：942a41b3-b7c0-46d0-86d3-ea4b1a7e532e、1081d29e-0aee-495f-9faa-60a8c66ba787。已读取实际报告 artifact 186f29e7-8e91-41d7-8a43-48c34fc3653e（report.cad.execution）。",
+  "done": [
+    {
+      "type": "done",
+      "result": {
+        "status": "finished"
+      },
+      "recordedAt": "2026-10-20T05:24:25.630Z",
+      "metadata": {
+        "chatId": "422cc046-7531-42e6-ad22-80c01eb3e86c",
+        "projectId": "<test-root>/project",
+        "turnId": "cbf80cfa-f18b-40d0-9f06-b523ce736083",
+        "eventRevision": 129
+      }
+    }
+  ],
+  "reportReads": [
+    {
+      "artifactId": "186f29e7-8e91-41d7-8a43-48c34fc3653e",
+      "kind": "report.cad.execution",
+      "toolCallId": "remote-chat-fdcf88e5-5c94-4343-96fd-50c028104935"
+    }
+  ],
+  "completion": {
+    "status": "finished",
+    "chatId": "422cc046-7531-42e6-ad22-80c01eb3e86c",
+    "turnId": "cbf80cfa-f18b-40d0-9f06-b523ce736083",
+    "results": {
+      "schemaVersion": "1",
+      "projectId": "cf39ed396b372d9f6ee425f1f3bb862e13978a68613e1d6c746d80fb6889cc16",
+      "chatId": "422cc046-7531-42e6-ad22-80c01eb3e86c",
+      "turnId": "cbf80cfa-f18b-40d0-9f06-b523ce736083",
+      "revision": 7,
+      "phase": "settled",
+      "requestStatus": "finished",
+      "actionIds": [
+        "59e94a52-7d68-4cc3-8afc-80b6661e0b28",
+        "777240fc-7aa7-4d57-800c-593e70af27e0",
+        "ada40ddd-b64a-4ccf-9583-e8bc22b5401d",
+        "942a41b3-b7c0-46d0-86d3-ea4b1a7e532e",
+        "0544e131-695f-4315-b466-ad299c9d1a99",
+        "1081d29e-0aee-495f-9faa-60a8c66ba787"
+      ],
+      "groups": [
+        {
+          "title": "recipe.json",
+          "primaryArtifactId": "a5f0dc5e-8f6c-4dfc-b1de-a12e200debe7",
+          "previewArtifactId": "a5f0dc5e-8f6c-4dfc-b1de-a12e200debe7",
+          "attachmentArtifactIds": [],
+          "companionArtifactIds": [],
+          "schemaVersion": "1",
+          "id": "0544e131-695f-4315-b466-ad299c9d1a99:file-0",
+          "projectId": "cf39ed396b372d9f6ee425f1f3bb862e13978a68613e1d6c746d80fb6889cc16",
+          "chatId": "422cc046-7531-42e6-ad22-80c01eb3e86c",
+          "turnId": "cbf80cfa-f18b-40d0-9f06-b523ce736083",
+          "actionId": "0544e131-695f-4315-b466-ad299c9d1a99",
+          "supersedes": [],
+          "verificationRefs": [
+            {
+              "actionId": "0544e131-695f-4315-b466-ad299c9d1a99",
+              "verificationId": "6f53491d-610f-47b0-940e-7530dbac8fb6"
+            }
+          ],
+          "historical": false,
+          "superseded": false,
+          "selected": false,
+          "artifacts": [
+            {
+              "schemaVersion": "1",
+              "id": "a5f0dc5e-8f6c-4dfc-b1de-a12e200debe7",
+              "projectId": "cf39ed396b372d9f6ee425f1f3bb862e13978a68613e1d6c746d80fb6889cc16",
+              "runId": "5d1f8fa8-1f4b-4406-9642-584587fb51b1",
+              "actionId": "0544e131-695f-4315-b466-ad299c9d1a99",
+              "kind": "file.project",
+              "relativePath": "recipe.json",
+              "sha256": "f14e61eb18b1639e715a849e496ec7c7d7f0a87873771337755d48088e83f9c2",
+              "sizeBytes": 608,
+              "source": "domain-tool",
+              "inputHashes": {
+                "recipe.json": "1f9fdd40a5e462caec414574042f97e5dba38fe20490cbc7a8517d784cc15b82"
+              }
+            }
+          ],
+          "executionStatus": "completed",
+          "contentStatus": "recorded",
+          "verifications": [
+            {
+              "schemaVersion": "1",
+              "id": "6f53491d-610f-47b0-940e-7530dbac8fb6",
+              "status": "not_run",
+              "verifierId": "project.files.integrity",
+              "reason": "Input changes were recorded. Engineering verification must be rerun for the new inputs.",
+              "metrics": {},
+              "evidence": {
+                "artifactIds": [
+                  "93e41c63-1670-4540-9e02-0e749caeb8fb",
+                  "a5f0dc5e-8f6c-4dfc-b1de-a12e200debe7"
+                ],
+                "inputHashes": {
+                  "recipe.json": "1f9fdd40a5e462caec414574042f97e5dba38fe20490cbc7a8517d784cc15b82"
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "selection": null,
+      "checks": [],
+      "historicalGroups": [],
+      "executionStatus": "completed"
+    },
+    "engineering": {
+      "stateId": "a16968de-0cf9-4b9f-a4f0-ec9d8b1e3cf2",
+      "status": "verified",
+      "checkpointId": "7f490ced-1bb4-4241-99b6-2d388a4baf53"
+    }
+  }
+}

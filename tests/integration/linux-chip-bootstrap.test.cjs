@@ -5,10 +5,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
-const source = path.join(
-  require('../../packages/domain-skills/src/index.cjs').packSourceDirectory('chip-pack'),
-  'linux-bootstrap.sh',
-);
+const source = path.resolve(__dirname, '../../scripts/installers/linux-bootstrap.sh');
 const run = (args, env = process.env) =>
   spawnSync('bash', [source, ...args], { env, encoding: 'utf8' });
 
@@ -97,6 +94,38 @@ test('help is available without downloads or system setup', () => {
   assert.equal(result.status, 0);
   assert.match(result.stdout, /Usage:/);
   assert.match(result.stdout, /sudo is requested only for missing system dependencies/);
+  assert.match(result.stdout, /Agent processes run with current-user permissions/);
+  assert.match(result.stdout, /Declared local tasks separately require bubblewrap/);
+});
+
+test('current-user Agent system setup succeeds without bubblewrap or Docker when image setup is skipped', t => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'chip-no-bwrap-'));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  for (const [name, executable] of Object.entries({
+    bash: '/bin/bash',
+    mktemp: '/usr/bin/mktemp',
+    rm: '/bin/rm',
+  }))
+    fs.symlinkSync(executable, path.join(directory, name));
+  const programs = {
+    uname: 'if [[ "$1" == -s ]]; then echo Linux; else echo x86_64; fi',
+    wget: 'exit 91',
+    sha256sum: 'exit 91',
+    awk: 'exit 91',
+    tar: 'exit 91',
+    flock: 'exit 91',
+    curl: 'exit 91',
+    rg: 'exit 91',
+  };
+  for (const [name, body] of Object.entries(programs))
+    fs.writeFileSync(path.join(directory, name), `#!/bin/bash\n${body}\n`, { mode: 0o755 });
+  const env = { ...process.env, PATH: directory };
+  assert.equal(spawnSync('bash', ['-c', 'command -v bwrap'], { env }).status, 1);
+  assert.equal(spawnSync('bash', ['-c', 'command -v docker'], { env }).status, 1);
+  const result = run(['--system-only', '--skip-image'], env);
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /System dependencies ready/);
+  assert.doesNotMatch(result.stdout, /Downloading|Preparing missing system dependencies/);
 });
 
 test('invalid arguments are rejected before attempting installation', () => {

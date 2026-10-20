@@ -240,7 +240,7 @@ test('workflow jobs use the selected core/full plan and reusable workflows keep 
         : [
             'Install the previous public preview before upgrading',
             'Build clean immutable installer and verify actual installed consumer',
-            'Verify installed host Docker execution alongside the protected Agent',
+            'Verify installed host Docker execution alongside the current-user Agent',
           ];
     for (const title of expensive) assert.match(step(title), /if: inputs.full/);
     const core =
@@ -248,7 +248,7 @@ test('workflow jobs use the selected core/full plan and reusable workflows keep 
         ? ['Verify installed application first run', 'Verify workbench UI and language switching']
         : [
             'Native Agent, project discovery, real RTL and recovery',
-            'Verify packaged headless Agent through its production process boundary',
+            'Verify packaged headless Agent through its current-user launcher',
           ];
     for (const title of core) assert.doesNotMatch(step(title), /if:/);
   }

@@ -1,0 +1,94 @@
+{
+  "note": "Decisions are final approvals.json records. Pre-decision preview snapshots are joined by approval ID; their initial defensive default is not an outcome.",
+  "plan": {
+    "id": "6cb03d17-134e-455d-97a3-a5e0be7ba764",
+    "domain": "cad",
+    "destination": "https://industrial-mcp-remote-test.pvg1s1-cloud.internal.zhiman.tech",
+    "manifestDigest": "213bf66d60fe10e32e43dfffb6ea7ebfb6337529ee54543a0c41cb1a98e6b9f3",
+    "files": [
+      {
+        "path": "recipe.json",
+        "sha256": "1f9fdd40a5e462caec414574042f97e5dba38fe20490cbc7a8517d784cc15b82",
+        "sizeBytes": 607
+      }
+    ],
+    "totalBytes": 607,
+    "remember": true,
+    "tools": [
+      "cad.freecad.build"
+    ],
+    "explicitTools": true,
+    "capabilitySnapshotHash": "10b6ec8d6020371a9df22b5e616a4c5be1233910f99193372dd5311ee1f6d6de",
+    "ownerId": "422cc046-7531-42e6-ad22-80c01eb3e86c",
+    "taskId": "cbf80cfa-f18b-40d0-9f06-b523ce736083",
+    "reviewId": "6cb03d17-134e-455d-97a3-a5e0be7ba764",
+    "status": "awaiting_batch_approval"
+  },
+  "approvals": [
+    {
+      "id": "607118bb-c2da-40a4-881e-0a674b69a984",
+      "action": "project.remote.prepare",
+      "turnId": "cbf80cfa-f18b-40d0-9f06-b523ce736083",
+      "stateId": "1e199d20-ec7d-4cd3-93fc-eccedadf56cb",
+      "decision": "approve",
+      "category": "batch",
+      "preview": {
+        "title": "Approve remote task / 批量授权远端任务",
+        "text": "Destination / 目标: https://industrial-mcp-remote-test.pvg1s1-cloud.internal.zhiman.tech\nFiles / 文件 (1, 607 bytes):\nrecipe.json (607 bytes)\nManifest SHA-256: 213bf66d60fe10e32e43dfffb6ea7ebfb6337529ee54543a0c41cb1a98e6b9f3\nAllowed tools for this task, subject to live availability / 本次任务允许的工具，以环境实际可用项为准: cad.freecad.build\nAutomatically sync future changes to these exact files / 自动同步以上文件的后续修改。\nAdded files or tools require another batch approval / 新增文件或工具需再次批量确认。",
+        "truncated": false,
+        "stateId": "1e199d20-ec7d-4cd3-93fc-eccedadf56cb",
+        "requestSha256": "eaa5c42179e00af081d6cb5ce7cd6886369d2413b2867ec0864dd10a01fd1b96"
+      }
+    },
+    {
+      "id": "405cee31-a418-4c57-be7f-6f8bd249ae30",
+      "action": "project.files.apply",
+      "turnId": "cbf80cfa-f18b-40d0-9f06-b523ce736083",
+      "stateId": "03a7ec09-00d4-4669-8772-81b73f7bb385",
+      "decision": "approve",
+      "category": "localEdit",
+      "preview": {
+        "title": "Edit 1 project files",
+        "text": "Modify recipe.json\n\n--- recipe.json (current)\n+++ recipe.json (proposed)\n   }\n }\n \n+",
+        "truncated": false,
+        "stateId": "03a7ec09-00d4-4669-8772-81b73f7bb385",
+        "requestSha256": "0e5691d112e06ea277d718f3897a67bc53b686f79a7f6f2e48da48c8b629c7fd"
+      }
+    }
+  ],
+  "preparation": {
+    "ready": {
+      "status": "ready",
+      "tools": [
+        "cad.freecad.build"
+      ],
+      "unavailableTools": [],
+      "destination": "https://industrial-mcp-remote-test.pvg1s1-cloud.internal.zhiman.tech",
+      "files": [
+        {
+          "path": "recipe.json",
+          "sha256": "1f9fdd40a5e462caec414574042f97e5dba38fe20490cbc7a8517d784cc15b82",
+          "sizeBytes": 607
+        }
+      ],
+      "remember": true,
+      "verification": "not_run",
+      "authorization": "[redacted]"
+    },
+    "session": {
+      "schemaVersion": 1,
+      "key": "0f19065a8c2bda9794db8b61937c7dd1ebbd0ca61640c17858d0a6db4a0b6a03",
+      "serviceIdentity": "0c11755d8a8f0b2dabdc4de94d715eb857f65e5534bb537c745e5ecf0db45eab",
+      "remoteProjectId": "4015acd4-da17-4f06-87b2-79f2918f9221",
+      "domain": "cad",
+      "chatId": "422cc046-7531-42e6-ad22-80c01eb3e86c",
+      "clientSessionId": "69e268c2-1a3b-4f30-bed4-1a4fcf757ff5",
+      "applicationSessionId": null,
+      "createdAt": "2026-10-20T05:23:59.528Z",
+      "status": "released",
+      "updatedAt": "2026-10-20T05:24:00.577Z",
+      "previousClientSessionId": "548e62eb-63d8-4989-955f-2818f9286470",
+      "previousApplicationSessionId": "51e6ce5f-6ff8-4892-a487-4a472bad3e9d"
+    }
+  }
+}

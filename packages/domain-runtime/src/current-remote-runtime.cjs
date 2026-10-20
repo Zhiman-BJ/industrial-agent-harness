@@ -3,6 +3,7 @@ const path = require('node:path');
 const { writePrivateJson } = require('./remote-client.cjs');
 const {
   ToolDescriptorSchema,
+  ActionRequestSchema,
   IndustrialVerificationResultSchema,
 } = require('@industrial-agent-harness/contracts');
 const { safeDownload } = require('./remote-gateway-client.cjs');
@@ -15,14 +16,15 @@ function createCurrentRemoteRuntime(options, Base) {
   class CurrentRemoteRuntime extends Base {
     constructor() {
       super(options);
-      this.workspace.stateProvider = async () => ({
-        stage: null,
-        inputHashes: Object.fromEntries(
-          this.settings
-            .snapshot(this.projectDir, this.binding.files)
-            .manifest.files.map(file => [file.path, file.sha256]),
-        ),
-      });
+      if (this.ownsWorkspace)
+        this.workspace.stateProvider = async () => ({
+          stage: null,
+          inputHashes: Object.fromEntries(
+            this.settings
+              .snapshot(this.projectDir, this.binding.files)
+              .manifest.files.map(file => [file.path, file.sha256]),
+          ),
+        });
       this.workspace.verifiers['remote.reported'] = ({ result }) => result.assessment;
     }
     async inspect(context, { execution = false } = {}) {
@@ -147,11 +149,15 @@ function createCurrentRemoteRuntime(options, Base) {
         for (const old of this.remoteTools) this.workspace.tools.delete(old.id);
         this.remoteTools = tools;
         this.inventory = inventory;
-        for (const descriptor of tools)
-          this.workspace.tools.set(descriptor.id, {
+        this.remoteToolImplementations.clear();
+        for (const descriptor of tools) {
+          const implementation = {
             descriptor,
             execute: args => this.executeRemote(descriptor, args, this.context(args.ownerId)),
-          });
+          };
+          this.remoteToolImplementations.set(descriptor.id, implementation);
+          this.workspace.tools.set(descriptor.id, implementation);
+        }
         this.capabilities = [
           ...this.workspaceCapabilities,
           {
@@ -178,8 +184,49 @@ function createCurrentRemoteRuntime(options, Base) {
       return this.workspace.descriptors(scope);
     }
     async executeOne(request, policy, context) {
+      const remoteExecution = this.remoteTools.some(tool => tool.id === request.toolId);
+      if (!this.ownsWorkspace && this.prepareInputs && remoteExecution) {
+        this.assertCurrent();
+        this.settings.assertTaskIdle(this.projectDir, this.domain);
+        const state = await this.workspace.inspect();
+        const action = ActionRequestSchema.parse({ ...this.project, ...request });
+        if (
+          action.projectId !== state.projectId ||
+          action.domain !== state.domain ||
+          action.expectedStateId !== state.id ||
+          policy.scope?.projectId !== state.projectId ||
+          policy.scope?.domain !== state.domain ||
+          policy.scope?.stateId !== state.id ||
+          !Array.isArray(policy.scope?.tools) ||
+          !policy.scope.tools.includes(action.toolId)
+        )
+          throw Error('Remote action has an invalid or stale Broker scope.');
+        if (policy.approval !== true) throw Error('Remote action requires approval in this chat.');
+        context.controller.signal.throwIfAborted();
+        // Preparing a new snapshot can upload files, so it follows the same
+        // project, State, tool scope and approval checks as the actual invocation.
+        await this.prepareInputs({
+          signal: context.controller.signal,
+          chatId: context.chatId,
+          request: action,
+        });
+        context.controller.signal.throwIfAborted();
+        const binding = this.settings.project(this.projectDir, this.domain);
+        if (
+          this.closed ||
+          this.settings.identity() !== this.configuration ||
+          binding.location !== 'remote' ||
+          binding.protocol !== this.binding.protocol ||
+          binding.remoteProjectId !== this.binding.remoteProjectId ||
+          binding.canonicalProjectId !== this.binding.canonicalProjectId ||
+          binding.serviceIdentity !== this.binding.serviceIdentity ||
+          !binding.snapshotId
+        )
+          throw Error('Remote project configuration changed while preparing inputs.');
+        this.binding = binding;
+      }
       await this.inspect(context, {
-        execution: this.remoteTools.some(tool => tool.id === request.toolId),
+        execution: remoteExecution,
       });
       // The workspace has its own action controller, created only when execute
       // starts. A cancellation during asynchronous discovery must survive that handoff.

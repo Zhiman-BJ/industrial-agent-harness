@@ -57,7 +57,7 @@ jobs:
         with:
           path: ${{ steps.packs.outputs.chip }}/eda-harness/.venv
           key: chip-eda-venv-${{ runner.os }}-py3.13-${{ hashFiles('pnpm-lock.yaml') }}
-      - name: Prepare protected Linux and engineering runtimes
+      - name: Prepare declared local task isolation and engineering runtimes
         shell: bash
         run: |
           set -euo pipefail
@@ -108,7 +108,7 @@ jobs:
           export KIMI_EXECUTABLE="$(node -p "require('./packages/agent-kimi/src/code-session.cjs').bundledExecutable()")"
           pnpm run test:ci -- native-linux
           node --test tests/integration/linux-chip-bootstrap.test.cjs
-      - name: Verify packaged headless Agent through its production process boundary
+      - name: Verify packaged headless Agent through its current-user launcher
         shell: bash
         run: |
           set -euo pipefail
@@ -129,7 +129,7 @@ jobs:
           KIMI_EXECUTABLE="" INDUSTRIAL_HARNESS_TEST_CLI="$RUNNER_TEMP/installed chip/cli/industrial-harness.cjs" node --test tests/integration/external-mcp-kimi.test.cjs
           bash dist/linux-chip-release/industrial-harness-chip-linux-install.run --skip-image --prefix "$RUNNER_TEMP/installed chip" --bin-dir "$RUNNER_TEMP/chip-bin"
           cp "$RUNNER_TEMP/installed chip/install-receipt.json" dist/linux-chip-release/install-receipt.json
-      - name: Verify installed host Docker execution alongside the protected Agent
+      - name: Verify installed host Docker execution alongside the current-user Agent
         if: inputs.full
         shell: bash
         run: |

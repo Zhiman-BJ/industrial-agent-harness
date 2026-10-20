@@ -397,7 +397,7 @@ test(
 );
 
 test(
-  'real CLI + pinned Kimi denies native Shell bypass and executes approved host RTL tool with a durable engineering result',
+  'real CLI + pinned Kimi writes a native fixture as the current user and executes approved host RTL tool with a durable engineering result',
   {
     timeout: 120000,
     skip: process.platform !== 'darwin' && !process.env.HARNESS_REQUIRE_CORE_NATIVE,
@@ -408,6 +408,10 @@ test(
       process.env.KIMI_EXECUTABLE ||
       require('../../packages/agent-kimi/src/code-session.cjs').bundledExecutable();
     assert.ok(fs.existsSync(native), 'The mandatory Core gate requires the pinned Kimi CLI.');
+    const marker = path.join(directory, 'native-agent-marker.txt');
+    const script =
+      `require('node:fs').writeFileSync(${JSON.stringify(marker)}, 'CORE_NATIVE_FIXTURE_WRITE_OK');` +
+      "console.log('CORE_NATIVE_FIXTURE_WRITE_OK')";
     const fixture = await startModel({
       success: 'CORE_VERIFICATION_RECORDED',
       calls: body => {
@@ -415,7 +419,13 @@ test(
         const id = prompt.match(/expectedStateId=([a-f0-9-]{36})/)?.[1];
         assert.ok(id, 'Real Kimi prompt must disclose the persisted DomainState identity.');
         return [
-          { name: 'Bash', arguments: { command: 'printf bypass > project/rtl/counter.sv' } },
+          {
+            name: 'Bash',
+            arguments: {
+              command: `node -e "eval(Buffer.from('${Buffer.from(script).toString('base64')}', 'base64').toString())"`,
+              description: 'Write a synthetic marker outside the temporary RTL project inputs',
+            },
+          },
           {
             name: 'industrial_action_call',
             arguments: { toolId: 'chip.rtl.verify', inputs: {}, expectedStateId: id },
@@ -476,7 +486,8 @@ test(
     const rows = result.stdout.trim().split('\n').map(JSON.parse);
     assert.equal(rows.at(-1).status, 'finished', result.stderr + result.stdout);
     assert.deepEqual(fs.readFileSync(path.join(project, 'rtl/counter.sv')), before);
-    assert.match(JSON.stringify(fixture.requests), /Operation not permitted|Read-only file system/);
+    assert.equal(fs.readFileSync(marker, 'utf8'), 'CORE_NATIVE_FIXTURE_WRITE_OK');
+    assert.match(JSON.stringify(fixture.requests), /CORE_NATIVE_FIXTURE_WRITE_OK/);
     const engineering = rows.find(row => row.type === 'industrial_result');
     assert.ok(engineering, 'CLI must expose the real canonical runtime result.');
     assert.equal(engineering.verification.status, 'passed', JSON.stringify(engineering));
@@ -484,7 +495,11 @@ test(
     assert.equal(rows.at(-1).engineering.checkpointId, engineering.checkpoint.id);
     assert.ok(
       rows.some(
-        row => row.event?.type === 'execution-boundary' && row.event.projectWritable === false,
+        row =>
+          row.event?.type === 'execution-boundary' &&
+          row.event.mechanism === 'current-user' &&
+          row.event.osIsolation === false &&
+          row.event.projectWritable === true,
       ),
     );
   },

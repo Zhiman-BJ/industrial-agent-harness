@@ -95,6 +95,6 @@ export function summarizeRemote({
     };
   }
   return project.syncedAt
-    ? { label: 'Remote ready', tone: 'ok' }
-    : { label: 'Choose files to sync', tone: 'idle' };
+    ? { label: 'Files synced', tone: 'ok' }
+    : { label: 'Files will be prepared when needed', tone: 'idle' };
 }

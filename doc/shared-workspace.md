@@ -6,14 +6,14 @@
 Core 不内置综合、SPICE、特定 ISA、SRAM/MPW 生成器或供应商签核流程；这些软件、
 模型、参考资料与配方由环境、工程和领域 Skill 提供。基础执行不再依赖先有 eda.yaml。
 
-| Tool | 实际行为 |
-| --- | --- |
-| project.initialize | 创建 harness.project.json 和缺失的空 harness.tasks.json，不覆盖现有文件，不猜工程阶段 |
-| project.files.read | 文件清单及哈希，或一个 UTF-8 文件与 SHA-256；结果以内容绑定回执读取 |
-| project.files.apply | 创建、修改、删除与最多 32 个文件的批次；修改/删除必须匹配原 SHA-256，创建必须仍不存在 |
-| project.tasks.inspect | 读取声明任务，格式错误也可查看并修复 |
-| project.task.run | 按名称执行 harness.tasks.json 中的任务，不接受临时命令替换；保留日志、执行身份与检查证据 |
-| project.environment.inspect | 检查声明任务、受保护本地执行、宿主 Docker 与离线镜像；保存只读环境报告 |
+| Tool                        | 实际行为                                                                                 |
+| --------------------------- | ---------------------------------------------------------------------------------------- |
+| project.initialize          | 创建 harness.project.json 和缺失的空 harness.tasks.json，不覆盖现有文件，不猜工程阶段    |
+| project.files.read          | 文件清单及哈希，或一个 UTF-8 文件与 SHA-256；结果以内容绑定回执读取                      |
+| project.files.apply         | 创建、修改、删除与最多 32 个文件的批次；修改/删除必须匹配原 SHA-256，创建必须仍不存在    |
+| project.tasks.inspect       | 读取声明任务，格式错误也可查看并修复                                                     |
+| project.task.run            | 按名称执行 harness.tasks.json 中的任务，不接受临时命令替换；保留日志、执行身份与检查证据 |
+| project.environment.inspect | 检查声明任务、受保护本地执行、宿主 Docker 与离线镜像；保存只读环境报告                   |
 
 模型通过共享 project.work Skill 执行“创建→测试→读失败→修改→重跑”。所有调用走同一
 industrial_action_call，带当前 State ID；Action 后更新 Scope，已创建的专业配置可进入
@@ -37,10 +37,10 @@ industrial_artifact_read 分页读取，单页最多 64 KiB。
     "test": {
       "command": ["python3", "{input}/tests/check.py"],
       "inputs": ["src/design.py", "tests/check.py"],
-      "outputs": [{"path": "result.txt", "kind": "report.result"}],
-      "runtime": {"kind": "local"},
+      "outputs": [{ "path": "result.txt", "kind": "report.result" }],
+      "runtime": { "kind": "local" },
       "timeoutMs": 60000,
-      "verification": {"kind": "checks-json", "path": "checks.json"}
+      "verification": { "kind": "checks-json", "path": "checks.json" }
     }
   }
 }
@@ -58,7 +58,10 @@ local runtime 显式声明 `readOnlyDirs`（绝对目录，最多 32 个），�
 检查脚本实际计算后写 checks.json：
 
 ```json
-{"schemaVersion":"1","checks":[{"name":"required result matches reference","passed":true}]}
+{
+  "schemaVersion": "1",
+  "checks": [{ "name": "required result matches reference", "passed": true }]
+}
 ```
 
 检查名字必须唯一，至少一项；所有检查通过、进程成功且所声明输出存在才通过。
@@ -79,16 +82,17 @@ local runtime 显式声明 `readOnlyDirs`（绝对目录，最多 32 个），�
 这些是目录前缀或精确文件名，非 glob；控制文件和任务 inputs 始终优先检查，ignore 不能隐藏它们。
 文件未变化时复用内容哈希，大小/时间/文件身份变化后重新流式读取；执行前独立重查快照。
 命令只能写该 Action 的输出目录；原工程、输入快照和 Runtime
-证据只读。模型的 native Shell/WriteFile 仍受原有隔离限制。未匹配或读取失败的领域
+证据对该任务进程只读。[PD-088](local-agent-execution.md) 下模型的 native Shell/WriteFile 使用当前用户权限，不受该任务进程的隔离约束；共享编辑检查不拦截原生文件操作。未匹配或读取失败的领域
 StateProvider 不建立可信阶段，共享编辑入口仍可用于修复配置。
 
-本地任务支持已验证的 macOS arm64 Seatbelt 与 Linux x86-64 bubblewrap/seccomp，
+声明式本地任务保留独立的 macOS arm64 Seatbelt 与 Linux x86-64 bubblewrap/seccomp 隔离，
+与当前用户 Agent 启动分开；缺少任务隔离前提只拒绝相应任务，不阻止 Agent 启动。
 禁止网络和宿主 socket，提供超时、有限日志与输出；不宣称本地 CPU/内存/PID 配额。
 Docker 任务把 runtime 改为 `{"kind":"docker","image":"installed-image:tag"}`，
 可声明 cpus/memoryMb/pids。宿主需有 Docker 权限和预装镜像，Runtime 先检查真实
 image ID，再以该 ID 执行；network none、cap drop、no-new-privileges、只读输入/
-容器根目录、调用者 UID/GID 和资源限制生效。Windows 的真实 Agent/任务执行仍
-未资格验证，契约/文件测试通过不代表 Windows 执行支持。
+容器根目录、调用者 UID/GID 和资源限制生效。Windows 的声明式本地任务未因此获得资格；
+各平台 Agent、安装包及领域执行仍须分别验证，契约/文件测试通过不扩大平台支持。
 
 ## 外部 MCP 与回归
 

@@ -17,7 +17,7 @@ const kimi =
   createRequire(fs.realpathSync(entry))('@industrial-agent-harness/agent-kimi').bundledExecutable();
 const server = path.join(__dirname, 'fixtures/external-mcp-server.cjs');
 test(
-  'real CLI and pinned Kimi: registered external MCP is discoverable in protected execution; approvals, images, durable Actions and disable policy work',
+  'real CLI and pinned Kimi: registered external MCP is discoverable in current-user execution; approvals, images, durable Actions and disable policy work',
   { timeout: 90000 },
   async t => {
     assert.ok(fs.existsSync(kimi), 'The native MCP gate requires the pinned Kimi runtime.');
@@ -146,7 +146,11 @@ test(
         );
         assert.ok(
           rows.some(
-            row => row.event?.type === 'execution-boundary' && row.event.projectWritable === false,
+            row =>
+              row.event?.type === 'execution-boundary' &&
+              row.event.mechanism === 'current-user' &&
+              row.event.osIsolation === false &&
+              row.event.projectWritable === true,
           ),
         );
       }

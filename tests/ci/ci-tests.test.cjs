@@ -33,6 +33,31 @@ test('CI cannot pass with no tests, failed, cancelled, TODO or unaccounted skipp
   assert.deepEqual(allowedSkips('benchmark', 'linux'), []);
 });
 
+test('native launcher skips are limited to portable runners of the other operating system', () => {
+  const windowsOnly = [
+    'Windows current-user launch supports null-device I/O and headless subprocess primitives',
+    'Windows current-user descendants preserve argv and pipes and retain normal user file permissions',
+    'Windows current-user cancellation stops the live process tree',
+    'Windows current-user execution runs pinned Kimi tools and resumes the same real conversation',
+    'Windows shared Agent starts a chat with nested settings storage and reports current-user permissions',
+  ];
+  const posixOnly = 'POSIX platform selection has no bubblewrap or Seatbelt prerequisite';
+  for (const platform of ['darwin', 'linux']) {
+    assert.deepEqual(
+      allowedSkips('portable', platform).filter(name => windowsOnly.includes(name)),
+      windowsOnly,
+    );
+    assert.equal(allowedSkips('portable', platform).includes(posixOnly), false);
+    assert.deepEqual(allowedSkips('native', platform), []);
+    assert.deepEqual(allowedSkips('native-linux', platform), []);
+  }
+  assert.equal(allowedSkips('portable', 'win32').includes(posixOnly), true);
+  assert.equal(
+    allowedSkips('portable', 'win32').some(name => windowsOnly.includes(name)),
+    false,
+  );
+});
+
 test('native lanes retain the complete acceptance catalog without overlap or reduced test counts', () => {
   const expected = [
     'tests/integration/background-tasks-kimi.test.cjs',
@@ -86,7 +111,7 @@ test('native lanes retain the complete acceptance catalog without overlap or red
   assert.equal(testConcurrency('native'), 2);
 });
 
-test('both protected native matrices must succeed; a missing, skipped, cancelled or failed lane cannot turn green', () => {
+test('both native matrices must succeed; a missing, skipped, cancelled or failed lane cannot turn green', () => {
   const workflow = fs.readFileSync(
     path.resolve(__dirname, '../../.github/workflows/industrial-core.yml'),
     'utf8',

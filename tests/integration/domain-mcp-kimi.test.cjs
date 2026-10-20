@@ -12,28 +12,26 @@ const entry = process.env.INDUSTRIAL_HARNESS_TEST_CLI || path.join(root, 'apps/c
 const kimi =
   process.env.KIMI_EXECUTABLE ||
   require('../../packages/agent-kimi/src/code-session.cjs').bundledExecutable();
-const python =
-  process.env.INDUSTRIAL_HARNESS_EDA_PYTHON ||
-  path.join(
-    require('../../packages/domain-skills/src/index.cjs').packSourceDirectory('chip-pack'),
-    'eda-harness/.venv/bin/python',
-  );
-
 test(
-  'real CLI + pinned Kimi refuses legacy project mutation even after approval; empty engineering state does not disclose legacy tools',
-  { timeout: 90000, skip: !fs.existsSync(kimi) || !fs.existsSync(python) },
+  'real CLI + pinned Kimi honors approval for current-user native writes without disclosing legacy tools or inventing engineering acceptance',
+  { timeout: 90000, skip: !fs.existsSync(kimi) },
   async t => {
     let activeProject;
-    const quote = value => "'" + value.replaceAll("'", "'\\''") + "'";
     const fixture = await startModel({
-      calls: () => [
-        {
-          name: 'Bash',
-          arguments: {
-            command: `${quote(python)} -c ${quote('import sys; from eda_harness.core.service import Harness; Harness(sys.argv[1]).create_goal("MCP_INTEGRATION_GOAL", {}, [])')} ${quote(activeProject)}`,
+      calls: () => {
+        const script =
+          `require('node:fs').writeFileSync(${JSON.stringify(path.join(activeProject, 'native-agent-marker.txt'))}, 'NATIVE_FIXTURE_WRITE_OK');` +
+          "console.log('NATIVE_FIXTURE_WRITE_OK')";
+        return [
+          {
+            name: 'Bash',
+            arguments: {
+              command: `node -e "eval(Buffer.from('${Buffer.from(script).toString('base64')}', 'base64').toString())"`,
+              description: 'Write a synthetic marker in this temporary test project',
+            },
           },
-        },
-      ],
+        ];
+      },
     });
     t.after(fixture.close);
     const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'industrial-kimi-mcp-'));
@@ -55,7 +53,7 @@ test(
         '--domain',
         'chip',
         '--task',
-        'create_goal for MCP integration',
+        'Write the synthetic native-agent-marker.txt fixture file',
         '--approval',
         approval,
         '--provider',
@@ -100,14 +98,21 @@ test(
         const output = JSON.stringify(
           requests.at(-1).messages.filter(message => message.role === 'tool'),
         );
-        assert.match(output, /Operation not permitted|PermissionError|Read-only file system/);
-        assert.match(output, /\.eda/);
+        assert.match(output, /NATIVE_FIXTURE_WRITE_OK/);
+        assert.equal(
+          fs.readFileSync(path.join(project, 'native-agent-marker.txt'), 'utf8'),
+          'NATIVE_FIXTURE_WRITE_OK',
+        );
         assert.ok(
           rows.some(
-            row => row.event?.type === 'execution-boundary' && row.event.projectWritable === false,
+            row =>
+              row.event?.type === 'execution-boundary' &&
+              row.event.mechanism === 'current-user' &&
+              row.event.osIsolation === false &&
+              row.event.projectWritable === true,
           ),
         );
-      }
+      } else assert.equal(fs.existsSync(path.join(project, 'native-agent-marker.txt')), false);
       assert.ok(!fs.existsSync(path.join(project, '.eda')));
       assert.ok(
         !rows.some(row => row.type === 'industrial_result' && row.verification.status === 'passed'),

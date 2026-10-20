@@ -3,151 +3,244 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { spawnSync } = require('node:child_process');
+const { once } = require('node:events');
 const { createProcessSandbox } = require('../src/process-sandbox.cjs');
 
+const posix = { skip: !['darwin', 'linux'].includes(process.platform), timeout: 10000 };
+function fixture(t, options = {}) {
+  const directory = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'agent-launch-test-')));
+  const project = path.join(directory, 'project');
+  const settings = path.join(directory, 'settings');
+  const share = path.join(settings, 'chats', 'session');
+  fs.mkdirSync(project);
+  fs.mkdirSync(share, { recursive: true });
+  const launcher = createProcessSandbox({
+    executable: process.execPath,
+    projectDir: project,
+    shareDir: share,
+    protectedPaths: [settings],
+    ...options,
+  });
+  t.after(() => {
+    launcher.close();
+    fs.rmSync(directory, { recursive: true, force: true });
+  });
+  return { directory, project, settings, share, launcher };
+}
+
+async function capture(child) {
+  let stdout = '',
+    stderr = '';
+  child.stdout.on('data', bytes => (stdout += bytes));
+  child.stderr.on('data', bytes => (stderr += bytes));
+  const [code, signal] = await once(child, 'close');
+  return { code, signal, stdout, stderr };
+}
+
 test(
-  'a real descendant process can write session scratch but cannot overwrite project, lateral files, metadata or sandbox launcher',
-  { skip: !['darwin', 'linux'].includes(process.platform) },
-  t => {
-    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'boundary-test-'));
-    t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
-    for (const name of ['project', 'share', 'state']) fs.mkdirSync(path.join(directory, name));
-    const projectFile = path.join(directory, 'project', 'counter.sv');
-    fs.writeFileSync(projectFile, 'engineering source');
-    const sandbox = createProcessSandbox({
-      executable: '/usr/bin/python3',
-      shareDir: path.join(directory, 'share'),
-      projectDir: path.join(directory, 'project'),
-      protectedPaths: [path.join(directory, 'state')],
+  'current-user descendants can write project and settings while session environment stays pinned',
+  posix,
+  async t => {
+    const f = fixture(t, {
       environment: {
-        ...process.env,
-        KIMI_SHARE_DIR: path.join(directory, 'foreign-share'),
-        HARNESS_TEST_REMOTE_TOKEN: 'host-only-secret',
+        PATH: '',
+        KIMI_SHARE_DIR: 'foreign',
+        SERVICE_TOKEN: 'host-only',
+        OMIT: undefined,
       },
-      hostOnlyEnv: ['HARNESS_TEST_REMOTE_TOKEN'],
+      hostOnlyEnv: ['SERVICE_TOKEN'],
     });
-    t.after(() => sandbox.close());
-    assert.equal(sandbox.env.KIMI_SHARE_DIR, fs.realpathSync(path.join(directory, 'share')));
-    assert.equal(sandbox.env.HARNESS_TEST_REMOTE_TOKEN, undefined);
-    const credentialProbe = spawnSync(
-      sandbox.executable,
-      ['-c', 'import os; assert "HARNESS_TEST_REMOTE_TOKEN" not in os.environ'],
-      { env: sandbox.env, encoding: 'utf8' },
+    const launcher = f.launcher;
+    assert.equal(launcher.boundary.mechanism, 'current-user');
+    assert.equal(launcher.boundary.osIsolation, false);
+    assert.equal(launcher.boundary.projectWritable, true);
+    assert.equal(launcher.envIsolated, true);
+    assert.equal(launcher.projectAlias, false);
+    assert.deepEqual(fs.readdirSync(launcher.directory), ['scratch']);
+    assert.equal(launcher.executable, fs.realpathSync(process.execPath));
+    const projectFile = path.join(f.project, 'source.txt');
+    const stateFile = path.join(f.settings, 'state.txt');
+    const result = await capture(
+      launcher.spawn(
+        process.execPath,
+        [
+          '-e',
+          `
+    const fs = require('node:fs');
+    const child = require('node:child_process').spawnSync(process.execPath,
+      ['-e', 'require("node:fs").writeFileSync(process.argv[1], "descendant-write")', process.argv[1]]);
+    fs.writeFileSync(process.argv[2], 'current-user-write');
+    fs.writeFileSync(require('node:path').join(process.env.TMPDIR, 'scratch.txt'), 'scratch-write');
+    process.stdout.write(JSON.stringify({ status: child.status, cwd: process.cwd(),
+      uid: process.getuid(), gid: process.getgid(), home: process.env.KIMI_CODE_HOME,
+      share: process.env.KIMI_SHARE_DIR, temp: process.env.TMPDIR,
+      secret: process.env.SERVICE_TOKEN ?? null, omitted: process.env.OMIT ?? null }));
+  `,
+          projectFile,
+          stateFile,
+        ],
+        {
+          cwd: launcher.workDir,
+          env: {
+            SERVICE_TOKEN: 'reintroduced',
+            KIMI_CODE_HOME: 'wrong',
+            KIMI_SHARE_DIR: 'wrong',
+            TMPDIR: 'wrong',
+          },
+          stdio: ['ignore', 'pipe', 'pipe'],
+        },
+      ),
     );
-    assert.equal(credentialProbe.status, 0, credentialProbe.stderr);
-    fs.symlinkSync(path.join(directory, 'project'), path.join(directory, 'share', 'project-link'));
-    const probe = `import json, pathlib, subprocess, sys\nresults=[]\nfor name in sys.argv[1:]:\n try:\n  pathlib.Path(name).write_text('bypass')\n  results.append(True)\n except OSError as error:\n  if error.errno not in (1,13,30): raise\n  results.append(False)\n# Descendants inherit the same restriction, including an arbitrary shell.\np=subprocess.run(['/bin/sh','-c','printf bypass > "$1"','probe',sys.argv[1]],capture_output=True)\nprint(json.dumps({'writes':results,'child':p.returncode}))`;
-    const probeResult = spawnSync(
-      sandbox.executable,
-      [
-        '-c',
-        probe,
-        projectFile,
-        path.join(directory, 'outside'),
-        path.join(directory, 'state', 'fake.sqlite'),
-        sandbox.executable,
-        path.join(directory, 'share', 'project-link', 'counter.sv'),
-        path.join(directory, 'share', 'context.json'),
-      ],
-      { env: sandbox.env, encoding: 'utf8' },
-    );
-    assert.equal(probeResult.status, 0, probeResult.stderr);
-    const result = JSON.parse(probeResult.stdout);
-    assert.deepEqual(result.writes, [false, false, false, false, false, true]);
-    assert.notEqual(result.child, 0);
-    assert.equal(fs.readFileSync(projectFile, 'utf8'), 'engineering source');
+    assert.equal(result.code, 0, result.stderr);
+    assert.deepEqual(JSON.parse(result.stdout), {
+      status: 0,
+      cwd: launcher.workDir,
+      uid: process.getuid(),
+      gid: process.getgid(),
+      home: f.share,
+      share: f.share,
+      temp: path.join(launcher.directory, 'scratch') + path.sep,
+      secret: null,
+      omitted: null,
+    });
+    assert.equal(fs.readFileSync(projectFile, 'utf8'), 'descendant-write');
+    assert.equal(fs.readFileSync(stateFile, 'utf8'), 'current-user-write');
+    launcher.close();
+    assert.equal(fs.existsSync(launcher.directory), false);
+    assert.equal(fs.existsSync(f.share), true);
+    assert.throws(() => launcher.spawn(process.execPath, []), /closed/);
   },
 );
 
 test(
-  'session storage nested inside a protected runtime root stays writable while the root and project remain read-only',
-  { skip: !['darwin', 'linux'].includes(process.platform) },
-  t => {
-    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'boundary-nested-test-'));
+  'direct Node script launch preserves argv and project access without shell interpolation',
+  posix,
+  async t => {
+    const directory = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'agent-script-')));
     t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
-    fs.mkdirSync(path.join(directory, 'project'));
-    // Mirrors the desktop layout: settings.directory is protected and the
-    // default chat session storage lives under it (chats/sessions/<id>).
-    const settings = path.join(directory, 'settings');
-    const share = path.join(settings, 'chats', 'sessions', 'chat-1');
-    fs.mkdirSync(share, { recursive: true });
-    const projectFile = path.join(directory, 'project', 'counter.sv');
-    fs.writeFileSync(projectFile, 'engineering source');
-    const sandbox = createProcessSandbox({
-      executable: '/usr/bin/python3',
-      shareDir: share,
-      projectDir: path.join(directory, 'project'),
-      protectedPaths: [settings],
-    });
-    t.after(() => sandbox.close());
-    // Structural: the write allowance for share must come AFTER the
-    // protected-root deny (seatbelt profile / bwrap mount order).
-    if (process.platform === 'darwin') {
-      const profile = fs.readFileSync(path.join(sandbox.directory, 'agent.sb'), 'utf8');
-      const denyAt = profile.indexOf(
-        `(deny file-write* (subpath ${JSON.stringify(fs.realpathSync(settings))}))`,
-      );
-      const allowAt = profile.indexOf(
-        `(allow file-write* (subpath ${JSON.stringify(fs.realpathSync(share))})`,
-      );
-      assert.ok(denyAt !== -1 && allowAt !== -1, profile);
-      assert.ok(denyAt < allowAt, profile);
-    } else {
-      const wrapper = fs.readFileSync(sandbox.executable, 'utf8');
-      // Wrapper args are individually shell-quoted: '--ro-bind' '<path>'.
-      const roAt = wrapper.indexOf(`'--ro-bind' '${fs.realpathSync(settings)}'`);
-      const bindAt = wrapper.indexOf(`'--bind' '${fs.realpathSync(share)}'`);
-      assert.ok(roAt !== -1 && bindAt !== -1, wrapper);
-      assert.ok(roAt < bindAt, wrapper);
-    }
-    const probe = `import json, pathlib, sys\nresults=[]\nfor name in sys.argv[1:]:\n try:\n  pathlib.Path(name).write_text('bypass')\n  results.append(True)\n except OSError as error:\n  if error.errno not in (1,13,30): raise\n  results.append(False)\nprint(json.dumps(results))`;
-    const probeResult = spawnSync(
-      sandbox.executable,
-      [
-        '-c',
-        probe,
-        projectFile,
-        path.join(settings, 'remote-settings.json'),
-        path.join(settings, 'chats', 'other.sqlite'),
-        path.join(share, 'context.json'),
-      ],
-      { env: sandbox.env, encoding: 'utf8' },
+    const script = path.join(directory, 'entry with spaces.cjs');
+    fs.writeFileSync(script, 'process.stdout.write(JSON.stringify(process.argv.slice(2)))');
+    const f = fixture(t, { executable: script, kimiProjectAccess: true });
+    const argv = [
+      '',
+      'two words',
+      'a"quoted"value',
+      '尾部 Unicode',
+      'trailing\\',
+      '$(touch escaped); & | < >',
+    ];
+    const result = await capture(
+      f.launcher.spawn(process.execPath, [script, ...argv], {
+        stdio: ['ignore', 'pipe', 'pipe'],
+      }),
     );
-    assert.equal(probeResult.status, 0, probeResult.stderr);
-    assert.deepEqual(JSON.parse(probeResult.stdout), [false, false, false, true]);
-    assert.equal(fs.readFileSync(projectFile, 'utf8'), 'engineering source');
+    assert.equal(result.code, 0, result.stderr);
+    assert.deepEqual(JSON.parse(result.stdout), ['--add-dir', f.project, ...argv]);
+    assert.equal(fs.existsSync(path.join(f.launcher.workDir, 'escaped')), false);
+    assert.throws(() => f.launcher.spawn(process.execPath, [script], { shell: true }), /shell/);
+    assert.throws(
+      () => f.launcher.spawn(process.execPath, [script], { cwd: f.project }),
+      /workspace/,
+    );
+    assert.throws(() => f.launcher.spawn(script, []), /bound executable/);
+    assert.throws(
+      () => f.launcher.spawn(process.execPath, [script], { uid: process.getuid() + 1 }),
+      /current user/,
+    );
   },
 );
 
 test(
-  'session storage still cannot replace a protected root or live inside the project',
-  { skip: !['darwin', 'linux'].includes(process.platform) },
-  t => {
-    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'boundary-reject-test-'));
-    t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
-    for (const name of ['project', 'settings', 'share']) fs.mkdirSync(path.join(directory, name));
-    fs.mkdirSync(path.join(directory, 'project', 'nested'));
-    const base = {
-      executable: '/usr/bin/python3',
-      projectDir: path.join(directory, 'project'),
-      protectedPaths: [path.join(directory, 'settings')],
-    };
-    assert.throws(
-      () =>
-        createProcessSandbox({
-          ...base,
-          shareDir: path.join(directory, 'settings'),
-        }),
-      /must not replace a protected root/,
+  'session close stops a live child and descendant process group before removing scratch',
+  posix,
+  async t => {
+    const f = fixture(t);
+    const child = f.launcher.spawn(
+      process.execPath,
+      [
+        '-e',
+        `
+    const child = require('node:child_process').spawn(process.execPath,
+      ['-e', 'process.stdout.write("ready"); setInterval(() => {}, 1000)'],
+      { stdio: ['ignore', 'pipe', 'ignore'] });
+    child.stdout.once('data', () => process.stdout.write(String(child.pid) + '\\n'));
+    process.on('SIGTERM', () => {});
+    child.once('exit', () => process.exit(0));
+    setInterval(() => {}, 1000);
+  `,
+      ],
+      { stdio: ['ignore', 'pipe', 'pipe'] },
     );
-    assert.throws(
-      () =>
-        createProcessSandbox({
-          ...base,
-          shareDir: path.join(directory, 'project', 'nested'),
-        }),
-      /must be outside the protected project/,
+    t.after(() => child.kill('SIGKILL'));
+    const [ready] = await once(child.stdout, 'data');
+    const descendant = Number(ready.toString().trim());
+    assert.ok(descendant > 0);
+    const completed = once(child, 'close');
+    f.launcher.close();
+    await completed;
+    assert.throws(() => process.kill(descendant, 0), { code: 'ESRCH' });
+    assert.equal(fs.existsSync(f.launcher.directory), false);
+    assert.equal(fs.existsSync(f.share), true);
+  },
+);
+
+test('session close escalates cancellation when the child ignores SIGTERM', posix, async t => {
+  const f = fixture(t);
+  const child = f.launcher.spawn(
+    process.execPath,
+    [
+      '-e',
+      'process.on("SIGTERM", () => {}); process.stdout.write("ready"); setInterval(() => {}, 1000)',
+    ],
+    { stdio: ['ignore', 'pipe', 'pipe'] },
+  );
+  t.after(() => child.kill('SIGKILL'));
+  await once(child.stdout, 'data');
+  const completed = once(child, 'close');
+  f.launcher.close();
+  assert.equal((await completed)[1], 'SIGKILL');
+  assert.equal(fs.existsSync(f.launcher.directory), false);
+});
+
+test(
+  'session close kills remaining descendants after their group leader exits first',
+  posix,
+  async t => {
+    const f = fixture(t);
+    const pidFile = path.join(f.share, 'descendant.pid');
+    const descendantScript = `process.on('SIGTERM', () => {});
+    require('node:fs').writeFileSync(${JSON.stringify(pidFile)}, String(process.pid));
+    process.stdout.write('ready'); setInterval(() => {}, 1000);`;
+    const child = f.launcher.spawn(
+      process.execPath,
+      [
+        '-e',
+        `
+    require('node:child_process').spawn(process.execPath,
+      ['-e', ${JSON.stringify(descendantScript)}], { stdio: ['ignore', 'inherit', 'inherit'] });
+    setInterval(() => {}, 1000);
+  `,
+      ],
+      { stdio: ['ignore', 'pipe', 'pipe'] },
     );
+    t.after(() => child.kill('SIGKILL'));
+    await once(child.stdout, 'data');
+    const descendant = Number(fs.readFileSync(pidFile, 'utf8'));
+    const exited = once(child, 'exit'),
+      completed = once(child, 'close');
+    f.launcher.close();
+    assert.equal((await exited)[1], 'SIGTERM');
+    assert.doesNotThrow(
+      () => process.kill(descendant, 0),
+      'descendant survives the leader SIGTERM',
+    );
+    assert.equal(
+      fs.existsSync(f.launcher.directory),
+      true,
+      'scratch stays until descendant cleanup',
+    );
+    await completed;
+    assert.equal(fs.existsSync(f.launcher.directory), false);
+    assert.equal(child.kill('SIGKILL'), false, 'a retired group is never signalled again');
   },
 );

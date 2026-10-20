@@ -16,7 +16,7 @@ async function main() {
     );
   const receipt = JSON.parse(fs.readFileSync(path.join(prefix, 'install-receipt.json')));
   assert.equal(receipt.package.sourceDirty, false);
-  assert.equal(receipt.protected_kimi_startup, 'PASS');
+  assert.equal(receipt.current_user_kimi_startup, 'PASS');
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'installed-chip-consumer-'));
   let fixture;
   try {
@@ -50,16 +50,18 @@ async function main() {
     fs.writeFileSync(path.join(project, 'AGENTS.md'), 'RELEASE_PROJECT_GUIDANCE\n');
     const before = fs.readFileSync(path.join(project, 'rtl/counter.sv'));
     fixture = await startModel({
-      // Native write/Docker permission errors are expected; still exercise the host actions.
-      stopOnRejection: false,
       success: 'INSTALLED_CHIP_VERIFIED',
       calls: body => {
         const id = JSON.stringify(body.messages).match(/expectedStateId=([a-f0-9-]{36})/)?.[1];
         assert.ok(id, 'Installed consumer must receive the real DomainState identity.');
         return [
           { name: 'Read', arguments: { path: skill } },
-          { name: 'Bash', arguments: { command: 'printf bypass > project/rtl/counter.sv' } },
-          { name: 'Bash', arguments: { command: 'docker info' } },
+          {
+            name: 'Bash',
+            arguments: {
+              command: `marker='${project.replaceAll("'", "'\\''")}/.agent-write-check'; printf CURRENT_USER_PROJECT_WRITE_OK > "$marker" && cat "$marker" && rm "$marker"`,
+            },
+          },
           {
             name: 'industrial_action_call',
             arguments: { toolId: 'chip.environment.check', inputs: {}, expectedStateId: id },
@@ -117,11 +119,13 @@ async function main() {
     assert.doesNotMatch(initial, /RELEASE_LAZY_SKILL_BODY/);
     const requests = JSON.stringify(fixture.requests);
     assert.match(requests, /RELEASE_LAZY_SKILL_BODY/);
-    assert.match(requests, /Read-only file system|Operation not permitted/);
-    assert.match(
-      requests,
-      /Docker group activation is unavailable|permission denied while trying to connect|connect: operation not permitted|socket: operation not permitted/i,
+    const nativeWrite = rows.find(
+      row =>
+        row.event?.type === 'tool-result' && /CURRENT_USER_PROJECT_WRITE_OK/.test(row.event.output),
     );
+    assert.ok(nativeWrite, 'The native Agent must write and read the actual project marker.');
+    assert.equal(Boolean(nativeWrite.event.error), false);
+    assert.equal(fs.existsSync(path.join(project, '.agent-write-check')), false);
     assert.deepEqual(fs.readFileSync(path.join(project, 'rtl/counter.sv')), before);
     const preflight = rows.find(
       row => row.type === 'industrial_result' && row.action.toolId === 'chip.environment.check',
@@ -131,7 +135,8 @@ async function main() {
     assert.equal(preflight.state.id, preflight.action.stateId);
     const environment = JSON.parse(preflight.action.diagnostics[0]);
     assert.equal(environment.execution_location, 'host_domain_runtime');
-    assert.equal(environment.agent_docker_access, 'intentionally_denied');
+    // Older Chip Packs report an Agent Docker policy that predates this launcher.
+    // Keep their diagnostic as provenance; it does not describe current-user access.
     assert.equal(environment.ready, true, JSON.stringify(environment));
     const engineering = rows.find(
       row => row.type === 'industrial_result' && row.action.toolId === 'chip.rtl.verify',
@@ -155,7 +160,9 @@ async function main() {
     }
     assert.equal(rows.at(-1).engineering.checkpointId, engineering.checkpoint.id);
     const boundary = rows.find(row => row.event?.type === 'execution-boundary')?.event;
-    assert.equal(boundary?.mechanism, 'bubblewrap-seccomp');
+    assert.equal(boundary?.mechanism, 'current-user');
+    assert.equal(boundary.osIsolation, false);
+    assert.equal(boundary.projectWritable, true);
     fs.mkdirSync(path.dirname(path.resolve(output)), { recursive: true });
     fs.writeFileSync(
       output,
@@ -171,13 +178,15 @@ async function main() {
           nativeGuidance: 'PASS',
           progressiveSkillBody: 'PASS',
           conflictingShareEnvironment: 'PASS',
-          shellBypassDenied: 'PASS',
-          agentDockerDenied: 'PASS',
+          nativeProjectWrite: 'PASS',
+          packReportedAgentDockerAccess: environment.agent_docker_access,
           hostEnvironmentCheck: 'PASS',
           readOnlyCheckPreservesState: 'PASS',
           engineeringVerification: engineering.verification.status,
           checkpointPersisted: true,
           processBoundary: boundary.mechanism,
+          osIsolation: boundary.osIsolation,
+          projectWritable: boundary.projectWritable,
           executionBackend: receipt.image ? 'docker' : 'local',
           projectPathIncludesSpaces: project.includes(' '),
           image: receipt.image,
@@ -188,7 +197,7 @@ async function main() {
       ) + '\n',
     );
     console.log(
-      'Installed Chip CLI, project Skills, write boundary, real RTL verification and checkpoint: PASS',
+      'Installed Chip CLI, project Skills, current-user project write, real RTL verification and checkpoint: PASS',
     );
   } finally {
     await fixture?.close();

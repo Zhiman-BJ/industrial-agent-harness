@@ -1,0 +1,18 @@
+{
+  "executionSucceeded": true,
+  "operation": "build",
+  "inputUnchanged": true,
+  "sourceSha256": null,
+  "expect": {
+    "volume": 3937.1681469282044,
+    "solids": 1,
+    "bounds": [
+      40,
+      20,
+      5
+    ]
+  },
+  "nativeVerification": {
+    "status": "PASS"
+  }
+}

@@ -41,7 +41,7 @@ test('JSON input transport preserves nested engineering types without coercion o
   await action.handler(request);
   assert.deepEqual(received[0], {
     request: { toolId: request.toolId, expectedStateId: request.expectedStateId, inputs },
-    policy: { scope, approval: true, ownerId: 'project' },
+    policy: { scope, approval: true, ownerId: 'project', taskId: undefined },
   });
   assert.deepEqual(approvalInputs[0], inputs);
   await action.handler({ ...request, inputsJson: JSON.stringify({ value: '30' }) });
@@ -89,4 +89,45 @@ test('approval reviews a separate snapshot; changes while awaiting approval cann
   ).find(tool => tool.name === 'industrial_action_call');
   await tool.handler(request);
   assert.deepEqual(received.inputs, { value: 'approved' });
+});
+
+test('task authorization uses the captured host turn identity for approval and execution', async () => {
+  const context = { turnId: randomUUID() };
+  let activeContext = context;
+  let received;
+  const runtime = {
+    descriptors: () => [{ id: 'example.execute', risk: 'mutating' }],
+    execute: async (request, policy) => {
+      received = { request, policy };
+      return {
+        run: { id: randomUUID() },
+        action: { id: randomUUID(), status: 'completed', diagnostics: [] },
+        artifacts: [],
+        verification: {},
+        state: {},
+        checkpoint: {},
+      };
+    },
+  };
+  const scope = { tools: ['example.execute'] };
+  const tool = runtimeTools(
+    runtime,
+    () => scope,
+    async (_, request, approvalContext) => {
+      assert.equal(approvalContext, context);
+      assert.equal(request.inputs.taskId, 'model-supplied-task');
+      activeContext = { turnId: randomUUID() };
+      return true;
+    },
+    (_, resultContext) => assert.equal(resultContext, context),
+    { getApplicationContext: () => activeContext },
+  ).find(tool => tool.name === 'industrial_action_call');
+  await tool.handler({
+    toolId: 'example.execute',
+    expectedStateId: randomUUID(),
+    inputs: { taskId: 'model-supplied-task' },
+  });
+  assert.equal(received.policy.taskId, context.turnId);
+  assert.notEqual(received.policy.taskId, activeContext.turnId);
+  assert.notEqual(received.policy.taskId, received.request.inputs.taskId);
 });

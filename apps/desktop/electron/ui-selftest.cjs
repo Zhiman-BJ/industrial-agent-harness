@@ -266,7 +266,7 @@ async function run(window, dialog) {
   );
   await click('.ia-execution-options button:last-child');
   await wait(
-    `document.querySelector('.ia-remote-project-body')?.textContent.includes('Not configured') && document.querySelector('.ia-project-start').disabled`,
+    `document.querySelector('.ia-remote-project-body')?.textContent.includes('Not configured') && !document.querySelector('.ia-project-start').disabled`,
   );
   await wait(`!document.querySelector('.ia-project-resources')`);
   assert.equal(
@@ -278,33 +278,38 @@ async function run(window, dialog) {
   await setLanguage(window, 'zh-CN');
   await capture('remote-unconfigured-zh');
   await setLanguage(window, 'en');
-  await click('.ia-new-chat');
+  // Chat and local planning are available before remote configuration or upload.
+  await click('.ia-project-start');
   await wait(`document.querySelector('.ia-status-dock')?.textContent.includes('Not configured')`);
-  // The pill summary can settle before the chat page finishes mounting its
-  // composer; wait for the textarea before asserting its disabled state.
-  await wait(`Boolean(document.querySelector('.ia-composer textarea'))`);
-  assert.equal(await evaluate(`document.querySelector('.ia-composer textarea').disabled`), true);
+  await wait(`document.querySelector('.ia-composer textarea')?.disabled === false`);
   assert.equal(await evaluate(`document.querySelector('.ia-send').disabled`), true);
-  const remoteAgentAvailable = await evaluate(
-    `window.viewerHost.agentStatus().then(s => s.available)`,
-  );
-  const remoteHint = remoteAgentAvailable
-    ? 'Remote environment is not ready. Check project execution settings.'
-    : 'Kimi CLI is required to run Agent tasks';
+  await input('.ia-composer textarea', 'Inspect this project before choosing remote inputs');
+  await wait(`document.querySelector('.ia-send')?.disabled === false`);
+  await input('.ia-composer textarea', '');
+  const remoteAgentStatus = await evaluate(`window.viewerHost.agentStatus()`);
+  const remoteHint = !remoteAgentStatus.available
+    ? 'Kimi CLI is required to run Agent tasks'
+    : !remoteAgentStatus.configured
+      ? 'Configure the Model API in Settings to run Kimi'
+      : !remoteAgentStatus.projectDir
+        ? 'Choose a project to run Kimi'
+        : 'Start with your task. Agent will prepare remote files and request one approval.';
   await wait(
     `document.querySelector('#ia-composer-status')?.textContent === ${JSON.stringify(remoteHint)}`,
   );
   assert.equal(
     await evaluate(`Boolean(document.querySelector('.ia-composer-status-action'))`),
-    remoteAgentAvailable,
-    'Remote setup is actionable while the higher-priority missing-Kimi hint remains truthful',
+    Boolean(
+      remoteAgentStatus.available && remoteAgentStatus.configured && remoteAgentStatus.projectDir,
+    ),
+    'Remote guidance keeps missing local Agent or model setup truthful',
   );
   assert.equal(
     await evaluate(
       `document.querySelector('.ia-composer textarea').getAttribute('aria-describedby').split(/\\s+/).includes('ia-composer-status')`,
     ),
     true,
-    'The disabled composer exposes its reason to assistive technology',
+    'The composer exposes preparation guidance to assistive technology',
   );
   await evaluate(`window.__remoteStatus = document.querySelector('.ia-status-dock')`);
   await click('.ia-layout-toggle');
@@ -318,7 +323,7 @@ async function run(window, dialog) {
     true,
     'Remote task status must stay mounted when browsing another tab',
   );
-  assert.equal(await evaluate(`document.querySelector('.ia-composer textarea').disabled`), true);
+  assert.equal(await evaluate(`document.querySelector('.ia-composer textarea').disabled`), false);
   assert.equal(await evaluate(`document.querySelector('.ia-send').disabled`), true);
   await click('.ia-chat-actions button[title="Hide workspace"]');
   await click('.ia-layout-toggle');
@@ -336,6 +341,43 @@ async function run(window, dialog) {
     true,
     'Chat status stays mounted but does not cover project settings',
   );
+  // A project restored in remote mode must also allow both chat entry points.
+  // Reopening an empty chat keeps its identity instead of creating duplicates.
+  const remoteDraft = await evaluate(
+    `window.viewerHost.chats().then(list => ({ id: list.activeId, count: list.chats.length }))`,
+  );
+  await new Promise(resolve => {
+    window.webContents.once('did-finish-load', resolve);
+    window.webContents.reload();
+  });
+  await wait(`Boolean(document.querySelector('.ia-project-row:not(:disabled)'))`);
+  await click('.ia-project-row');
+  await wait(`Boolean(document.querySelector('.ia-project-page'))`);
+  await wait(
+    `document.querySelector('.ia-remote-project-body')?.textContent.includes('Not configured')`,
+  );
+  assert.equal(
+    await evaluate(`document.querySelector('.ia-project-start').disabled`),
+    false,
+    'Restored remote projects can open a chat before remote setup',
+  );
+  assert.equal(await evaluate(`document.querySelector('.ia-new-chat').disabled`), false);
+  await click('.ia-new-chat');
+  await wait(`Boolean(document.querySelector('.ia-composer textarea'))`);
+  assert.deepEqual(
+    await evaluate(
+      `window.viewerHost.chats().then(list => ({ id: list.activeId, count: list.chats.length }))`,
+    ),
+    remoteDraft,
+    'Both remote chat entry points reuse the same empty draft',
+  );
+  await input('.ia-composer textarea', 'Plan the next remote task after reload');
+  await wait(`document.querySelector('.ia-send')?.disabled === false`);
+  await input('.ia-composer textarea', '');
+  assert.equal(await evaluate(`document.querySelector('.ia-composer textarea').disabled`), false);
+  assert.equal(await evaluate(`document.querySelector('.ia-send').disabled`), true);
+  await click('.ia-composer-project');
+  await wait(`Boolean(document.querySelector('.ia-project-page'))`);
   await click('.ia-settings-button');
   await wait(
     `Array.from(document.querySelectorAll('.ia-settings-row')).some(row => row.textContent.includes('MCP & Skills'))`,

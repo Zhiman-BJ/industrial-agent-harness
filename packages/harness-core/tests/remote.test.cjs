@@ -357,9 +357,14 @@ async function eventually(check) {
   throw Error('Fixture condition did not settle.');
 }
 
-test('blank settings remain unconfigured and location changes do not upload', async t => {
+test('blank settings allow local remote-task planning but cannot execute or upload', async t => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'remote-empty-'));
-  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  let bundle;
+  t.after(async () => {
+    await bundle?.runtime.close();
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+  fs.writeFileSync(path.join(dir, 'input.txt'), 'plan before remote setup');
   let requests = 0;
   const settings = new RemoteSettings({
     directory: path.join(dir, 'config'),
@@ -376,9 +381,47 @@ test('blank settings remain unconfigured and location changes do not upload', as
     'remote',
   );
   assert.equal(requests, 0);
-  assert.throws(
-    () => createProjectRuntime({ projectDir: dir, domain, registry, remoteSettings: settings }),
-    /confirm files.*upload/,
+  bundle = createProjectRuntime({
+    projectDir: dir,
+    domain,
+    registry,
+    remoteSettings: settings,
+    directory: path.join(dir, 'runtime'),
+  });
+  const session = bundle.runtime.forSession(crypto.randomUUID());
+  const state = await session.inspect();
+  assert.equal(state.inputHashes['input.txt'], hash('plan before remote setup'));
+  const tools = session.descriptors().map(tool => tool.id);
+  assert.ok(tools.includes('project.remote.plan'));
+  assert.ok(tools.includes('project.remote.prepare'));
+  assert.ok(!tools.includes(toolId));
+  assert.ok(!tools.includes('test.local-only'));
+  assert.ok(!tools.includes('project.task.run'));
+  const scope = { projectId: state.projectId, domain, stateId: state.id };
+  const read = await session.execute(
+    {
+      toolId: 'project.files.read',
+      inputs: { path: 'input.txt' },
+      expectedStateId: state.id,
+    },
+    { scope: { ...scope, tools: ['project.files.read'] }, approval: true },
+  );
+  assert.equal(read.action.status, 'completed', read.action.diagnostics.join('\n'));
+  const current = await session.inspect();
+  const blocked = await session.execute(
+    { toolId, inputs: {}, expectedStateId: current.id },
+    { scope: { ...scope, stateId: current.id, tools: [toolId] }, approval: true },
+  );
+  assert.equal(blocked.action.status, 'failed');
+  assert.notEqual(blocked.verification.status, 'passed');
+  assert.match(blocked.action.diagnostics.join('\n'), /unavailable/i);
+  await assert.rejects(settings.ensurePrepared(dir, domain), /Prepare and approve/i);
+  assert.equal(settings.project(dir, domain).remoteProjectId, undefined);
+  assert.equal(settings.project(dir, domain).snapshotId, undefined);
+  assert.equal(
+    requests,
+    0,
+    'Local planning and a blocked remote call must not contact the service.',
   );
 });
 
