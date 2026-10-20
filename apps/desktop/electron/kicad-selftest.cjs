@@ -394,21 +394,21 @@ async function run(window) {
       );
       // Exercise the user control, then check the rendered layer set rather than only React state.
       await evaluate(
-        `document.querySelector('.ia-file-view:not([hidden])')?.querySelector('.rp-pcb3d-layer input[type="checkbox"]').click()`,
+        `document.querySelector('.ia-file-view:not([hidden])')?.querySelector('.rp-pcb3d-layers .rp-pcb3d-layer input[type="checkbox"]').click()`,
       );
       await waitFor(
         async () =>
           JSON.parse((await canvasState()).pcb3dVisibleLayers).length === visibleLayers.length - 1,
       );
       await evaluate(
-        `document.querySelector('.ia-file-view:not([hidden])')?.querySelector('.rp-pcb3d-layer input[type="checkbox"]').click()`,
+        `document.querySelector('.ia-file-view:not([hidden])')?.querySelector('.rp-pcb3d-layers .rp-pcb3d-layer input[type="checkbox"]').click()`,
       );
       await waitFor(
         async () =>
           JSON.parse((await canvasState()).pcb3dVisibleLayers).length === visibleLayers.length,
       );
       await evaluate(
-        `document.querySelector('.ia-file-view:not([hidden])')?.querySelector('.rp-pcb3d-layer button').click()`,
+        `document.querySelector('.ia-file-view:not([hidden])')?.querySelector('.rp-pcb3d-layers .rp-pcb3d-layer button').click()`,
       );
       await waitFor(async () => JSON.parse((await canvasState()).pcb3dVisibleLayers).length === 1);
       await evaluate(
