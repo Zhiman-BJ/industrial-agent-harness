@@ -164,72 +164,77 @@ test('offline history and evidence refresh detect changed inputs without changin
     ],
     verifiers: { fixture: () => ({ status: 'passed', reason: 'Test verifier', metrics: {} }) },
   });
-  t.after(() => runtime.close());
-  const state = await runtime.inspect();
-  const result = await runtime.execute(
-    { toolId: 'fixture.check', inputs: {}, expectedStateId: state.id },
-    {
-      approval: true,
-      scope: {
-        domain: f.project.domain,
-        projectId: state.projectId,
-        stateId: state.id,
-        tools: ['fixture.check'],
+  // setup's after hook removes the fixture directory. Close this separately
+  // owned SQLite runtime first, including when an assertion fails (Windows).
+  try {
+    const state = await runtime.inspect();
+    const result = await runtime.execute(
+      { toolId: 'fixture.check', inputs: {}, expectedStateId: state.id },
+      {
+        approval: true,
+        scope: {
+          domain: f.project.domain,
+          projectId: state.projectId,
+          stateId: state.id,
+          tools: ['fixture.check'],
+        },
       },
-    },
-  );
-  const turnId = f.tasks.chats.beginTurn(f.entry.id, 'verify', null, false);
-  const context = new TaskResults(f.tasks.chats, f.entry, turnId, runtime, event =>
-    f.tasks.chats.append(turnId, event),
-  );
-  f.entry.resultContext = context;
-  context.register(result);
-  f.tasks.chats.append(turnId, { type: 'industrial-result', ...result });
-  context.settle('completed');
-  f.tasks.chats.finish(turnId, 'completed');
-  f.tasks.registry = () => {
-    throw Error('Read-only refresh must not load Packs');
-  };
-  const before = JSON.stringify(runtime.get('action', result.action.id));
-  const eventsBefore = JSON.stringify(f.tasks.chats.turnEvents(f.entry.id, turnId));
-  const refresh = () => f.tasks.refreshEvidence(f.project, f.entry.id, [turnId])[0];
-  assert.equal(refresh().actions[result.action.id].status, 'matches');
-  fs.writeFileSync(file, 'after!');
-  const observed = refresh();
-  assert.equal(observed.actions[result.action.id].status, 'changed');
-  assert.equal(observed.verifications[result.verification.id].status, 'changed');
-  const events = f.tasks.history(f.project, f.entry.id).turns[0].events;
-  const actionEvent = events.find(event => event.type === 'industrial-result');
-  assert.equal(actionEvent.verification.status, 'passed');
-  assert.equal(actionEvent.inputStatus.status, 'changed');
-  const results = events.findLast(event => event.type === 'results-ready').results;
-  assert.equal(results.groups[0].verifications[0].inputStatus.status, 'changed');
-  assert.throws(
-    () => context.select({ revision: results.revision, groupIds: [results.groups[0].id] }),
-    /inputs changed/,
-  );
-  assert.equal(JSON.stringify(runtime.get('action', result.action.id)), before);
-  assert.equal(JSON.stringify(f.tasks.chats.turnEvents(f.entry.id, turnId)), eventsBefore);
-  assert.equal(
-    context.select({
-      revision: results.revision,
-      groupIds: [results.groups[0].id],
-      historical: true,
-    }).selection.historical,
-    true,
-  );
-  assert.equal(f.tasks.projects.bundles.size, 0);
-  const other = f.tasks.chats.create(f.project.path, f.project.domain);
-  assert.throws(() => f.tasks.refreshEvidence(f.project, other.id, [turnId]), /another chat/);
-  assert.throws(
-    () =>
-      f.tasks.refreshEvidence({ ...f.project, path: path.dirname(f.project.path) }, f.entry.id, [
-        turnId,
-      ]),
-    /project/,
-  );
-  fs.unlinkSync(file);
-  assert.equal(refresh().actions[result.action.id].status, 'changed');
+    );
+    const turnId = f.tasks.chats.beginTurn(f.entry.id, 'verify', null, false);
+    const context = new TaskResults(f.tasks.chats, f.entry, turnId, runtime, event =>
+      f.tasks.chats.append(turnId, event),
+    );
+    f.entry.resultContext = context;
+    context.register(result);
+    f.tasks.chats.append(turnId, { type: 'industrial-result', ...result });
+    context.settle('completed');
+    f.tasks.chats.finish(turnId, 'completed');
+    f.tasks.registry = () => {
+      throw Error('Read-only refresh must not load Packs');
+    };
+    const before = JSON.stringify(runtime.get('action', result.action.id));
+    const eventsBefore = JSON.stringify(f.tasks.chats.turnEvents(f.entry.id, turnId));
+    const refresh = () => f.tasks.refreshEvidence(f.project, f.entry.id, [turnId])[0];
+    assert.equal(refresh().actions[result.action.id].status, 'matches');
+    fs.writeFileSync(file, 'after!');
+    const observed = refresh();
+    assert.equal(observed.actions[result.action.id].status, 'changed');
+    assert.equal(observed.verifications[result.verification.id].status, 'changed');
+    const events = f.tasks.history(f.project, f.entry.id).turns[0].events;
+    const actionEvent = events.find(event => event.type === 'industrial-result');
+    assert.equal(actionEvent.verification.status, 'passed');
+    assert.equal(actionEvent.inputStatus.status, 'changed');
+    const results = events.findLast(event => event.type === 'results-ready').results;
+    assert.equal(results.groups[0].verifications[0].inputStatus.status, 'changed');
+    assert.throws(
+      () => context.select({ revision: results.revision, groupIds: [results.groups[0].id] }),
+      /inputs changed/,
+    );
+    assert.equal(JSON.stringify(runtime.get('action', result.action.id)), before);
+    assert.equal(JSON.stringify(f.tasks.chats.turnEvents(f.entry.id, turnId)), eventsBefore);
+    assert.equal(
+      context.select({
+        revision: results.revision,
+        groupIds: [results.groups[0].id],
+        historical: true,
+      }).selection.historical,
+      true,
+    );
+    assert.equal(f.tasks.projects.bundles.size, 0);
+    const other = f.tasks.chats.create(f.project.path, f.project.domain);
+    assert.throws(() => f.tasks.refreshEvidence(f.project, other.id, [turnId]), /another chat/);
+    assert.throws(
+      () =>
+        f.tasks.refreshEvidence({ ...f.project, path: path.dirname(f.project.path) }, f.entry.id, [
+          turnId,
+        ]),
+      /project/,
+    );
+    fs.unlinkSync(file);
+    assert.equal(refresh().actions[result.action.id].status, 'changed');
+  } finally {
+    await runtime.close();
+  }
 });
 
 test('empty and text-only remote histories do not require execution setup or load Packs', async t => {
