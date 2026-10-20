@@ -379,12 +379,18 @@ async function run(window) {
           };
         },
       });
-      await verifyWheel(window, measure, (deltaY, ctrlKey) =>
-        frame.executeJavaScript(`(() => {
+      // OrbitControls scales 60 px by only ~3.1%; 120 px exercises the shared
+      // >5% visible-magnification assertion without weakening that assertion.
+      await verifyWheel(
+        window,
+        measure,
+        (deltaY, ctrlKey) =>
+          frame.executeJavaScript(`(() => {
           const canvas=document.querySelector('.pcb3d-scene canvas'), rect=canvas.getBoundingClientRect();
           return !canvas.dispatchEvent(new WheelEvent('wheel', {deltaY:${deltaY},ctrlKey:${ctrlKey},
             clientX:rect.left+rect.width*.6,clientY:rect.top+rect.height*.4,bubbles:true,cancelable:true}));
         })()`),
+        { deltaY: -120 },
       );
       // Exercise the user control, then check the rendered layer set rather than only React state.
       await evaluate(
