@@ -171,9 +171,11 @@ function localCommand(argv, directory, input, work, environment, task) {
   };
   if (process.platform === 'darwin' && fs.existsSync('/usr/bin/sandbox-exec')) {
     const profile = path.join(directory, 'task.sb');
+    // Seatbelt checks resolved paths, including macOS /var -> /private/var.
+    const workRoot = fs.realpathSync(work);
     fs.writeFileSync(
       profile,
-      `(version 1)\n(allow default)\n(deny file-read-data)\n(allow file-read-data (literal "/"))\n(allow file-read-data ${[...roots, fs.realpathSync(work), '/dev'].map(file => `(${fs.statSync(file).isDirectory() ? 'subpath' : 'literal'} ${JSON.stringify(file)})`).join(' ')})\n(deny file-write*)\n(allow file-write* (subpath ${JSON.stringify(work)}) (literal "/dev/null"))\n(deny network*)\n(deny appleevent-send)\n`,
+      `(version 1)\n(allow default)\n(deny file-read-data)\n(allow file-read-data (literal "/"))\n(allow file-read-data ${[...roots, workRoot, '/dev'].map(file => `(${fs.statSync(file).isDirectory() ? 'subpath' : 'literal'} ${JSON.stringify(file)})`).join(' ')})\n(deny file-write*)\n(allow file-write* (subpath ${JSON.stringify(workRoot)}) (literal "/dev/null"))\n(deny network*)\n(deny appleevent-send)\n`,
     );
     return {
       argv: ['/usr/bin/sandbox-exec', '-f', profile, launchPath, ...argv.slice(1)],

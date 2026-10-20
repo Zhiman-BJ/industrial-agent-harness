@@ -264,6 +264,29 @@ test('real task cannot write source, runtime evidence, input snapshots or contac
 
 test('real local task reads only its snapshot, runtime libraries and explicitly granted dependency directories', async t => {
   const { directory, project, bundle, run } = workspace(t);
+  // Call the production backend through a directory alias, as with macOS TMPDIR.
+  // A canonicalized project path can otherwise hide an incorrect Seatbelt grant.
+  const { executeTask } = require('../../packages/domain-runtime/src/task-process.cjs');
+  const alias = path.join(directory, 'backend-alias');
+  fs.symlinkSync(directory, alias, 'dir');
+  const input = path.join(alias, 'input'),
+    work = path.join(alias, 'work');
+  fs.mkdirSync(input);
+  fs.mkdirSync(work);
+  const aliased = await executeTask(
+    {
+      command: [
+        process.execPath,
+        '-e',
+        "require('node:fs').writeFileSync(require('node:path').join(process.env.HARNESS_OUTPUT_DIR, 'ran'), 'aliased-output')",
+      ],
+      runtime: { kind: 'local' },
+      timeoutMs: 5000,
+    },
+    { directory: alias, input, work, actionId: 'aliased-output', environment: process.env },
+  );
+  assert.equal(aliased.exitCode, 0, JSON.stringify(aliased));
+  assert.equal(fs.readFileSync(path.join(work, 'ran'), 'utf8'), 'aliased-output');
   const dependencies = path.join(directory, 'dependencies'),
     outside = path.join(directory, 'private.txt');
   fs.mkdirSync(dependencies);

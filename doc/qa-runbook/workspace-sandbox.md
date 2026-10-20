@@ -35,4 +35,8 @@ node scripts/verify-workspace-sandbox.cjs
 
 2026-10-20 的受限工具环境已实测前置失败：`sandbox_apply: Operation not permitted`。申请宿主执行被审批策略自动拒绝（sandbox_approval=false）。该环境不能执行本页的真实通过验收，需要在允许创建子沙箱的本机终端运行并返回结果；不改变 Harness 的隔离策略。
 
+同日本机终端运行已成功启动沙箱，但前置程序写入 `work/ran` 返回 EPERM，报告状态为 FAIL。定位为 macOS 写权限使用了 `/var/...` 别名，而实际文件路径是 `/private/var/...`；生产后端现将读写授权统一到工作目录的真实路径，并在原生用例中增加目录别名下实际写出结果的回归。配置生成回归已验证修复前失败、修复后通过；真实用例仍须重跑，不能将本次代码修复等同于原生验收通过。
+
+该路径修复的定向回归 23/23 通过，架构契约 20/20、架构套件 48/48 通过，Lint 与 diff 检查通过。受限工具内重跑真实入口仍为 BLOCKED；本机终端的修复后真实通过结果尚待取得。
+
 [返回 QA 入口](../qa-runbook.md) · [输入绑定范围](../evidence-input-binding.md)
