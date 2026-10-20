@@ -2,7 +2,7 @@
 
 最新结论（2026-10-20）：真实 TaskService/Kimi、正常账号登录及部署远端 CAD 的完整链路已通过，仅模型服务使用本地 mock。一次远端批量授权、一次本地编辑授权，两次 CAD 验证及自动重同步成功，远端释放与本地清理完成。见[最终验收说明](current-user-and-model-mock-20261020.md)和[保留证据](live-acceptance-20261020/README.md)。
 
-Electron 点击验收单独记为 **blocked**：2026-10-20 05:35 UTC 的当前源码构建通过，但一次有界 Electron 启动仍收到 `SIGABRT`，没有可点击的 Harness 窗口。见[本轮启动探测](electron-click-readiness-20261020.json)；点击步骤与证据要求见 [QA 远程执行手册](../../qa-runbook/remote-execution.md)。服务层通过不能替代该项。
+Electron 点击验收已有真实窗口进展，但完整验收仍为 **blocked**：用户通过正常 Terminal 启动后，已在 CUA 原生界面完成独立远端 CAD 工程、未同步新建聊天、输入任务及发送按钮可用验证。未点击发送，未读取本地文件、审批、上传或执行远端任务；RE-E01 仅上述入口子项通过。配置 mock 前发现现有 MiniMax 单槽密钥，已取消而未修改，剩余用例待独立 UI 模型 profile，原因 `isolated-ui-model-profile-required`。见[本轮点击进展](electron-click-20261020/README.md)、[逐用例 JSON](electron-click-20261020/progress.json)及 [QA 远程执行手册](../../qa-runbook/remote-execution.md)。05:35 UTC 的早期 `SIGABRT`、无窗口探测仍保留在[历史启动记录](electron-click-readiness-20261020.json)；服务层通过不能替代完整点击验收。
 
 以下保留早期源码与受控集成检查记录；其中当时的阻塞不代表最新验收状态。
 
@@ -20,20 +20,20 @@ Electron 点击验收单独记为 **blocked**：2026-10-20 05:35 UTC 的当前�
 
 ## 本轮检查
 
-| 检查 | 结果 |
-| --- | --- |
-| 远端准备、当前 Runtime、规划 facade、会话释放、工程底座、Kimi 授权、共享 TaskService、桌面状态专项组合 | 合入最新 main 后 149/149 通过 |
-| 准备会话释放检查（含真实客户端的成功、失败、重取环境链路） | 9/9 通过，已计入上述组合 |
-| 最新 main 的 Windows 项目工作区、进程启动、平台策略、配置及会话目录兼容测试 | 22/22 通过；在当前 macOS 主机运行平台模拟与配置测试，不代表 Windows 原生验收 |
-| CLI 强制审批与 General 集成回归 | 5/5 通过；`auto` 遇到显式批量确认返回 `needs_input` / 退出码 2，不再留下挂起审批 |
-| 未配置远端的旧契约回归 | 1/1 通过；改为验证本地规划可用、远端执行被阻止且全程零请求/零上传 |
-| Desktop TypeScript 与 Vite 生产构建 | 通过 |
-| Desktop 完整单测 | 81/82；既有账号测试因 loopback 监听被拒绝而失败 |
-| 共享 application 完整单测 | 26/27；既有 MCP bridge 测试因 loopback 监听被拒绝而失败 |
-| 架构契约与版本边界静态检查 | 通过 |
-| 架构回归 | 47/48；既有 candidate-fetch 边界测试得到 `spawnSync git ENOBUFS`，与预期 `/size limit/` 不符 |
-| 真实工业 vertical slice 扩展检查 | 未通过：缺少已安装 Pack 的 Python 运行时，部分用例受 loopback `EPERM` 限制 |
-| 原生 Electron UI selftest | 2026-10-20 再次在应用启动前 `SIGABRT`，未完成实际界面验收；待 PR 的原生 Desktop CI 补充 |
+| 检查                                                                                                   | 结果                                                                                         |
+| ------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------- |
+| 远端准备、当前 Runtime、规划 facade、会话释放、工程底座、Kimi 授权、共享 TaskService、桌面状态专项组合 | 合入最新 main 后 149/149 通过                                                                |
+| 准备会话释放检查（含真实客户端的成功、失败、重取环境链路）                                             | 9/9 通过，已计入上述组合                                                                     |
+| 最新 main 的 Windows 项目工作区、进程启动、平台策略、配置及会话目录兼容测试                            | 22/22 通过；在当前 macOS 主机运行平台模拟与配置测试，不代表 Windows 原生验收                 |
+| CLI 强制审批与 General 集成回归                                                                        | 5/5 通过；`auto` 遇到显式批量确认返回 `needs_input` / 退出码 2，不再留下挂起审批             |
+| 未配置远端的旧契约回归                                                                                 | 1/1 通过；改为验证本地规划可用、远端执行被阻止且全程零请求/零上传                            |
+| Desktop TypeScript 与 Vite 生产构建                                                                    | 通过                                                                                         |
+| Desktop 完整单测                                                                                       | 81/82；既有账号测试因 loopback 监听被拒绝而失败                                              |
+| 共享 application 完整单测                                                                              | 26/27；既有 MCP bridge 测试因 loopback 监听被拒绝而失败                                      |
+| 架构契约与版本边界静态检查                                                                             | 通过                                                                                         |
+| 架构回归                                                                                               | 47/48；既有 candidate-fetch 边界测试得到 `spawnSync git ENOBUFS`，与预期 `/size limit/` 不符 |
+| 真实工业 vertical slice 扩展检查                                                                       | 未通过：缺少已安装 Pack 的 Python 运行时，部分用例受 loopback `EPERM` 限制                   |
+| 原生 Electron UI selftest                                                                              | 2026-10-20 再次在应用启动前 `SIGABRT`，未完成实际界面验收；待 PR 的原生 Desktop CI 补充      |
 
 受控集成使用真实 RemoteSettings、RemoteGatewayClient、共享 TaskService 和 IndustrialRuntime，通过注入 transport 返回 HTTP/MCP 响应，不依赖被环境禁止的 TCP listener。覆盖批量计划零上传、批准前内容变化、任务/聊天/工具隔离、自动同步、真实受保护发现、能力变化、未知结果不重放、失败后继续本地对话、托管路径限制及工作区替换。工程通过结果来自测试 fixture，不能作为专业软件资格。
 

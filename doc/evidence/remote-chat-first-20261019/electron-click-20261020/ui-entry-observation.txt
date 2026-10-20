@@ -1,0 +1,19 @@
+CUA 原生可访问性观察节选 — 2026-10-20
+
+仅保留本次 PR230 项目、聊天及 composer 的原始条目；省略其他项目、无关路径、重复 focused element 及合成 prompt 的后续步骤。条目编号沿用当次观察。此时已输入但未点击发送；发送按钮没有 disabled 标记。观察后已清空草稿，窗口保持打开。
+
+							35 文本 PR230 Electron CAD 验收
+						37 container PR230 Electron CAD 验收 的聊天
+							38 按钮 (disabled) Description: 在 PR230 Electron CAD 验收 中新建聊天, Help: 在此聊天发送消息后再新建聊天
+							39 按钮 远端批量授权点击验收
+							44 文本 PR230 Electron CAD 验收
+						50 文本 按需准备文件
+						51 按钮 展开状态卡: 按需准备文件
+						55 文本 描述项目中的任务，相关能力和工具会随任务进展出现。
+					56 按钮 PR230 Electron CAD 验收, Help: 项目详情
+					57 文本输入区 (settable) Description: 工程任务, Placeholder: 描述你的项目任务…, Value: 完成本隔离测试工程的一次真实远端 CAD 对话任务。只能使用工业 Runtime 工具，不使用 Shell、原生文件写入、外部 MCP、子代理或后台任务。不要另开任务，不要询问用户，不要自行重试失败或不确定的远端动作；失败时明确停止。
+					60 弹出式按钮 Description: 当前对话的审批模式, Help: 当前对话的操作先请求审批。新对话默认使用此模式。, Value: 请求审批
+						61 (selected) 请求审批
+					64 按钮 发送任务
+					65 文本 按 Enter 发送，按 Shift+Enter 换行。
+					66 文本 直接描述任务，Agent 会准备远程文件并统一请求授权。
