@@ -4,6 +4,52 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { collectNativeEvidence } = require('../../scripts/collect-native-evidence.cjs');
+const { accepted, cases } = require('../../scripts/verify-workspace-sandbox.cjs');
+
+test('focused sandbox acceptance requires every named native case and cannot pass partial or skipped execution', () => {
+  const summary = {
+    success: true,
+    counts: { tests: 5, passed: 5, failed: 0, cancelled: 0, todo: 0, skipped: 0 },
+  };
+  const outcomes = cases.map(name => ({ name, status: 'passed', skip: false }));
+  assert.equal(accepted(summary, outcomes), true);
+  assert.equal(accepted(undefined, []), false);
+  assert.equal(accepted(summary, outcomes.slice(1)), false);
+  assert.equal(accepted(summary, [...outcomes.slice(1), outcomes[1]]), false);
+  assert.equal(
+    accepted(
+      summary,
+      outcomes.map((item, index) => (index ? item : { ...item, name: 'unrelated test' })),
+    ),
+    false,
+  );
+  assert.equal(
+    accepted(
+      summary,
+      outcomes.map((item, index) => (index ? item : { ...item, status: 'failed' })),
+    ),
+    false,
+  );
+  assert.equal(
+    accepted(
+      summary,
+      outcomes.map((item, index) => (index ? item : { ...item, skip: true })),
+    ),
+    false,
+  );
+  for (const counts of [
+    { tests: 0 },
+    { passed: 4 },
+    { failed: 1 },
+    { cancelled: 1 },
+    { todo: 1 },
+    { skipped: 1 },
+  ])
+    assert.equal(
+      accepted({ ...summary, counts: { ...summary.counts, ...counts } }, outcomes),
+      false,
+    );
+});
 
 test('native evidence retains task records and Pack identity without copying managed applications', t => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'native-evidence-'));

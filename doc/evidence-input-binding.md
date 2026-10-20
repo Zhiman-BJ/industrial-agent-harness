@@ -23,16 +23,18 @@ matches 严格表示“已记录的输入文件仍匹配”，不是“整个工
 
 ## 验证
 
+真实任务可在本机终端一次执行 `node scripts/verify-workspace-sandbox.cjs`。它保留严格的通过/失败/阻塞区分、实际 canonical records 和检查报告；操作与边界见[真实沙箱验收](qa-runbook/workspace-sandbox.md)。
+
 新增回归覆盖原生同尺寸编辑和恢复 mtime、删除/不安全路径、空输入、快照与非快照并发变更、伪造绑定拒绝、任务声明竞态、回写及回滚冲突、只读历史与跨聊天/项目拒绝、scope 刷新和界面合并时保留新事件/历史 verdict。真实声明任务及 Desktop selftest 增加相应情景，仍要求在可运行本地任务隔离与 MCP 服务的环境验收。
 
 本轮环境的 sandbox-exec 返回 `sandbox_apply: Operation not permitted`，本地 MCP 监听返回 `listen EPERM 127.0.0.1`，因此不将真实任务与完整 Desktop 链路记为通过。架构所有权 checker 通过；候选物化测试的 `spawnSync git ENOBUFS` 在未修改的基线同样复现，未调整门禁。实际命令及结果见本次提交说明。
 
-| 本轮检查 | 实际结果 |
-| --- | --- |
-| 定向回归：contracts 全部；Runtime evidence-inputs/workspace/industrial-read-only/presentation；TaskService 与 results；Kimi runtime-tools；Desktop result-layout/chat-history | 80 项，79 通过，1 项 MCP bridge 因本机监听 EPERM 失败；无跳过 |
-| `pnpm --filter @industrial-agent-harness/desktop build` | 类型检查与生产构建通过 |
-| `pnpm lint`、改动代码 Prettier 检查、`git diff --check` | 无错误；全仓 Lint 保留 92 项 warning |
-| `pnpm test:architecture-contract` | 所有权 checker 通过；测试 19/20，候选物化 ENOBUFS 在基线复现 |
-| `pnpm test:architecture` | 47/48，同一候选物化失败 |
-| workspace-runtime 的真实 protected local task 用例 | 在首个真实任务处失败；本环境无法创建 Seatbelt 沙箱，新增并发输入情景未获原生通过证据 |
-| Desktop task-results selftest | 已增加外部编辑与草稿保留情景；本轮未完成完整 Electron/MCP/FreeCAD 验收 |
+| 本轮检查                                                                                                                                                                      | 实际结果                                                                             |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| 定向回归：contracts 全部；Runtime evidence-inputs/workspace/industrial-read-only/presentation；TaskService 与 results；Kimi runtime-tools；Desktop result-layout/chat-history | 80 项，79 通过，1 项 MCP bridge 因本机监听 EPERM 失败；无跳过                        |
+| `pnpm --filter @industrial-agent-harness/desktop build`                                                                                                                       | 类型检查与生产构建通过                                                               |
+| `pnpm lint`、改动代码 Prettier 检查、`git diff --check`                                                                                                                       | 无错误；全仓 Lint 保留 92 项 warning                                                 |
+| `pnpm test:architecture-contract`                                                                                                                                             | 所有权 checker 通过；测试 19/20，候选物化 ENOBUFS 在基线复现                         |
+| `pnpm test:architecture`                                                                                                                                                      | 47/48，同一候选物化失败                                                              |
+| workspace-runtime 的真实 protected local task 用例                                                                                                                            | 在首个真实任务处失败；本环境无法创建 Seatbelt 沙箱，新增并发输入情景未获原生通过证据 |
+| Desktop task-results selftest                                                                                                                                                 | 已增加外部编辑与草稿保留情景；本轮未完成完整 Electron/MCP/FreeCAD 验收               |
