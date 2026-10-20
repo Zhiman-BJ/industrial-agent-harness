@@ -2,7 +2,7 @@
 
 GDS/GDSII、OAS/OASIS Viewer 的 Python 环境由共享 Pack Manager 管理。Chip Pack owner 声明固定的 CPython 3.12.15（Astral PBS build `20261013`）与 KLayout 0.30.12 wheel；Harness 不维护另一份领域版本表。
 
-在领域包设置里选择 **Install viewer support / 仅安装 Viewer 支持**，或对已安装包选择 **Prepare viewer / 准备 Viewer**、**Check viewer / 检查 Viewer**。这些操作复用现有进度、取消、失败记录和重试入口。仅准备 Viewer 不要求 Docker，也不准备无关原生应用。完整领域安装仍保留原来的工程依赖检查；Viewer 就绪与工程工具链就绪分别显示。
+在领域包设置里选择 **Install viewer support / 安装查看器支持**，或对已安装包选择 **Prepare / repair viewers / 准备 / 修复查看器**、**Check / repair viewers / 检查 / 修复查看器**。这些操作复用现有进度、取消、失败记录和重试入口。仅准备 Viewer 不要求 Docker，也不准备无关原生应用。完整领域安装仍保留原来的工程依赖检查；Viewer 就绪与工程工具链就绪分别显示。
 
 CLI 使用相同安装器：
 

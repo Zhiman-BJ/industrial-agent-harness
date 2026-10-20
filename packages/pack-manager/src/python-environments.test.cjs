@@ -12,6 +12,7 @@ const {
   validatePythonEnvironments,
 } = require('./python-environments.cjs');
 const digest = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
+const fileHash = file => digest(fs.readFileSync(file));
 function archive(entries) {
   const blocks = [];
   for (const entry of entries) {
@@ -103,6 +104,12 @@ function fixture(t, options = {}) {
           'installed-package.so',
         );
         fs.writeFileSync(packageFile, 'pinned package extension');
+        const nested = path.join(
+          path.dirname(packageFile),
+          'python3.12/site-packages/shapes/_db.so',
+        );
+        fs.mkdirSync(path.dirname(nested), { recursive: true });
+        fs.writeFileSync(nested, 'pinned nested native module');
       }
       return 'HARNESS_PYTHON_PROBE_OK\n';
     },
@@ -572,43 +579,49 @@ test('failed new declaration keeps an independently valid previous runtime ready
   assert.equal(f.manager.status([replacement])[0].ready, false);
 });
 
-test('resolve reuses bounded cross-manager validation and invalidates receipt or interpreter changes', async t => {
+test('resolve rejects a modified nested native module without a prior readiness check', async t => {
   const f = fixture(t);
   await f.manager.ensure([f.asset]);
   const executable = f.manager.resolve([f.asset], 'drawing');
   const directory = f.manager.location(f.asset),
     receipt = path.join(directory, 'receipt.json');
-  const original = fs.readdirSync;
-  let walks = 0;
-  fs.readdirSync = (file, ...args) => {
-    if (String(file).startsWith(directory)) walks++;
-    return original(file, ...args);
-  };
-  try {
-    for (let i = 0; i < 50; i++) {
-      const fresh = new PythonEnvironmentManager({ directory: f.manager.directory });
-      assert.equal(fresh.resolve([f.asset], 'drawing'), executable);
-    }
-    assert.equal(walks, 0, 'render-time resolution must not rescan the Python tree');
-    fs.appendFileSync(receipt, '\n');
-    assert.equal(f.manager.resolve([f.asset], 'drawing'), executable);
-    assert.ok(walks > 0, 'a changed receipt requires a fresh full validation');
-    fs.appendFileSync(executable, '# changed executable\n');
-    assert.equal(f.manager.resolve([f.asset], 'drawing'), undefined);
-    assert.equal(f.manager.status([f.asset])[0].ready, false);
-    fs.rmSync(receipt);
-    assert.equal(f.manager.resolve([f.asset], 'drawing'), undefined);
-  } finally {
-    fs.readdirSync = original;
-  }
+  const module = path.join(directory, 'python/lib/python3.12/site-packages/shapes/_db.so');
+  const before = fs.statSync(module);
+  const identities = [fileHash(receipt), fileHash(executable)];
+  fs.writeFileSync(module, Buffer.alloc(before.size, 120));
+  fs.utimesSync(module, before.atimeMs / 1000, before.mtimeMs / 1000);
+  // Neither the receipt nor interpreter changed, so only validating their
+  // fingerprints would incorrectly reuse the old successful resolution.
+  assert.deepEqual([fileHash(receipt), fileHash(executable)], identities);
+  const counts = [f.calls.length, f.commands.length];
+  assert.equal(f.manager.resolve([f.asset], 'drawing'), undefined);
+  const reopened = new PythonEnvironmentManager({ directory: f.manager.directory });
+  assert.equal(reopened.resolve([f.asset], 'drawing'), undefined);
+  assert.deepEqual([f.calls.length, f.commands.length], counts);
 });
 
-test('full readiness invalidates a fast resolution when a module disappears', async t => {
+test('resolve rejects a deleted nested native module without a prior readiness check', async t => {
   const f = fixture(t);
   await f.manager.ensure([f.asset]);
   assert.ok(f.manager.resolve([f.asset], 'drawing'));
-  fs.rmSync(path.join(f.manager.location(f.asset), 'python/lib/installed-package.so'));
-  assert.equal(f.manager.status([f.asset])[0].ready, false);
+  fs.rmSync(
+    path.join(f.manager.location(f.asset), 'python/lib/python3.12/site-packages/shapes/_db.so'),
+  );
+  assert.equal(f.manager.resolve([f.asset], 'drawing'), undefined);
+  const reopened = new PythonEnvironmentManager({ directory: f.manager.directory });
+  assert.equal(reopened.resolve([f.asset], 'drawing'), undefined);
+});
+
+test('resolve still rejects receipt removal or a changed interpreter without a status preflight', async t => {
+  const f = fixture(t);
+  await f.manager.ensure([f.asset]);
+  const executable = f.manager.resolve([f.asset], 'drawing');
+  const receipt = path.join(f.manager.location(f.asset), 'receipt.json');
+  fs.appendFileSync(receipt, '\n');
+  assert.equal(f.manager.resolve([f.asset], 'drawing'), executable);
+  fs.appendFileSync(executable, 'changed interpreter');
+  assert.equal(f.manager.resolve([f.asset], 'drawing'), undefined);
+  fs.rmSync(receipt);
   assert.equal(f.manager.resolve([f.asset], 'drawing'), undefined);
 });
 

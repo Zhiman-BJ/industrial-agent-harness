@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "at": "2026-10-20T13:34:08.530Z",
+  "at": "2026-10-20T13:45:46.303Z",
   "scope": "real official downloads, production bundle/installer/resolver/worker, CPU GDS rendering and offline repair; no native GUI or engineering acceptance",
   "platform": "darwin-arm64",
   "owner": {
@@ -31,9 +31,9 @@
     "ready"
   ],
   "containerCalls": 0,
-  "coldMs": 82068.41,
-  "warmMs": 690.48,
-  "repairMs": 7471.05,
+  "coldMs": 75295.73,
+  "warmMs": 687.03,
+  "repairMs": 7738.83,
   "sourceSha256": "88eb101db90f76a960f5b83e446423b7f8d66fa28240dc1110c49b6ceeabac95",
   "sourceUnchanged": true,
   "cell": "sobel_top",
@@ -46,6 +46,7 @@
   },
   "repeatedRenderResolutions": 1,
   "offlineRequests": 0,
+  "freshResolutionDetectedDamage": true,
   "damagedModuleRepaired": true,
   "ok": true
 }

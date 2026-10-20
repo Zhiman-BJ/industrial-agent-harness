@@ -19,9 +19,6 @@ const NOFOLLOW = fs.constants.O_NOFOLLOW || 0;
 const SHA = /^[a-f0-9]{64}$/;
 const ID = /^[a-z][a-z0-9._-]{0,63}$/;
 const VERSION = /^[A-Za-z0-9][A-Za-z0-9._+-]{0,63}$/;
-// Render IPC may construct fresh managers. Keep a small process-local cache,
-// without watchers, and recheck receipt/interpreter identity on every resolve.
-const resolutions = new Map();
 const hash = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
 function stable(value) {
   if (Array.isArray(value)) return `[${value.map(stable).join(',')}]`;
@@ -403,7 +400,6 @@ class PythonEnvironmentManager {
         const { receipt, executable } = this.receipt(asset);
         return { ...view, ready: true, executable, checkedAt: receipt.checkedAt };
       } catch (error) {
-        resolutions.delete(this.location(asset));
         const reason =
           error.code === 'ENOENT' ? 'Python environment needs preparation.' : error.message;
         return { ...view, ready: false, message: reason, reason };
@@ -421,46 +417,12 @@ class PythonEnvironmentManager {
     this.selected(assets);
     const ready = [];
     for (const asset of assets.filter(item => item.viewer === viewer)) {
-      const key = this.location(asset);
       try {
-        const fingerprint = () => {
-          this.guard(key);
-          if (fs.lstatSync(path.join(key, '.needs-repair'), { throwIfNoEntry: false }))
-            throw Error('Python environment needs repair.');
-          const receipt = path.join(key, 'receipt.json');
-          const stat = fs.lstatSync(receipt);
-          if (!stat.isFile() || stat.isSymbolicLink())
-            throw Error('Python runtime receipt changed.');
-          const executable = path.join(
-            key,
-            ...asset.platforms[this.platform].interpreter.executable.split('/'),
-          );
-          const real = fs.realpathSync(executable);
-          if (!inside(key, real)) throw Error('Python interpreter escaped its environment.');
-          const identity = file => {
-            const value = fs.statSync(file);
-            return [value.dev, value.ino, value.mode, value.size, value.mtimeMs, value.ctimeMs];
-          };
-          return stable({
-            receipt: identity(receipt),
-            executable: identity(real),
-            real,
-            root: identity(key).slice(0, 3),
-          });
-        };
-        const current = fingerprint();
-        let cached = resolutions.get(key);
-        if (!cached || cached.fingerprint !== current) {
-          const verified = this.receipt(asset);
-          cached = { fingerprint: fingerprint(), executable: verified.executable };
-        }
-        resolutions.delete(key);
-        resolutions.set(key, cached);
-        if (resolutions.size > 32) resolutions.delete(resolutions.keys().next().value);
-        ready.push(cached);
-      } catch {
-        resolutions.delete(key);
-      }
+        // Opening a Viewer must freshly validate every installed resource,
+        // including nested native modules. Render-time reuse belongs to the
+        // desktop service that owns the already-open worker's lifetime.
+        ready.push(this.receipt(asset, true));
+      } catch {}
     }
     if (ready.length > 1) throw Error('Multiple Python environments match this Viewer.');
     return ready[0]?.executable;
@@ -901,7 +863,6 @@ class PythonEnvironmentManager {
     const selected = this.selected(JSON.parse(JSON.stringify(assets)));
     options.signal?.throwIfAborted();
     if (!selected.length) return [];
-    for (const asset of selected) resolutions.delete(this.location(asset));
     for (const asset of selected)
       if (!asset.platforms[this.platform])
         throw Error('Python environment does not support this platform.');
@@ -936,7 +897,6 @@ class PythonEnvironmentManager {
               flag: 'wx',
               mode: 0o600,
             });
-            resolutions.delete(this.location(asset));
           }
         }
         // A recheck may discover damage in an environment whose initial

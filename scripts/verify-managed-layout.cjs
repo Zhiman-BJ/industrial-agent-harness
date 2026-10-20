@@ -150,8 +150,9 @@ async function main() {
   );
   assert.ok(extension, 'the real installed wheel must contain its compiled module');
   fs.unlinkSync(path.join(environment, ...extension.path.split('/')));
-  assert.equal(describeInstalled(manager, manager.list()[0]).viewerState, 'needs-preparation');
+  // A fresh open must detect nested damage without a status query clearing a cache first.
   assert.equal(resolveViewerPython(installed.domain, 'layout'), undefined);
+  assert.equal(describeInstalled(manager, manager.list()[0]).viewerState, 'needs-preparation');
   const repairStart = performance.now();
   await manager.prepareRuntime(manager.list()[0], { scope: 'viewer', recheck: true });
   const repairMs = performance.now() - repairStart;
@@ -189,6 +190,7 @@ async function main() {
     },
     repeatedRenderResolutions: resolutions,
     offlineRequests,
+    freshResolutionDetectedDamage: true,
     damagedModuleRepaired: true,
     ok: true,
   };

@@ -13,12 +13,12 @@ The shared dependency path is implemented. This record distinguishes real macOS 
 
 | Check                                       | Observed result                                                                                  |
 | ------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| Fresh Viewer-only preparation               | 82,068.41 ms; two official resources, three HTTPS requests including the GitHub release redirect |
+| Fresh Viewer-only preparation               | 75,295.73 ms; two official resources, three HTTPS requests including the GitHub release redirect |
 | Real GDS render                             | `sobel_top`, 22 layers, 1200×800 PNG; source unchanged                                           |
 | Repeated render access                      | 50 accesses reused one full dependency resolution                                                |
-| Offline full recheck                        | 690.48 ms; zero network requests                                                                 |
-| Deliberately delete compiled KLayout module | Viewer changed to needs-preparation; resolver refused the damaged environment                    |
-| Explicit offline repair                     | 7,471.05 ms; verified cache reused, PNG probes passed, Viewer ready restored                     |
+| Offline full recheck                        | 687.03 ms; zero network requests                                                                 |
+| Deliberately delete compiled KLayout module | Fresh resolver refused the damaged environment before any status query; Viewer then showed needs-preparation |
+| Explicit offline repair                     | 7,738.83 ms; verified cache reused, PNG probes passed, Viewer ready restored                     |
 
 These are single-run observations, not general performance thresholds. The installer uses a complete private Python tree; no host Python, global pip, source venv or Docker was used by this Viewer path.
 
@@ -26,11 +26,11 @@ These are single-run observations, not general performance thresholds. The insta
 
 ## Regression and independent review
 
-- Python manager: 19/19; covers exact downloads, traversal/link/special-file limits, cancellation, local-only pip, relocation failure, persistent needs-repair state, zero-write cache reuse, full repair-space admission and bounded resolution caching. New tests execute on Windows with hardlinks/junctions and the real bounded Node child runner, without new CI skips.
+- Python manager: 20/20; covers exact downloads, traversal/link/special-file limits, cancellation, local-only pip, relocation failure, persistent needs-repair state, zero-write ready reuse, full repair-space admission and fresh-resolution inventory/hash checks. Portable regressions use hardlinks/junctions and the real bounded Node child runner without new CI skips; hosted platform execution remains required.
 - Pack integration: eight new positive/negative cases; the focused integration/catalog/container run passed 23/23. Viewer-only initial activation, failed replacement preservation, authenticated declaration binding and separate readiness are covered.
 - Desktop: 125 tests passed; shared host helper verifies fresh-open resolution, repeated-render reuse, invalid overrides, interpreter replacement and reset. TypeScript/Vite build passed.
 - Domain selection/tampered installed-manifest regressions passed 2/2; full architecture passed 48/48; lint had zero errors; release checks passed.
-- Astra Ultra independently reviewed the installer and consumer boundary. Its confirmed P2 (failed old probe followed by failed replacement incorrectly restoring ready) was fixed with a persistent repair marker and regression. It also identified the render-path Pack-rescan cost; fresh open now validates fully while repeated render uses interpreter identity. Its independent mid-extraction abort challenge left no recreated staging or uncaught exception.
+- Astra Ultra independently reviewed the installer and consumer boundary. Its confirmed P2 (failed old probe followed by failed replacement incorrectly restoring ready) was fixed with a persistent repair marker and regression. It also identified the render-path Pack-rescan cost and a redundant manager cache that could hide nested module damage. Fresh open now hashes the full inventory without that cache, while repeated render uses the Desktop worker's interpreter identity. Regressions cover deleted modules and same-size, restored-mtime modifications without a prior status query. Its independent mid-extraction abort challenge left no recreated staging or uncaught exception.
 
 The complete local portable run executed 1,127 tests: 1,110 passed, 8 allowed skips, 9 failed, no unexpected skips. The failures were unchanged Agent/installer isolation assertions after the local OS sandbox probe was refused, three default diagnostic-log writes outside writable roots, and the existing DMG test whose hdiutil device was unavailable. Owner 0.5.7 does not participate in those paths. The tests and CI allowlist were not weakened; hosted CI remains required.
 
