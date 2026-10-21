@@ -27,6 +27,7 @@ test(
     t.after(() => fs.rmSync(root, { recursive: true, force: true }));
     const project = { id: 'native-results', domain: 'cad', path: path.join(root, 'project') };
     fs.mkdirSync(project.path);
+    const diagnosticInput = 'diagnostic-input.FCStd';
     const facts = [];
     class Kernel {
       constructor(_dir, getScope, _read, _detail, emit, _config, _factory, options) {
@@ -70,19 +71,55 @@ test(
           await call('build', { recipe });
           await call('build', { recipe: { ...recipe, parameters: { W: 35 } } });
           const current = this.options.getApplicationContext().view();
-          const modelIds = current.groups
-            .filter(group => group.previewArtifactId)
-            .map(group => group.id);
-          await applicationTools(this.options.getApplicationContext)
-            .find(tool => tool.name === 'select_result')
-            .handler({ groupIds: modelIds, revision: current.revision });
+          const models = current.groups.filter(group => group.previewArtifactId);
+          const modelIds = models.map(group => group.id);
+          assert.equal(models.length, 2);
+          assert.ok(
+            models.every(
+              group =>
+                group.verifications.length === 1 &&
+                group.verifications[0].status === 'passed' &&
+                group.verifications[0].inputStatus.status === 'unchecked',
+            ),
+            'inline recipe builds have no recorded project-file input hashes',
+          );
+          const select = applicationTools(this.options.getApplicationContext).find(
+            tool => tool.name === 'select_result',
+          );
+          const request = { groupIds: modelIds, revision: current.revision };
+          await assert.rejects(select.handler(request), /inputs changed or could not be checked/);
+          const rejected = this.options.getApplicationContext().view();
+          assert.equal(rejected.revision, current.revision);
+          assert.deepEqual(rejected.selection, current.selection);
+          // Compare the recorded designs explicitly without presenting their
+          // historical verification as a check of current project inputs.
+          await select.handler({ ...request, historical: true });
         } else {
-          await call('inspect', { file: fileOf(facts[1]) });
+          const historical = task === 'FreeCAD diagnostic report only';
+          assert.ok(historical || task === 'current FreeCAD diagnostic report only');
+          await call('inspect', { file: historical ? fileOf(facts[1]) : diagnosticInput });
           const current = this.options.getApplicationContext().view();
           const report = current.groups.find(group => group.title === 'Geometry inspection');
-          this.options
-            .getApplicationContext()
-            .select({ groupIds: [report.id], revision: current.revision });
+          assert.ok(report, 'the native inspection must publish a diagnostic report');
+          assert.equal(report.verifications.length, 1);
+          assert.equal(report.verifications[0].status, 'passed');
+          assert.equal(
+            report.verifications[0].inputStatus.status,
+            historical ? 'unchecked' : 'matches',
+          );
+          const select = applicationTools(this.options.getApplicationContext).find(
+            tool => tool.name === 'select_result',
+          );
+          const request = { groupIds: [report.id], revision: current.revision };
+          if (historical) {
+            // The Pack excludes cad-output from project inputs. Its report is
+            // recorded evidence, not a fresh check of tracked project files.
+            await assert.rejects(select.handler(request), /inputs changed or could not be checked/);
+            const rejected = this.options.getApplicationContext().view();
+            assert.equal(rejected.revision, current.revision);
+            assert.deepEqual(rejected.selection, current.selection);
+          }
+          await select.handler({ ...request, historical });
         }
         this.emit({ type: 'done', result: { status: 'completed' } });
       }
@@ -100,7 +137,19 @@ test(
       entry = tasks.resume(project, chat.id);
     async function run(task) {
       await tasks.prepare(entry, { task });
-      return (await tasks.start(entry, task)).completion;
+      const completed = await (await tasks.start(entry, task)).completion;
+      assert.equal(
+        completed.status,
+        'completed',
+        JSON.stringify({
+          task,
+          errors: tasks
+            .history(project, entry.id)
+            .turns.at(-1)
+            .events.filter(event => event.type === 'error'),
+        }),
+      );
+      return completed;
     }
     const result = await run('generate then modify and check');
     assert.equal(result.status, 'completed');
@@ -130,27 +179,46 @@ test(
     assert.ok(model.artifacts.some(artifact => artifact.kind === 'model.cad.step'));
     assert.ok(model.artifacts.some(artifact => artifact.kind === 'model.cad.stl'));
     const comparison = await run('compare two FreeCAD designs');
-    assert.equal(
-      comparison.status,
-      'completed',
-      JSON.stringify(
-        tasks
-          .history(project, entry.id)
-          .turns.at(-1)
-          .events.filter(event => event.type === 'error'),
-      ),
-    );
     assert.equal(comparison.results.selection.groupIds.length, 2);
+    assert.equal(comparison.results.selection.historical, true);
+    assert.ok(
+      comparison.results.groups
+        .filter(group => group.selected)
+        .every(
+          group =>
+            group.historical &&
+            group.verifications[0].status === 'passed' &&
+            group.verifications[0].inputStatus.status === 'unchecked',
+        ),
+    );
     assert.equal(
       comparison.results.groups.filter(group => group.previewArtifactId && !group.superseded)
         .length,
       2,
     );
     const diagnostic = await run('FreeCAD diagnostic report only');
-    assert.equal(
-      diagnostic.results.groups.find(group => group.selected).title,
-      'Geometry inspection',
-    );
+    const reports = diagnostic.results.groups.filter(group => group.selected);
+    assert.equal(reports.length, 1);
+    assert.equal(reports[0].title, 'Geometry inspection');
+    assert.equal(reports[0].historical, true);
+    assert.equal(reports[0].verifications[0].status, 'passed');
+    assert.equal(reports[0].verifications[0].inputStatus.status, 'unchecked');
+    assert.equal(diagnostic.results.selection.historical, true);
+
+    // Import the real edited model as a project input before preparing the next
+    // request, so the StateProvider can bind the inspection to those exact bytes.
+    fs.copyFileSync(resolved.file, path.join(project.path, diagnosticInput));
+    const currentDiagnostic = await run('current FreeCAD diagnostic report only');
+    const currentReports = currentDiagnostic.results.groups.filter(group => group.selected);
+    assert.equal(currentReports.length, 1);
+    assert.equal(currentReports[0].title, 'Geometry inspection');
+    assert.equal(currentReports[0].historical, false);
+    assert.equal(currentReports[0].verifications[0].status, 'passed');
+    assert.equal(currentReports[0].verifications[0].inputStatus.status, 'matches');
+    assert.deepEqual(currentReports[0].verifications[0].evidence.inputHashes, {
+      [diagnosticInput]: resolved.artifact.sha256,
+    });
+    assert.equal(currentDiagnostic.results.selection.historical, false);
     const brep = resolved.companions.find(item => item.artifact.kind === 'display.cad.brep');
     fs.appendFileSync(brep.file, '\nchanged');
     await assert.rejects(tasks.openResult(entry, request), /changed/);

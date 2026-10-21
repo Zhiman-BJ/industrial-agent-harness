@@ -1793,7 +1793,9 @@ export function App() {
               aria-labelledby={tabbed ? 'tab-chat' : undefined}
             >
               {page !== 'capabilities' && (
-                <header className="ia-chat-header">
+                <header
+                  className={`ia-chat-header ${!sidebarVisible && !tabbed && window.viewerHost?.platform === 'darwin' ? 'ia-lights-gap' : ''}`}
+                >
                   <div>
                     {!sidebarVisible && (
                       <button

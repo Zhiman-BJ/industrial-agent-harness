@@ -1,6 +1,6 @@
 {
   "name": "@industrial-agent-harness/desktop",
-  "version": "1.0.1-beta.6",
+  "version": "1.0.1-beta.7",
   "private": true,
   "main": "electron/main.cjs",
   "scripts": {
@@ -24,7 +24,8 @@
     "setup:layout": "node scripts/setup-layout.cjs",
     "setup:kimi": "node scripts/setup-kimi.cjs",
     "test:chats": "node scripts/test-chats.cjs",
-    "test:mcp": "node scripts/launch-electron.cjs --mcp-selftest",
+    "test:mcp": "node scripts/launch-electron.cjs --mcp-selftest && node scripts/launch-electron.cjs --remote-connection-selftest",
+    "test:remote-connection": "node scripts/launch-electron.cjs --remote-connection-selftest",
     "test:external-mcp": "node scripts/launch-electron.cjs --external-mcp-selftest",
     "test:cad-resize": "node scripts/launch-electron.cjs --cad-resize-selftest",
     "test:subagents": "node scripts/launch-electron.cjs --subagent-selftest",

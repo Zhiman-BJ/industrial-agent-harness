@@ -6,6 +6,7 @@ const path = require('node:path');
 const { execFile } = require('node:child_process');
 const { promisify } = require('node:util');
 const { startModel } = require('../tests/integration/fixtures/domain-mcp-model.cjs');
+const { assertAgentBoundary } = require('./assert-agent-boundary.cjs');
 const execute = promisify(execFile);
 
 async function main() {
@@ -151,7 +152,11 @@ async function main() {
       fs.mkdirSync(path.dirname(path.resolve(output)), { recursive: true });
       fs.writeFileSync(
         output + '.failure.json',
-        JSON.stringify({ engineering, failures }, null, 2) + '\n',
+        JSON.stringify(
+          { engineering, failures, events: rows, modelRequests: fixture.requests },
+          null,
+          2,
+        ) + '\n',
       );
       throw Error(
         'Installed RTL verification failed: ' +
@@ -160,9 +165,7 @@ async function main() {
     }
     assert.equal(rows.at(-1).engineering.checkpointId, engineering.checkpoint.id);
     const boundary = rows.find(row => row.event?.type === 'execution-boundary')?.event;
-    assert.equal(boundary?.mechanism, 'current-user');
-    assert.equal(boundary.osIsolation, false);
-    assert.equal(boundary.projectWritable, true);
+    assertAgentBoundary(boundary);
     fs.mkdirSync(path.dirname(path.resolve(output)), { recursive: true });
     fs.writeFileSync(
       output,

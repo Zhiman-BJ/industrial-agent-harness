@@ -1,0 +1,66 @@
+{
+  "testedAt": "2026-10-21T06:44:40.097Z",
+  "platform": "macOS arm64",
+  "node": "v26.10.0",
+  "baseCommit": "e114016f51665a1ec741f2025eec3c18ec9adce4",
+  "portable": {
+    "success": true,
+    "counts": {
+      "tests": 1099,
+      "failed": 0,
+      "passed": 1091,
+      "cancelled": 0,
+      "skipped": 8,
+      "todo": 0,
+      "topLevel": 1078,
+      "suites": 0
+    },
+    "duration_ms": 45092.719625,
+    "unexpectedSkips": [],
+    "skipped": [
+      "isolation detection probes a real launch instead of mere existence",
+      "isolated descendant cannot create unix sockets under the seccomp filter",
+      "Windows current-user launch supports null-device I/O and headless subprocess primitives",
+      "Windows current-user descendants preserve argv and pipes and retain normal user file permissions",
+      "Windows current-user cancellation stops the live process tree",
+      "Windows current-user execution runs pinned Kimi tools and resumes the same real conversation",
+      "Windows shared Agent starts a chat with nested settings storage and reports current-user permissions",
+      "KLayout LayoutView renders a bounded GDS viewport when available"
+    ]
+  },
+  "remoteRegressions": {
+    "tests": 168,
+    "passed": 168,
+    "failed": 0,
+    "skipped": 0
+  },
+  "architectureContract": {
+    "tests": 20,
+    "passed": 20,
+    "failed": 0,
+    "skipped": 0
+  },
+  "desktopBuild": "passed",
+  "changedFileEslint": {
+    "errors": 0,
+    "existingMainWarnings": 5
+  },
+  "prettier": "passed",
+  "realDeploymentConnection": "before unavailable; after connected",
+  "realDeploymentUi": "native CUA click completed Connected",
+  "nativeConnectionSmoke": {
+    "status": "passed",
+    "electron": "44.0.0",
+    "exitCode": 0,
+    "cases": [
+      "canonical",
+      "mcp-1.3.1",
+      "unsupported-product",
+      "malformed-discovery",
+      "recovered"
+    ],
+    "httpRequests": 5,
+    "requests": "GET /v1/service-info only",
+    "profile": "isolated temporary userData/account/resources"
+  }
+}

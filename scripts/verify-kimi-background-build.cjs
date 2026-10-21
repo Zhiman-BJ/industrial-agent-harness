@@ -7,6 +7,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
+const { assertAgentBoundary } = require('./assert-agent-boundary.cjs');
 
 async function main() {
   const project = path.resolve(__dirname, '..');
@@ -132,14 +133,8 @@ async function main() {
     const events = rows.filter(item => item.row.event);
     assert.equal(exit.code, 0, stderr || JSON.stringify(rows.at(-1)));
     assert.equal(rows.at(-1).row.status, 'finished');
-    assert.ok(
-      events.some(
-        item =>
-          item.row.event.type === 'execution-boundary' &&
-          item.row.event.mechanism === 'current-user' &&
-          item.row.event.osIsolation === false &&
-          item.row.event.projectWritable === true,
-      ),
+    assertAgentBoundary(
+      events.find(item => item.row.event.type === 'execution-boundary')?.row.event,
     );
     const waitStart = events.find(
       item => item.row.event.type === 'tool' && item.row.event.name === 'WaitFor',

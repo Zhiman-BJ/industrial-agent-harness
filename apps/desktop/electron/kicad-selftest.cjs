@@ -3,7 +3,12 @@ const path = require('node:path');
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 const { app } = require('electron');
-const { verifyNavigation, verifyWheel } = require('./navigation-selftest.cjs');
+const {
+  verifyNavigation,
+  verifyWheel,
+  transitionFullscreen,
+  waitForFittedView,
+} = require('./navigation-selftest.cjs');
 const { saveBindings } = require('./project-bindings.cjs');
 const { setLanguage } = require('./selftest-language.cjs');
 let directory;
@@ -379,30 +384,36 @@ async function run(window) {
           };
         },
       });
-      await verifyWheel(window, measure, (deltaY, ctrlKey) =>
-        frame.executeJavaScript(`(() => {
+      // OrbitControls scales 60 px by only ~3.1%; 120 px exercises the shared
+      // >5% visible-magnification assertion without weakening that assertion.
+      await verifyWheel(
+        window,
+        measure,
+        (deltaY, ctrlKey) =>
+          frame.executeJavaScript(`(() => {
           const canvas=document.querySelector('.pcb3d-scene canvas'), rect=canvas.getBoundingClientRect();
           return !canvas.dispatchEvent(new WheelEvent('wheel', {deltaY:${deltaY},ctrlKey:${ctrlKey},
             clientX:rect.left+rect.width*.6,clientY:rect.top+rect.height*.4,bubbles:true,cancelable:true}));
         })()`),
+        { deltaY: -120 },
       );
       // Exercise the user control, then check the rendered layer set rather than only React state.
       await evaluate(
-        `document.querySelector('.ia-file-view:not([hidden])')?.querySelector('.rp-pcb3d-layer input[type="checkbox"]').click()`,
+        `document.querySelector('.ia-file-view:not([hidden])')?.querySelector('.rp-pcb3d-layers .rp-pcb3d-layer input[type="checkbox"]').click()`,
       );
       await waitFor(
         async () =>
           JSON.parse((await canvasState()).pcb3dVisibleLayers).length === visibleLayers.length - 1,
       );
       await evaluate(
-        `document.querySelector('.ia-file-view:not([hidden])')?.querySelector('.rp-pcb3d-layer input[type="checkbox"]').click()`,
+        `document.querySelector('.ia-file-view:not([hidden])')?.querySelector('.rp-pcb3d-layers .rp-pcb3d-layer input[type="checkbox"]').click()`,
       );
       await waitFor(
         async () =>
           JSON.parse((await canvasState()).pcb3dVisibleLayers).length === visibleLayers.length,
       );
       await evaluate(
-        `document.querySelector('.ia-file-view:not([hidden])')?.querySelector('.rp-pcb3d-layer button').click()`,
+        `document.querySelector('.ia-file-view:not([hidden])')?.querySelector('.rp-pcb3d-layers .rp-pcb3d-layer button').click()`,
       );
       await waitFor(async () => JSON.parse((await canvasState()).pcb3dVisibleLayers).length === 1);
       await evaluate(
@@ -421,11 +432,43 @@ async function run(window) {
       await waitFor(
         async () => Math.abs(Number((await canvasState()).pcb3dExplode) - 0.65) < 0.001,
       );
-      await evaluate(
-        `Array.from(document.querySelector('.ia-file-view:not([hidden])').querySelectorAll('.rp-pcb3d-views button')).find(button=>button.textContent==='Top').click()`,
+      // The runner's narrow workspace can leave a ~40 px canvas beside the
+      // layer controls. Use the real fullscreen control before pixel-accurate
+      // native input, so rounding does not move a click outside a tiny pad.
+      await transitionFullscreen(window, true, () =>
+        window.webContents.executeJavaScript(
+          `document.querySelector('button[aria-label="Fullscreen viewer"]').click()`,
+          true,
+        ),
       );
-      // Read-only projections locate real geometry. Native Chromium input then
-      // exercises pointer capture, controls and picking together.
+      await waitFor(async () => {
+        const state = await canvasState();
+        return state?.clientWidth >= 400 && state.clientHeight >= 200;
+      });
+      const topView = () =>
+        evaluate(
+          `Array.from(document.querySelector('.ia-file-view:not([hidden])').querySelectorAll('.rp-pcb3d-views button')).find(button=>button.textContent==='Top').click()`,
+        );
+      await topView();
+      await waitFor(() =>
+        frame.executeJavaScript(`(() => {
+          const {camera,target}=window.pcb3dInspection.getState();
+          const z=camera[2]-target[2];
+          return z>0 && Math.abs((camera[0]-target[0])/z)<0.0001 &&
+            Math.abs((camera[1]-target[1])/z+0.001)<0.0001;
+        })()`),
+      );
+      await waitForFittedView(async () => {
+        const state = await canvasState();
+        return {
+          scale: Number(state?.pcb3dPercent),
+          ready: state?.pcb3dReady === 'true',
+          layoutKey: [state?.width, state?.height, state?.clientWidth, state?.clientHeight],
+        };
+      }, topView);
+      // Read-only projections locate real geometry. Chromium's input router
+      // reaches the isolated iframe; Electron sendInputEvent forwards directly
+      // to the main RenderWidgetHost (electron/electron#20333).
       window.focus();
       window.webContents.focus();
       const candidates = await frame.executeJavaScript(`(async () => {
@@ -441,7 +484,13 @@ async function run(window) {
           const previous=this.layers.overlay.graphics,result=original.call(this,net);
           netCalls.push({net,changed:this.layers.overlay.graphics!==previous});return result;
         };
-        window.pcb3dPickProbe={viewer,original,netCalls};
+        const pointerEvents=[], recordPointer=event=>pointerEvents.push({
+          type:event.type,trusted:event.isTrusted,button:event.button,
+          x:event.clientX,y:event.clientY,
+        });
+        canvas.addEventListener('pointerdown',recordPointer);
+        canvas.addEventListener('pointerup',recordPointer);
+        window.pcb3dPickProbe={viewer,original,netCalls,canvas,pointerEvents,recordPointer};
         return objects.slice(0,250).flatMap(item=>{
           const point=inspector.projectObject(item.id);
           if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.y) ||
@@ -450,7 +499,10 @@ async function run(window) {
         });
       })()`);
       const picked = [];
+      const pickAttempts = [];
+      const ownedDebugger = !window.webContents.debugger.isAttached();
       try {
+        if (ownedDebugger) window.webContents.debugger.attach('1.3');
         for (const { target, point } of candidates) {
           if (picked.some(entry => entry.target.net === target.net)) continue;
           if (picked.length && point.layerId !== picked[0].layerId) continue;
@@ -459,16 +511,22 @@ async function run(window) {
             return {x:rect.left+iframe.clientLeft,y:rect.top+iframe.clientTop};
           })()`);
           const input = { x: Math.round(origin.x + point.x), y: Math.round(origin.y + point.y) };
-          window.webContents.sendInputEvent({ type: 'mouseMove', ...input });
-          window.webContents.sendInputEvent({
-            type: 'mouseDown',
+          await window.webContents.debugger.sendCommand('Input.dispatchMouseEvent', {
+            type: 'mouseMoved',
+            buttons: 0,
+            ...input,
+          });
+          await window.webContents.debugger.sendCommand('Input.dispatchMouseEvent', {
+            type: 'mousePressed',
             button: 'left',
+            buttons: 1,
             clickCount: 1,
             ...input,
           });
-          window.webContents.sendInputEvent({
-            type: 'mouseUp',
+          await window.webContents.debugger.sendCommand('Input.dispatchMouseEvent', {
+            type: 'mouseReleased',
             button: 'left',
+            buttons: 0,
             clickCount: 1,
             ...input,
           });
@@ -476,18 +534,41 @@ async function run(window) {
             await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
             const probe=window.pcb3dPickProbe;
             return {selected:document.querySelector('.pcb3d-scene canvas').dataset.pcb3dSelected,
+              pointerEvents:probe.pointerEvents.splice(0),
               highlightedNet:probe.netCalls.at(-1)?.net,
               overlay:Boolean(probe.netCalls.at(-1)?.changed && probe.viewer.layers.overlay.graphics?.composite_operation==='overlay')};
           })()`);
+          pickAttempts.push({ target, point, input, selection });
           if (selection.selected === target.id)
             picked.push({ target, layerId: point.layerId, ...selection });
           if (picked.length === 2) break;
         }
       } finally {
+        if (ownedDebugger && window.webContents.debugger.isAttached())
+          window.webContents.debugger.detach();
         await frame.executeJavaScript(`(() => {
-          const probe=window.pcb3dPickProbe;if(probe)probe.viewer.highlight_net=probe.original;
+          const probe=window.pcb3dPickProbe;if(probe){
+            probe.viewer.highlight_net=probe.original;
+            probe.canvas.removeEventListener('pointerdown',probe.recordPointer);
+            probe.canvas.removeEventListener('pointerup',probe.recordPointer);
+          }
           delete window.pcb3dPickProbe;
         })()`);
+      }
+      if (picked.length !== 2) {
+        const diagnostic = {
+          file,
+          canvas: await canvasState(),
+          view: await frame.executeJavaScript('window.pcb3dInspection.getState()'),
+          candidates: candidates.length,
+          picked,
+          attempts: pickAttempts,
+        };
+        fs.writeFileSync(
+          path.join(screenshotDirectory, 'pcb3d-picking-failure.json'),
+          JSON.stringify(diagnostic, null, 2),
+        );
+        console.error('PCB pointer picking failed:', JSON.stringify(diagnostic));
       }
       assert.equal(picked.length, 2, 'pointer picking distinguishes two nets on the same layer');
       assert.notEqual(picked[0].target.net, picked[1].target.net);
@@ -498,6 +579,18 @@ async function run(window) {
       );
       const sourceText = fs.readFileSync(path.join(directory, file), 'utf8');
       for (const entry of picked) {
+        assert.deepEqual(
+          entry.pointerEvents.map(event => ({
+            type: event.type,
+            trusted: event.trusted,
+            button: event.button,
+          })),
+          [
+            { type: 'pointerdown', trusted: true, button: 0 },
+            { type: 'pointerup', trusted: true, button: 0 },
+          ],
+          'trusted Chromium pointer events reach the real PCB canvas',
+        );
         assert.ok(
           entry.target.sourceId && sourceText.includes(entry.target.sourceId),
           'picked source identity exists in the actual loaded board',
@@ -514,6 +607,20 @@ async function run(window) {
         );
         assert.equal(entry.overlay, true, 'KiCanvas paints the selected net overlay');
       }
+      const pickedCanvas = await canvasState();
+      await transitionFullscreen(window, false, () =>
+        window.webContents.executeJavaScript(
+          `document.querySelector('button[aria-label="Exit viewer fullscreen"]').click()`,
+          true,
+        ),
+      );
+      await waitFor(async () => {
+        const state = await canvasState();
+        return (
+          state?.pcb3dSceneId === pickedCanvas.pcb3dSceneId &&
+          state.pcb3dSelected === pickedCanvas.pcb3dSelected
+        );
+      });
       await waitFor(() =>
         evaluate(
           `Boolean(document.querySelector('.ia-file-view:not([hidden])')?.querySelector('.rp-pcb3d-selection')?.textContent.trim())`,
