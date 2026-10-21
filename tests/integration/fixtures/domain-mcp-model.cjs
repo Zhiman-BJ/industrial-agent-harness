@@ -2,7 +2,11 @@ const http = require('node:http');
 function isRejectedToolResult(message) {
   const rejected = value => {
     if (typeof value === 'string') {
-      try { return rejected(JSON.parse(value)); } catch {}
+      // Kimi prefixes MCP text with timing metadata. Decode the JSON payload
+      // before checking nested diagnostics; a raw substring scan misclassifies
+      // the Pack's informational agent_docker_access policy as a rejection.
+      const payload = value.replace(/^Wall time: \d+(?:\.\d+)? seconds\r?\n/, '');
+      try { return rejected(JSON.parse(payload)); } catch {}
       return /rejected|denied/i.test(value.replace(/agent_docker_access:\s*intentionally_denied\b/g, 'policy diagnostic'));
     }
     if (Array.isArray(value)) return value.some(rejected);
