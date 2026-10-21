@@ -38,6 +38,9 @@ if (process.platform === 'win32') {
 } else throw Error('Packaged Desktop smoke supports macOS and Windows.');
 if (!executable || !fs.existsSync(executable))
   throw Error('Packaged Desktop executable is missing.');
+// Every installer must ship physically readable Python Viewer scripts. A real
+// GDS render is additionally required when KLAYOUT_PYTHON is supplied.
+const layout = require('./smoke-packaged-layout.cjs').verifyPackagedLayout(executable);
 const screenshot = path.join(
   os.tmpdir(),
   `industrial-harness-first-run-${process.platform}-${process.arch}.png`,
@@ -160,6 +163,7 @@ fs.writeFileSync(
   JSON.stringify(
     {
       ...firstRun,
+      layout,
       screenshot,
       executable,
       passed: true,
