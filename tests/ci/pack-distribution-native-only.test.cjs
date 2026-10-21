@@ -50,6 +50,25 @@ test('qualification bundles can omit released container images while keeping the
   assert.equal(entry.containerDownloadSize, 0);
   const archive = decodeArchive(fs.readFileSync(path.join(output, path.basename(entry.url))));
   assert.deepEqual(archive.bundle.containerImages, []);
+  assert.deepEqual(
+    entry.pythonEnvironments,
+    archive.bundle.pythonEnvironments,
+    'catalog and authenticated archive bind the same Python resources',
+  );
+  const viewer = archive.bundle.pythonEnvironments.find(
+    item => item.purpose === 'viewer' && item.viewer === 'layout',
+  );
+  assert.ok(viewer, 'the optional Viewer environment remains available without container images');
+  assert.equal(viewer.version, '0.30.12');
+  const platform = viewer.platforms['darwin-arm64'];
+  assert.ok(
+    entry.runtimeDownloadSize >=
+      platform.interpreter.size + platform.wheels.reduce((sum, item) => sum + item.size, 0),
+  );
+  assert.ok(
+    !archive.files.some(file => file.path.includes('.python-environments/')),
+    'building a Pack preserves declarations without downloading Python or wheels',
+  );
   const lock = archive.files.find(file => file.path === LOCK_PATH);
   assert.ok(lock, 'the owner distribution lock stays embedded');
   assert.ok(

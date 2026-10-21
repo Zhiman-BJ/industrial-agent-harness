@@ -18,13 +18,15 @@ const api = {
   domainStatus: () => ipcRenderer.invoke('domains:status'),
   domainAvailable: () => ipcRenderer.invoke('domains:available'),
   domainCancel: () => ipcRenderer.invoke('domains:cancel'),
-  domainInstall: domains => ipcRenderer.invoke('domains:install', { domains }),
+  domainInstall: (domains, options) =>
+    ipcRenderer.invoke('domains:install', { domains, scope: options?.scope }),
   domainRuntimeArchives: domains => ipcRenderer.invoke('domains:runtime-archives', { domains }),
   domainImportRuntimeArchive: request =>
     ipcRenderer.invoke('domains:import-runtime-archive', request),
   domainOpenRuntimeArchive: request => ipcRenderer.invoke('domains:open-runtime-archive', request),
   domainRemove: domain => ipcRenderer.invoke('domains:remove', { domain }),
-  domainRepair: domain => ipcRenderer.invoke('domains:repair', { domain }),
+  domainRepair: (domain, options) =>
+    ipcRenderer.invoke('domains:repair', { domain, scope: options?.scope }),
   onDomainProgress: callback => {
     const listener = (_event, progress) => callback(progress);
     ipcRenderer.on('domains:progress', listener);

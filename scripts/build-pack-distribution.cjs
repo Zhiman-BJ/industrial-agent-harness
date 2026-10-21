@@ -129,6 +129,7 @@ for (const declaration of metadata.domains) {
     skills,
     providerPacks: providers,
     runtimeAssets: providers.flatMap(pack => pack.runtimeAssets || []),
+    pythonEnvironments: providers.flatMap(pack => pack.pythonEnvironments || []),
     dataLibraries: providers.flatMap(pack =>
       (pack.dataLibraries || []).map(library => ({
         ...library,
@@ -141,6 +142,22 @@ for (const declaration of metadata.domains) {
   const archive = createArchive(directory);
   const file = `${domain}-${version}.hpack`;
   fs.writeFileSync(path.join(output, file), archive);
+  // A catalog can serve multiple architectures; report the largest declared
+  // platform footprint. The installer computes its exact platform and cache.
+  const pythonFootprints = platforms.map(platform =>
+    bundle.pythonEnvironments.reduce(
+      (total, environment) => {
+        const asset = environment.platforms[platform];
+        if (asset) {
+          total.download +=
+            asset.interpreter.size + asset.wheels.reduce((sum, wheel) => sum + wheel.size, 0);
+          total.installed += asset.installedSize;
+        }
+        return total;
+      },
+      { download: 0, installed: 0 },
+    ),
+  );
   entries.push({
     domain,
     label,
@@ -150,12 +167,16 @@ for (const declaration of metadata.domains) {
     prerequisites: bundle.prerequisites,
     sha256: digest(archive),
     size: archive.length,
-    runtimeDownloadSize: bundle.runtimeAssets.reduce((sum, asset) => sum + asset.size, 0),
-    runtimeInstalledSize: bundle.runtimeAssets.reduce(
-      (sum, asset) => sum + (asset.installedSize || asset.size * 4),
-      0,
-    ),
+    runtimeDownloadSize:
+      bundle.runtimeAssets.reduce((sum, asset) => sum + asset.size, 0) +
+      Math.max(0, ...pythonFootprints.map(item => item.download)),
+    runtimeInstalledSize:
+      bundle.runtimeAssets.reduce(
+        (sum, asset) => sum + (asset.installedSize || asset.size * 4),
+        0,
+      ) + Math.max(0, ...pythonFootprints.map(item => item.installed)),
     runtimeAssets: bundle.runtimeAssets,
+    pythonEnvironments: bundle.pythonEnvironments,
     containerDownloadSize,
     url: file,
     platforms,

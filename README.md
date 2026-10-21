@@ -69,7 +69,7 @@ Select the server's **API format** independently of the Kimi agent kernel. Offic
 
 The sidebar shows the green Core mark and Micius Harness on a separate row above Projects, aligned with the project section. Project navigation places each project name above its domain metadata. Settings groups appearance, agent configuration and application options without changing their existing actions. Escape or Close returns focus to Settings; clicking outside dismisses the popover without taking focus from the chosen control.
 
-The setup command verifies the bundled **Kimi Code 2.1.1** runtime; Desktop uses the authenticated Server API integration. No separate Python Kimi installation is needed. See the [migration record](doc/kimi-code-migration.md) for history, diagnostics and compatibility. Layout viewing additionally needs KLayout Python: run `pnpm --filter @industrial-agent-harness/desktop setup:layout` or set `KLAYOUT_PYTHON`.
+The setup command verifies the bundled **Kimi Code 2.1.1** runtime; Desktop uses the authenticated Server API integration. No separate Python Kimi installation is needed. See the [migration record](doc/kimi-code-migration.md) for history, diagnostics and compatibility. Layout viewing uses the [managed Viewer Python](doc/managed-viewer-python.md): prepare Viewer support in Domain Pack settings, or use `pnpm --filter @industrial-agent-harness/desktop setup:layout` for source development. Host Python and Docker are not required for Viewer-only preparation; an explicit `KLAYOUT_PYTHON` remains supported.
 
 ### 2. Maintainer native regression on macOS with Apple Silicon
 
@@ -135,7 +135,9 @@ Harness-owned Viewer controls follow **Settings → Language** (English / 简体
 
 Remote CAD receipts also open through this Viewer: a bounded artifact index resolves FCStd/STEP companions by verified SHA-256 without changing the downloaded bytes. Real remote build, desktop viewing and automatic sandbox release are recorded in [CAD remote acceptance](doc/evidence/remote-cad-20261019/README.md).
 
-KLayout Python remains a local Viewer prerequisite; connecting its declaration, readiness and resolution to the shared dependency manager is still TODO. The development setup command does not establish managed dependency support. See [macOS source startup and Viewer dependencies](doc/electron-macos-startup.md).
+The Chip Pack contributes pinned KLayout/Python assets to the shared dependency manager. Viewer-only install/repair prepares a private, verified environment and checks real PNG rendering; its readiness is separate from the engineering toolchain. See [managed Viewer Python and platform evidence](doc/managed-viewer-python.md).
+
+Packaged Desktop launches the layout worker from real files in `app.asar.unpacked`; Python never receives an archive-internal script path. Startup failures retain the exit status and a bounded stderr tail for diagnosis.
 
 Exact format lists, file limits and rendering dependencies are documented in the linked guides. New Viewer integrations must update both language READMEs and follow the [Viewer integration contract](AGENTS.md#viewer-integration-contract).
 

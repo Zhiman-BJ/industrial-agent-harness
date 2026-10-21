@@ -1,6 +1,6 @@
 {
   "name": "@industrial-agent-harness/desktop",
-  "version": "1.0.1-beta.7",
+  "version": "1.0.1-beta.8",
   "private": true,
   "main": "electron/main.cjs",
   "scripts": {
@@ -48,7 +48,7 @@
     "@industrial-agent-harness/pack-manager": "workspace:*",
     "@industrial-agent-harness/viewer-builtin": "workspace:*",
     "@industrial-agent-harness/viewer-core": "workspace:*",
-    "@zhiman-bj/industrial-domain-packs": "https://codeload.github.com/Zhiman-BJ/industrial-domain-packs/tar.gz/5cc78f4efd1c6db84de1dab61a72d80915d30260",
+    "@zhiman-bj/industrial-domain-packs": "https://codeload.github.com/Zhiman-BJ/industrial-domain-packs/tar.gz/636281205074b3682d3ca4591f47c9eba258d9ee",
     "electron-updater": "6.8.9",
     "lucide-react": "1.37.0",
     "react": "19.2.8",

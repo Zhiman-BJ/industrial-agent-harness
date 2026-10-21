@@ -15,6 +15,7 @@ import {
   InstallationProgress,
   InstallationSize,
   RuntimeReadiness,
+  DomainPreparationActions,
   UnavailableDomains,
 } from './DomainInstallation';
 
@@ -79,17 +80,21 @@ export function PacksSection({
   }, [status?.managed, revision]);
   const installing = Boolean(progress) || Boolean(status?.operation?.active);
   const disabled = busy || pending || installing || cancelling;
-  async function change(action: 'install' | 'remove' | 'repair', domain: string) {
+  async function change(
+    action: 'install' | 'remove' | 'repair',
+    domain: string,
+    options?: { scope: 'viewer' },
+  ) {
     if (disabled) return;
     setPending(true);
     setError('');
     try {
       const host = window.viewerHost!;
       const result = await (action === 'install'
-        ? host.domainInstall([domain])
+        ? host.domainInstall([domain], options)
         : action === 'remove'
           ? host.domainRemove(domain)
-          : host.domainRepair(domain));
+          : host.domainRepair(domain, options));
       onChanged(result.installed);
     } catch (reason) {
       try {
@@ -194,13 +199,25 @@ export function PacksSection({
                         </small>
                       ) : null}
                     </div>
-                    <button
-                      className="ia-pack-action"
-                      disabled={disabled || loading}
-                      onClick={() => void change('install', item.domain)}
-                    >
-                      {t('Install')}
-                    </button>
+                    <div className="ia-pack-actions">
+                      <button
+                        className="ia-pack-action"
+                        disabled={disabled || loading}
+                        onClick={() => void change('install', item.domain)}
+                      >
+                        {t('Install')}
+                      </button>
+                      {item.viewerAvailable && (
+                        <button
+                          className="ia-pack-action"
+                          data-action="install-viewer"
+                          disabled={disabled || loading}
+                          onClick={() => void change('install', item.domain, { scope: 'viewer' })}
+                        >
+                          {t('Install viewer support')}
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -261,18 +278,21 @@ export function PacksSection({
                             {t('Update')}
                           </button>
                         )}
-                        {(item.runtimeState === 'ready' ||
-                          item.runtimeState === 'needs-preparation') && (
+                        {update?.viewerAvailable && !item.viewerAssets?.length && (
                           <button
                             className="ia-pack-action"
+                            data-action="install-viewer"
                             disabled={disabled}
-                            onClick={() => void change('repair', item.domain)}
+                            onClick={() => void change('install', item.domain, { scope: 'viewer' })}
                           >
-                            {t(
-                              item.runtimeState === 'ready' ? 'Check / repair' : 'Prepare / retry',
-                            )}
+                            {t('Install viewer support')}
                           </button>
                         )}
+                        <DomainPreparationActions
+                          item={item}
+                          disabled={disabled}
+                          onRepair={(domain, options) => void change('repair', domain, options)}
+                        />
                         <button
                           className="ia-pack-action"
                           disabled={disabled}

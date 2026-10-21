@@ -61,6 +61,67 @@ function writeBinding(root, item) {
   return file;
 }
 
+test('schema 2 API catalogs survive verified archive decoding and explicit registry acquisition', async t => {
+  const { root, context } = fixture(t);
+  const item = binding('api-models', '${API}/');
+  item.library.baseUrl = 'https://models.example/api/v4/';
+  item.library.download = {
+    type: 'gitlab-repository-files',
+    project: 'public/models',
+    ref: 'b'.repeat(40),
+  };
+  Object.assign(item.catalog, {
+    schemaVersion: 2,
+    baseUrl: item.library.baseUrl,
+    download: { ...item.library.download },
+  });
+  item.bytes = Buffer.from(JSON.stringify(item.catalog));
+  item.library.catalogSha256 = hash(item.bytes);
+  const source = path.join(root, 'source');
+  writeBinding(source, item);
+  fs.writeFileSync(
+    path.join(source, 'bundle.json'),
+    JSON.stringify({
+      schemaVersion: 1,
+      domain: 'sample',
+      version: '1.0.0',
+      coreApi: 1,
+      label: 'Sample',
+      emoji: '',
+      capabilities: [],
+      skills: [],
+      providerPacks: [],
+      dataLibraries: [item.library],
+    }),
+  );
+  assert.deepEqual(
+    decodeArchive(createArchive(source)).bundle.dataLibraries[0].download,
+    item.library.download,
+  );
+  const bindings = readDataLibraryBindings([item.library], { directory: source });
+  const calls = [];
+  const manager = new DataLibraryManager({
+    directory: path.join(root, 'cache'),
+    fetch: async url => {
+      calls.push(url);
+      return new Response(item.contents['Family/Body.step']);
+    },
+  });
+  const registry = new DataLibraryRegistry({ manager, libraries: () => bindings });
+  const request = { ...context, references: ['${API}/Family/Body.step'] };
+  const approved = registry.plan(request);
+  assert.equal(calls.length, 0);
+  const result = await registry.ensure(request, {
+    expectedResources: approved.resources,
+    expectedLibraries: approved.summary.libraries,
+  });
+  assert.equal(result.resources.length, 1);
+  assert.deepEqual(calls, [
+    'https://models.example/api/v4/projects/public%2Fmodels/repository/files/Family%2FBody.step/raw?ref=' +
+      'b'.repeat(40),
+  ]);
+});
+
 test('catalog bytes are digest-bound and ordinary files inside the trusted owner', t => {
   const { root } = fixture(t);
   const item = binding('models', '${LIB}/');

@@ -1,0 +1,141 @@
+{
+  "date": "2026-10-21",
+  "platform": "darwin-arm64",
+  "mainBase": "8df13ead060c1ec4760f437fd0fd03860a35d753",
+  "managedPrPriorHead": "83d6ab0262757a9374dd962eb3a351740a52f1a1",
+  "ownerCommit": "1117d840e35e521a0db5caf7161935ebc4930535",
+  "electron": "44.0.0",
+  "builder": "26.15.3",
+  "packaging": "reused production dependency stage with current candidate overlay; real electron-builder, local Electron distribution",
+  "synthetic": {
+    "version": "1.0.1-beta.7",
+    "archiveModule": true,
+    "rendered": true,
+    "cell": "PACKAGED_TOP",
+    "layers": 1,
+    "klayout": "0.30.12",
+    "scripts": [
+      {
+        "file": "app.asar.unpacked/node_modules/@industrial-agent-harness/viewer-builtin/src/layout/layout.py",
+        "sha256": "fdad1217f5ad52db563837d4cb80b8168339b38a49291ae777302ec436ccc4ee"
+      },
+      {
+        "file": "app.asar.unpacked/node_modules/@industrial-agent-harness/viewer-builtin/src/layout/layout_themes.py",
+        "sha256": "0afa4584208958d1777a3fc3881348f6def8a58c3ff2abff06f0ad81ff72a120"
+      }
+    ],
+    "externalRead": true
+  },
+  "structureOnly": {
+    "version": "1.0.1-beta.7",
+    "archiveModule": true,
+    "rendered": false,
+    "scripts": [
+      {
+        "file": "app.asar.unpacked/node_modules/@industrial-agent-harness/viewer-builtin/src/layout/layout.py",
+        "sha256": "fdad1217f5ad52db563837d4cb80b8168339b38a49291ae777302ec436ccc4ee"
+      },
+      {
+        "file": "app.asar.unpacked/node_modules/@industrial-agent-harness/viewer-builtin/src/layout/layout_themes.py",
+        "sha256": "0afa4584208958d1777a3fc3881348f6def8a58c3ff2abff06f0ad81ff72a120"
+      }
+    ],
+    "externalRead": true
+  },
+  "sobel": {
+    "cell": "sobel_top",
+    "layers": 22,
+    "klayout": "0.30.12",
+    "width": 1200,
+    "height": 800,
+    "pngBytes": 576766,
+    "pngSha256": "6fa331b1e7123a68f20c4a2e93fe779f54767d7986538e58f73337665bf5e4a0",
+    "sourceSha256": "88eb101db90f76a960f5b83e446423b7f8d66fa28240dc1110c49b6ceeabac95",
+    "sourceUnchanged": true,
+    "script": "app.asar.unpacked/node_modules/@industrial-agent-harness/viewer-builtin/src/layout/layout.py",
+    "spawnScript": "app.asar.unpacked/node_modules/@industrial-agent-harness/viewer-builtin/src/layout/layout.py"
+  },
+  "focusedRegression": {
+    "viewerAndManaged": {
+      "passed": 183,
+      "failed": 0,
+      "skipped": 0
+    },
+    "newLayoutProcess": {
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0
+    },
+    "releaseDesktop": {
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0
+    },
+    "architectureChecker": "passed",
+    "contractPolicy": {
+      "passed": 11,
+      "failed": 0
+    }
+  },
+  "remaining": {
+    "cleanStaging": "not rerun after network recovery; earlier stage was blocked by registry DNS",
+    "fullPortable": "incomplete: 5 independently classified host-restriction failures, then packaging stalled; stopped",
+    "fullArchitecture": "failed: existing candidate-fetch small-buffer negative returns git ENOBUFS",
+    "nativeGuiClickAcceptance": "not run",
+    "windowsLinuxPackagedRender": "not run"
+  },
+  "pcb": {
+    "code": "typed GitLab repository-files transport, schema2, legacy schema1 preserved",
+    "managerRegistryTests": {
+      "passed": 41,
+      "failed": 0,
+      "skipped": 0
+    },
+    "combinedWithLayoutProcess": {
+      "passed": 49,
+      "failed": 0,
+      "skipped": 0
+    },
+    "originalOwnerCommit": "24146ec7eedf1b58433a3dc2b7eb72eca8a4cea5",
+    "ownerCommit": "636281205074b3682d3ca4591f47c9eba258d9ee",
+    "ownerTree": "17330d1ed6f87b0aa85ad2e0f4b6260808d8adff",
+    "archiveBytes": 2412708,
+    "archiveIntegrity": "sha512-MOfdRQrnC9ba+alCuE+P8Z64JPDNRhc/eSLdJuraGdS5LUxSjJC/h1oBkW7vqrN6r840Gi05OQ2InXbhEDg7JA==",
+    "archiveGitFilesVerified": 652,
+    "archiveContentLockEntriesVerified": 583,
+    "modelEntriesUnchanged": 7252,
+    "liveApiRetest": {
+      "passed": true,
+      "report": "pcb-api-live-report.json",
+      "httpStatus": 200,
+      "verifiedBytes": 40618,
+      "planNetworkCalls": 0,
+      "warmNetworkCalls": 0,
+      "guiAcceptance": "not run"
+    },
+    "consumerActivated": true,
+    "consumerPinChecks": {
+      "frozenInstall": "passed: pnpm install --frozen-lockfile --ignore-scripts",
+      "architectureChecker": "passed",
+      "focusedReleaseRegressions": {
+        "passed": 77,
+        "failed": 0,
+        "skipped": 0
+      },
+      "checkPackRelease": {
+        "passed": 17,
+        "failed": 0,
+        "skipped": 0
+      }
+    },
+    "reason": "Exact owner manifests and pnpm-generated lock now consume the verified authoritative archive; final release qualification remains pending."
+  },
+  "publication": {
+    "status": "draft-pr-open; not released",
+    "harnessPr": "https://github.com/Zhiman-BJ/industrial-agent-harness/pull/248",
+    "ownerPr": "https://github.com/Zhiman-BJ/industrial-domain-packs/pull/53",
+    "githubConnector": "403 Resource not accessible by integration",
+    "gitPush": "recovered; release and owner branches published through Git",
+    "prCreation": "local gh succeeded; connector still returns 403"
+  }
+}

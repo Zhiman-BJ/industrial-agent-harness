@@ -93,6 +93,9 @@ class PackCatalog {
       platforms: entry.platforms,
       runtimeDownloadSize: entry.runtimeDownloadSize,
       runtimeInstalledSize: entry.runtimeInstalledSize,
+      viewerAvailable: (entry.pythonEnvironments || []).some(
+        asset => asset.purpose === 'viewer' && Boolean(asset.platforms?.[this.platform]),
+      ),
       updateAvailable:
         installed.has(entry.domain) &&
         compareVersions(entry.version, installed.get(entry.domain)) > 0,
@@ -102,7 +105,9 @@ class PackCatalog {
 }
 
 function describeInstalled(manager, bundle) {
-  const assets = manager.runtimeStatus(bundle);
+  const allAssets = manager.runtimeStatus(bundle);
+  const assets = allAssets.filter(asset => asset.purpose !== 'viewer');
+  const viewerAssets = allAssets.filter(asset => asset.purpose === 'viewer');
   return {
     domain: bundle.domain,
     version: bundle.version,
@@ -118,6 +123,12 @@ function describeInstalled(manager, bundle) {
         ? 'external-dependencies'
         : 'installed',
     runtimeAssets: assets,
+    viewerState: viewerAssets.length
+      ? viewerAssets.every(asset => asset.ready)
+        ? 'ready'
+        : 'needs-preparation'
+      : undefined,
+    viewerAssets,
   };
 }
 

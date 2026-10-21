@@ -32,6 +32,7 @@ module.exports = {
     { from: 'bootstrap-packs', to: 'bootstrap-packs' },
   ],
   asar: true,
+  asarUnpack: ['node_modules/@industrial-agent-harness/viewer-builtin/src/layout/*.py'],
   forceCodeSigning: release,
   mac: {
     target: [

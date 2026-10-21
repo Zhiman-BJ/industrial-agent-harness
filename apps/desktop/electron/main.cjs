@@ -83,6 +83,12 @@ if (process.argv.includes('--packaged-smoke') && process.env.HARNESS_PACKAGED_SM
 const { spawnSync } = require('node:child_process');
 const { RasterService } = require('@industrial-agent-harness/viewer-builtin/runtime/layout');
 const {
+  resolveViewerInterpreter,
+  ResolvedViewerService,
+  pythonModuleProbe,
+} = require('./viewer-dependency.cjs');
+const validateLayoutOverride = pythonModuleProbe(['klayout.db', 'klayout.lay']);
+const {
   renderNetlist,
   isYosysNetlist,
 } = require('@industrial-agent-harness/viewer-builtin/runtime/netlist');
@@ -117,7 +123,11 @@ const {
   sanitizeGeneratedTitle,
   ExternalMcpRegistry,
 } = require('@industrial-agent-harness/harness-core');
-const { loadRegistry, installedDataLibraries } = require('@industrial-agent-harness/domain-skills');
+const {
+  loadRegistry,
+  installedDataLibraries,
+  resolveViewerPython,
+} = require('@industrial-agent-harness/domain-skills');
 const {
   validatePromptImages,
 } = require('@industrial-agent-harness/agent-kimi/src/image-input.cjs');
@@ -514,6 +524,7 @@ function clearProjectArtifacts() {
   artifacts.clear();
   netlistSessions.clear();
   activeLayoutToken = undefined;
+  raster?.close();
   godotRuntime.close();
   kicadRuntime.close();
 }
@@ -716,24 +727,28 @@ async function checked(id) {
 }
 
 function layoutPython() {
-  const selected =
-    process.env.KLAYOUT_PYTHON ||
-    path.join(
+  return resolveViewerInterpreter({
+    override: process.env.KLAYOUT_PYTHON,
+    validateOverride: validateLayoutOverride,
+    resolveManaged: () => resolveViewerPython(activeProject()?.domain, 'layout'),
+    legacy: path.join(
       desktopRoot,
       '.venv-klayout',
       process.platform === 'win32' ? 'Scripts/python.exe' : 'bin/python',
-    );
-  if (!fs.existsSync(selected))
-    throw Error('KLayout Python is unavailable. Set KLAYOUT_PYTHON or run pnpm setup:layout.');
-  return selected;
+    ),
+    allowLegacy: !app.isPackaged && !managedPacks,
+    unavailableMessage:
+      'Layout viewer needs preparation. Open Settings → Domains, then choose Prepare / repair viewers.',
+    overrideMessage:
+      'KLAYOUT_PYTHON cannot run the required KLayout Python modules. Correct the override and reopen the layout.',
+  });
 }
 
-function getRaster() {
-  if (!raster || raster.failure) {
-    raster?.close();
-    raster = new RasterService(layoutPython());
-  }
-  return raster;
+function getRaster(refresh = false) {
+  raster ||= new ResolvedViewerService(layoutPython, python => new RasterService(python), {
+    configurationKey: () => JSON.stringify([activeProject()?.domain, process.env.KLAYOUT_PYTHON]),
+  });
+  return raster.get(refresh);
 }
 
 const viewerRegistry = createViewerRegistry([
@@ -748,7 +763,7 @@ const viewerRegistry = createViewerRegistry([
       ['.gds', '.gdsii', '.oas', '.oasis'].includes(path.extname(file).toLowerCase()),
     open: async ({ artifact, file }) => {
       const token = crypto.randomUUID();
-      const data = await getRaster().call({ op: 'load', path: file, token });
+      const data = await getRaster(true).call({ op: 'load', path: file, token });
       activeLayoutToken = token;
       return { artifact, kind: 'layout', data };
     },
@@ -947,7 +962,8 @@ function registerHandlers() {
       !request.domains.length ||
       request.domains.length > 20 ||
       new Set(request.domains).size !== request.domains.length ||
-      request.domains.some(id => typeof id !== 'string')
+      request.domains.some(id => typeof id !== 'string') ||
+      (request.scope !== undefined && request.scope !== 'viewer')
     )
       throw Error('Choose one or more distinct Domains.');
     sessions.assertIdle();
@@ -962,6 +978,8 @@ function registerHandlers() {
     try {
       await sessions.reset();
       await projectRuntimes.close();
+      raster?.close();
+      activeLayoutToken = undefined;
       const { manager, packs } = await availablePacks({ signal: domainController.signal });
       const selected = request.domains.map(id => {
         const item = packs.find(pack => pack.domain === id);
@@ -971,6 +989,7 @@ function registerHandlers() {
       for (const item of selected)
         await manager.install(item, {
           prepareRuntime: true,
+          runtimeScope: request.scope,
           signal: domainController.signal,
           onProgress: progress => {
             domainProgress = { domain: item.domain, ...progress };
@@ -1003,7 +1022,12 @@ function registerHandlers() {
     }
   });
   ipcMain.handle('domains:repair', async (event, request) => {
-    if (!managedPacks || typeof request?.domain !== 'string') throw Error('Invalid Domain repair.');
+    if (
+      !managedPacks ||
+      typeof request?.domain !== 'string' ||
+      (request.scope !== undefined && request.scope !== 'viewer')
+    )
+      throw Error('Invalid Domain repair.');
     sessions.assertIdle();
     if (domainMutationActive) throw Error('Domain preparation is already in progress.');
     installationJournal.begin([request.domain], 'repair');
@@ -1016,11 +1040,14 @@ function registerHandlers() {
     try {
       await sessions.reset();
       await projectRuntimes.close();
+      raster?.close();
+      activeLayoutToken = undefined;
       packManager.assertIdle(request.domain);
       const bundle = packManager.list().find(item => item.domain === request.domain);
       if (!bundle) throw Error('Domain is not installed.');
       await packManager.prepareRuntime(bundle, {
         recheck: true,
+        scope: request.scope,
         signal: domainController.signal,
         onProgress: progress => {
           domainProgress = { domain: request.domain, ...progress };
@@ -1067,6 +1094,8 @@ function registerHandlers() {
     try {
       await sessions.reset();
       await projectRuntimes.close();
+      raster?.close();
+      activeLayoutToken = undefined;
       packManager.remove(request.domain);
       installationJournal.finish('completed');
       return { installed: installedDomains() };

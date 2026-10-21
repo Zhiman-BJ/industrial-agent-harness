@@ -12,6 +12,42 @@
     }
   },
   "messages": {
+    "Install viewer support": {
+      "en": "Install viewer support",
+      "zh-CN": "安装查看器支持"
+    },
+    "Viewers ready": {
+      "en": "Viewers ready",
+      "zh-CN": "查看器已就绪"
+    },
+    "Viewers need preparation": {
+      "en": "Viewers need preparation",
+      "zh-CN": "查看器需要准备"
+    },
+    "Check / repair viewers": {
+      "en": "Check / repair viewers",
+      "zh-CN": "检查 / 修复查看器"
+    },
+    "Prepare / repair viewers": {
+      "en": "Prepare / repair viewers",
+      "zh-CN": "准备 / 修复查看器"
+    },
+    "Layout viewer needs preparation. Open Settings → Domains, then choose Prepare / repair viewers.": {
+      "en": "Layout viewer needs preparation. Open Settings → Domains, then choose Prepare / repair viewers.",
+      "zh-CN": "版图查看器需要准备。请打开“设置 → 领域”，然后选择“准备 / 修复查看器”。"
+    },
+    "KLAYOUT_PYTHON cannot run the required KLayout Python modules. Correct the override and reopen the layout.": {
+      "en": "KLAYOUT_PYTHON cannot run the required KLayout Python modules. Correct the override and reopen the layout.",
+      "zh-CN": "KLAYOUT_PYTHON 无法运行所需的 KLayout Python 模块。请修正该设置后重新打开版图。"
+    },
+    "Open domain settings": {
+      "en": "Open domain settings",
+      "zh-CN": "打开领域设置"
+    },
+    "Retry viewer": {
+      "en": "Retry viewer",
+      "zh-CN": "重试查看器"
+    },
     "Recorded version": { "en": "Recorded version", "zh-CN": "记录版本" },
     "Recorded version passed verification": {
       "en": "Recorded version passed verification",

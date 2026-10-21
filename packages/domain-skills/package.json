@@ -11,6 +11,6 @@
   },
   "license": "MIT",
   "peerDependencies": {
-    "@zhiman-bj/industrial-domain-packs": "0.5.5"
+    "@zhiman-bj/industrial-domain-packs": "0.5.8"
   }
 }

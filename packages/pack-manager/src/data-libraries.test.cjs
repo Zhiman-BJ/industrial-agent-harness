@@ -49,6 +49,153 @@ function fixture(t, options = {}) {
   return { root, directory, library, catalog, manager, calls };
 }
 
+function apiFixture(t, options = {}) {
+  const f = fixture(t, options);
+  f.library.baseUrl = 'https://official.example/api/v4/';
+  f.library.download = {
+    type: 'gitlab-repository-files',
+    project: 'public-group/shapes',
+    ref: '0123456789012345678901234567890123456789',
+  };
+  f.catalog.baseUrl = f.library.baseUrl;
+  f.catalog.schemaVersion = 2;
+  f.catalog.download = { ...f.library.download };
+  return f;
+}
+
+test('pinned GitLab file API planning is offline and encodes full project/file paths once', async t => {
+  const f = apiFixture(t, { lazy: true });
+  const relative = 'Models.3dshapes/R_0603 (日本).step';
+  f.catalog.files.push({ ...f.catalog.files[0], path: relative });
+  const plan = f.manager.plan(f.library, f.catalog, [relative]);
+  assert.deepEqual(plan.download, f.library.download);
+  assert.equal(f.manager.resolve(f.library, f.catalog, [relative]).missingPaths[0], relative);
+  assert.equal(f.calls.length, 0);
+  assert.equal(fs.existsSync(f.directory), false);
+  const result = await f.manager.ensure(f.library, f.catalog, [relative]);
+  const expected = new URL(
+    'projects/' +
+      encodeURIComponent(f.library.download.project) +
+      '/repository/files/' +
+      encodeURIComponent(relative) +
+      '/raw',
+    f.library.baseUrl,
+  );
+  expected.searchParams.set('ref', f.library.download.ref);
+  assert.equal(f.calls[0].url, expected.href);
+  assert.equal(f.calls[0].request.redirect, 'manual');
+  assert.equal(f.calls[0].request.credentials, 'omit');
+  assert.equal(result.stats.downloadedFiles, 1);
+  assert.deepEqual(fs.readFileSync(result.files[0].file), first);
+  const cached = await f.manager.ensure(f.library, f.catalog, [relative], { offline: true });
+  assert.equal(cached.stats.downloadedFiles, 0);
+  assert.equal(f.calls.length, 1);
+});
+
+test('GitLab API declarations bind catalog project and immutable revision without general query support', t => {
+  const f = apiFixture(t);
+  for (const download of [
+    null,
+    { ...f.library.download, type: 'custom-template' },
+    { ...f.library.download, project: '../other' },
+    { ...f.library.download, project: 'group//repo' },
+    { ...f.library.download, project: 'group%2Frepo' },
+    { ...f.library.download, project: 'https://other.example/repo' },
+    { ...f.library.download, ref: 'main' },
+    { ...f.library.download, query: 'token=secret' },
+  ])
+    assert.throws(() => validateDataLibrary({ ...f.library, download }), /download source/);
+  for (const change of [{ project: 'other/repo' }, { ref: 'a'.repeat(40) }])
+    assert.throws(
+      () =>
+        validateDataCatalog(
+          { ...f.catalog, download: { ...f.catalog.download, ...change } },
+          f.library,
+        ),
+      /download source/,
+    );
+  assert.throws(
+    () => validateDataCatalog({ ...f.catalog, download: undefined }, f.library),
+    /download source/,
+  );
+  assert.throws(
+    () => validateDataCatalog({ ...f.catalog, schemaVersion: 1 }, f.library),
+    /mismatching/,
+  );
+  assert.throws(
+    () => validateDataLibrary({ ...f.library, baseUrl: 'https://official.example/library/' }),
+    /API v4/,
+  );
+  assert.throws(
+    () => validateDataLibrary({ ...f.library, baseUrl: f.library.baseUrl + '?ref=main' }),
+    /HTTPS/,
+  );
+});
+
+test('GitLab API redirects and response URLs cannot change origin, project, file or pinned ref', async t => {
+  const suffix = '/projects/public-group%2Fshapes/repository/files/parts%2Ffirst.bin/raw';
+  for (const changed of [
+    'https://other.example/api/v4' + suffix + '?ref=' + '0'.repeat(40),
+    'https://official.example/api/v4' +
+      suffix.replace('shapes', 'other') +
+      '?ref=' +
+      '0'.repeat(40),
+    'https://official.example/api/v4' +
+      suffix.replace('first.bin', 'second.bin') +
+      '?ref=' +
+      '0'.repeat(40),
+    '?ref=main',
+    '?ref=0123456789012345678901234567890123456789&token=secret',
+    '#fragment',
+  ]) {
+    const f = apiFixture(t, {
+      fetch: () => new Response(null, { status: 302, headers: { Location: changed } }),
+    });
+    await assert.rejects(
+      f.manager.ensure(f.library, f.catalog, ['parts/first.bin']),
+      /pinned file or revision/,
+    );
+    assert.equal(f.calls.length, 1);
+    assert.deepEqual(fs.readdirSync(f.directory), []);
+  }
+  let bodyCancelled = false;
+  const f = apiFixture(t, {
+    fetch: () => {
+      const response = new Response(
+        new ReadableStream({
+          cancel() {
+            bodyCancelled = true;
+          },
+        }),
+      );
+      Object.defineProperty(response, 'url', {
+        value: 'https://official.example/api/v4/unexpected?ref=main',
+      });
+      return response;
+    },
+  });
+  await assert.rejects(
+    f.manager.ensure(f.library, f.catalog, ['parts/first.bin']),
+    /pinned file or revision/,
+  );
+  assert.equal(bodyCancelled, true, 'a rejected final API URL cancels its unread body');
+  assert.deepEqual(fs.readdirSync(f.directory), []);
+});
+
+test('API 403, rate limits and HTML/error bytes cannot publish a verified model', async t => {
+  for (const status of [403, 429]) {
+    const f = apiFixture(t, { fetch: () => new Response('Just a moment...', { status }) });
+    await assert.rejects(
+      f.manager.ensure(f.library, f.catalog, ['parts/first.bin']),
+      new RegExp('HTTP ' + status),
+    );
+    assert.deepEqual(fs.readdirSync(f.directory), []);
+  }
+  const f = apiFixture(t, { fetch: () => new Response(Buffer.alloc(first.length, '<')) });
+  await assert.rejects(f.manager.ensure(f.library, f.catalog, ['parts/first.bin']), /integrity/);
+  assert.deepEqual(fs.readdirSync(f.directory), []);
+});
+
 test('construction and offline resolution do not create a missing cache directory', async t => {
   const f = fixture(t, { lazy: true });
   assert.equal(fs.existsSync(f.directory), false);

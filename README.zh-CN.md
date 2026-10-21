@@ -69,7 +69,7 @@ macOS 受限命令环境可能在应用代码执行前拒绝 GUI 服务访问。
 
 **API 格式**按模型服务选择，与 Kimi Agent 内核分开。官方 MiniMax Chat Completions 使用兼容 OpenAI 配置；思考开关和档位因模型、协议而异，当前实测与缺口见[模型 API 兼容说明](doc/model-api-compatibility.md)。
 
-准备脚本检查随包 **Kimi Code 2.1.1**，不需要单独安装 Python Kimi。历史、诊断与兼容性边界见[迁移记录](doc/kimi-code-migration.md)。版图查看另需 KLayout Python，可运行 `pnpm --filter @industrial-agent-harness/desktop setup:layout`，或设置 `KLAYOUT_PYTHON`。
+准备脚本检查随包 **Kimi Code 2.1.1**，不需要单独安装 Python Kimi。历史、诊断与兼容性边界见[迁移记录](doc/kimi-code-migration.md)。版图查看使用[托管 Viewer Python](doc/managed-viewer-python.md)：在领域包设置准备 Viewer 支持，源码开发也可运行 `pnpm --filter @industrial-agent-harness/desktop setup:layout`。仅准备 Viewer 无需宿主 Python 或 Docker；仍支持显式 `KLAYOUT_PYTHON`。
 
 ### 2. 维护者在 macOS Apple Silicon 运行原生回归
 
@@ -135,7 +135,9 @@ Harness 自有 Viewer 控件跟随 **设置 → 语言**（简体中文 / Englis
 
 远程 CAD 回执同样接入此 Viewer：有界产物索引按已校验的 SHA-256 关联 FCStd/STEP 配套文件，不改写下载字节。真实远程 build、桌面查看与自动释放沙箱的证据见[远程 CAD 验收](doc/evidence/remote-cad-20261019/README.md)。
 
-KLayout Python 目前仍是本地 Viewer 前提；统一到共享依赖管理器的声明、就绪状态与解析仍为 TODO。开发环境安装命令不代表依赖已被托管。见[macOS 源码启动与 Viewer 依赖](doc/electron-macos-startup.md)。
+Chip Pack 向共享依赖管理器声明固定 KLayout/Python 资源；Viewer 可单独安装或修复，使用私有且已校验的环境，并实际检查 PNG 渲染。Viewer 与工程工具链的就绪状态分别显示。见[托管 Viewer Python 与平台验证](doc/managed-viewer-python.md)。
+
+打包版从 `app.asar.unpacked` 的真实文件启动版图 worker，不向 Python 传入归档内脚本路径。启动失败保留退出状态和有界 stderr 尾部，供定位问题。
 
 完整格式清单、文件上限与渲染依赖见各 Viewer 文档。新增接入需同时更新中英文 README，并遵守 [Viewer 接入契约](AGENTS.md#viewer-integration-contract)。
 

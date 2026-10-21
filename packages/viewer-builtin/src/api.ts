@@ -246,7 +246,10 @@ export interface ViewerHostApi {
   domainStatus(): Promise<DomainInstallationStatus>;
   domainAvailable(): Promise<AvailableDomainPack[]>;
   domainCancel(): Promise<{ cancelled: boolean }>;
-  domainInstall(domains: string[]): Promise<{ installed: DomainOption[] }>;
+  domainInstall(
+    domains: string[],
+    options?: { scope: 'viewer' },
+  ): Promise<{ installed: DomainOption[] }>;
   domainRuntimeArchives(domains: string[]): Promise<RuntimeArchiveRequirement[]>;
   domainImportRuntimeArchive(request: {
     domain: string;
@@ -257,7 +260,10 @@ export interface ViewerHostApi {
     asset: string;
   }): Promise<{ opened: boolean }>;
   domainRemove(domain: string): Promise<{ installed: DomainOption[] }>;
-  domainRepair(domain: string): Promise<{ installed: DomainOption[] }>;
+  domainRepair(
+    domain: string,
+    options?: { scope: 'viewer' },
+  ): Promise<{ installed: DomainOption[] }>;
   onDomainProgress(callback: (progress: DomainInstallProgress) => void): () => void;
   coreUpdateStatus(): Promise<CoreUpdateState>;
   coreUpdateCheck(): Promise<CoreUpdateState>;
@@ -498,6 +504,17 @@ export interface InstalledDomainPack {
   summary?: string;
   prerequisites?: string[];
   runtimeState?: 'ready' | 'needs-preparation' | 'external-dependencies' | 'installed' | null;
+  viewerState?: 'ready' | 'needs-preparation';
+  viewerAssets?: Array<{
+    id: string;
+    label: string;
+    version: string;
+    purpose: 'viewer';
+    viewer: string;
+    ready: boolean;
+    reason?: string;
+    environment?: string;
+  }>;
 }
 export interface RuntimeArchiveRequirement {
   domain: string;
@@ -521,6 +538,7 @@ export interface AvailableDomainPack {
   runtimeInstalledSize?: number;
   installation?: InstallationFootprint;
   updateAvailable?: boolean;
+  viewerAvailable?: boolean;
   platforms: string[];
 }
 export interface DomainInstallationStatus {

@@ -6,6 +6,10 @@ const zlib = require('node:zlib');
 const { Transfer, TransferProgress } = require('./transfer.cjs');
 const { availableSpace, footprint, checkSpace } = require('./install-space.cjs');
 const { RuntimeAssetManager, validateRuntimeAssets } = require('./runtime-assets.cjs');
+const {
+  PythonEnvironmentManager,
+  validatePythonEnvironments,
+} = require('./python-environments.cjs');
 const { DataLibraryManager } = require('./data-libraries.cjs');
 const {
   DataLibraryRegistry,
@@ -62,6 +66,7 @@ function safeRelative(value) {
 
 function validateBundle(bundle) {
   validateRuntimeAssets(bundle?.runtimeAssets);
+  validatePythonEnvironments(bundle?.pythonEnvironments);
   validateDataLibraries(bundle?.dataLibraries);
   containerImages.validateImageSelection(bundle?.containerImages);
   if (
@@ -163,7 +168,33 @@ function validateFootprintMetadata(entry) {
       throw Error('Invalid Pack installation footprint.');
   }
   validateRuntimeAssets(entry.runtimeAssets);
+  validatePythonEnvironments(entry.pythonEnvironments);
   validateDataLibraries(entry.dataLibraries);
+}
+
+function freezePythonDeclarations(assets) {
+  if (!assets || typeof assets !== 'object' || Object.isFrozen(assets)) return;
+  for (const value of Object.values(assets)) freezePythonDeclarations(value);
+  Object.freeze(assets);
+}
+
+function pythonSelection(bundle, options = {}) {
+  if (options.scope !== undefined && options.scope !== 'viewer')
+    throw Error('Unsupported runtime preparation scope.');
+  if (
+    options.viewer !== undefined &&
+    (options.scope !== 'viewer' || !RESOURCE_ID.test(options.viewer))
+  )
+    throw Error('Invalid runtime viewer selection.');
+  const assets = bundle.pythonEnvironments || [];
+  validatePythonEnvironments(assets);
+  return options.scope === 'viewer'
+    ? assets.filter(
+        asset =>
+          asset.purpose === 'viewer' &&
+          (options.viewer === undefined || asset.viewer === options.viewer),
+      )
+    : assets;
 }
 function verifyCatalog(envelope, keys) {
   if (
@@ -457,6 +488,10 @@ class PackManager {
     this.verifiedEntries = new WeakSet();
     this.bundledEntries = new WeakMap();
     this.runtimeAssets = new RuntimeAssetManager({ directory: this.directory, space });
+    this.pythonEnvironments = new PythonEnvironmentManager({
+      directory: path.join(this.directory, '.python-environments'),
+      space,
+    });
     this.dataLibraries = new DataLibraryManager({
       ...dataLibraryOptions,
       directory: path.join(this.directory, '.data-libraries'),
@@ -471,18 +506,27 @@ class PackManager {
   estimate(entry) {
     validateFootprintMetadata(entry);
     const runtime = this.runtimeAssets.estimate(entry.runtimeAssets || []);
+    const python = this.pythonEnvironments.estimate(entry.pythonEnvironments || []);
     const packBytes = entry.installedSize || Math.min(MAX_EXPANDED, entry.size * 8);
     const containerBytes = entry.containerDownloadSize || 0;
     const downloadBytes =
-      (this.bundledEntries.has(entry) ? 0 : entry.size) + runtime.downloadBytes + containerBytes;
+      (this.bundledEntries.has(entry) ? 0 : entry.size) +
+      runtime.downloadBytes +
+      python.downloadBytes +
+      containerBytes;
     const installedBytes =
       packBytes +
       (entry.runtimeAssets ? runtime.installedBytes : entry.runtimeInstalledSize || 0) +
+      python.installedBytes +
       containerBytes * 4;
     return {
       ...footprint(downloadBytes, installedBytes, {
-        estimated: entry.installedSize == null || runtime.estimated || containerBytes > 0,
-        cacheReused: runtime.cacheReused,
+        estimated:
+          entry.installedSize == null ||
+          runtime.estimated ||
+          python.estimated ||
+          containerBytes > 0,
+        cacheReused: runtime.cacheReused || python.cacheReused,
       }),
       availableBytes: this.space(this.directory),
     };
@@ -497,6 +541,33 @@ class PackManager {
     return path.join(this.directory, 'installed.json');
   }
   async prepareRuntime(bundle, options = {}, distribution) {
+    const selectedPython = pythonSelection(bundle, options);
+    // Python preparation consumes only the installed, receipt-bound manifest.
+    // Initial install supplies its already decoded/verified distribution value.
+    if (distribution === undefined && (selectedPython.length || options.scope === 'viewer')) {
+      if (
+        !ID.test(bundle.domain || '') ||
+        !VERSION.test(bundle.version || '') ||
+        bundle.location !== path.join(this.directory, bundle.domain, bundle.version) ||
+        this.readState().active[bundle.domain] !== bundle.version
+      )
+        throw Error('Python environment repair requires the active installed Pack.');
+      if (!bundle.location || !fs.existsSync(path.join(bundle.location, RECEIPT)))
+        throw Error('Python environment repair requires an integrity-verified installed Pack.');
+      verifyInstalledFiles(bundle.location);
+      const installed = validateBundle(
+        JSON.parse(fs.readFileSync(path.join(bundle.location, 'bundle.json'), 'utf8')),
+      );
+      if (
+        installed.domain !== bundle.domain ||
+        installed.version !== bundle.version ||
+        stable(installed.pythonEnvironments || []) !== stable(bundle.pythonEnvironments || [])
+      )
+        throw Error('Installed Python environment declaration identity mismatch.');
+      bundle = { ...installed, location: bundle.location };
+    }
+    if (options.scope === 'viewer')
+      return this.pythonEnvironments.ensure(pythonSelection(bundle, options), options);
     // Repair reads only the installed, integrity-checked Pack; discovery overrides
     // and unrelated parent-directory locks cannot redirect managed installation.
     if (distribution === undefined && bundle.containerImages?.length)
@@ -504,12 +575,17 @@ class PackManager {
     const lock = distribution === undefined ? distributionForBundle(bundle) : distribution;
     await this.containerImages.preflight(lock, bundle.containerImages, options);
     await this.runtimeAssets.ensure(bundle.runtimeAssets, options);
-    return this.containerImages.ensure(lock, bundle.containerImages, options);
+    const python = await this.pythonEnvironments.ensure(bundle.pythonEnvironments, options);
+    const images = await this.containerImages.ensure(lock, bundle.containerImages, options);
+    return [...python, ...images];
   }
-  runtimeStatus(bundle) {
+  runtimeStatus(bundle, options = {}) {
+    const python = this.pythonEnvironments.status(pythonSelection(bundle, options));
+    if (options.scope === 'viewer') return python;
     return [
       ...this.runtimeAssets.status(bundle.runtimeAssets),
       ...this.containerImages.status(distributionForBundle(bundle), bundle.containerImages),
+      ...python,
     ];
   }
   withLock(action) {
@@ -633,6 +709,10 @@ class PackManager {
         );
         if (bundle.domain !== domain || bundle.version !== version)
           throw Error('Installed Domain Pack identity mismatch.');
+        if (bundle.pythonEnvironments?.length && !fs.existsSync(path.join(location, RECEIPT)))
+          throw Error(
+            'Python environment declarations require an installed Pack integrity receipt.',
+          );
         readDataLibraryBindings(bundle.dataLibraries, { directory: location });
         for (const skill of bundle.skills)
           if (
@@ -676,6 +756,7 @@ class PackManager {
       if (!entry.url.startsWith('https://'))
         throw Error('Pack catalog has an insecure download URL.');
       Object.freeze(entry.platforms);
+      freezePythonDeclarations(entry.pythonEnvironments);
       Object.freeze(entry);
       this.verifiedEntries.add(entry);
     }
@@ -704,6 +785,7 @@ class PackManager {
         file = fs.realpathSync(path.join(root, relative));
       if (!file.startsWith(root + path.sep)) throw Error('Bundled Pack escaped Core resources.');
       Object.freeze(entry.platforms);
+      freezePythonDeclarations(entry.pythonEnvironments);
       Object.freeze(entry);
       this.verifiedEntries.add(entry);
       this.bundledEntries.set(entry, file);
@@ -716,12 +798,15 @@ class PackManager {
       bytes,
       allowUnsigned = false,
       prepareRuntime = false,
+      runtimeScope,
       onProgress,
       signal,
       stallMs,
       timeoutMs,
     } = {},
   ) {
+    if (runtimeScope !== undefined && (runtimeScope !== 'viewer' || prepareRuntime !== true))
+      throw Error('Viewer-only installation requires prepareRuntime and runtimeScope viewer.');
     if (!allowUnsigned && !this.verifiedEntries.has(entry))
       throw Error('Pack must come from a verified catalog.');
     if (
@@ -748,6 +833,7 @@ class PackManager {
     const estimated = this.estimate({
       ...entry,
       runtimeAssets: [],
+      pythonEnvironments: [],
       runtimeInstalledSize: 0,
       containerDownloadSize: 0,
     });
@@ -774,6 +860,11 @@ class PackManager {
     const { bundle, files } = decodeArchive(archive);
     if (bundle.domain !== entry.domain || bundle.version !== entry.version)
       throw Error('Domain Pack catalog identity mismatch.');
+    if (
+      entry.pythonEnvironments !== undefined &&
+      stable(entry.pythonEnvironments) !== stable(bundle.pythonEnvironments || [])
+    )
+      throw Error('Domain Pack catalog Python environment identity mismatch.');
     if (bundle.coreApi !== 1) throw Error('Domain Pack requires another Core API.');
     this.assertIdle(bundle.domain);
     const expandedBytes = files.reduce((sum, file) => sum + file.bytes.length, 0);
@@ -782,7 +873,7 @@ class PackManager {
     if (prepareRuntime)
       await this.prepareRuntime(
         bundle,
-        { onProgress, signal, stallMs, timeoutMs },
+        { onProgress, signal, stallMs, timeoutMs, scope: runtimeScope },
         distributionForBundle(bundle, files),
       );
     const parent = path.join(this.directory, bundle.domain);
@@ -859,6 +950,8 @@ module.exports = {
   digest,
   validateBundle,
   RuntimeAssetManager,
+  PythonEnvironmentManager,
+  validatePythonEnvironments,
   DataLibraryManager,
   DataLibraryRegistry,
   validateDataLibraries,
