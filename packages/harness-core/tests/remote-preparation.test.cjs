@@ -132,8 +132,9 @@ function pending(f, changes) {
   );
 }
 
-test('verified stable MCP v1 product series retain read-only planning without weakening execution qualification', async t => {
+test('MCP v1 discovery ignores product release metadata and retains read-only planning', async t => {
   for (const version of [
+    '1.0.0',
     '1.1.0',
     '1.1.1',
     '1.2.0',
@@ -142,6 +143,21 @@ test('verified stable MCP v1 product series retain read-only planning without we
     '1.3.0',
     '1.3.1',
     '1.3.12',
+    '1.4.0',
+    '2.0.0',
+    '20.7.99',
+    '1.2',
+    '1.3.1-rc.1',
+    '1.3.1+build',
+    '1.02.1',
+    '1.2.01',
+    'development',
+    '',
+    null,
+    1.2,
+    {},
+    ['1.3.1'],
+    undefined,
   ]) {
     const f = fixture(t, { serviceInfo: { version } });
     const connection = await f.settings.check();
@@ -151,6 +167,10 @@ test('verified stable MCP v1 product series retain read-only planning without we
     assert.equal(f.settings.read().service.gatewayContract, 'mcp-v1');
     const review = await f.settings.review(f.projectDir, 'test', ['input.txt']);
     assert.equal(review.files[0].path, 'input.txt');
+    await assert.rejects(
+      f.settings.ensurePrepared(f.projectDir, 'test'),
+      /Prepare and approve the task input files/,
+    );
     assert.ok(f.requests.every(request => request.method === 'GET'));
     assert.equal(f.settings.project(f.projectDir, 'test').remoteProjectId, undefined);
   }
@@ -180,34 +200,24 @@ test('observed MCP gateway product 1.3.1 connects without granting execution or 
   assert.equal(f.settings.project(f.projectDir, 'test').remoteProjectId, undefined);
 });
 
-test('unverified or prerelease product versions report product compatibility rather than protocol failure', async t => {
-  for (const version of [
-    '1.0.0',
-    '1.4.0',
-    '2.0.0',
-    '1.2',
-    '1.2.1-rc.1',
-    '1.2.1+build',
-    '1.3.1-rc.1',
-    '1.3.1+build',
-    '1.02.1',
-    '1.2.01',
-    '',
-    null,
-    1.2,
-  ]) {
-    const f = fixture(t, { serviceInfo: { version } });
+test('product upgrades preserve the MCP contract and existing project binding', async t => {
+  const serviceInfo = { version: '1.3.1' };
+  const f = fixture(t, { serviceInfo });
+  const binding = await f.settings.bind(f.projectDir, 'test');
+  const identity = f.settings.identity();
+  const before = f.requests.length;
+  for (const version of ['1.4.0', '2.0.0', 'development', undefined]) {
+    serviceInfo.version = version;
     const connection = await f.settings.check();
-    assert.equal(connection.status, 'unavailable', JSON.stringify(version));
-    assert.match(connection.reason, /Unsupported MCP gateway product version/);
-    assert.doesNotMatch(connection.reason, /does not support the remote execution protocol/);
-    await assert.rejects(
-      f.settings.review(f.projectDir, 'test', ['input.txt']),
-      /unavailable for this domain/,
-    );
-    assert.ok(f.requests.every(request => request.method === 'GET'));
-    assert.equal(f.settings.read().service, undefined);
+    assert.equal(connection.status, 'connected', `${version}: ${connection.reason}`);
+    assert.equal(f.settings.identity(), identity);
+    assert.deepEqual(await f.settings.bind(f.projectDir, 'test'), binding);
+    assert.equal(f.settings.read().service.gatewayContract, 'mcp-v1');
+    assert.deepEqual(connection.executableDomains, []);
   }
+  assert.ok(f.requests.slice(before).every(request => request.method === 'GET'));
+  assert.equal(f.requests.filter(request => request.route === '/v1/projects').length, 1);
+  assert.equal(f.uploads.length, 0);
 });
 
 test('malformed MCP v1 service envelopes report the incompatible field and remain read-only', async t => {
@@ -222,12 +232,14 @@ test('malformed MCP v1 service envelopes report the incompatible field and remai
     [{ capabilitySnapshotHash: 'A'.repeat(64) }, /capabilitySnapshotHash/],
     [{ capabilitySnapshotHash: undefined }, /capabilitySnapshotHash/],
     [{ remoteProtocolVersion: '1.0' }, /does not support the remote execution protocol 1.1/],
+    [{ remoteProtocolVersion: '2.0' }, /does not support the remote execution protocol 1.1/],
+    [{ remoteProtocolVersion: null }, /does not support the remote execution protocol 1.1/],
     [
       { remoteProtocolVersion: '1.1' },
       /Invalid remote service info:.*canonicalSchemaVersion.*serverId/,
     ],
   ]) {
-    const f = fixture(t, { serviceInfo: { version: '1.2.1', ...change } });
+    const f = fixture(t, { serviceInfo: { version: '2.0.0-rc.1', ...change } });
     const connection = await f.settings.check();
     assert.equal(connection.status, 'unavailable', JSON.stringify(change));
     assert.match(connection.reason, reason);

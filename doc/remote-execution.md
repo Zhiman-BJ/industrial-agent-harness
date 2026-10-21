@@ -36,7 +36,7 @@
 
 项目运行位置仍为本机或远程，对话继承项目选择，审批按对话生效。服务由应用/部署配置提供；地址或凭据未配置时，界面明确显示尚未配置。连接成功只证明服务协议可用；远端领域及沙箱后端均有对应资格，才允许正式专业软件调用。
 
-服务产品版本与远程协议版本分别校验。已验证的 MCP v1 产品系列为稳定 `1.1.x`、`1.2.x`、`1.3.x`，其 `application-session` 发现响应经校验后适配为客户端协议 `1.1`；尚未验证的产品系列及预发布版明确报告产品版本不兼容。声明 canonical 协议的服务继续独立校验 `remoteProtocolVersion`、`canonicalSchemaVersion` 和服务身份。缺失或错误的发现字段会指出字段名，不再统一显示为“协议 1.1 不支持”。见 [1.3.1 真实连接回归](evidence/remote-discovery-20261021/README.md)。
+服务产品版本 `version` 仅作为元数据，不再用于判断兼容性；远端升级产品版本无需同步更新客户端白名单。未声明显式协议的 MCP v1 服务根据 `domains`、`sessionModel: "application-session"`、`domainCatalog` 与 `capabilitySnapshotHash` 验证发现响应，再适配为客户端协议 `1.1`。声明 canonical 协议的服务继续独立校验 `remoteProtocolVersion`、`canonicalSchemaVersion` 和服务身份。缺失或错误的发现字段会指出字段名；连接成功仍不授予执行资格。见 [连接回归与验收记录](evidence/remote-discovery-20261021/README.md)。
 
 默认路径在对话内完成：
 
@@ -146,7 +146,6 @@ industrial-harness remote terminate --project-dir /path/to/project --domain DOMA
 Desktop TypeScript 检查、构建及真实 Electron UI 自测通过，覆盖未配置状态、页面切换和无自动上传。客户端远程、Runtime 与共享应用测试通过；全套源码测试中，既有 CLI `stable portable Pack registration` 测试因缺少 `HARNESS_PLATFORM_PROBE_INDEX` 失败，另有 3 项平台相关测试跳过。因此不将本轮描述为全部仓库/平台测试通过，后续新增测试的计数以最终测试输出为准。
 
 仍需分别验收目标部署的 KiCad/Verilator/其他 Pack、实际隔离后端、原生软件依赖与 Linux worker、生产环境持久化/恢复、真实 Desktop/CLI 到服务的专业软件闭环，以及公网认证/登录。本地 PG/S3 集成、新源码测试与历史旧协议 RTL 记录均不代替这些资格。
-
 
 ## Current MCP gateway adapter (2026-10-16)
 

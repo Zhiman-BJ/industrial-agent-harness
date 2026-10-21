@@ -129,10 +129,12 @@ async function run(window, fixture) {
     capabilities: { snapshots: true, runtimeDiscovery: true },
   });
   await check('mcp-1.3.1', fixture.current);
+  await check('mcp-future-minor', { ...fixture.current, version: '1.4.0' });
+  await check('mcp-future-major', { ...fixture.current, version: '2.0.0' });
   await check(
-    'unsupported-product',
-    { ...fixture.current, version: '1.4.0' },
-    /Unsupported MCP gateway product version/,
+    'unsupported-protocol',
+    { ...fixture.current, remoteProtocolVersion: '2.0' },
+    /does not support the remote execution protocol 1.1/,
   );
   await check(
     'malformed-discovery',
@@ -140,7 +142,7 @@ async function run(window, fixture) {
     /capabilitySnapshotHash/,
   );
   await check('recovered', fixture.current);
-  assert.equal(fixture.requests.length, 5);
+  assert.equal(fixture.requests.length, 7);
   assert.ok(
     fixture.requests.every(
       request => request.method === 'GET' && request.url === '/v1/service-info',
