@@ -53,7 +53,13 @@ async function prepare(config, modelDirectory, resources) {
   });
 }
 async function run(window) {
-  const evaluate = script => window.webContents.executeJavaScript(script, true);
+  const evaluate = async script => {
+    try {
+      return await window.webContents.executeJavaScript(script, true);
+    } catch (cause) {
+      throw new Error(`External MCP UI script failed: ${script}`, { cause });
+    }
+  };
   async function wait(script) {
     const deadline = Date.now() + 30000;
     while (Date.now() < deadline) {
@@ -66,13 +72,17 @@ async function run(window) {
   }
   async function settingsPage() {
     await evaluate(`document.querySelector('.ia-settings-button').click()`);
+    await wait(
+      `Array.from(document.querySelectorAll('.ia-settings-row')).some(row=>row.innerText.includes('MCP & Skills'))`,
+    );
     await evaluate(
       `Array.from(document.querySelectorAll('.ia-settings-row')).find(row=>row.innerText.includes('MCP & Skills')).querySelector('button').click()`,
     );
-    await wait(`Boolean(document.querySelector('.ia-capability'))`);
+    await wait(`Boolean(document.querySelector('.ia-capability-nav button[title="Tools & MCP"]'))`);
     await evaluate(
       `document.querySelector('.ia-capability-nav button[title="Tools & MCP"]').click()`,
     );
+    await wait(`Boolean(document.querySelector('.ia-external-mcp > button:not(:disabled)'))`);
     await evaluate(`document.querySelector('.ia-external-mcp > button').click()`);
     await wait(
       `Boolean(document.querySelector('.ia-external-mcp form button[type="submit"]:not(:disabled)'))`,
@@ -147,6 +157,9 @@ async function run(window) {
       (await window.webContents.capturePage()).toPNG(),
     );
     await evaluate(`document.querySelector('.ia-capability-header button').click()`);
+    await wait(
+      `!document.querySelector('.ia-capability') && Boolean(document.querySelector('.ia-project-row'))`,
+    );
     await evaluate(`document.querySelector('.ia-project-row').click()`);
     await wait(
       `document.querySelector('.ia-project-resources[aria-label="Tools & MCP"]')?.innerText.includes('computer-use')`,
