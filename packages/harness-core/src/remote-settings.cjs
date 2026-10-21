@@ -87,18 +87,25 @@ function selectedSnapshot(directory, selected) {
 }
 
 function validateServiceInfo(info) {
-  if (
-    // Product releases 1.1.x and 1.2.x use the same MCP v1 application-session
-    // envelope. Product patch versions are not the canonical protocol version.
-    typeof info.version === 'string' &&
-    /^1\.[12]\.(?:0|[1-9]\d*)$/.test(info.version) &&
-    info.remoteProtocolVersion === undefined &&
-    info.sessionModel === 'application-session' &&
-    Array.isArray(info.domains) &&
-    info.domains.every(id => typeof id === 'string') &&
-    Array.isArray(info.domainCatalog) &&
-    /^[a-f0-9]{64}$/.test(info.capabilitySnapshotHash || '')
-  ) {
+  if (!info || typeof info !== 'object' || Array.isArray(info))
+    throw Error('Invalid remote service info: expected an object.');
+  const invalidFields = [];
+  if (!Array.isArray(info.domains) || info.domains.some(id => typeof id !== 'string'))
+    invalidFields.push('domains (array of strings)');
+  if (info.sessionModel !== 'application-session')
+    invalidFields.push('sessionModel (application-session)');
+  if (info.remoteProtocolVersion === undefined) {
+    // Verified product releases 1.1.x–1.3.x share the MCP v1 application-session
+    // envelope. Keep this bounded: a product release is not a protocol version.
+    if (typeof info.version !== 'string' || !/^1\.[123]\.(?:0|[1-9]\d*)$/.test(info.version))
+      throw Error(
+        'Unsupported MCP gateway product version: expected stable 1.1.x, 1.2.x or 1.3.x.',
+      );
+    if (!Array.isArray(info.domainCatalog)) invalidFields.push('domainCatalog (array)');
+    if (!/^[a-f0-9]{64}$/.test(info.capabilitySnapshotHash || ''))
+      invalidFields.push('capabilitySnapshotHash (lowercase SHA-256)');
+    if (invalidFields.length)
+      throw Error(`Invalid remote service info: ${invalidFields.join(', ')}.`);
     return {
       ...info,
       gatewayContract: 'mcp-v1',
@@ -108,16 +115,13 @@ function validateServiceInfo(info) {
       capabilities: { snapshots: true, runtimeDiscovery: true },
     };
   }
-  if (
-    info.remoteProtocolVersion !== REMOTE_PROTOCOL_VERSION ||
-    info.canonicalSchemaVersion !== '1' ||
-    typeof info.serverId !== 'string' ||
-    !info.serverId ||
-    !Array.isArray(info.domains) ||
-    info.domains.some(id => typeof id !== 'string') ||
-    info.sessionModel !== 'application-session'
-  )
+  if (info.remoteProtocolVersion !== REMOTE_PROTOCOL_VERSION)
     throw Error('This service does not support the remote execution protocol 1.1.');
+  if (info.canonicalSchemaVersion !== '1') invalidFields.push('canonicalSchemaVersion (1)');
+  if (typeof info.serverId !== 'string' || !info.serverId)
+    invalidFields.push('serverId (nonempty string)');
+  if (invalidFields.length)
+    throw Error(`Invalid remote service info: ${invalidFields.join(', ')}.`);
   return info;
 }
 

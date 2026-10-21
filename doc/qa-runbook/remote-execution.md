@@ -6,6 +6,12 @@
 
 ## 本次状态与验收口径
 
+**2026-10-21 连接检查修复：** beta.7 标签 `e114016` 对真实服务产品 `1.3.1` 返回“协议 1.1 不支持”；原因是客户端产品版本白名单仅到 `1.2.x`。同一现有账号、同一服务的前后对照已复现失败并验证修复后连接成功；本机原生 Electron 也通过设置页实际点击验证“已连接”。本次仅验证发现接口，未上传文件、创建远程工程或执行工具，不能覆盖下述完整 RE-E01–11 的既有 blocked 状态。[证据与验收缺口](../evidence/remote-discovery-20261021/README.md)。
+
+`pnpm --filter @industrial-agent-harness/desktop test:remote-connection` 单独执行隔离的 Electron 连接回归：canonical 成功、MCP 产品 `1.3.1` 成功、`1.4.0` 拒绝、错误 hash 字段失败、恢复连接；只允许 loopback fixture 的 `GET /v1/service-info`。现有 `test:mcp` 在原测试成功后继续运行此检查，因而进入现有 macOS 原生 CI 的 MCP 步骤。受控 fixture 不能证明当前真实部署可连接。
+
+发布验收须另外用**本次候选提交、实际发布账号配置、当前测试部署**在能力中心点击“检查连接”，记录候选 SHA、检查时间、HTTP 状态、服务产品版本/会话字段及界面结果。真实部署不可达或未授权时将该项记 `blocked`，不能用历史 headless 或本地 fixture 的通过覆盖。记录不得包含令牌或账号标识。
+
 **后续更新：** 用户已启动独立 mock 模型窗口，配置前置已具备；当前阻塞变为原生窗口控制接口持续超时，尚未发送任务或点击审批。见[独立窗口后续记录](../evidence/remote-chat-first-20261019/electron-click-20261020/isolated-window-followup.md)。下段保留此前入口子项验证过程。
 
 **2026-10-20 最新进展：真实 Electron 窗口与未同步聊天入口已验证，完整点击验收仍为 `blocked`。** 用户在正常 Terminal 启动应用后，已通过 CUA 原生界面创建独立 CAD 工程、选择远端并直接新建聊天，没有选择同步文件；“按需准备文件”和“请求审批”均实际显示。已填写合成任务并观察到发送按钮可用，随后清空草稿，未点击发送。RE-E01 的窗口、聊天入口及输入/发送可用子项通过，但尚未发送或读取本地工程，**完整 RE-E01 不能记 pass**。准备 mock 时发现当前 profile 的单槽密钥已有 MiniMax 配置，已取消而未保存；RE-E01 剩余部分及 RE-E02–11 当前为 `blocked: isolated-ui-model-profile-required`，待独立 UI 模型 profile 启动。无本轮上传、审批或远端工程调用；负向 fixture 的额外前置限制仍保留。见[本轮点击进展与截图](../evidence/remote-chat-first-20261019/electron-click-20261020/README.md)及[逐用例 JSON](../evidence/remote-chat-first-20261019/electron-click-20261020/progress.json)。当前工作区为 `546b41`，实际窗口使用此前 `a283` / `cf15` 的源码构建，身份范围详见记录。

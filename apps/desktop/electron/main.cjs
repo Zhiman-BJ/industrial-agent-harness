@@ -158,6 +158,7 @@ if (
   [
     '--account-selftest',
     '--remote-ui-selftest',
+    '--remote-connection-selftest',
     '--task-results-selftest',
     '--viewer-selftest',
     '--kicad-selftest',
@@ -1724,6 +1725,9 @@ function registerHandlers() {
 }
 
 async function createWindow() {
+  const remoteConnectionFixture = process.argv.includes('--remote-connection-selftest')
+    ? await require('./remote-connection-selftest.cjs').prepare()
+    : null;
   const accountFixture = process.argv.includes('--account-selftest')
     ? await require('./account-selftest.cjs').prepare(path.join(app.getPath('userData'), 'account'))
     : null;
@@ -2146,6 +2150,15 @@ async function createWindow() {
   }
   if (process.argv.includes('--remote-ui-selftest')) {
     await require('./remote-ui-selftest.cjs').run(window);
+    app.quit();
+    return;
+  }
+  if (remoteConnectionFixture) {
+    try {
+      await require('./remote-connection-selftest.cjs').run(window, remoteConnectionFixture);
+    } finally {
+      await remoteConnectionFixture.close();
+    }
     app.quit();
     return;
   }

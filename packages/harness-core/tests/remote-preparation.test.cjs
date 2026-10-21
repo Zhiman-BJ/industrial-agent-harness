@@ -48,6 +48,7 @@ function fixture(t, { current = true, account, serviceInfo = {} } = {}) {
               domains: ['test'],
               sessionModel: 'application-session',
               capabilities: { snapshots: true },
+              ...serviceInfo,
             },
       );
     }
@@ -131,8 +132,17 @@ function pending(f, changes) {
   );
 }
 
-test('stable MCP v1 service releases 1.1.x and 1.2.x retain read-only planning without weakening execution qualification', async t => {
-  for (const version of ['1.1.0', '1.1.1', '1.2.0', '1.2.1', '1.2.12']) {
+test('verified stable MCP v1 product series retain read-only planning without weakening execution qualification', async t => {
+  for (const version of [
+    '1.1.0',
+    '1.1.1',
+    '1.2.0',
+    '1.2.1',
+    '1.2.12',
+    '1.3.0',
+    '1.3.1',
+    '1.3.12',
+  ]) {
     const f = fixture(t, { serviceInfo: { version } });
     const connection = await f.settings.check();
     assert.equal(connection.status, 'connected', `${version}: ${connection.reason}`);
@@ -146,44 +156,108 @@ test('stable MCP v1 service releases 1.1.x and 1.2.x retain read-only planning w
   }
 });
 
-test('unknown or prerelease product versions and malformed current service envelopes remain unavailable', async t => {
-  const changes = [
-    ...[
-      '1.0.0',
-      '1.3.0',
-      '2.0.0',
-      '1.2',
-      '1.2.1-rc.1',
-      '1.2.1+build',
-      '1.02.1',
-      '1.2.01',
-      '',
-      null,
-      1.2,
-    ].map(version => ({ version })),
-    { sessionModel: 'project-session' },
-    { sessionModel: undefined },
-    { domains: ['test', 2] },
-    { domains: null },
-    { domainCatalog: {} },
-    { domainCatalog: undefined },
-    { capabilitySnapshotHash: 'bad-hash' },
-    { capabilitySnapshotHash: 'A'.repeat(64) },
-    { capabilitySnapshotHash: undefined },
-    { remoteProtocolVersion: '1.0' },
-    { remoteProtocolVersion: '1.1' },
-  ];
-  for (const change of changes) {
-    const f = fixture(t, { serviceInfo: { version: '1.2.1', ...change } });
+test('observed MCP gateway product 1.3.1 connects without granting execution or uploading inputs', async t => {
+  const f = fixture(t, {
+    serviceInfo: {
+      version: '1.3.1',
+      domainCatalog: [],
+      // Metadata claims must not bypass protected live discovery/qualification.
+      capabilities: { protectedExecution: true },
+      domainCapabilities: [{ domain: 'test', qualification: 'qualified' }],
+    },
+  });
+  const connection = await f.settings.check();
+  assert.equal(connection.status, 'connected', connection.reason);
+  assert.equal(connection.protocol, '1.1');
+  assert.deepEqual(connection.executableDomains, []);
+  assert.equal(connection.capabilities.protectedExecution, undefined);
+  const review = await f.settings.review(f.projectDir, 'test', ['input.txt']);
+  assert.equal(review.files[0].path, 'input.txt');
+  assert.ok(
+    f.requests.every(request => request.route === '/v1/service-info' && request.method === 'GET'),
+  );
+  assert.equal(f.uploads.length, 0);
+  assert.equal(f.settings.project(f.projectDir, 'test').remoteProjectId, undefined);
+});
+
+test('unverified or prerelease product versions report product compatibility rather than protocol failure', async t => {
+  for (const version of [
+    '1.0.0',
+    '1.4.0',
+    '2.0.0',
+    '1.2',
+    '1.2.1-rc.1',
+    '1.2.1+build',
+    '1.3.1-rc.1',
+    '1.3.1+build',
+    '1.02.1',
+    '1.2.01',
+    '',
+    null,
+    1.2,
+  ]) {
+    const f = fixture(t, { serviceInfo: { version } });
     const connection = await f.settings.check();
-    assert.equal(connection.status, 'unavailable', JSON.stringify(change));
-    assert.match(connection.reason, /does not support the remote execution protocol 1.1/);
+    assert.equal(connection.status, 'unavailable', JSON.stringify(version));
+    assert.match(connection.reason, /Unsupported MCP gateway product version/);
+    assert.doesNotMatch(connection.reason, /does not support the remote execution protocol/);
     await assert.rejects(
       f.settings.review(f.projectDir, 'test', ['input.txt']),
       /unavailable for this domain/,
     );
     assert.ok(f.requests.every(request => request.method === 'GET'));
     assert.equal(f.settings.read().service, undefined);
+  }
+});
+
+test('malformed MCP v1 service envelopes report the incompatible field and remain read-only', async t => {
+  for (const [change, reason] of [
+    [{ sessionModel: 'project-session' }, /sessionModel/],
+    [{ sessionModel: undefined }, /sessionModel/],
+    [{ domains: ['test', 2] }, /domains/],
+    [{ domains: null }, /domains/],
+    [{ domainCatalog: {} }, /domainCatalog/],
+    [{ domainCatalog: undefined }, /domainCatalog/],
+    [{ capabilitySnapshotHash: 'bad-hash' }, /capabilitySnapshotHash/],
+    [{ capabilitySnapshotHash: 'A'.repeat(64) }, /capabilitySnapshotHash/],
+    [{ capabilitySnapshotHash: undefined }, /capabilitySnapshotHash/],
+    [{ remoteProtocolVersion: '1.0' }, /does not support the remote execution protocol 1.1/],
+    [
+      { remoteProtocolVersion: '1.1' },
+      /Invalid remote service info:.*canonicalSchemaVersion.*serverId/,
+    ],
+  ]) {
+    const f = fixture(t, { serviceInfo: { version: '1.2.1', ...change } });
+    const connection = await f.settings.check();
+    assert.equal(connection.status, 'unavailable', JSON.stringify(change));
+    assert.match(connection.reason, reason);
+    await assert.rejects(
+      f.settings.review(f.projectDir, 'test', ['input.txt']),
+      /unavailable for this domain/,
+    );
+    assert.ok(f.requests.every(request => request.method === 'GET'));
+    assert.equal(f.settings.read().service, undefined);
+  }
+});
+
+test('canonical gateway schema and service identity checks remain independent of product versions', async t => {
+  const valid = fixture(t, { current: false, serviceInfo: { version: '2.0.0' } });
+  assert.equal((await valid.settings.check()).status, 'connected');
+  for (const [change, field] of [
+    [{ canonicalSchemaVersion: '2' }, /canonicalSchemaVersion/],
+    [{ canonicalSchemaVersion: undefined }, /canonicalSchemaVersion/],
+    [{ serverId: '' }, /serverId/],
+    [{ serverId: undefined }, /serverId/],
+    [{ domains: null }, /domains/],
+    [{ sessionModel: undefined }, /sessionModel/],
+  ]) {
+    const f = fixture(t, { current: false, serviceInfo: change });
+    const connection = await f.settings.check();
+    assert.equal(connection.status, 'unavailable');
+    assert.match(connection.reason, /Invalid remote service info:/);
+    assert.match(connection.reason, field);
+    assert.equal(f.settings.read().service, undefined);
+    assert.ok(f.requests.every(request => request.method === 'GET'));
   }
 });
 
