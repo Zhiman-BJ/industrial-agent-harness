@@ -336,3 +336,32 @@ test('CLI parses the archive import command and validates its arguments', () => 
   );
   assert.throws(() => parse(['import']), /Domain ID/);
 });
+
+test('viewer-only preparation is explicit and limited to install or repair', () => {
+  const { parse } = require('../src/domains.cjs');
+  assert.deepEqual(parse(['repair', 'test', '--viewer-only']), {
+    command: 'repair',
+    domain: 'test',
+    viewerOnly: true,
+  });
+  assert.equal(
+    parse([
+      'install',
+      'test',
+      '--viewer-only',
+      '--catalog',
+      'https://c',
+      '--keys-file',
+      'keys.json',
+    ]).viewerOnly,
+    true,
+  );
+  assert.equal(
+    parse(['repair', 'test']).viewerOnly,
+    undefined,
+    'ordinary repair retains all dependencies',
+  );
+  for (const command of ['list', 'available', 'update', 'remove', 'import'])
+    assert.throws(() => parse([command, '--viewer-only']), /requires install or repair/);
+  assert.throws(() => parse(['repair', 'test', '--viewer-only', '--viewer-only']), /Duplicate/);
+});

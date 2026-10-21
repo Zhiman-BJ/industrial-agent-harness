@@ -9,14 +9,16 @@ const {
 
 const usage = `industrial-harness domains list [--store DIR]
 industrial-harness domains available --catalog HTTPS_URL --keys-file FILE [--store DIR]
-industrial-harness domains install DOMAIN --catalog HTTPS_URL --keys-file FILE [--store DIR]
+industrial-harness domains install DOMAIN --catalog HTTPS_URL --keys-file FILE [--store DIR] [--viewer-only]
 industrial-harness domains import DOMAIN --file PATH --catalog HTTPS_URL --keys-file FILE [--asset ID] [--store DIR]
 industrial-harness domains update --catalog HTTPS_URL --keys-file FILE [--store DIR]
 industrial-harness domains remove DOMAIN [--store DIR]
-industrial-harness domains repair DOMAIN [--store DIR]
+industrial-harness domains repair DOMAIN [--store DIR] [--viewer-only]
 Use a trusted public-key JSON file: {"key-id":"-----BEGIN PUBLIC KEY-----..."}.
 Runtime archives are never downloaded by this tool: download the pinned official
-release yourself, then register it with domains import.
+release yourself, then register it with domains import. Optional Viewer Python
+resources use the Pack's pinned downloads; --viewer-only prepares them without
+requiring unrelated native tools or containers.
 Set INDUSTRIAL_HARNESS_PACK_STORE to the same store for run and bench.\n`;
 
 function parse(argv) {
@@ -33,6 +35,11 @@ function parse(argv) {
       const key = token.slice(2).replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
       if (options[key]) throw Error(`Duplicate ${token}.`);
       options[key] = value;
+    } else if (token === '--viewer-only') {
+      if (!['install', 'repair'].includes(command))
+        throw Error('--viewer-only requires install or repair.');
+      if (options.viewerOnly) throw Error('Duplicate --viewer-only.');
+      options.viewerOnly = true;
     } else if (!options.domain && !token.startsWith('--')) options.domain = token;
     else throw Error(`Unknown domains option: ${token}`);
   }
@@ -99,6 +106,7 @@ async function runDomains(argv, output = process.stdout) {
       const bundle = manager.list().find(item => item.domain === options.domain);
       if (!bundle) throw Error('Domain is not installed.');
       await manager.prepareRuntime(bundle, {
+        ...(options.viewerOnly ? { scope: 'viewer' } : {}),
         recheck: true,
         onProgress,
         signal: controller.signal,
@@ -140,6 +148,7 @@ async function runDomains(argv, output = process.stdout) {
       journal.begin([item.domain]);
       const installed = await manager.install(item, {
         prepareRuntime: true,
+        ...(options.viewerOnly ? { runtimeScope: 'viewer' } : {}),
         onProgress,
         signal: controller.signal,
       });

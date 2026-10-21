@@ -4,6 +4,7 @@ import type { OpenedViewer, ViewerArtifact } from '@industrial-agent-harness/vie
 import { useDisplayText } from '@industrial-agent-harness/viewer-builtin/text';
 import { BrowserPanel } from './BrowserPanel';
 import { openViewerLifecycle, type ViewerOpenLifecycle } from './viewer-open-lifecycle.mjs';
+import { viewerDependencyMessage } from './domain-readiness.mjs';
 
 export type WorkspaceFile = {
   id: string;
@@ -26,10 +27,12 @@ export function WorkspaceFileView({
   file,
   active,
   onState,
+  onManageDomains,
 }: {
   file: WorkspaceFile;
   active: boolean;
   onState: (state: WorkspaceViewState) => void;
+  onManageDomains: () => void;
 }) {
   const { t } = useDisplayText();
   const [opened, setOpened] = useState<OpenedViewer>();
@@ -37,6 +40,8 @@ export function WorkspaceFileView({
   const [ready, setReady] = useState(false);
   const [error, setError] = useState('');
   const [started, setStarted] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  const dependencyMessage = viewerDependencyMessage(error);
   const opening = useRef<ViewerOpenLifecycle<OpenedViewer> | null>(null);
   const onNavigation = useCallback(
     (value: ViewNavigation | null) => {
@@ -70,7 +75,7 @@ export function WorkspaceFileView({
       if (opening.current === lifecycle) opening.current = null;
       lifecycle.cancel();
     };
-  }, [started, file.artifact?.id]);
+  }, [started, file.artifact?.id, attempt]);
   useEffect(() => {
     if (active) onState({ id: file.id, opened, navigation, ready, error });
   }, [active, file.id, opened, navigation, ready, error, onState]);
@@ -89,7 +94,7 @@ export function WorkspaceFileView({
         </div>
       ) : (
         <div className="rp-stage ia-viewer-stage">
-          {opened ? (
+          {opened && !error ? (
             <ViewerCanvas
               opened={opened}
               onNavigation={onNavigation}
@@ -97,7 +102,34 @@ export function WorkspaceFileView({
               onError={onError}
             />
           ) : (
-            <div className="ia-workspace-empty">{error ? t(error) : t('Opening viewer…')}</div>
+            <div className="ia-workspace-empty">
+              <div>
+                <p role={error ? 'alert' : 'status'}>
+                  {error ? t(dependencyMessage || error) : t('Opening viewer…')}
+                </p>
+                <div className="ia-domain-setup-actions">
+                  {dependencyMessage?.includes('Open Settings') && (
+                    <button className="ia-pack-action" onClick={onManageDomains}>
+                      {t('Open domain settings')}
+                    </button>
+                  )}
+                  {error && (
+                    <button
+                      className="ia-pack-action"
+                      onClick={() => {
+                        setOpened(undefined);
+                        setNavigation(null);
+                        setReady(false);
+                        setError('');
+                        setAttempt(value => value + 1);
+                      }}
+                    >
+                      {t('Retry viewer')}
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
           )}
         </div>
       )}

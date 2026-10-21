@@ -67,12 +67,27 @@ when a similarly named official STEP exists. Local legacy WRL remains supported.
 
 This interface and its consumer are being integrated; this section does not
 claim completion of the current GPU/desktop acceptance or publication of a new
-installer. It also does not provide managed KLayout Python: that host dependency
-still has a separate declaration/resolution/repair integration gap. The
+installer. KLayout Python uses the separate managed Python interface below. The
 [PCB Viewer guide](../../doc/pcb-3d-viewer.md) and
 [QA matrix](../../doc/qa-runbook/viewers-results.md) define the required evidence.
 
 ## Native and container runtime preparation
+
+Optional `pythonEnvironments` declarations supply exact Python standalone archives,
+local wheels and bounded owner probes. `PythonEnvironmentManager` verifies size/SHA-256,
+safely extracts a private complete interpreter tree, installs hash-locked local wheels
+without indexes or dependency resolution, probes before and after relocation, and atomically
+records readiness in `<store>/.python-environments/`. Read-only status never installs.
+Repair rechecks content and reruns probes; a failed old environment remains unready even
+if replacement fails. Verified downloads survive retries. Receipts detect damaged files,
+not a malicious local owner who can rewrite both runtime files and receipts.
+
+`install(entry, { prepareRuntime: true, runtimeScope: 'viewer' })` and
+`prepareRuntime(bundle, { scope: 'viewer', recheck: true })` prepare only declared Viewer
+Python, bypassing unrelated native/container preflight. Full installation keeps its
+existing checks. `describeInstalled` separates `viewerState/viewerAssets` from native
+`runtimeState/runtimeAssets`; the catalog exposes only `viewerAvailable` for UI selection.
+The current consumer is [KLayout Viewer Python](../../doc/managed-viewer-python.md).
 
 Optional `containerImages` declarations select released image IDs from the owner's unchanged
 `provenance/runtime-distribution.json`, included in the authenticated `.hpack`. Desktop and CLI

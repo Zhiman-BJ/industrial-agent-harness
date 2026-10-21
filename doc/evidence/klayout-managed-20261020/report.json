@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "at": "2026-10-20T13:45:46.303Z",
+  "scope": "real official downloads, production bundle/installer/resolver/worker, CPU GDS rendering and offline repair; no native GUI or engineering acceptance",
+  "platform": "darwin-arm64",
+  "owner": {
+    "packageVersion": "0.5.7",
+    "contentSha256": "2c456abfc6d97f438ca8a56e5c2a904194fc6ab9163f6c8034d384d272c11b17"
+  },
+  "domain": "chip",
+  "packVersion": "0.6.3",
+  "pythonVersion": "3.12.15",
+  "klayoutVersion": "0.30.12",
+  "requests": 3,
+  "urls": [
+    "https://github.com/astral-sh/python-build-standalone/releases/download/20261013/cpython-3.12.15%2B20261013-aarch64-apple-darwin-install_only.tar.gz",
+    "https://release-assets.githubusercontent.com/github-production-release-asset/162334160/0f355d76-4718-4f49-a828-eab0218192d9",
+    "https://files.pythonhosted.org/packages/0d/cc/542238f233c2cc103d81936590b8e4d25a363a30798f92851832cd92c3ce/klayout-0.30.12-cp312-cp312-macosx_11_0_arm64.whl"
+  ],
+  "phases": [
+    "checking-space",
+    "verifying",
+    "checking-space",
+    "downloading",
+    "extracting",
+    "installing",
+    "checking",
+    "ready",
+    "extracting",
+    "activating",
+    "ready"
+  ],
+  "containerCalls": 0,
+  "coldMs": 75295.73,
+  "warmMs": 687.03,
+  "repairMs": 7738.83,
+  "sourceSha256": "88eb101db90f76a960f5b83e446423b7f8d66fa28240dc1110c49b6ceeabac95",
+  "sourceUnchanged": true,
+  "cell": "sobel_top",
+  "layers": 22,
+  "png": {
+    "width": 1200,
+    "height": 800,
+    "sha256": "6fa331b1e7123a68f20c4a2e93fe779f54767d7986538e58f73337665bf5e4a0",
+    "bytes": 576766
+  },
+  "repeatedRenderResolutions": 1,
+  "offlineRequests": 0,
+  "freshResolutionDetectedDamage": true,
+  "damagedModuleRepaired": true,
+  "ok": true
+}

@@ -10,7 +10,9 @@ class RasterService {
   }
   start() {
     if (this.worker) return;
-    this.worker = spawn(this.python, ['-u', path.join(__dirname, 'layout.py')], {
+    // Ignore Python startup overrides and user packages, while retaining this
+    // trusted script directory for its adjacent layout_themes module.
+    this.worker = spawn(this.python, ['-B', '-E', '-s', '-u', path.join(__dirname, 'layout.py')], {
       stdio: ['pipe', 'pipe', 'pipe'],
     });
     this.worker.stderr.on('data', () => {});

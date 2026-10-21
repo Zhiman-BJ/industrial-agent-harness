@@ -19,15 +19,15 @@ pnpm --filter @industrial-agent-harness/desktop build
 
 ### GDS / OASIS Viewer 依赖
 
-源码构建不会自动创建 KLayout Python 环境。每个新工作树在打开 GDS / OASIS 前需运行：
+GDS / OASIS 的 Python 依赖已接入共享 Pack Manager。已安装应用从领域包设置准备或修复 Viewer 支持；仅准备 Viewer 不需要 Docker 或宿主 Python。源码开发也可显式运行：
 
 ```sh
 pnpm --filter @industrial-agent-harness/desktop setup:layout
 ```
 
-该脚本以标准 `venv --copies` 在当前工作树的 `apps/desktop/.venv-klayout/` 创建独立虚拟环境并安装固定版本 `klayout==0.30.12`，不修改全局 Python。解释器使用常规文件副本，避免新建环境中的 Python 符号链接触发源码契约；该环境仍依赖创建时的兼容 Python 运行时，不承诺可跨机器搬移。该目录被 Git 忽略，因此切换到新工作树后，即使另一工作树已安装，也仍需为当前工作树准备依赖；不会隐式搜索或复用其他工作树的虚拟环境。
+该脚本复用共享安装器，在 Pack store 的 `.python-environments/` 准备固定 CPython 3.12.15 与 KLayout 0.30.12，验证归档/wheel SHA-256，并在安装前后实际生成 PNG。它不再依赖工作树 venv，不修改全局 Python；同一私有 store 可跨源码工作树复用。固定资源及探针由 Chip Pack owner 声明，见[托管 Viewer Python](managed-viewer-python.md)。
 
-若窗口已打开并提示 `KLayout Python is unavailable`，安装完成后关闭该文件预览，再从项目文件树重新打开。主进程会重新检查当前环境；这类缺失依赖错误无需重启 Harness。此恢复仅说明布局显示依赖可用，不代表版图通过工程验证。
+缺失依赖时，Viewer 提供领域包设置入口。安装或修复会关闭旧 worker，重新打开文件后解析新的就绪环境；无需重启应用。显式 `KLAYOUT_PYTHON` 仍优先，无效时明确报错；旧 `.venv-klayout` 只在非托管源码开发保留兼容回退。成功渲染只说明显示依赖可用，不代表工程验证通过。
 
 普通本机终端可继续使用 `pnpm dev`、`pnpm start` 和现有 `test:*` 命令。它们的统一启动器在 macOS 做一次只读服务 lookup；明确拒绝时提前给出诊断，不再启动注定失败的 GUI 子进程。缺少编译器、服务未知或诊断超时按“未知”处理，不能据此声称系统 GUI 不可用；启动器保守停止本次直接启动并提示使用桌面入口，避免瞬时诊断失败再次触发原生 abort。lookup 成功同样不是启动或自测通过的证明。
 

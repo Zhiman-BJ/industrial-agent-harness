@@ -10,6 +10,9 @@ function loadDomainPacks() {
   const capabilityIds = new Set();
   const providerIds = new Set();
   for (const pack of packs) {
+    require('@industrial-agent-harness/pack-manager/src/python-environments.cjs').validatePythonEnvironments(
+      pack.pythonEnvironments,
+    );
     if (
       pack.schemaVersion !== 1 ||
       !pack.id ||

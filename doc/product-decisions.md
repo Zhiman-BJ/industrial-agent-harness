@@ -920,3 +920,12 @@ CSV/TSV 显示表格并提供表头开关、全文筛选与分页；普通 JSON 
 - 实现：共享 TaskService 提供只读 freshness 投影及显式 state/scope 刷新；Runtime 保留执行前状态校验，声明式任务校验任务声明并复制精确输入，执行后复查副本。只有可信生产者绑定到本次 Action 的快照结果可在工作区并发修改时保留历史 verdict；其他生产者仍保守降为证据不足。已有文件回写继续要求 hash 前提并避免回滚覆盖外部新内容。
 - 后续兼容：OS 沙箱负责进程的文件、网络及凭据权限，本机制负责版本与证据一致性，两者可以叠加。本改动不调整 Agent 启动策略，可与 #236 已合入的分层隔离叠加。
 - 限制：不保证未声明依赖闭包，不提供跨文件原子快照、完整源码恢复或同权限恶意进程防篡改；领域 Pack 的快照迁移留在其 owner。实施与验收边界见 [输入绑定](evidence-input-binding.md)。
+
+## PD-094：版图 Viewer 的 Python 依赖由共享安装器托管
+
+- 日期：2026-10-20。
+- 状态：用户授权实施；本分支完成接入，平台验证按实际证据记录。
+- 决定：KLayout/Python 的固定版本、官方资源 SHA/大小和渲染探针由 Chip Pack owner 声明；共享 Pack Manager 准备私有完整解释器与离线 wheel。普通用户不执行源码环境命令，不要求预装 Python。
+- 可观察行为：现有领域包入口支持仅安装或修复 Viewer，不被无关 Docker/native 前置阻挡；Viewer 就绪与工程依赖分别显示。准备前后真实检查 PNG 渲染，损坏或失败的运行时不标 ready；缓存可离线复用，取消可重试。打开 GDS 不隐式下载。
+- 兼容：显式 KLAYOUT_PYTHON 优先且无效不回退；旧工作树 venv 只保留为源码开发兼容。新 open 重新校验，连续 render 复用进程，安装/修复后重新解析；setup:layout 转为共享安装器的开发入口。
+- 边界：显示不修改源文件、DomainState 或 Verification，不代表 DRC/LVS 或制造验收；固定跨平台资源不等于原生平台验收。该决定补齐 PD-091/092 当时记录的 KLayout 依赖托管缺口，见[托管 Viewer Python](managed-viewer-python.md)。
