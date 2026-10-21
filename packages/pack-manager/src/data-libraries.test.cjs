@@ -158,9 +158,16 @@ test('GitLab API redirects and response URLs cannot change origin, project, file
     assert.equal(f.calls.length, 1);
     assert.deepEqual(fs.readdirSync(f.directory), []);
   }
+  let bodyCancelled = false;
   const f = apiFixture(t, {
     fetch: () => {
-      const response = new Response(first);
+      const response = new Response(
+        new ReadableStream({
+          cancel() {
+            bodyCancelled = true;
+          },
+        }),
+      );
       Object.defineProperty(response, 'url', {
         value: 'https://official.example/api/v4/unexpected?ref=main',
       });
@@ -171,6 +178,7 @@ test('GitLab API redirects and response URLs cannot change origin, project, file
     f.manager.ensure(f.library, f.catalog, ['parts/first.bin']),
     /pinned file or revision/,
   );
+  assert.equal(bodyCancelled, true, 'a rejected final API URL cancels its unread body');
   assert.deepEqual(fs.readdirSync(f.directory), []);
 });
 
