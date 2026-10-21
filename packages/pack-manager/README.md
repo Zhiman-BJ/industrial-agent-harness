@@ -58,6 +58,16 @@ Cache reuse must retain the declaration identity and must not silently repair
 it by networking during a read. Acquisition writes the managed cache, without
 rewriting board files or model references.
 
+Legacy schema-1 catalogs use a plain HTTPS base directory. Schema-2 catalogs
+may declare the typed `download` source `gitlab-repository-files`, with an API
+v4 base directory, project path and immutable 40-hex commit `ref`. The manager
+constructs the API URL itself, encodes the complete project/file paths, and
+permits only that exact pinned URL through redirects and response validation.
+It does not enable arbitrary query strings on ordinary library URLs. Library
+and digest-bound catalog declarations must agree. Older Harness versions reject
+schema 2 during Pack validation; the new API catalog therefore requires the
+updated consumer and cannot fix an installed beta.7 application by itself.
+
 The Desktop host derives requests from the current source snapshot and grants
 the Viewer exact source-reference, root/path, size and hash bindings. A renderer
 cannot choose an arbitrary library root, local file or remote URL. The existing

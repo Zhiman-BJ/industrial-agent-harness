@@ -77,22 +77,46 @@ function selectedLimits(input = {}) {
   return result;
 }
 
+function downloadSource(library) {
+  const source = library.download;
+  if (source === undefined) return;
+  if (
+    !source ||
+    typeof source !== 'object' ||
+    Array.isArray(source) ||
+    Object.keys(source).some(key => !['type', 'project', 'ref'].includes(key)) ||
+    source.type !== 'gitlab-repository-files' ||
+    typeof source.project !== 'string' ||
+    source.project.length > 512 ||
+    !source.project
+      .split('/')
+      .every(part => /^[A-Za-z0-9_.-]+$/.test(part) && part !== '.' && part !== '..') ||
+    typeof source.ref !== 'string' ||
+    !/^[a-f0-9]{40}$/.test(source.ref || '')
+  )
+    throw Error('Invalid data library download source.');
+  return { type: source.type, project: source.project, ref: source.ref };
+}
+
 function validateDataLibrary(library) {
   if (!library || !ID.test(library.id || '') || !VERSION.test(library.version || ''))
     throw Error('Invalid data library declaration.');
   const base = httpsUrl(library.baseUrl);
   if (!base.pathname.endsWith('/') || library.baseUrl.includes('%'))
     throw Error('Data library base URL must be a plain HTTPS directory.');
+  if (downloadSource(library) && !base.pathname.endsWith('/api/v4/'))
+    throw Error('GitLab data library downloads require an API v4 base directory.');
   return library;
 }
 
 function planDataLibrary(library, catalog, requestedPaths, options = {}) {
   validateDataLibrary(library);
+  const download = downloadSource(library);
   if (
     !library ||
     !ID.test(library.id || '') ||
     !VERSION.test(library.version || '') ||
-    catalog?.schemaVersion !== 1 ||
+    catalog?.schemaVersion !== (download ? 2 : 1) ||
     catalog.id !== library.id ||
     catalog.version !== library.version ||
     !Array.isArray(catalog.files) ||
@@ -103,6 +127,8 @@ function planDataLibrary(library, catalog, requestedPaths, options = {}) {
   const source = httpsUrl(catalog.baseUrl);
   if (base.href !== source.href || !base.pathname.endsWith('/') || base.pathname.includes('%'))
     throw Error('Data library catalog does not match its declared base URL.');
+  if (JSON.stringify(download) !== JSON.stringify(downloadSource(catalog)))
+    throw Error('Data library catalog does not match its declared download source.');
   const byPath = new Map();
   const byHash = new Map();
   for (const entry of catalog.files) {
@@ -145,6 +171,7 @@ function planDataLibrary(library, catalog, requestedPaths, options = {}) {
     libraryId: library.id,
     version: library.version,
     baseUrl: base.href,
+    ...(download ? { download } : {}),
     files,
     stats: { requestedFiles: files.length, uniqueFiles: hashes.size, totalBytes },
   };
@@ -458,9 +485,25 @@ class DataLibraryManager {
       clearTimeout(idle);
     }
   }
-  async response(baseUrl, relative, { signal, touch }) {
+  async response(baseUrl, relative, { signal, touch }, download) {
     const base = httpsUrl(baseUrl);
-    let url = new URL(relative.split('/').map(encodeURIComponent).join('/'), base);
+    let url = download
+      ? new URL(
+          `projects/${encodeURIComponent(download.project)}/repository/files/${encodeURIComponent(relative)}/raw`,
+          base,
+        )
+      : new URL(relative.split('/').map(encodeURIComponent).join('/'), base);
+    if (download) url.searchParams.set('ref', download.ref);
+    const expectedUrl = url.href;
+    const checkedUrl = value => {
+      if (!download) return httpsUrl(value);
+      // Only this constructed repository-file URL may carry the immutable ref
+      // query. Redirects cannot choose another origin, project, path or ref.
+      const candidate = new URL(value);
+      if (candidate.href !== expectedUrl)
+        throw Error('Data library API redirect changed its pinned file or revision.');
+      return candidate;
+    };
     for (let redirects = 0; redirects <= 5; redirects++) {
       signal.throwIfAborted();
       if (url.origin !== base.origin || !url.pathname.startsWith(base.pathname))
@@ -486,7 +529,13 @@ class DataLibraryManager {
           throw Error(`Data library download failed: HTTP ${response.status}.`);
         }
         if (response.url) {
-          const final = httpsUrl(response.url);
+          let final;
+          try {
+            final = checkedUrl(response.url);
+          } catch (error) {
+            discard(response.body);
+            throw error;
+          }
           if (final.href !== url.href) {
             discard(response.body);
             throw Error('Data library response does not match its checked URL.');
@@ -500,7 +549,7 @@ class DataLibraryManager {
         throw Error('Data library download has too many redirects.');
       if (location.includes('\\') || hasControl(location, true))
         throw Error('Invalid data library redirect.');
-      url = httpsUrl(new URL(location, url).href);
+      url = checkedUrl(new URL(location, url).href);
     }
   }
   async downloadFile(plan, entry, transfer) {
@@ -515,7 +564,7 @@ class DataLibraryManager {
     };
     transfer.signal.addEventListener('abort', cancel, { once: true });
     try {
-      const response = await this.response(plan.baseUrl, entry.path, transfer);
+      const response = await this.response(plan.baseUrl, entry.path, transfer, plan.download);
       if (Number(response.headers.get('Content-Length')) > entry.size) {
         discard(response.body);
         throw Error('Data library response exceeds its declared size.');
