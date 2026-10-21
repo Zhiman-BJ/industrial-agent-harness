@@ -66,6 +66,7 @@ KLayout 依赖已通过共享管理器接入；[固定版本与接口边界](../
 | VR-13 重开与缓存 | 真实 Sobel GDS 从项目树打开，22层、缩放/平移/图层/全屏；离线检查再重开 | 不修改源、不触网；连续 render 不重扫所有 Pack/Python 文件；记录 PNG、source SHA、解析次数 |
 | VR-14 损坏与取消 | 删除专用环境模块，检查转 needs-preparation；修复中断、错误 hash/最终 probe失败，再重试 | 不误报ready；旧文件可保留但已证实损坏的runtime不可解析；staging/锁释放，暖缓存复用 |
 | VR-15 路径切换 | 显式正确/错误 KLAYOUT_PYTHON、repair同路径替换、项目切换 | 无效override不回退；新open重验，旧worker关闭；缺失依赖入口能打开领域包设置，中英文一致 |
+| VR-16 打包脚本 | 对本次安装包检查 ASAR 内模块与两份解包 Python 脚本；用有效 Python 从包内 RasterService 实际 load/render GDS | Python argv 必须指向 app.asar.unpacked；PNG有效，缺脚本/子进程退出有明确诊断；源码渲染不替代本项 |
 
 离线 fixture 回归见 PythonEnvironmentManager、PackManager 集成及 Desktop dependency/selftest；真实网络诊断仅显式执行 `node scripts/verify-managed-layout.cjs /absolute/fresh/output`，不替代目标平台的文件树与 GUI 验收。
 

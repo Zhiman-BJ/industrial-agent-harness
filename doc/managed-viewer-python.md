@@ -26,4 +26,10 @@ industrial-harness domains repair chip --viewer-only
 
 四个平台有固定资源声明：macOS arm64、Linux x64/arm64、Windows x64。资源与校验和齐全不代表所有平台的原生安装、动态库和 GUI 路径已验收；只声明实际执行结果，见[本次验证记录](evidence/klayout-managed-20261020/README.md)。
 
+## 打包脚本与启动诊断
+
+Python 不具备 Electron 的 ASAR 虚拟文件系统支持。打包配置将 `layout.py` 和 `layout_themes.py` 解包到 `app.asar.unpacked`；RasterService 显式使用该磁盘目录启动，保留 `-B -E -s -u` 参数。开发目录中的脚本保持原路径。缺少任一脚本会在启动前明确提示重新安装应用，不能用用户的 Python 环境修复脚本缺失。
+
+worker 退出后保留退出码或信号及最多 4096 字节的 stderr 尾部，并等待 stdio 排空以避免漏掉启动错误。第一次失败原因不会被随后退出覆盖；超时、主动关闭和协议错误仍各自保留。源代码测试与打包产物测试分别记录，真实安装包成功渲染才证明外部 Python 可读取发布脚本。
+
 KLayout 是 GPL-3.0-or-later 的独立 Python 渲染进程；解释器与包的原有许可、第三方 notices 保留。查看或成功渲染不更新工程状态，也不代表 DRC/LVS 或制造验收通过。

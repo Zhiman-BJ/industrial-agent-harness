@@ -64,3 +64,5 @@ PCB 三维预览复用固定 KiCanvas parser/painter 与本地 Three.js；元件
 模型有独立哈希快照、8 MiB 单文件 / 64 MiB 唯一内容总量 / 64 份唯一内容限制。单线程 worker 有单模型 10 秒与整批 60 秒时限；STEP WASM 线性内存上限 256 MiB 不等于 JavaScript 总堆上限。GPU 共享实例几何，但每个实例仍计入原 1,200,000 三角形总预算。复杂 VRML 变换与外部依赖不在当前支持范围。实体模型接入的 CPU/GPU 验收仍在推进；已有几何预览结果不能代替本轮验收。完整范围、预算与真实多层板证据见 [PCB 三维 Viewer](../../doc/pcb-3d-viewer.md)。
 
 KLayout Python 已接入共享依赖管理器：Chip Pack 声明固定解释器、wheel、哈希和真实 PNG 探针；Viewer-only 安装/修复无需宿主 Python 或 Docker。新文件打开重新解析就绪解释器，连续渲染复用 worker，修复后清理旧进程。Viewer 就绪不替代完整 EDA 工具链或工程验收。源码 `setup:layout` 使用同一私有安装器；显式 `KLAYOUT_PYTHON` 仍优先。见[托管 Viewer Python](../../doc/managed-viewer-python.md)。
+
+Electron 打包必须将 `src/layout/*.py` 解包到 `app.asar.unpacked`。RasterService 将完整 `app.asar` 路径段转换为真实解包目录，并在启动前检查 `layout.py` 与相邻 `layout_themes.py`；源码目录直接使用原路径。外部解释器退出时，等待 stdio 关闭再报告退出码/信号和最多 4096 字节的 stderr 尾部；既有超时/关闭原因保留。

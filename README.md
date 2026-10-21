@@ -137,6 +137,8 @@ Remote CAD receipts also open through this Viewer: a bounded artifact index reso
 
 The Chip Pack contributes pinned KLayout/Python assets to the shared dependency manager. Viewer-only install/repair prepares a private, verified environment and checks real PNG rendering; its readiness is separate from the engineering toolchain. See [managed Viewer Python and platform evidence](doc/managed-viewer-python.md).
 
+Packaged Desktop launches the layout worker from real files in `app.asar.unpacked`; Python never receives an archive-internal script path. Startup failures retain the exit status and a bounded stderr tail for diagnosis.
+
 Exact format lists, file limits and rendering dependencies are documented in the linked guides. New Viewer integrations must update both language READMEs and follow the [Viewer integration contract](AGENTS.md#viewer-integration-contract).
 
 Try the [Sobel chip project](examples/chip-sobel/README.md), [LED board](examples/pcb-led/README.md), [Godot playground](examples/godot-viewer/README.md) or [document samples](examples/document-viewers/README.md). These are viewing examples; Godot Web Export must be generated separately. They are not engineering acceptance evidence.

@@ -137,6 +137,8 @@ Harness 自有 Viewer 控件跟随 **设置 → 语言**（简体中文 / Englis
 
 Chip Pack 向共享依赖管理器声明固定 KLayout/Python 资源；Viewer 可单独安装或修复，使用私有且已校验的环境，并实际检查 PNG 渲染。Viewer 与工程工具链的就绪状态分别显示。见[托管 Viewer Python 与平台验证](doc/managed-viewer-python.md)。
 
+打包版从 `app.asar.unpacked` 的真实文件启动版图 worker，不向 Python 传入归档内脚本路径。启动失败保留退出状态和有界 stderr 尾部，供定位问题。
+
 完整格式清单、文件上限与渲染依赖见各 Viewer 文档。新增接入需同时更新中英文 README，并遵守 [Viewer 接入契约](AGENTS.md#viewer-integration-contract)。
 
 可先体验 [Sobel 芯片工程](examples/chip-sobel/README.md)、[LED 电路板](examples/pcb-led/README.md)、[Godot Playground](examples/godot-viewer/README.md)或[通用文档示例](examples/document-viewers/README.md)。这些用于查看演示，Godot Web Export 需单独生成，示例不作为工程验收证据。
