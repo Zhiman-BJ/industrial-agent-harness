@@ -118,7 +118,11 @@ async function run(window) {
       'external server must be enabled by default',
     );
     await evaluate(`document.querySelector('${row} input[type="checkbox"]').click()`);
-    await wait(`!document.querySelector('${row} input[type="checkbox"]').checked`);
+    // ResourceList briefly unmounts its rows while onChanged reloads the
+    // snapshot. An absent or still-saving checkbox is not the expected state.
+    await wait(
+      `(() => {const checkbox=document.querySelector('${row} input[type="checkbox"]');return Boolean(checkbox && !checkbox.disabled && checkbox.checked === false);})()`,
+    );
     assert.equal(
       await evaluate(
         `window.viewerHost.resourceGet({}).then(snapshot=>snapshot.effective.mcpServers.includes('external.computer-use'))`,
@@ -127,7 +131,9 @@ async function run(window) {
       'unchecking the global switch must disable the server',
     );
     await evaluate(`document.querySelector('${row} input[type="checkbox"]').click()`);
-    await wait(`document.querySelector('${row} input[type="checkbox"]').checked`);
+    await wait(
+      `(() => {const checkbox=document.querySelector('${row} input[type="checkbox"]');return Boolean(checkbox && !checkbox.disabled && checkbox.checked === true);})()`,
+    );
     assert.equal(
       await evaluate(
         `window.viewerHost.resourceGet({}).then(snapshot=>snapshot.effective.mcpServers.includes('external.computer-use'))`,
