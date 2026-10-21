@@ -3,7 +3,12 @@ const path = require('node:path');
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 const { app } = require('electron');
-const { verifyNavigation, verifyWheel } = require('./navigation-selftest.cjs');
+const {
+  verifyNavigation,
+  verifyWheel,
+  transitionFullscreen,
+  waitForFittedView,
+} = require('./navigation-selftest.cjs');
 const { saveBindings } = require('./project-bindings.cjs');
 const { setLanguage } = require('./selftest-language.cjs');
 let directory;
@@ -427,9 +432,37 @@ async function run(window) {
       await waitFor(
         async () => Math.abs(Number((await canvasState()).pcb3dExplode) - 0.65) < 0.001,
       );
-      await evaluate(
-        `Array.from(document.querySelector('.ia-file-view:not([hidden])').querySelectorAll('.rp-pcb3d-views button')).find(button=>button.textContent==='Top').click()`,
+      // The runner's narrow workspace can leave a ~40 px canvas beside the
+      // layer controls. Use the real fullscreen control before pixel-accurate
+      // native input, so rounding does not move a click outside a tiny pad.
+      await transitionFullscreen(window, true, () =>
+        evaluate(`document.querySelector('button[aria-label="Fullscreen viewer"]').click()`),
       );
+      await waitFor(async () => {
+        const state = await canvasState();
+        return state?.clientWidth >= 400 && state.clientHeight >= 200;
+      });
+      const topView = () =>
+        evaluate(
+          `Array.from(document.querySelector('.ia-file-view:not([hidden])').querySelectorAll('.rp-pcb3d-views button')).find(button=>button.textContent==='Top').click()`,
+        );
+      await topView();
+      await waitFor(() =>
+        frame.executeJavaScript(`(() => {
+          const {camera,target}=window.pcb3dInspection.getState();
+          const z=camera[2]-target[2];
+          return z>0 && Math.abs((camera[0]-target[0])/z)<0.0001 &&
+            Math.abs((camera[1]-target[1])/z+0.001)<0.0001;
+        })()`),
+      );
+      await waitForFittedView(async () => {
+        const state = await canvasState();
+        return {
+          scale: Number(state?.pcb3dPercent),
+          ready: state?.pcb3dReady === 'true',
+          layoutKey: [state?.width, state?.height, state?.clientWidth, state?.clientHeight],
+        };
+      }, topView);
       // Read-only projections locate real geometry. Native Chromium input then
       // exercises pointer capture, controls and picking together.
       window.focus();
@@ -456,6 +489,7 @@ async function run(window) {
         });
       })()`);
       const picked = [];
+      const pickAttempts = [];
       try {
         for (const { target, point } of candidates) {
           if (picked.some(entry => entry.target.net === target.net)) continue;
@@ -485,6 +519,7 @@ async function run(window) {
               highlightedNet:probe.netCalls.at(-1)?.net,
               overlay:Boolean(probe.netCalls.at(-1)?.changed && probe.viewer.layers.overlay.graphics?.composite_operation==='overlay')};
           })()`);
+          pickAttempts.push({ target, point, input, selection });
           if (selection.selected === target.id)
             picked.push({ target, layerId: point.layerId, ...selection });
           if (picked.length === 2) break;
@@ -494,6 +529,21 @@ async function run(window) {
           const probe=window.pcb3dPickProbe;if(probe)probe.viewer.highlight_net=probe.original;
           delete window.pcb3dPickProbe;
         })()`);
+      }
+      if (picked.length !== 2) {
+        const diagnostic = {
+          file,
+          canvas: await canvasState(),
+          view: await frame.executeJavaScript('window.pcb3dInspection.getState()'),
+          candidates: candidates.length,
+          picked,
+          attempts: pickAttempts,
+        };
+        fs.writeFileSync(
+          path.join(screenshotDirectory, 'pcb3d-picking-failure.json'),
+          JSON.stringify(diagnostic, null, 2),
+        );
+        console.error('PCB pointer picking failed:', JSON.stringify(diagnostic));
       }
       assert.equal(picked.length, 2, 'pointer picking distinguishes two nets on the same layer');
       assert.notEqual(picked[0].target.net, picked[1].target.net);
@@ -520,6 +570,17 @@ async function run(window) {
         );
         assert.equal(entry.overlay, true, 'KiCanvas paints the selected net overlay');
       }
+      const pickedCanvas = await canvasState();
+      await transitionFullscreen(window, false, () =>
+        evaluate(`document.querySelector('button[aria-label="Exit viewer fullscreen"]').click()`),
+      );
+      await waitFor(async () => {
+        const state = await canvasState();
+        return (
+          state?.pcb3dSceneId === pickedCanvas.pcb3dSceneId &&
+          state.pcb3dSelected === pickedCanvas.pcb3dSelected
+        );
+      });
       await waitFor(() =>
         evaluate(
           `Boolean(document.querySelector('.ia-file-view:not([hidden])')?.querySelector('.rp-pcb3d-selection')?.textContent.trim())`,
