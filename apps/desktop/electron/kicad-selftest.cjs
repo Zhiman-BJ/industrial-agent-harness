@@ -436,7 +436,10 @@ async function run(window) {
       // layer controls. Use the real fullscreen control before pixel-accurate
       // native input, so rounding does not move a click outside a tiny pad.
       await transitionFullscreen(window, true, () =>
-        evaluate(`document.querySelector('button[aria-label="Fullscreen viewer"]').click()`),
+        window.webContents.executeJavaScript(
+          `document.querySelector('button[aria-label="Fullscreen viewer"]').click()`,
+          true,
+        ),
       );
       await waitFor(async () => {
         const state = await canvasState();
@@ -572,7 +575,10 @@ async function run(window) {
       }
       const pickedCanvas = await canvasState();
       await transitionFullscreen(window, false, () =>
-        evaluate(`document.querySelector('button[aria-label="Exit viewer fullscreen"]').click()`),
+        window.webContents.executeJavaScript(
+          `document.querySelector('button[aria-label="Exit viewer fullscreen"]').click()`,
+          true,
+        ),
       );
       await waitFor(async () => {
         const state = await canvasState();
