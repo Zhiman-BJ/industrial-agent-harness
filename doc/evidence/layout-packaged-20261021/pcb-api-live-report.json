@@ -1,0 +1,31 @@
+{
+  "startedAt": "2026-10-21T12:08:28.967Z",
+  "finishedAt": "2026-10-21T12:08:36.191Z",
+  "consumerCommit": "a0e2435e3d2e082959a43b3d37647f89cc1c6482",
+  "consumerDownloaderSha256": "8d1b0595f76fc8911afa60b655cecd7b2b7b43e91fab82ef53e228128ad9bdf5",
+  "consumerSourceMatchesReleaseCandidate": true,
+  "ownerCommit": "6d11b38c0b07f4d5cc14f28fdd2c2007ef9e5e7b",
+  "mode": "real-production-downloader-official-API",
+  "requested": "Resistor_SMD.3dshapes/R_0603_1608Metric.step",
+  "requests": [
+    {
+      "url": "https://gitlab.com/api/v4/projects/kicad%2Flibraries%2Fkicad-packages3D/repository/files/Resistor_SMD.3dshapes%2FR_0603_1608Metric.step/raw?ref=8d4070daa0fa3f7a7f3c176f4ca7bffc4df392be",
+      "method": "GET",
+      "redirect": "manual",
+      "credentials": "omit",
+      "status": 200,
+      "contentType": "text/plain; charset=utf-8"
+    }
+  ],
+  "catalogSchema": 2,
+  "actualBytes": 40618,
+  "actualSha256": "1875571c326d0d9e96f36b4efeb8094068ef7619f0a449c781caf0b49c2e5861",
+  "matchesCatalog": true,
+  "planNetworkCalls": 0,
+  "cacheCreatedByPlan": false,
+  "downloadMs": 7070.657583,
+  "offlineCacheReused": true,
+  "warmNetworkCalls": 0,
+  "guiAcceptance": "not run",
+  "passed": true
+}

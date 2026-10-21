@@ -78,7 +78,7 @@
     }
   },
   "remaining": {
-    "cleanStaging": "blocked: registry DNS",
+    "cleanStaging": "not rerun after network recovery; earlier stage was blocked by registry DNS",
     "fullPortable": "incomplete: 5 independently classified host-restriction failures, then packaging stalled; stopped",
     "fullArchitecture": "failed: existing candidate-fetch small-buffer negative returns git ENOBUFS",
     "nativeGuiClickAcceptance": "not run",
@@ -96,15 +96,46 @@
       "failed": 0,
       "skipped": 0
     },
-    "ownerCommit": "24146ec7eedf1b58433a3dc2b7eb72eca8a4cea5",
+    "originalOwnerCommit": "24146ec7eedf1b58433a3dc2b7eb72eca8a4cea5",
+    "ownerCommit": "636281205074b3682d3ca4591f47c9eba258d9ee",
+    "ownerTree": "17330d1ed6f87b0aa85ad2e0f4b6260808d8adff",
+    "archiveBytes": 2412708,
+    "archiveIntegrity": "sha512-MOfdRQrnC9ba+alCuE+P8Z64JPDNRhc/eSLdJuraGdS5LUxSjJC/h1oBkW7vqrN6r840Gi05OQ2InXbhEDg7JA==",
+    "archiveGitFilesVerified": 652,
+    "archiveContentLockEntriesVerified": 583,
     "modelEntriesUnchanged": 7252,
-    "liveApiRetest": "not run",
-    "consumerActivated": false,
-    "reason": "Owner not published; authoritative codeload integrity unavailable. Keep existing1117 pin/lock."
+    "liveApiRetest": {
+      "passed": true,
+      "report": "pcb-api-live-report.json",
+      "httpStatus": 200,
+      "verifiedBytes": 40618,
+      "planNetworkCalls": 0,
+      "warmNetworkCalls": 0,
+      "guiAcceptance": "not run"
+    },
+    "consumerActivated": true,
+    "consumerPinChecks": {
+      "frozenInstall": "passed: pnpm install --frozen-lockfile --ignore-scripts",
+      "architectureChecker": "passed",
+      "focusedReleaseRegressions": {
+        "passed": 77,
+        "failed": 0,
+        "skipped": 0
+      },
+      "checkPackRelease": {
+        "passed": 17,
+        "failed": 0,
+        "skipped": 0
+      }
+    },
+    "reason": "Exact owner manifests and pnpm-generated lock now consume the verified authoritative archive; final release qualification remains pending."
   },
   "publication": {
-    "status": "blocked",
+    "status": "draft-pr-open; not released",
+    "harnessPr": "https://github.com/Zhiman-BJ/industrial-agent-harness/pull/248",
+    "ownerPr": "https://github.com/Zhiman-BJ/industrial-domain-packs/pull/53",
     "githubConnector": "403 Resource not accessible by integration",
-    "gitPush": "Could not resolve host: github.com"
+    "gitPush": "recovered; release and owner branches published through Git",
+    "prCreation": "local gh succeeded; connector still returns 403"
   }
 }

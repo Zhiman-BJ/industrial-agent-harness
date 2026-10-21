@@ -37,6 +37,12 @@ macOS `/tmp` 与 `/private/tmp` 别名在真实打包测试中触发过 smoke �
 
 下载器与 registry 41/41 通过，连同新增 layout 进程回归为 49/49，零跳过，静态架构 checker 通过。独立审查发现的最终 URL 拒绝时未取消响应体问题已修复并补断言。
 
-配套 owner 提交为 `24146ec7eedf1b58433a3dc2b7eb72eca8a4cea5`（基于 #52 的 `1117d840`）：package 0.5.8、PCB distribution 0.3.4；工程 provider 仍为 0.3.3，保留托管 KLayout 声明。7,252 份 STEP 的路径、大小、SHA-256、来源和许可证均与原目录一致。实际跨仓离线校验通过，R_0603 条目为 40,618 字节、SHA-256 `1875571c326d0d9e96f36b4efeb8094068ef7619f0a449c781caf0b49c2e5861`；计划阶段零网络、未创建缓存。
+网络恢复后，使用与发布候选逐字节相同的生产下载器（SHA-256 `8d1b0595f76fc8911afa60b655cecd7b2b7b43e91fab82ef53e228128ad9bdf5`）及当时的 owner `6d11b38` 完成一份 R_0603 的[真实 API 下载](pcb-api-live-report.json)：官方源仅一次 GET、HTTP 200，实收 40,618 字节且哈希与目录匹配。规划阶段零网络且不创建缓存；离线重开复用缓存，零新增请求。该记录验证真实生产下载链路，仍不替代最终 GUI 点击或全库可达性验收。
 
-**激活尚未完成：** GitHub 连接器写 Git blob 返回 `403 Resource not accessible by integration`；本机 `git push` 返回 GitHub DNS 解析失败。owner 新提交尚未推送，因此不能取得权威 codeload tarball integrity。Harness 继续保留可追溯的 `1117d840` 消费 pin 与锁文件，当前消费的 PCB 声明仍走 raw URL。下一步是推送 owner、获取真实归档并更新消费 pin/lock，再推送 Harness、等待新 head 的托管 CI 和真实网络/UI 验收；不得把通用下载代码通过误报为当前 beta.7 下载已恢复。
+配套 owner 最终提交为 `636281205074b3682d3ca4591f47c9eba258d9ee`（原 API 修复为 `24146ec`）：package 0.5.8、PCB distribution 0.3.4；host manifest 和工程 provider 保持 0.3.3，保留托管 KLayout 声明。7,252 份 STEP 的路径、大小、SHA-256、来源和许可证均与原目录一致。实际跨仓离线校验通过，R_0603 条目为 40,618 字节、SHA-256 `1875571c326d0d9e96f36b4efeb8094068ef7619f0a449c781caf0b49c2e5861`；计划阶段零网络、未创建缓存。
+
+**消费身份已补齐，发行验收待完成：** 此前 GitHub 连接器写入返回 `403 Resource not accessible by integration`，Git 推送和 registry DNS 也失败；后续本机 Git/gh 与归档下载恢复，已创建 [Harness 发布草稿 #248](https://github.com/Zhiman-BJ/industrial-agent-harness/pull/248) 和 [owner #53](https://github.com/Zhiman-BJ/industrial-domain-packs/pull/53)。真实消费 pin 安装揭示最初 owner 候选把 distribution 0.3.4 误填为 host manifest.version，导致已有加载器和包构建拒绝。最终提交 `6362812` 在 owner 修正该字段并补充独立身份契约，保留 Harness 原校验及工程 Runtime；完整 owner 测试 125 通过、0 失败、1 个既有容器环境跳过，真实 KLayout probe 通过。
+
+从真实 codeload 下载的归档为 2,412,708 字节；652 个跟踪文件的内容与模式、583 项 content-lock 及 package inventory 均匹配该 owner 提交。pnpm 生成的 SHA-512 integrity 与独立计算值一致：`sha512-MOfdRQrnC9ba+alCuE+P8Z64JPDNRhc/eSLdJuraGdS5LUxSjJC/h1oBkW7vqrN6r840Gi05OQ2InXbhEDg7JA==`。Harness 的 root、CLI、Desktop 和 peer/lock 已切换到精确身份。上文实际 `.app` 渲染证据仍对应原 `1117d840` 依赖阶段；最终 pin 的干净打包、托管 CI 与完整 GUI 验收仍待完成，beta.8 尚未发布。
+
+最终消费 pin 的 `pnpm install --frozen-lockfile --ignore-scripts` 通过，随后静态架构 checker、layout/API/registry/contract/release-flow/真实包构建组合回归 77/77、`check-pack-release.cjs` 17/17 均通过、零跳过。此前暴露的 `Invalid repository Domain Pack declaration` 已通过实际加载、分发构建和消费路径复验修复。`--ignore-scripts` 的依赖安装不代表已完成最终应用打包。
