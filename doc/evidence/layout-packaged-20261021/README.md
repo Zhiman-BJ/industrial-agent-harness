@@ -30,3 +30,13 @@ macOS `/tmp` 与 `/private/tmp` 别名在真实打包测试中触发过 smoke �
 正常 `stage-desktop.cjs` 的 pnpm deploy 被当前环境 registry DNS 失败阻塞。用于本次 worker 验证的包复用既有生产依赖 stage，并覆盖当前候选生产文件及精确 owner 内容，随后运行实际 electron-builder 和当前解包配置；Electron 分发使用已有本地缓存。它不是干净 frozen install 或正式可分发 release 的替代证明。应用未进行本次完整文件树/缩放/全屏 GUI 点击验收；Windows/Linux 真实打包渲染未执行。
 
 完整 portable 尝试出现 4 个 OIDC fixture 的 `listen EPERM` 和 1 个默认用户目录数据库 `chmod EPERM`，均已定向复现；之后 headless pnpm deploy 无进展，已终止，不能报告全量通过。完整架构套件在 Node 26 与 Electron 的 Node 24 均由既有 candidate-fetch 小缓冲负例返回 `spawnSync git ENOBUFS`，未得到断言要求的 size-limit 错误；静态 checker 与 contract-policy 单独通过。未修改这些失败路径、allowlist、workflow 或 architecture policy。新提交仍需托管 CI 验证。
+
+## PCB 模型下载配套修复
+
+同一候选加入通用 `gitlab-repository-files` 下载类型，API 地址按固定 project、完整编码文件路径及 40 位提交 SHA 构造；仅构造器生成的 `ref` query 可用，重定向和最终响应 URL 不能改变项目、文件或版本。旧目录式 schema 1 保留，API 目录使用 schema 2，使旧客户端在安装校验时明确拒绝。失败或未读取的响应体会取消，不激活错误 HTML、403/429 或校验失败的缓存。
+
+下载器与 registry 41/41 通过，连同新增 layout 进程回归为 49/49，零跳过，静态架构 checker 通过。独立审查发现的最终 URL 拒绝时未取消响应体问题已修复并补断言。
+
+配套 owner 提交为 `24146ec7eedf1b58433a3dc2b7eb72eca8a4cea5`（基于 #52 的 `1117d840`）：package 0.5.8、PCB distribution 0.3.4；工程 provider 仍为 0.3.3，保留托管 KLayout 声明。7,252 份 STEP 的路径、大小、SHA-256、来源和许可证均与原目录一致。实际跨仓离线校验通过，R_0603 条目为 40,618 字节、SHA-256 `1875571c326d0d9e96f36b4efeb8094068ef7619f0a449c781caf0b49c2e5861`；计划阶段零网络、未创建缓存。
+
+**激活尚未完成：** GitHub 连接器写 Git blob 返回 `403 Resource not accessible by integration`；本机 `git push` 返回 GitHub DNS 解析失败。owner 新提交尚未推送，因此不能取得权威 codeload tarball integrity。Harness 继续保留可追溯的 `1117d840` 消费 pin 与锁文件，当前消费的 PCB 声明仍走 raw URL。下一步是推送 owner、获取真实归档并更新消费 pin/lock，再推送 Harness、等待新 head 的托管 CI 和真实网络/UI 验收；不得把通用下载代码通过误报为当前 beta.7 下载已恢复。

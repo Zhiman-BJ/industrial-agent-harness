@@ -83,5 +83,28 @@
     "fullArchitecture": "failed: existing candidate-fetch small-buffer negative returns git ENOBUFS",
     "nativeGuiClickAcceptance": "not run",
     "windowsLinuxPackagedRender": "not run"
+  },
+  "pcb": {
+    "code": "typed GitLab repository-files transport, schema2, legacy schema1 preserved",
+    "managerRegistryTests": {
+      "passed": 41,
+      "failed": 0,
+      "skipped": 0
+    },
+    "combinedWithLayoutProcess": {
+      "passed": 49,
+      "failed": 0,
+      "skipped": 0
+    },
+    "ownerCommit": "24146ec7eedf1b58433a3dc2b7eb72eca8a4cea5",
+    "modelEntriesUnchanged": 7252,
+    "liveApiRetest": "not run",
+    "consumerActivated": false,
+    "reason": "Owner not published; authoritative codeload integrity unavailable. Keep existing1117 pin/lock."
+  },
+  "publication": {
+    "status": "blocked",
+    "githubConnector": "403 Resource not accessible by integration",
+    "gitPush": "Could not resolve host: github.com"
   }
 }
