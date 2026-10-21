@@ -8,6 +8,7 @@ const {
   seccompUnixSocketFilter,
   seatbeltProfile,
   bubblewrapArgs,
+  canonicalPath,
 } = require('./agent-isolation.cjs');
 
 function executablePath(executable, environment) {
@@ -96,8 +97,11 @@ function createProcessSandbox({
     // credential reads and unix-socket egress are confined. When the platform
     // offers no verified primitive the launcher still works —
     // boundary.osIsolation then reports false so the product surface can show
-    // the session is unisolated.
-    const protectedRoots = protectedPaths.filter(fs.existsSync).map(file => fs.realpathSync(file));
+    // the session is unisolated. Declared protected roots are kept even when
+    // they do not exist yet — a pack's workspaceProtectedPaths may describe
+    // directories the run itself creates later, and the agent must not get to
+    // create and populate them first.
+    const protectedRoots = protectedPaths.map(canonicalPath);
     // `isolation: 'off'` forces the plain launcher; the same escape hatch is
     // available to deployments through INDUSTRIAL_AGENT_ISOLATION=off for
     // hosts whose kernel policy blocks the primitives outright.
@@ -123,6 +127,15 @@ function createProcessSandbox({
         wrap = { command: layer.command, args: ['-f', profile] };
         socketFilter = true; // the profile denies outbound unix-socket connects
       } else {
+        // bubblewrap mounts need a real mountpoint, so declared protected
+        // roots that do not exist yet are materialized as empty directories
+        // at session setup — otherwise the agent could create and populate
+        // them inside the writable project before the host runtime does.
+        // A failure aborts the launch (fail closed) instead of starting
+        // unprotected. Seatbelt needs no mountpoint: its subpath rules bind
+        // future paths directly.
+        for (const root of protectedRoots)
+          if (!fs.existsSync(root)) fs.mkdirSync(root, { recursive: true, mode: 0o700 });
         // The AF_UNIX seccomp filter reaches bwrap through an inherited fd
         // (spawn stdio slot 3); on architectures without a compiled filter
         // the sandbox still runs and the boundary reports it honestly.
