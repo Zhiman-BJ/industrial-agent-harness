@@ -153,3 +153,22 @@ test('layout worker includes a termination signal and drained stderr in diagnost
   await assert.rejects(worker.call({ op: 'load' }), /signal SIGTERM[\s\S]*worker was terminated/);
   assert.equal(worker.pending.size, 0);
 });
+
+test('packaged layout smoke canonicalizes application aliases before checking unpacked scripts', t => {
+  const { packagedPaths } = require('../../../scripts/smoke-packaged-layout.cjs');
+  const root = directory(t);
+  const application = path.join(root, 'actual', 'Example.app');
+  const contents = path.join(application, 'Contents');
+  fs.mkdirSync(path.join(contents, 'MacOS'), { recursive: true });
+  fs.mkdirSync(path.join(contents, 'Resources'));
+  const executable = path.join(contents, 'MacOS', 'Example');
+  const archive = path.join(contents, 'Resources', 'app.asar');
+  fs.writeFileSync(executable, 'fixture');
+  fs.writeFileSync(archive, 'archive');
+  const alias = path.join(root, 'alias.app');
+  fs.symlinkSync(application, alias, 'junction');
+  assert.deepEqual(packagedPaths(path.join(alias, 'Contents', 'MacOS', 'Example'), 'darwin'), {
+    executable: fs.realpathSync(executable),
+    archive: fs.realpathSync(archive),
+  });
+});

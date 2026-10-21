@@ -8,14 +8,15 @@ const { createRequire } = require('node:module');
 const { execFileSync } = require('node:child_process');
 
 function packagedPaths(executable, platform = process.platform) {
-  const directory = path.dirname(executable);
-  return {
-    executable,
-    archive:
-      platform === 'darwin'
-        ? path.join(path.dirname(directory), 'Resources', 'app.asar')
-        : path.join(directory, 'resources', 'app.asar'),
-  };
+  // Electron resolves modules through real paths (for example /tmp becomes
+  // /private/tmp on macOS). Compare canonical physical paths on both sides.
+  const actualExecutable = fs.realpathSync(executable);
+  const directory = path.dirname(actualExecutable);
+  const archive =
+    platform === 'darwin'
+      ? path.join(path.dirname(directory), 'Resources', 'app.asar')
+      : path.join(directory, 'resources', 'app.asar');
+  return { executable: actualExecutable, archive: fs.realpathSync(archive) };
 }
 
 async function child(archive, directory, python) {
@@ -81,7 +82,9 @@ function verifyPackagedLayout(
   executable,
   { python = process.env.KLAYOUT_PYTHON, requireRender = false } = {},
 ) {
-  const { archive } = packagedPaths(executable);
+  const packaged = packagedPaths(executable);
+  executable = packaged.executable;
+  const { archive } = packaged;
   assert.ok(fs.statSync(executable).isFile(), 'Packaged Desktop executable is missing.');
   assert.ok(fs.statSync(archive).isFile(), 'Packaged app.asar is missing.');
   if (requireRender && !python)
