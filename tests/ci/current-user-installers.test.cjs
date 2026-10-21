@@ -40,6 +40,31 @@ test('release fixture distinguishes a policy diagnostic from actual denied or re
     assert.equal(isRejectedToolResult({ content }), true);
 });
 
+test('release fixture parses Kimi timing-wrapped MCP diagnostics without hiding real rejection', () => {
+  const result = {
+    actionStatus: 'completed',
+    diagnostics: [JSON.stringify({ ready: true, agent_docker_access: 'intentionally_denied' })],
+  };
+  const wrapped = value => `Wall time: 0.846 seconds\n${JSON.stringify(value)}`;
+  assert.equal(isRejectedToolResult({ content: wrapped(result) }), false);
+  assert.equal(isRejectedToolResult({ content: [{ type: 'text', text: wrapped(result) }] }), false);
+  for (const value of [
+    { ...result, error: 'Permission denied' },
+    { ...result, actionStatus: 'rejected' },
+    { ...result, diagnostics: [...result.diagnostics, 'Tool execution rejected'] },
+    { error: 'intentionally_denied' },
+    { denied: true },
+  ])
+    assert.equal(isRejectedToolResult({ content: wrapped(value) }), true);
+  for (const content of [
+    'Wall time: 0.846 seconds\nPermission denied',
+    `Permission denied\n${wrapped(result)}`,
+    `${wrapped(result)}\nTool execution rejected`,
+    'Wall time: 0.846 seconds\n{"error":"denied"',
+  ])
+    assert.equal(isRejectedToolResult({ content }), true);
+});
+
 test('release boundary checks require truthful isolation and platform/socket semantics', () => {
   const plain = {
     mechanism: 'current-user',
