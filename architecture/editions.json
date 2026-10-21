@@ -396,7 +396,10 @@
         ".github/workflows/desktop-package.yml",
         ".github/workflows/release-desktop.yml",
         ".github/workflows/release-headless.yml",
-        ".github/workflows/release-linux-chip.yml"
+        ".github/workflows/release-linux-chip.yml",
+        ".github/workflows/release-please.yml",
+        "release-please-config.json",
+        ".release-please-manifest.json"
       ],
       "dependencyClass": "release-internal",
       "decisionStatus": "decided",
