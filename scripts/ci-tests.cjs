@@ -39,7 +39,7 @@ const nativeInstalledFiles = [
   'tests/integration/freecad-installed.test.cjs',
   'tests/integration/pcb-godot-installed.test.cjs',
 ];
-const nativeTestCounts = { native: 70, 'native-installed': 3 };
+const nativeTestCounts = { native: 72, 'native-installed': 3 };
 function testConcurrency(suite) {
   return suite === 'native-installed' ? 1 : suite.startsWith('native') ? 2 : 4;
 }

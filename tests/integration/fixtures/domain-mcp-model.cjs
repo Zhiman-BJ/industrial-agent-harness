@@ -1,4 +1,21 @@
 const http = require('node:http');
+function isRejectedToolResult(message) {
+  const rejected = value => {
+    if (typeof value === 'string') {
+      // Kimi prefixes MCP text with timing metadata. Decode the JSON payload
+      // before checking nested diagnostics; a raw substring scan misclassifies
+      // the Pack's informational agent_docker_access policy as a rejection.
+      const payload = value.replace(/^Wall time: \d+(?:\.\d+)? seconds\r?\n/, '');
+      try { return rejected(JSON.parse(payload)); } catch {}
+      return /rejected|denied/i.test(value.replace(/agent_docker_access:\s*intentionally_denied\b/g, 'policy diagnostic'));
+    }
+    if (Array.isArray(value)) return value.some(rejected);
+    if (value && typeof value === 'object') return Object.entries(value).some(([key, item]) =>
+      !(key === 'agent_docker_access' && item === 'intentionally_denied') && (rejected(key) || rejected(item)));
+    return false;
+  };
+  return rejected(message.content);
+}
 
 // Controlled model responses exercise the real pinned Kimi runtime and its MCP approvals.
 // They do not claim an LLM inference or an industrial signoff.
@@ -8,7 +25,9 @@ async function startModel(options = {}) {
     let raw = ''; for await (const chunk of request) raw += chunk;
     const body = JSON.parse(raw); requests.push(body);
     const results = body.messages.filter(message => message.role === 'tool');
-    const rejected = options.stopOnRejection !== false && results.some(message => /The tool call is rejected by the user|rejected|denied/i.test(JSON.stringify(message.content)));
+    // Policy diagnostic labels such as `intentionally_denied` are not a
+    // rejected tool invocation. Keep actual rejection words fail-closed.
+    const rejected = options.stopOnRejection !== false && results.some(isRejectedToolResult);
     const index = options.resultIndex ? options.resultIndex(body) : options.perPrompt ? body.messages.slice(body.messages.findLastIndex(message => message.role === 'user') + 1).filter(message => message.role === 'tool').length : results.length;
     const calls = (typeof options.calls === 'function' ? options.calls(body) : options.calls) || [
       {name: 'domain_tool_describe', arguments: {toolId: 'eda.harness.create_goal'}},
@@ -38,4 +57,4 @@ async function startModel(options = {}) {
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   return {endpoint: `http://127.0.0.1:${server.address().port}/v1`, requests, close: () => {server.closeAllConnections(); server.close();}};
 }
-module.exports = {startModel};
+module.exports = {startModel, isRejectedToolResult};

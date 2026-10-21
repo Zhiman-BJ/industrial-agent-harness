@@ -123,13 +123,13 @@ async function verifyNavigation(window, measure, { percent = true, snapshot } = 
   await new Promise(resolve => setTimeout(resolve, 1000));
   await click('Fit viewer');
 }
-async function verifyWheel(window, measure, dispatch) {
+async function verifyWheel(window, measure, dispatch, { deltaY = -60 } = {}) {
   const evaluate = script => window.webContents.executeJavaScript(script, true);
   for (const ctrlKey of [false, true]) {
     await evaluate(`document.querySelector('button[aria-label="Fit viewer"]').click()`);
     await new Promise(resolve => setTimeout(resolve, 200));
     const before = await measure();
-    assert.equal(await dispatch(-60, ctrlKey), true, 'wheel is consumed by the view');
+    assert.equal(await dispatch(deltaY, ctrlKey), true, 'wheel is consumed by the view');
     const deadline = Date.now() + 15000;
     let changed = false;
     while (Date.now() < deadline) {

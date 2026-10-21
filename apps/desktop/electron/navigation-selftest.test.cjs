@@ -1,6 +1,57 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { waitForFittedView, measureStableLayout } = require('./navigation-selftest.cjs');
+const { verifyWheel } = require('./navigation-selftest.cjs');
+
+test('PCB 3D wheel input exceeds the unchanged visible zoom threshold using real OrbitControls', async t => {
+  const { PerspectiveCamera } = await import(
+    '../../../packages/viewer-builtin/src/kicad/vendor/three/three.module.js'
+  );
+  const { OrbitControls } = await import(
+    '../../../packages/viewer-builtin/src/kicad/vendor/three/controls/OrbitControls.js'
+  );
+  const originalDocument = globalThis.document;
+  globalThis.document = { addEventListener() {}, removeEventListener() {} };
+  t.after(() => {
+    globalThis.document = originalDocument;
+  });
+  const listeners = new Map();
+  const element = {
+    style: {},
+    addEventListener: (name, listener) => listeners.set(name, listener),
+    removeEventListener: name => listeners.delete(name),
+    getBoundingClientRect: () => ({ left: 0, top: 0, width: 800, height: 600 }),
+  };
+  const camera = new PerspectiveCamera(38, 4 / 3, 0.01, 10000);
+  camera.position.set(0, 0, 10);
+  const controls = new OrbitControls(camera, element);
+  t.after(() => controls.dispose());
+  const fit = () => {
+    camera.position.set(0, 0, 10);
+    controls.update();
+  };
+  const measure = async () => Math.round((10 / camera.position.distanceTo(controls.target)) * 100);
+  const dispatch = async (deltaY, ctrlKey) => {
+    let consumed = false;
+    listeners.get('wheel')({
+      deltaY,
+      ctrlKey,
+      deltaMode: 0,
+      clientX: 400,
+      clientY: 300,
+      preventDefault() {
+        consumed = true;
+      },
+      stopPropagation() {},
+    });
+    return consumed;
+  };
+  await dispatch(-60, false);
+  assert.ok((await measure()) < 105, 'the old input cannot satisfy a >5% rendered-scale check');
+  await verifyWheel({ webContents: { executeJavaScript: async () => fit() } }, measure, dispatch, {
+    deltaY: -120,
+  });
+});
 
 function clock() {
   let time = 0;
