@@ -70,12 +70,29 @@ test(
           await call('build', { recipe });
           await call('build', { recipe: { ...recipe, parameters: { W: 35 } } });
           const current = this.options.getApplicationContext().view();
-          const modelIds = current.groups
-            .filter(group => group.previewArtifactId)
-            .map(group => group.id);
-          await applicationTools(this.options.getApplicationContext)
-            .find(tool => tool.name === 'select_result')
-            .handler({ groupIds: modelIds, revision: current.revision });
+          const models = current.groups.filter(group => group.previewArtifactId);
+          const modelIds = models.map(group => group.id);
+          assert.equal(models.length, 2);
+          assert.ok(
+            models.every(
+              group =>
+                group.verifications.length === 1 &&
+                group.verifications[0].status === 'passed' &&
+                group.verifications[0].inputStatus.status === 'unchecked',
+            ),
+            'inline recipe builds have no recorded project-file input hashes',
+          );
+          const select = applicationTools(this.options.getApplicationContext).find(
+            tool => tool.name === 'select_result',
+          );
+          const request = { groupIds: modelIds, revision: current.revision };
+          await assert.rejects(select.handler(request), /inputs changed or could not be checked/);
+          const rejected = this.options.getApplicationContext().view();
+          assert.equal(rejected.revision, current.revision);
+          assert.deepEqual(rejected.selection, current.selection);
+          // Compare the recorded designs explicitly without presenting their
+          // historical verification as a check of current project inputs.
+          await select.handler({ ...request, historical: true });
         } else {
           await call('inspect', { file: fileOf(facts[1]) });
           const current = this.options.getApplicationContext().view();
@@ -141,6 +158,17 @@ test(
       ),
     );
     assert.equal(comparison.results.selection.groupIds.length, 2);
+    assert.equal(comparison.results.selection.historical, true);
+    assert.ok(
+      comparison.results.groups
+        .filter(group => group.selected)
+        .every(
+          group =>
+            group.historical &&
+            group.verifications[0].status === 'passed' &&
+            group.verifications[0].inputStatus.status === 'unchecked',
+        ),
+    );
     assert.equal(
       comparison.results.groups.filter(group => group.previewArtifactId && !group.superseded)
         .length,
