@@ -1,0 +1,92 @@
+{
+  "testedAt": "2026-10-21T06:35:29.238Z",
+  "baseCommit": "e114016f51665a1ec741f2025eec3c18ec9adce4",
+  "endpoint": "https://industrial-mcp-remote-test.pvg1s1-cloud.internal.zhiman.tech",
+  "mode": "real-authenticated-service-discovery-only",
+  "cases": [
+    {
+      "name": "before",
+      "connection": {
+        "status": "unavailable",
+        "domains": [],
+        "reason": "This service does not support the remote execution protocol 1.1."
+      },
+      "service": {
+        "version": "1.3.1",
+        "sessionModel": "application-session",
+        "fields": [
+          "version",
+          "domains",
+          "domainCatalog",
+          "capabilitySnapshotHash",
+          "sessionModel"
+        ],
+        "domains": [
+          "cad",
+          "chip",
+          "cuda",
+          "godot",
+          "pcb"
+        ],
+        "capabilitySnapshotHash": "9fb96463c15a87e3dfc4fac1077fe3f92e43297b7144605926b3ef80020ec0d8"
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/v1/service-info"
+        }
+      ]
+    },
+    {
+      "name": "after",
+      "connection": {
+        "status": "connected",
+        "domains": [
+          "cad",
+          "chip",
+          "cuda",
+          "godot",
+          "pcb"
+        ],
+        "protocol": "1.1",
+        "capabilities": {
+          "snapshots": true,
+          "runtimeDiscovery": true
+        },
+        "profiles": [],
+        "executableDomains": []
+      },
+      "service": {
+        "version": "1.3.1",
+        "sessionModel": "application-session",
+        "fields": [
+          "version",
+          "domains",
+          "domainCatalog",
+          "capabilitySnapshotHash",
+          "sessionModel"
+        ],
+        "domains": [
+          "cad",
+          "chip",
+          "cuda",
+          "godot",
+          "pcb"
+        ],
+        "capabilitySnapshotHash": "9fb96463c15a87e3dfc4fac1077fe3f92e43297b7144605926b3ef80020ec0d8"
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/v1/service-info"
+        }
+      ]
+    }
+  ],
+  "sourceHashes": {
+    "algorithm": "sha256",
+    "path": "packages/harness-core/src/remote-settings.cjs",
+    "before": "f25ce47c1a4b9020700185a5aac0c42433552dab03c005bc5710b8586f59eeac",
+    "after": "136e462bf00f8d01958b41f326d5dd2aabe379c3ed00c7fe1e5f3bfc24118190"
+  }
+}
