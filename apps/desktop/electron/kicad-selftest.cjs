@@ -466,8 +466,9 @@ async function run(window) {
           layoutKey: [state?.width, state?.height, state?.clientWidth, state?.clientHeight],
         };
       }, topView);
-      // Read-only projections locate real geometry. Native Chromium input then
-      // exercises pointer capture, controls and picking together.
+      // Read-only projections locate real geometry. Chromium's input router
+      // reaches the isolated iframe; Electron sendInputEvent forwards directly
+      // to the main RenderWidgetHost (electron/electron#20333).
       window.focus();
       window.webContents.focus();
       const candidates = await frame.executeJavaScript(`(async () => {
@@ -483,7 +484,13 @@ async function run(window) {
           const previous=this.layers.overlay.graphics,result=original.call(this,net);
           netCalls.push({net,changed:this.layers.overlay.graphics!==previous});return result;
         };
-        window.pcb3dPickProbe={viewer,original,netCalls};
+        const pointerEvents=[], recordPointer=event=>pointerEvents.push({
+          type:event.type,trusted:event.isTrusted,button:event.button,
+          x:event.clientX,y:event.clientY,
+        });
+        canvas.addEventListener('pointerdown',recordPointer);
+        canvas.addEventListener('pointerup',recordPointer);
+        window.pcb3dPickProbe={viewer,original,netCalls,canvas,pointerEvents,recordPointer};
         return objects.slice(0,250).flatMap(item=>{
           const point=inspector.projectObject(item.id);
           if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.y) ||
@@ -493,7 +500,9 @@ async function run(window) {
       })()`);
       const picked = [];
       const pickAttempts = [];
+      const ownedDebugger = !window.webContents.debugger.isAttached();
       try {
+        if (ownedDebugger) window.webContents.debugger.attach('1.3');
         for (const { target, point } of candidates) {
           if (picked.some(entry => entry.target.net === target.net)) continue;
           if (picked.length && point.layerId !== picked[0].layerId) continue;
@@ -502,16 +511,22 @@ async function run(window) {
             return {x:rect.left+iframe.clientLeft,y:rect.top+iframe.clientTop};
           })()`);
           const input = { x: Math.round(origin.x + point.x), y: Math.round(origin.y + point.y) };
-          window.webContents.sendInputEvent({ type: 'mouseMove', ...input });
-          window.webContents.sendInputEvent({
-            type: 'mouseDown',
+          await window.webContents.debugger.sendCommand('Input.dispatchMouseEvent', {
+            type: 'mouseMoved',
+            buttons: 0,
+            ...input,
+          });
+          await window.webContents.debugger.sendCommand('Input.dispatchMouseEvent', {
+            type: 'mousePressed',
             button: 'left',
+            buttons: 1,
             clickCount: 1,
             ...input,
           });
-          window.webContents.sendInputEvent({
-            type: 'mouseUp',
+          await window.webContents.debugger.sendCommand('Input.dispatchMouseEvent', {
+            type: 'mouseReleased',
             button: 'left',
+            buttons: 0,
             clickCount: 1,
             ...input,
           });
@@ -519,6 +534,7 @@ async function run(window) {
             await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
             const probe=window.pcb3dPickProbe;
             return {selected:document.querySelector('.pcb3d-scene canvas').dataset.pcb3dSelected,
+              pointerEvents:probe.pointerEvents.splice(0),
               highlightedNet:probe.netCalls.at(-1)?.net,
               overlay:Boolean(probe.netCalls.at(-1)?.changed && probe.viewer.layers.overlay.graphics?.composite_operation==='overlay')};
           })()`);
@@ -528,8 +544,14 @@ async function run(window) {
           if (picked.length === 2) break;
         }
       } finally {
+        if (ownedDebugger && window.webContents.debugger.isAttached())
+          window.webContents.debugger.detach();
         await frame.executeJavaScript(`(() => {
-          const probe=window.pcb3dPickProbe;if(probe)probe.viewer.highlight_net=probe.original;
+          const probe=window.pcb3dPickProbe;if(probe){
+            probe.viewer.highlight_net=probe.original;
+            probe.canvas.removeEventListener('pointerdown',probe.recordPointer);
+            probe.canvas.removeEventListener('pointerup',probe.recordPointer);
+          }
           delete window.pcb3dPickProbe;
         })()`);
       }
@@ -557,6 +579,18 @@ async function run(window) {
       );
       const sourceText = fs.readFileSync(path.join(directory, file), 'utf8');
       for (const entry of picked) {
+        assert.deepEqual(
+          entry.pointerEvents.map(event => ({
+            type: event.type,
+            trusted: event.trusted,
+            button: event.button,
+          })),
+          [
+            { type: 'pointerdown', trusted: true, button: 0 },
+            { type: 'pointerup', trusted: true, button: 0 },
+          ],
+          'trusted Chromium pointer events reach the real PCB canvas',
+        );
         assert.ok(
           entry.target.sourceId && sourceText.includes(entry.target.sourceId),
           'picked source identity exists in the actual loaded board',
