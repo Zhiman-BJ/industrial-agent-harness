@@ -229,6 +229,49 @@ test(
   },
 );
 
+test(
+  'isolated descendant cannot create a declared protected root that did not exist at launch',
+  darwin,
+  async t => {
+    // The pack may declare workspaceProtectedPaths for directories the run
+    // creates later. The declaration must hold from session start: the agent
+    // must not create and populate such a directory itself.
+    const f = fixture(t);
+    const sealed = path.join(f.project, '.eda');
+    const launcher = createProcessSandbox({
+      executable: process.execPath,
+      projectDir: f.project,
+      shareDir: f.share,
+      protectedPaths: [f.settings, sealed],
+      sensitiveReadPaths: [f.secrets],
+    });
+    t.after(() => launcher.close());
+    const profile = fs.readFileSync(path.join(launcher.directory, 'agent.sb'), 'utf8');
+    assert.ok(
+      profile.includes(`(deny file-write* (subpath ${JSON.stringify(sealed)}))`),
+      'the Seatbelt profile binds the future protected path',
+    );
+    const result = await capture(
+      launcher.spawn(
+        process.execPath,
+        [
+          '-e',
+          `const fs = require('node:fs');
+try {
+  fs.mkdirSync(process.argv[1], { recursive: true });
+  fs.writeFileSync(require('node:path').join(process.argv[1], 'golden.txt'), 'x');
+  console.log('created');
+} catch { console.log('denied'); }`,
+          sealed,
+        ],
+        { stdio: ['ignore', 'pipe', 'pipe'] },
+      ),
+    );
+    assert.equal(result.stdout.trim(), 'denied', result.stderr);
+    assert.equal(fs.existsSync(sealed), false, 'the agent must not materialize the sealed root');
+  },
+);
+
 test('emitters order write rules shallow-to-deep so nested denies survive', () => {
   const policy = buildIsolationPolicy({
     project: '/work/project',
@@ -266,12 +309,34 @@ test('emitters order write rules shallow-to-deep so nested denies survive', () =
   assert.ok(denySettings !== -1 && allowShare > denySettings, profile);
 });
 
-test('seccomp filter blocks AF_UNIX socket creation on x64 and arm64 only', () => {
-  for (const arch of ['x64', 'arm64']) {
+test('seccomp filter blocks AF_UNIX sockets on x64 and arm64 without width traps', () => {
+  const decode = program =>
+    Array.from({ length: program.length / 8 }, (_, index) => ({
+      code: program.readUInt16LE(index * 8),
+      jt: program.readUInt8(index * 8 + 2),
+      jf: program.readUInt8(index * 8 + 3),
+      k: program.readUInt32LE(index * 8 + 4),
+    }));
+  for (const [arch, syscalls] of [
+    ['x64', { socket: 41, socketpair: 53 }],
+    ['arm64', { socket: 198, socketpair: 199 }],
+  ]) {
     const program = seccompUnixSocketFilter(arch);
     assert.ok(Buffer.isBuffer(program));
     assert.equal(program.length % 8, 0);
-    assert.equal(program.length, 14 * 8);
+    const instructions = decode(program);
+    // The x32 ABI bit is masked off nr before any comparison.
+    assert.ok(instructions.some(i => i.code === 0x54 && i.k === 0xbfffffff));
+    // socket() and socketpair() are both matched per architecture.
+    assert.ok(instructions.some(i => i.code === 0x15 && i.k === syscalls.socket));
+    assert.ok(instructions.some(i => i.code === 0x15 && i.k === syscalls.socketpair));
+    // AF_UNIX and the SOCK_DGRAM pair type are the denied values.
+    assert.ok(instructions.filter(i => i.code === 0x15 && i.k === 1).length >= 2);
+    assert.ok(instructions.some(i => i.code === 0x15 && i.k === 2));
+    // The family comparison must NOT consult the high 32 bits (offset 20):
+    // the kernel truncates the argument to int, so the high word is
+    // attacker-controlled noise that used to smuggle AF_UNIX past the check.
+    assert.ok(!instructions.some(i => i.code === 0x20 && i.k === 20));
   }
   assert.equal(seccompUnixSocketFilter('ia32'), null);
   assert.equal(seccompUnixSocketFilter('arm'), null);
@@ -318,19 +383,22 @@ test('isolation policy is pure data shaped after sandbox-runtime config', t => {
   const home = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'isolation-home-')));
   t.after(() => fs.rmSync(home, { recursive: true, force: true }));
   fs.mkdirSync(path.join(home, '.ssh'));
-  fs.writeFileSync(path.join(home, '.netrc'), 'machine example');
   const policy = buildIsolationPolicy({
     project: '/work/project',
     share: '/work/share',
     scratch: '/tmp/scratch',
     protectedRoots: ['/work/settings'],
+    sensitiveReadPaths: [path.join(home, '.ssh'), path.join(home, '.ssh-missing')],
     home,
   });
   assert.deepEqual(policy.filesystem.writable, ['/work/project', '/work/share', '/tmp/scratch']);
   assert.deepEqual(policy.filesystem.protected, ['/work/settings']);
+  // Declared credential paths are kept even when missing: Seatbelt rules must
+  // still bind them if the secrets appear mid-session (bubblewrap masks only
+  // existing paths, which is sufficient under the read-only home).
   assert.deepEqual(policy.filesystem.denyRead, [
     path.join(home, '.ssh'),
-    path.join(home, '.netrc'),
+    path.join(home, '.ssh-missing'),
   ]);
   assert.equal(policy.network.tcp, 'allow');
   assert.equal(policy.network.outboundUnixSockets, 'deny');

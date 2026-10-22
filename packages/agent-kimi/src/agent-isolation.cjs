@@ -43,6 +43,16 @@ function realpath(file) {
   try {
     return fs.realpathSync(file);
   } catch {
+    // Declared-but-missing paths: canonicalize the deepest existing ancestor
+    // and append the remainder, so symlinked parents (macOS /var/folders ->
+    // /private/var/folders) still produce paths the OS rules actually match.
+    const missing = [];
+    let current = file;
+    while (current !== path.dirname(current)) {
+      missing.unshift(path.basename(current));
+      current = path.dirname(current);
+      if (fs.existsSync(current)) return [fs.realpathSync(current), ...missing].join(path.sep);
+    }
     return file;
   }
 }
@@ -67,11 +77,14 @@ function defaultSensitiveReads(home = os.homedir()) {
 // Pure-data boundary description, modeled on the workspace-write semantics of
 // mature agent sandboxes (Claude Code / Codex): the engineering project,
 // session storage and scratch are writable; every other write is denied.
-// denyRead carves secrets out of the otherwise open read side; network stays
-// open over TCP/UDP for model APIs and the host loopback tool server, while
-// outbound Unix-socket connects are denied to close the container-socket
-// escape. protectedRoots names host state (settings, runtime stores) that
-// stays read-only even though the project itself is writable.
+// denyRead carves secrets out of the otherwise open read side — declared
+// paths are kept even when missing so Seatbelt rules still bind them if the
+// credentials appear mid-session (bubblewrap masks only existing paths, which
+// is sufficient: the agent cannot create anything under the read-only home).
+// network stays open over TCP/UDP for model APIs and the host loopback tool
+// server, while outbound Unix-socket connects are denied to close the
+// container-socket escape. protectedRoots names host state (settings, runtime
+// stores) that stays read-only even though the project itself is writable.
 function buildIsolationPolicy({
   project,
   share,
@@ -84,9 +97,7 @@ function buildIsolationPolicy({
     filesystem: {
       writable: [project, share, scratch],
       protected: protectedRoots,
-      denyRead: (sensitiveReadPaths || defaultSensitiveReads(home))
-        .filter(fs.existsSync)
-        .map(realpath),
+      denyRead: (sensitiveReadPaths || defaultSensitiveReads(home)).map(realpath),
     },
     network: {
       tcp: 'allow',
@@ -167,22 +178,32 @@ function orderedWriteRules(policy) {
 // Minimal seccomp BPF program for the bubblewrap wrap, modeled on Anthropic
 // sandbox-runtime's apply-seccomp: socket(AF_UNIX, ...) fails with EPERM and
 // the io_uring syscalls fail with EPERM (IORING_OP_SOCKET on Linux 5.19+
-// would bypass the socket() rule). socketpair(AF_UNIX) stays allowed so
-// language runtimes keep their internal pipes; every other syscall is
-// untouched. x86_64 and aarch64 only — other architectures get no filter and
-// the boundary reports unixSocketsFiltered:false. The program is a raw
-// struct sock_filter array, the format bwrap's --seccomp fd expects.
+// would bypass the socket() rule). Two width traps are handled explicitly:
+// the kernel truncates the family argument to int, so only the LOW 32 bits
+// decide (a 64-bit 0x100000001 must not slip past), and the x32 ABI sets
+// bit 30 in the syscall number under the SAME audit arch, so nr is compared
+// with __X32_SYSCALL_BIT masked off. socketpair(AF_UNIX, SOCK_STREAM) stays
+// allowed so language runtimes keep their internal pipes, but
+// socketpair(AF_UNIX, SOCK_DGRAM) fails: a datagram endpoint can sendto()
+// any host unix socket by path without ever calling connect(). x86_64 and
+// aarch64 only — other architectures get no filter and the boundary reports
+// unixSocketsFiltered:false. The program is a raw struct sock_filter array,
+// the format bwrap's --seccomp fd expects.
 const BPF_LD_ABS_W = 0x20;
 const BPF_JEQ_K = 0x15;
+const BPF_ALU_AND_K = 0x54;
 const BPF_RET_K = 0x06;
 const RET_ALLOW = 0x7fff0000;
 const RET_KILL = 0x80000000;
 const RET_ERRNO_EPERM = 0x00050000 + 1;
 const AF_UNIX = 1;
+const SOCK_DGRAM = 2;
+const SOCK_TYPE_MASK = 0xf; // kernel applies the same mask over type flags
+const X32_SYSCALL_BIT_OFF = 0xbfffffff; // ~__X32_SYSCALL_BIT as u32
 const IO_URING_SYSCALLS = [425, 426, 427]; // setup, enter, register (x86_64 & aarch64)
 const SECCOMP_ARCHES = {
-  x64: { audit: 0xc000003e, socket: 41 },
-  arm64: { audit: 0xc00000b7, socket: 198 },
+  x64: { audit: 0xc000003e, socket: 41, socketpair: 53 },
+  arm64: { audit: 0xc00000b7, socket: 198, socketpair: 199 },
 };
 
 function seccompUnixSocketFilter(arch = process.arch) {
@@ -190,19 +211,24 @@ function seccompUnixSocketFilter(arch = process.arch) {
   if (!target) return null;
   // seccomp_data layout: nr@0 (u32), arch@4 (u32), args@16 (u64 each).
   // All jumps are forward; the return blocks sit at the end:
-  //   11: ERRNO(EPERM)  12: ALLOW  13: KILL_PROCESS
+  //   16: ERRNO(EPERM)  17: ALLOW  18: KILL_PROCESS
   const instructions = [
     [BPF_LD_ABS_W, 0, 0, 4], // A = arch
-    [BPF_JEQ_K, 0, 11, target.audit], // != native arch -> KILL (blocks 32-bit bypass)
+    [BPF_JEQ_K, 0, 16, target.audit], // != native arch -> KILL (blocks 32-bit bypass)
     [BPF_LD_ABS_W, 0, 0, 0], // A = syscall nr
-    [BPF_JEQ_K, 3, 0, target.socket], // socket() -> arg check at 7
-    [BPF_JEQ_K, 6, 0, IO_URING_SYSCALLS[0]], // io_uring_setup -> ERRNO
-    [BPF_JEQ_K, 5, 0, IO_URING_SYSCALLS[1]], // io_uring_enter -> ERRNO
-    [BPF_JEQ_K, 4, 5, IO_URING_SYSCALLS[2]], // io_uring_register -> ERRNO, else ALLOW
-    [BPF_LD_ABS_W, 0, 0, 20], // A = arg0 high u32
-    [BPF_JEQ_K, 0, 3, 0], // high != 0 -> ALLOW (cannot be AF_UNIX)
-    [BPF_LD_ABS_W, 0, 0, 16], // A = arg0 low u32 (domain)
-    [BPF_JEQ_K, 0, 1, AF_UNIX], // == AF_UNIX -> ERRNO, else ALLOW
+    [BPF_ALU_AND_K, 0, 0, X32_SYSCALL_BIT_OFF], // strip the x32 ABI bit
+    [BPF_JEQ_K, 4, 0, target.socket], // socket() -> family check at 9
+    [BPF_JEQ_K, 5, 0, target.socketpair], // socketpair() -> pair check at 11
+    [BPF_JEQ_K, 9, 0, IO_URING_SYSCALLS[0]], // io_uring_setup -> ERRNO
+    [BPF_JEQ_K, 8, 0, IO_URING_SYSCALLS[1]], // io_uring_enter -> ERRNO
+    [BPF_JEQ_K, 7, 8, IO_URING_SYSCALLS[2]], // io_uring_register -> ERRNO, else ALLOW
+    [BPF_LD_ABS_W, 0, 0, 16], // family = arg0 low u32 (kernel truncates to int)
+    [BPF_JEQ_K, 5, 6, AF_UNIX], // AF_UNIX -> ERRNO, else ALLOW
+    [BPF_LD_ABS_W, 0, 0, 16], // pair domain = arg0 low u32
+    [BPF_JEQ_K, 0, 4, AF_UNIX], // != AF_UNIX -> ALLOW
+    [BPF_LD_ABS_W, 0, 0, 24], // pair type = arg1 low u32
+    [BPF_ALU_AND_K, 0, 0, SOCK_TYPE_MASK], // drop CLOEXEC/NONBLOCK flags
+    [BPF_JEQ_K, 0, 1, SOCK_DGRAM], // AF_UNIX datagram -> ERRNO, stream -> ALLOW
     [BPF_RET_K, 0, 0, RET_ERRNO_EPERM],
     [BPF_RET_K, 0, 0, RET_ALLOW],
     [BPF_RET_K, 0, 0, RET_KILL],
@@ -291,4 +317,5 @@ module.exports = {
   seatbeltProfile,
   bubblewrapArgs,
   defaultSensitiveReads,
+  canonicalPath: realpath,
 };

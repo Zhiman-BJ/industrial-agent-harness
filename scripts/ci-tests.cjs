@@ -146,6 +146,7 @@ function allowedSkips(suite, platform = process.platform) {
       'isolated descendant writes the project, share and scratch but not protected roots or lateral files',
       'isolated descendant reads the project but cannot read credential paths or connect host unix sockets',
       'isolated descendant cannot write a protected root nested inside the writable project',
+      'isolated descendant cannot create a declared protected root that did not exist at launch',
       'isolation off keeps the plain current-user launcher even when primitives exist',
     );
   }

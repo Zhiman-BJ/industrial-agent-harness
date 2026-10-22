@@ -8,6 +8,7 @@ const {
   seccompUnixSocketFilter,
   seatbeltProfile,
   bubblewrapArgs,
+  canonicalPath,
 } = require('./agent-isolation.cjs');
 
 function executablePath(executable, environment) {
@@ -85,6 +86,19 @@ function createProcessSandbox({
   const scratch = path.join(directory, 'scratch');
   const workDir = path.join(share, 'workspace');
   const children = new Map();
+  // bubblewrap mountpoints materialized for not-yet-existing protected roots
+  // (shallowest first per root); session teardown removes them again so the
+  // host project keeps no empty directories the agent never populated.
+  const createdMountPoints = [];
+  const cleanupSession = () => {
+    fs.rmSync(directory, { recursive: true, force: true });
+    // rmdir only removes empty directories: a mountpoint the host runtime
+    // populated meanwhile stays, and the declaration still binds next launch.
+    for (const mountPoint of [...createdMountPoints].reverse())
+      try {
+        fs.rmdirSync(mountPoint);
+      } catch {}
+  };
   let closed = false;
   try {
     fs.mkdirSync(scratch, { mode: 0o700 });
@@ -96,8 +110,11 @@ function createProcessSandbox({
     // credential reads and unix-socket egress are confined. When the platform
     // offers no verified primitive the launcher still works —
     // boundary.osIsolation then reports false so the product surface can show
-    // the session is unisolated.
-    const protectedRoots = protectedPaths.filter(fs.existsSync).map(file => fs.realpathSync(file));
+    // the session is unisolated. Declared protected roots are kept even when
+    // they do not exist yet — a pack's workspaceProtectedPaths may describe
+    // directories the run itself creates later, and the agent must not get to
+    // create and populate them first.
+    const protectedRoots = protectedPaths.map(canonicalPath);
     // `isolation: 'off'` forces the plain launcher; the same escape hatch is
     // available to deployments through INDUSTRIAL_AGENT_ISOLATION=off for
     // hosts whose kernel policy blocks the primitives outright.
@@ -123,6 +140,21 @@ function createProcessSandbox({
         wrap = { command: layer.command, args: ['-f', profile] };
         socketFilter = true; // the profile denies outbound unix-socket connects
       } else {
+        // bubblewrap mounts need a real mountpoint, so declared protected
+        // roots that do not exist yet are materialized as empty directories
+        // at session setup — otherwise the agent could create and populate
+        // them inside the writable project before the host runtime does.
+        // A failure aborts the launch (fail closed) instead of starting
+        // unprotected. Seatbelt needs no mountpoint: its subpath rules bind
+        // future paths directly.
+        for (const root of protectedRoots)
+          if (!fs.existsSync(root)) {
+            const created = [];
+            for (let cursor = root; !fs.existsSync(cursor); cursor = path.dirname(cursor))
+              created.unshift(cursor);
+            fs.mkdirSync(root, { recursive: true, mode: 0o700 });
+            createdMountPoints.push(...created);
+          }
         // The AF_UNIX seccomp filter reaches bwrap through an inherited fd
         // (spawn stdio slot 3); on architectures without a compiled filter
         // the sandbox still runs and the boundary reports it honestly.
@@ -148,7 +180,7 @@ function createProcessSandbox({
       TMPDIR: scratch + path.sep,
     };
     const env = cleanEnvironment({ ...environment, ...pinned }, hostOnlyEnv);
-    const cleanup = () => fs.rmSync(directory, { recursive: true, force: true });
+    const cleanup = cleanupSession;
     return {
       executable: target,
       env,
@@ -279,7 +311,7 @@ function createProcessSandbox({
       },
     };
   } catch (error) {
-    fs.rmSync(directory, { recursive: true, force: true });
+    cleanupSession();
     throw error;
   }
 }
