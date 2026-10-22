@@ -166,8 +166,14 @@ function readBounded(file, root) {
   }
 }
 
+// 'unsafe-eval' is required: the pinned occt-import-js glue uses Emscripten
+// embind, which generates invoker functions with the Function constructor
+// (craftInvokerFunction). Without it every STEP meshing job fails and 3D
+// boards render without component bodies. The page stays sandboxed:
+// default-src 'none', connect-src 'self' and a restricted frame-ancestors
+// keep the eval scope from reaching the network or other origins.
 const csp =
-  "default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors app://viewer http://127.0.0.1:5173";
+  "default-src 'none'; script-src 'self' 'wasm-unsafe-eval' 'unsafe-eval'; worker-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors app://viewer http://127.0.0.1:5173";
 const headers = {
   'Cache-Control': 'no-store',
   'Content-Security-Policy': csp,
