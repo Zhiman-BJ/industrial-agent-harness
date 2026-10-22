@@ -3,18 +3,26 @@ const os = require('node:os');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
 
+function environmentValue(environment, name) {
+  if (process.platform !== 'win32' || environment[name] !== undefined) return environment[name];
+  // Spreading process.env produces an ordinary, case-sensitive object, even
+  // though Windows environment names remain case-insensitive to subprocesses.
+  const key = Object.keys(environment).find(key => key.toUpperCase() === name.toUpperCase());
+  return key === undefined ? undefined : environment[key];
+}
+
 // Docker Desktop 4.89+ installs its CLI into ~/.docker/bin and only adds that
 // directory to login-shell PATH profiles, so processes launched by the macOS
 // Dock or Finder (whose PATH comes from launchd) never see it. PATH stays
 // first to match terminal behavior; these locations follow; and as a last
 // resort the login-shell PATH is captured like VS Code does for GUI launches.
 function wellKnownDockerPaths(environment = process.env) {
-  const home = environment.HOME || os.homedir();
+  const home = environmentValue(environment, 'HOME') || os.homedir();
   if (process.platform === 'win32') {
-    const local = environment.LOCALAPPDATA;
+    const local = environmentValue(environment, 'LOCALAPPDATA');
+    const programFiles = environmentValue(environment, 'ProgramFiles');
     return [
-      environment.ProgramFiles &&
-        path.join(environment.ProgramFiles, 'Docker', 'Docker', 'resources', 'bin', 'docker.exe'),
+      programFiles && path.join(programFiles, 'Docker', 'Docker', 'resources', 'bin', 'docker.exe'),
       local && path.join(local, 'Programs', 'Docker', 'Docker', 'resources', 'bin', 'docker.exe'),
       local && path.join(local, 'Programs', 'DockerDesktop', 'resources', 'bin', 'docker.exe'),
     ].filter(Boolean);
@@ -34,7 +42,7 @@ function dockerExecutableName() {
 }
 
 function pathEntries(environment) {
-  return (environment.PATH || '')
+  return (environmentValue(environment, 'PATH') || '')
     .split(path.delimiter)
     .filter(Boolean)
     .map(entry => path.join(entry, dockerExecutableName()));
@@ -163,7 +171,7 @@ function resolveDockerCli(environment = process.env, options = {}) {
     if (!captured) return null;
     signal?.throwIfAborted();
     return resolveDockerCliSync(
-      { ...environment, PATH: mergePath(environment.PATH, captured) },
+      { ...environment, PATH: mergePath(environmentValue(environment, 'PATH'), captured) },
       { wellKnown },
     );
   };

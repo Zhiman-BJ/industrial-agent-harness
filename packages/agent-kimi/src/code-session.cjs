@@ -244,7 +244,7 @@ class CodeSession {
       !this.options.executable || this.options.executable === 'kimi'
         ? bundledExecutable()
         : this.options.executable;
-    const script = /\.[cm]?js$/.test(executable);
+    const script = /\.[cm]?js$/i.test(executable);
     this.child = (this.options.spawn || spawn)(
       script ? process.execPath : executable,
       [
