@@ -65,6 +65,12 @@ export function createLanguageSupport<const C extends LanguageConfig>(config: C)
     message: string,
     values?: Record<string, string | number | undefined>,
   ): string {
+    // Electron adds a transport wrapper to rejected invoke calls. Translate
+    // known application diagnostics while retaining unknown diagnostics intact.
+    const remote = /^(?:Error: )?Error invoking remote method '[^']+': (?:Error: )?([\s\S]+)$/.exec(
+      message,
+    );
+    if (remote && Object.hasOwn(config.messages, remote[1])) message = remote[1];
     const prefix = message.startsWith('Error: ') ? 'Error: ' : '';
     const key = prefix ? message.slice(prefix.length) : message;
     const entry = Object.hasOwn(config.messages, key) ? config.messages[key] : undefined;

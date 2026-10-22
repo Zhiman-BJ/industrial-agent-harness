@@ -53,6 +53,16 @@ jobs:
         run: |
           pnpm --filter @industrial-agent-harness/desktop build
           node scripts/stage-desktop.cjs dist/desktop-stage-ci
+      - name: Verify native layout geometry and tile recovery
+        if: matrix.platform == 'mac'
+        timeout-minutes: 5
+        shell: bash
+        run: |
+          mkdir -p dist/ci-reports
+          pnpm --filter @industrial-agent-harness/desktop setup:layout 2>&1 | tee dist/ci-reports/layout-setup.log
+          export KLAYOUT_PYTHON="$(sed -n 's/^Managed layout Viewer Python is ready: //p' dist/ci-reports/layout-setup.log | tail -1)"
+          test -x "$KLAYOUT_PYTHON"
+          pnpm run test:ci -- layout-native 2>&1 | tee dist/ci-reports/layout-native.log
       - name: Verify project creation and domain onboarding
         timeout-minutes: 5
         shell: bash
@@ -111,6 +121,7 @@ jobs:
           name: desktop-${{ matrix.platform }}
           path: |
             dist/ci-reports/*.log
+            dist/ci-reports/layout-native.json
             dist/ci-reports/install-experience.log
             dist/ci-reports/ui/
             dist/ci-reports/cad-install/*.log

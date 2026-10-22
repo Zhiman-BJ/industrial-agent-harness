@@ -1,0 +1,8 @@
+{
+  "passed": true,
+  "tileChecks": 66,
+  "seamChecks": 22,
+  "nonemptyTileChecks": 45,
+  "tileFailures": [],
+  "seamFailures": []
+}

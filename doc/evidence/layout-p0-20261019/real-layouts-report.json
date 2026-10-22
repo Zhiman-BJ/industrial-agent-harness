@@ -1,0 +1,2614 @@
+{
+  "scope": "Existing local chip artifacts, not synthetic stress fixtures",
+  "platform": "darwin",
+  "started": "2026-10-19T09:25:06.297Z",
+  "scratch": "temporary-oracle-workspace (absolute path omitted)",
+  "fixtures": [
+    {
+      "name": "sobel-real",
+      "source": "examples/chip-sobel/outputs/sobel_layout.gds",
+      "sha256": "88eb101db90f76a960f5b83e446423b7f8d66fa28240dc1110c49b6ceeabac95",
+      "stats": {
+        "layerCount": 22,
+        "cellCount": 63,
+        "uniqueShapeRecords": 71718,
+        "logicalShapeOccurrences": 1025550,
+        "hierarchyDepth": 2,
+        "instanceRecords": 96293,
+        "regularArrayRecords": 0,
+        "maxPolygonPoints": 36
+      },
+      "box": [
+        120,
+        120,
+        130,
+        130
+      ],
+      "calls": [
+        {
+          "label": "whole-overview",
+          "layer": "1/0",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 5.441
+        },
+        {
+          "label": "whole-overview",
+          "layer": "2/0",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 4.516
+        },
+        {
+          "label": "whole-overview",
+          "layer": "3/0",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 4.36
+        },
+        {
+          "label": "whole-overview",
+          "layer": "4/0",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 4.628
+        },
+        {
+          "label": "whole-overview",
+          "layer": "5/0",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 4.685
+        },
+        {
+          "label": "whole-overview",
+          "layer": "9/0",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 4.598
+        },
+        {
+          "label": "whole-overview",
+          "layer": "10/0",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 4.722
+        },
+        {
+          "label": "whole-overview",
+          "layer": "11/0",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 6.111
+        },
+        {
+          "label": "whole-overview",
+          "layer": "12/0",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 5.713
+        },
+        {
+          "label": "whole-overview",
+          "layer": "13/0",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 11.451
+        },
+        {
+          "label": "whole-overview",
+          "layer": "14/0",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 5.482
+        },
+        {
+          "label": "whole-overview",
+          "layer": "15/0",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 6.435
+        },
+        {
+          "label": "whole-overview",
+          "layer": "16/0",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 3.257
+        },
+        {
+          "label": "whole-overview",
+          "layer": "17/0",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 3.153
+        },
+        {
+          "label": "whole-overview",
+          "layer": "18/0",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 3.015
+        },
+        {
+          "label": "whole-overview",
+          "layer": "19/0",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 3.079
+        },
+        {
+          "label": "whole-overview",
+          "layer": "20/0",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 3.111
+        },
+        {
+          "label": "whole-overview",
+          "layer": "21/0",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 3.036
+        },
+        {
+          "label": "whole-overview",
+          "layer": "22/0",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 2.955
+        },
+        {
+          "label": "whole-overview",
+          "layer": "23/0",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 3.062
+        },
+        {
+          "label": "whole-overview",
+          "layer": "63/63",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 3.391
+        },
+        {
+          "label": "whole-overview",
+          "layer": "235/0",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 4.561
+        },
+        {
+          "label": "detail",
+          "layer": "1/0",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 66,
+          "triangleCount": 1058,
+          "milliseconds": 2.849
+        },
+        {
+          "label": "seam-left",
+          "layer": "1/0",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 38,
+          "triangleCount": 494,
+          "milliseconds": 1.528
+        },
+        {
+          "label": "seam-right",
+          "layer": "1/0",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 36,
+          "triangleCount": 632,
+          "milliseconds": 1.616
+        },
+        {
+          "label": "detail",
+          "layer": "2/0",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 94,
+          "triangleCount": 30,
+          "milliseconds": 1.382
+        },
+        {
+          "label": "seam-left",
+          "layer": "2/0",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 54,
+          "triangleCount": 30,
+          "milliseconds": 0.88
+        },
+        {
+          "label": "seam-right",
+          "layer": "2/0",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 48,
+          "triangleCount": 30,
+          "milliseconds": 0.921
+        },
+        {
+          "label": "detail",
+          "layer": "3/0",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 82,
+          "triangleCount": 30,
+          "milliseconds": 1.225
+        },
+        {
+          "label": "seam-left",
+          "layer": "3/0",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 46,
+          "triangleCount": 30,
+          "milliseconds": 0.811
+        },
+        {
+          "label": "seam-right",
+          "layer": "3/0",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 43,
+          "triangleCount": 30,
+          "milliseconds": 0.817
+        },
+        {
+          "label": "detail",
+          "layer": "4/0",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 89,
+          "triangleCount": 266,
+          "milliseconds": 1.567
+        },
+        {
+          "label": "seam-left",
+          "layer": "4/0",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 53,
+          "triangleCount": 152,
+          "milliseconds": 1.021
+        },
+        {
+          "label": "seam-right",
+          "layer": "4/0",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 44,
+          "triangleCount": 168,
+          "milliseconds": 1.017
+        },
+        {
+          "label": "detail",
+          "layer": "5/0",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 78,
+          "triangleCount": 230,
+          "milliseconds": 1.436
+        },
+        {
+          "label": "seam-left",
+          "layer": "5/0",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 46,
+          "triangleCount": 130,
+          "milliseconds": 1.023
+        },
+        {
+          "label": "seam-right",
+          "layer": "5/0",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 39,
+          "triangleCount": 146,
+          "milliseconds": 0.939
+        },
+        {
+          "label": "detail",
+          "layer": "9/0",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 109,
+          "triangleCount": 3560,
+          "milliseconds": 6.657
+        },
+        {
+          "label": "seam-left",
+          "layer": "9/0",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 50,
+          "triangleCount": 1650,
+          "milliseconds": 3.119
+        },
+        {
+          "label": "seam-right",
+          "layer": "9/0",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 63,
+          "triangleCount": 1942,
+          "milliseconds": 3.607
+        },
+        {
+          "label": "detail",
+          "layer": "10/0",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 560,
+          "triangleCount": 6686,
+          "milliseconds": 13.761
+        },
+        {
+          "label": "seam-left",
+          "layer": "10/0",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 283,
+          "triangleCount": 3382,
+          "milliseconds": 6.625
+        },
+        {
+          "label": "seam-right",
+          "layer": "10/0",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 278,
+          "triangleCount": 3312,
+          "milliseconds": 6.816
+        },
+        {
+          "label": "detail",
+          "layer": "11/0",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 383,
+          "triangleCount": 4962,
+          "milliseconds": 12.308
+        },
+        {
+          "label": "seam-left",
+          "layer": "11/0",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 208,
+          "triangleCount": 2380,
+          "milliseconds": 6.289
+        },
+        {
+          "label": "seam-right",
+          "layer": "11/0",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 203,
+          "triangleCount": 2690,
+          "milliseconds": 6.175
+        },
+        {
+          "label": "detail",
+          "layer": "12/0",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 100,
+          "triangleCount": 1196,
+          "milliseconds": 2.802
+        },
+        {
+          "label": "seam-left",
+          "layer": "12/0",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 57,
+          "triangleCount": 682,
+          "milliseconds": 1.627
+        },
+        {
+          "label": "seam-right",
+          "layer": "12/0",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 43,
+          "triangleCount": 514,
+          "milliseconds": 1.418
+        },
+        {
+          "label": "detail",
+          "layer": "13/0",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 392,
+          "triangleCount": 2102,
+          "milliseconds": 7.236
+        },
+        {
+          "label": "seam-left",
+          "layer": "13/0",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 191,
+          "triangleCount": 1028,
+          "milliseconds": 3.444
+        },
+        {
+          "label": "seam-right",
+          "layer": "13/0",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 202,
+          "triangleCount": 1082,
+          "milliseconds": 3.615
+        },
+        {
+          "label": "detail",
+          "layer": "14/0",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 135,
+          "triangleCount": 1614,
+          "milliseconds": 3.677
+        },
+        {
+          "label": "seam-left",
+          "layer": "14/0",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 67,
+          "triangleCount": 798,
+          "milliseconds": 1.859
+        },
+        {
+          "label": "seam-right",
+          "layer": "14/0",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 68,
+          "triangleCount": 816,
+          "milliseconds": 1.901
+        },
+        {
+          "label": "detail",
+          "layer": "15/0",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 291,
+          "triangleCount": 1290,
+          "milliseconds": 4.352
+        },
+        {
+          "label": "seam-left",
+          "layer": "15/0",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 143,
+          "triangleCount": 668,
+          "milliseconds": 2.422
+        },
+        {
+          "label": "seam-right",
+          "layer": "15/0",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 176,
+          "triangleCount": 814,
+          "milliseconds": 2.799
+        },
+        {
+          "label": "detail",
+          "layer": "16/0",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 33,
+          "triangleCount": 396,
+          "milliseconds": 1.333
+        },
+        {
+          "label": "seam-left",
+          "layer": "16/0",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 20,
+          "triangleCount": 236,
+          "milliseconds": 2.129
+        },
+        {
+          "label": "seam-right",
+          "layer": "16/0",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 15,
+          "triangleCount": 176,
+          "milliseconds": 0.829
+        },
+        {
+          "label": "detail",
+          "layer": "17/0",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 48,
+          "triangleCount": 226,
+          "milliseconds": 1.36
+        },
+        {
+          "label": "seam-left",
+          "layer": "17/0",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 23,
+          "triangleCount": 94,
+          "milliseconds": 0.792
+        },
+        {
+          "label": "seam-right",
+          "layer": "17/0",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 30,
+          "triangleCount": 146,
+          "milliseconds": 0.91
+        },
+        {
+          "label": "detail",
+          "layer": "18/0",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.57
+        },
+        {
+          "label": "seam-left",
+          "layer": "18/0",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.381
+        },
+        {
+          "label": "seam-right",
+          "layer": "18/0",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.383
+        },
+        {
+          "label": "detail",
+          "layer": "19/0",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.507
+        },
+        {
+          "label": "seam-left",
+          "layer": "19/0",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.364
+        },
+        {
+          "label": "seam-right",
+          "layer": "19/0",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.379
+        },
+        {
+          "label": "detail",
+          "layer": "20/0",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.506
+        },
+        {
+          "label": "seam-left",
+          "layer": "20/0",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.364
+        },
+        {
+          "label": "seam-right",
+          "layer": "20/0",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.386
+        },
+        {
+          "label": "detail",
+          "layer": "21/0",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.54
+        },
+        {
+          "label": "seam-left",
+          "layer": "21/0",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.368
+        },
+        {
+          "label": "seam-right",
+          "layer": "21/0",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.387
+        },
+        {
+          "label": "detail",
+          "layer": "22/0",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.504
+        },
+        {
+          "label": "seam-left",
+          "layer": "22/0",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.36
+        },
+        {
+          "label": "seam-right",
+          "layer": "22/0",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.39
+        },
+        {
+          "label": "detail",
+          "layer": "23/0",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.494
+        },
+        {
+          "label": "seam-left",
+          "layer": "23/0",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.361
+        },
+        {
+          "label": "seam-right",
+          "layer": "23/0",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.401
+        },
+        {
+          "label": "detail",
+          "layer": "63/63",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.548
+        },
+        {
+          "label": "seam-left",
+          "layer": "63/63",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.386
+        },
+        {
+          "label": "seam-right",
+          "layer": "63/63",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.402
+        },
+        {
+          "label": "detail",
+          "layer": "235/0",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 94,
+          "triangleCount": 4,
+          "milliseconds": 1.207
+        },
+        {
+          "label": "seam-left",
+          "layer": "235/0",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 54,
+          "triangleCount": 4,
+          "milliseconds": 0.826
+        },
+        {
+          "label": "seam-right",
+          "layer": "235/0",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 49,
+          "triangleCount": 4,
+          "milliseconds": 0.772
+        },
+        {
+          "label": "after-worker-restart",
+          "layer": "1/0",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 66,
+          "triangleCount": 1058,
+          "milliseconds": 170.302
+        }
+      ],
+      "cycles": [
+        {
+          "cycle": 1,
+          "generation": 2,
+          "requests": 25,
+          "cacheHits": 25,
+          "cacheBytes": 4673956,
+          "cacheEntries": 88,
+          "milliseconds": 1.022
+        },
+        {
+          "cycle": 2,
+          "generation": 3,
+          "requests": 25,
+          "cacheHits": 25,
+          "cacheBytes": 4673956,
+          "cacheEntries": 88,
+          "milliseconds": 1.158
+        },
+        {
+          "cycle": 3,
+          "generation": 4,
+          "requests": 25,
+          "cacheHits": 25,
+          "cacheBytes": 4673956,
+          "cacheEntries": 88,
+          "milliseconds": 0.793
+        },
+        {
+          "cycle": 4,
+          "generation": 5,
+          "requests": 25,
+          "cacheHits": 25,
+          "cacheBytes": 4673956,
+          "cacheEntries": 88,
+          "milliseconds": 0.804
+        },
+        {
+          "cycle": 5,
+          "generation": 6,
+          "requests": 25,
+          "cacheHits": 25,
+          "cacheBytes": 4673956,
+          "cacheEntries": 88,
+          "milliseconds": 0.812
+        },
+        {
+          "cycle": 6,
+          "generation": 7,
+          "requests": 25,
+          "cacheHits": 25,
+          "cacheBytes": 4673956,
+          "cacheEntries": 88,
+          "milliseconds": 0.774
+        },
+        {
+          "cycle": 7,
+          "generation": 8,
+          "requests": 25,
+          "cacheHits": 25,
+          "cacheBytes": 4673956,
+          "cacheEntries": 88,
+          "milliseconds": 0.79
+        },
+        {
+          "cycle": 8,
+          "generation": 9,
+          "requests": 25,
+          "cacheHits": 25,
+          "cacheBytes": 4673956,
+          "cacheEntries": 88,
+          "milliseconds": 0.78
+        },
+        {
+          "cycle": 9,
+          "generation": 10,
+          "requests": 25,
+          "cacheHits": 25,
+          "cacheBytes": 4673956,
+          "cacheEntries": 88,
+          "milliseconds": 0.846
+        },
+        {
+          "cycle": 10,
+          "generation": 11,
+          "requests": 25,
+          "cacheHits": 25,
+          "cacheBytes": 4673956,
+          "cacheEntries": 88,
+          "milliseconds": 0.798
+        },
+        {
+          "cycle": 11,
+          "generation": 12,
+          "requests": 25,
+          "cacheHits": 25,
+          "cacheBytes": 4673956,
+          "cacheEntries": 88,
+          "milliseconds": 0.645
+        },
+        {
+          "cycle": 12,
+          "generation": 13,
+          "requests": 25,
+          "cacheHits": 25,
+          "cacheBytes": 4673956,
+          "cacheEntries": 88,
+          "milliseconds": 0.607
+        }
+      ],
+      "status": "passed",
+      "loadMilliseconds": 170.235,
+      "oracle": {
+        "passed": true,
+        "tileChecks": 66,
+        "seamChecks": 22,
+        "nonemptyTileChecks": 45,
+        "tileFailures": [],
+        "seamFailures": []
+      },
+      "recovery": {
+        "inFlightRejected": "KLayout renderer stopped. Retry the viewport.",
+        "uncachedRequestSucceeded": true,
+        "identicalGeometry": true,
+        "workersStarted": 2
+      },
+      "sourceUnchanged": true,
+      "memoryStats": {
+        "peakRssBytes": 103464960,
+        "samples": 158,
+        "source": "self-rss",
+        "monitor": "self-rss"
+      },
+      "maxLiveWorkers": 1,
+      "cacheBytes": 4775942,
+      "cacheEntries": 89
+    },
+    {
+      "name": "sync-fifo-real",
+      "source": "external-fixtures/sync_fifo.gds",
+      "sha256": "8d51593e15cb0dfd179b7fee444daee9407773d49fe7e379596c366d172082cd",
+      "stats": {
+        "layerCount": 41,
+        "cellCount": 77,
+        "uniqueShapeRecords": 95126,
+        "logicalShapeOccurrences": 536769,
+        "hierarchyDepth": 2,
+        "instanceRecords": 7326,
+        "regularArrayRecords": 0,
+        "maxPolygonPoints": 124
+      },
+      "box": [
+        111.707,
+        117.067,
+        121.707,
+        127.067
+      ],
+      "calls": [
+        {
+          "label": "whole-overview",
+          "layer": "64/5",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 1.535
+        },
+        {
+          "label": "whole-overview",
+          "layer": "64/16",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 1.844
+        },
+        {
+          "label": "whole-overview",
+          "layer": "64/20",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 1.801
+        },
+        {
+          "label": "whole-overview",
+          "layer": "64/59",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 1.087
+        },
+        {
+          "label": "whole-overview",
+          "layer": "65/20",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 1.787
+        },
+        {
+          "label": "whole-overview",
+          "layer": "65/44",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 1.572
+        },
+        {
+          "label": "whole-overview",
+          "layer": "66/20",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 1.703
+        },
+        {
+          "label": "whole-overview",
+          "layer": "66/44",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 1.589
+        },
+        {
+          "label": "whole-overview",
+          "layer": "67/5",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.819
+        },
+        {
+          "label": "whole-overview",
+          "layer": "67/16",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 1.95
+        },
+        {
+          "label": "whole-overview",
+          "layer": "67/20",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 2.254
+        },
+        {
+          "label": "whole-overview",
+          "layer": "67/44",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 2.069
+        },
+        {
+          "label": "whole-overview",
+          "layer": "68/5",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.814
+        },
+        {
+          "label": "whole-overview",
+          "layer": "68/16",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 1.92
+        },
+        {
+          "label": "whole-overview",
+          "layer": "68/20",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 3.108
+        },
+        {
+          "label": "whole-overview",
+          "layer": "68/44",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 2.273
+        },
+        {
+          "label": "whole-overview",
+          "layer": "69/5",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.776
+        },
+        {
+          "label": "whole-overview",
+          "layer": "69/16",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.762
+        },
+        {
+          "label": "whole-overview",
+          "layer": "69/20",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 1.856
+        },
+        {
+          "label": "whole-overview",
+          "layer": "69/44",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.893
+        },
+        {
+          "label": "whole-overview",
+          "layer": "70/5",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.73
+        },
+        {
+          "label": "whole-overview",
+          "layer": "70/16",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.76
+        },
+        {
+          "label": "whole-overview",
+          "layer": "70/20",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.997
+        },
+        {
+          "label": "whole-overview",
+          "layer": "70/44",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.783
+        },
+        {
+          "label": "whole-overview",
+          "layer": "71/5",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.757
+        },
+        {
+          "label": "whole-overview",
+          "layer": "71/16",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.772
+        },
+        {
+          "label": "whole-overview",
+          "layer": "71/20",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.831
+        },
+        {
+          "label": "whole-overview",
+          "layer": "71/44",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.794
+        },
+        {
+          "label": "whole-overview",
+          "layer": "72/5",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.758
+        },
+        {
+          "label": "whole-overview",
+          "layer": "72/16",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.752
+        },
+        {
+          "label": "whole-overview",
+          "layer": "72/20",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.745
+        },
+        {
+          "label": "whole-overview",
+          "layer": "78/44",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 1.427
+        },
+        {
+          "label": "whole-overview",
+          "layer": "81/4",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 1.564
+        },
+        {
+          "label": "whole-overview",
+          "layer": "81/23",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 1.13
+        },
+        {
+          "label": "whole-overview",
+          "layer": "83/44",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.827
+        },
+        {
+          "label": "whole-overview",
+          "layer": "93/44",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 1.491
+        },
+        {
+          "label": "whole-overview",
+          "layer": "94/20",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 1.613
+        },
+        {
+          "label": "whole-overview",
+          "layer": "95/20",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 1.527
+        },
+        {
+          "label": "whole-overview",
+          "layer": "122/16",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 1.287
+        },
+        {
+          "label": "whole-overview",
+          "layer": "235/4",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.77
+        },
+        {
+          "label": "whole-overview",
+          "layer": "236/0",
+          "mode": "overview",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 1.436
+        },
+        {
+          "label": "detail",
+          "layer": "64/5",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.677
+        },
+        {
+          "label": "seam-left",
+          "layer": "64/5",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.486
+        },
+        {
+          "label": "seam-right",
+          "layer": "64/5",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.442
+        },
+        {
+          "label": "detail",
+          "layer": "64/16",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 8,
+          "triangleCount": 70,
+          "milliseconds": 0.912
+        },
+        {
+          "label": "seam-left",
+          "layer": "64/16",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 4,
+          "triangleCount": 34,
+          "milliseconds": 0.553
+        },
+        {
+          "label": "seam-right",
+          "layer": "64/16",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 4,
+          "triangleCount": 36,
+          "milliseconds": 0.532
+        },
+        {
+          "label": "detail",
+          "layer": "64/20",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 24,
+          "triangleCount": 20,
+          "milliseconds": 0.811
+        },
+        {
+          "label": "seam-left",
+          "layer": "64/20",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 12,
+          "triangleCount": 20,
+          "milliseconds": 0.596
+        },
+        {
+          "label": "seam-right",
+          "layer": "64/20",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 18,
+          "triangleCount": 20,
+          "milliseconds": 0.619
+        },
+        {
+          "label": "detail",
+          "layer": "64/59",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.576
+        },
+        {
+          "label": "seam-left",
+          "layer": "64/59",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.446
+        },
+        {
+          "label": "seam-right",
+          "layer": "64/59",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.445
+        },
+        {
+          "label": "detail",
+          "layer": "65/20",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 34,
+          "triangleCount": 494,
+          "milliseconds": 1.628
+        },
+        {
+          "label": "seam-left",
+          "layer": "65/20",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 21,
+          "triangleCount": 296,
+          "milliseconds": 1.119
+        },
+        {
+          "label": "seam-right",
+          "layer": "65/20",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 18,
+          "triangleCount": 236,
+          "milliseconds": 0.975
+        },
+        {
+          "label": "detail",
+          "layer": "65/44",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 4,
+          "triangleCount": 38,
+          "milliseconds": 0.746
+        },
+        {
+          "label": "seam-left",
+          "layer": "65/44",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.429
+        },
+        {
+          "label": "seam-right",
+          "layer": "65/44",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 4,
+          "triangleCount": 38,
+          "milliseconds": 0.562
+        },
+        {
+          "label": "detail",
+          "layer": "66/20",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 45,
+          "triangleCount": 1876,
+          "milliseconds": 3.826
+        },
+        {
+          "label": "seam-left",
+          "layer": "66/20",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 27,
+          "triangleCount": 980,
+          "milliseconds": 2.233
+        },
+        {
+          "label": "seam-right",
+          "layer": "66/20",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 20,
+          "triangleCount": 912,
+          "milliseconds": 1.981
+        },
+        {
+          "label": "detail",
+          "layer": "66/44",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 239,
+          "triangleCount": 2834,
+          "milliseconds": 6.042
+        },
+        {
+          "label": "seam-left",
+          "layer": "66/44",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 122,
+          "triangleCount": 1442,
+          "milliseconds": 3.295
+        },
+        {
+          "label": "seam-right",
+          "layer": "66/44",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 121,
+          "triangleCount": 1424,
+          "milliseconds": 3.222
+        },
+        {
+          "label": "detail",
+          "layer": "67/5",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.587
+        },
+        {
+          "label": "seam-left",
+          "layer": "67/5",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.453
+        },
+        {
+          "label": "seam-right",
+          "layer": "67/5",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.46
+        },
+        {
+          "label": "detail",
+          "layer": "67/16",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 101,
+          "triangleCount": 1196,
+          "milliseconds": 2.854
+        },
+        {
+          "label": "seam-left",
+          "layer": "67/16",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 35,
+          "triangleCount": 420,
+          "milliseconds": 1.241
+        },
+        {
+          "label": "seam-right",
+          "layer": "67/16",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 66,
+          "triangleCount": 776,
+          "milliseconds": 1.842
+        },
+        {
+          "label": "detail",
+          "layer": "67/20",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 115,
+          "triangleCount": 2530,
+          "milliseconds": 5.543
+        },
+        {
+          "label": "seam-left",
+          "layer": "67/20",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 56,
+          "triangleCount": 1364,
+          "milliseconds": 3.263
+        },
+        {
+          "label": "seam-right",
+          "layer": "67/20",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 71,
+          "triangleCount": 1264,
+          "milliseconds": 3.06
+        },
+        {
+          "label": "detail",
+          "layer": "67/44",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 165,
+          "triangleCount": 1178,
+          "milliseconds": 3.177
+        },
+        {
+          "label": "seam-left",
+          "layer": "67/44",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 80,
+          "triangleCount": 562,
+          "milliseconds": 1.797
+        },
+        {
+          "label": "seam-right",
+          "layer": "67/44",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 85,
+          "triangleCount": 616,
+          "milliseconds": 1.828
+        },
+        {
+          "label": "detail",
+          "layer": "68/5",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.653
+        },
+        {
+          "label": "seam-left",
+          "layer": "68/5",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 1.194
+        },
+        {
+          "label": "seam-right",
+          "layer": "68/5",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.501
+        },
+        {
+          "label": "detail",
+          "layer": "68/16",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 23,
+          "triangleCount": 258,
+          "milliseconds": 1.176
+        },
+        {
+          "label": "seam-left",
+          "layer": "68/16",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 10,
+          "triangleCount": 108,
+          "milliseconds": 0.728
+        },
+        {
+          "label": "seam-right",
+          "layer": "68/16",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 13,
+          "triangleCount": 150,
+          "milliseconds": 0.793
+        },
+        {
+          "label": "detail",
+          "layer": "68/20",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 156,
+          "triangleCount": 1214,
+          "milliseconds": 3.274
+        },
+        {
+          "label": "seam-left",
+          "layer": "68/20",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 88,
+          "triangleCount": 634,
+          "milliseconds": 1.976
+        },
+        {
+          "label": "seam-right",
+          "layer": "68/20",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 98,
+          "triangleCount": 698,
+          "milliseconds": 2.126
+        },
+        {
+          "label": "detail",
+          "layer": "68/44",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 29,
+          "triangleCount": 348,
+          "milliseconds": 1.193
+        },
+        {
+          "label": "seam-left",
+          "layer": "68/44",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 17,
+          "triangleCount": 204,
+          "milliseconds": 0.836
+        },
+        {
+          "label": "seam-right",
+          "layer": "68/44",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 12,
+          "triangleCount": 144,
+          "milliseconds": 0.726
+        },
+        {
+          "label": "detail",
+          "layer": "69/5",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.579
+        },
+        {
+          "label": "seam-left",
+          "layer": "69/5",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.443
+        },
+        {
+          "label": "seam-right",
+          "layer": "69/5",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.435
+        },
+        {
+          "label": "detail",
+          "layer": "69/16",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.609
+        },
+        {
+          "label": "seam-left",
+          "layer": "69/16",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.471
+        },
+        {
+          "label": "seam-right",
+          "layer": "69/16",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.432
+        },
+        {
+          "label": "detail",
+          "layer": "69/20",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 54,
+          "triangleCount": 606,
+          "milliseconds": 1.825
+        },
+        {
+          "label": "seam-left",
+          "layer": "69/20",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 31,
+          "triangleCount": 342,
+          "milliseconds": 1.226
+        },
+        {
+          "label": "seam-right",
+          "layer": "69/20",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 28,
+          "triangleCount": 288,
+          "milliseconds": 1.045
+        },
+        {
+          "label": "detail",
+          "layer": "69/44",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.56
+        },
+        {
+          "label": "seam-left",
+          "layer": "69/44",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.419
+        },
+        {
+          "label": "seam-right",
+          "layer": "69/44",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.456
+        },
+        {
+          "label": "detail",
+          "layer": "70/5",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.555
+        },
+        {
+          "label": "seam-left",
+          "layer": "70/5",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.426
+        },
+        {
+          "label": "seam-right",
+          "layer": "70/5",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.426
+        },
+        {
+          "label": "detail",
+          "layer": "70/16",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.589
+        },
+        {
+          "label": "seam-left",
+          "layer": "70/16",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.426
+        },
+        {
+          "label": "seam-right",
+          "layer": "70/16",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.42
+        },
+        {
+          "label": "detail",
+          "layer": "70/20",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 5,
+          "triangleCount": 26,
+          "milliseconds": 0.656
+        },
+        {
+          "label": "seam-left",
+          "layer": "70/20",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 5,
+          "triangleCount": 26,
+          "milliseconds": 0.605
+        },
+        {
+          "label": "seam-right",
+          "layer": "70/20",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 2,
+          "triangleCount": 16,
+          "milliseconds": 0.483
+        },
+        {
+          "label": "detail",
+          "layer": "70/44",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.537
+        },
+        {
+          "label": "seam-left",
+          "layer": "70/44",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.412
+        },
+        {
+          "label": "seam-right",
+          "layer": "70/44",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.42
+        },
+        {
+          "label": "detail",
+          "layer": "71/5",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.545
+        },
+        {
+          "label": "seam-left",
+          "layer": "71/5",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.429
+        },
+        {
+          "label": "seam-right",
+          "layer": "71/5",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.412
+        },
+        {
+          "label": "detail",
+          "layer": "71/16",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.54
+        },
+        {
+          "label": "seam-left",
+          "layer": "71/16",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.437
+        },
+        {
+          "label": "seam-right",
+          "layer": "71/16",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.411
+        },
+        {
+          "label": "detail",
+          "layer": "71/20",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.534
+        },
+        {
+          "label": "seam-left",
+          "layer": "71/20",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.42
+        },
+        {
+          "label": "seam-right",
+          "layer": "71/20",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.417
+        },
+        {
+          "label": "detail",
+          "layer": "71/44",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.574
+        },
+        {
+          "label": "seam-left",
+          "layer": "71/44",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.473
+        },
+        {
+          "label": "seam-right",
+          "layer": "71/44",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.436
+        },
+        {
+          "label": "detail",
+          "layer": "72/5",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.548
+        },
+        {
+          "label": "seam-left",
+          "layer": "72/5",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.45
+        },
+        {
+          "label": "seam-right",
+          "layer": "72/5",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.492
+        },
+        {
+          "label": "detail",
+          "layer": "72/16",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.56
+        },
+        {
+          "label": "seam-left",
+          "layer": "72/16",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.434
+        },
+        {
+          "label": "seam-right",
+          "layer": "72/16",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.421
+        },
+        {
+          "label": "detail",
+          "layer": "72/20",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.572
+        },
+        {
+          "label": "seam-left",
+          "layer": "72/20",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.43
+        },
+        {
+          "label": "seam-right",
+          "layer": "72/20",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.413
+        },
+        {
+          "label": "detail",
+          "layer": "78/44",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 18,
+          "triangleCount": 20,
+          "milliseconds": 0.75
+        },
+        {
+          "label": "seam-left",
+          "layer": "78/44",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 9,
+          "triangleCount": 20,
+          "milliseconds": 0.577
+        },
+        {
+          "label": "seam-right",
+          "layer": "78/44",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 13,
+          "triangleCount": 20,
+          "milliseconds": 0.585
+        },
+        {
+          "label": "detail",
+          "layer": "81/4",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 18,
+          "triangleCount": 4,
+          "milliseconds": 0.768
+        },
+        {
+          "label": "seam-left",
+          "layer": "81/4",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 9,
+          "triangleCount": 4,
+          "milliseconds": 0.522
+        },
+        {
+          "label": "seam-right",
+          "layer": "81/4",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 13,
+          "triangleCount": 4,
+          "milliseconds": 0.544
+        },
+        {
+          "label": "detail",
+          "layer": "81/23",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 5,
+          "triangleCount": 56,
+          "milliseconds": 0.728
+        },
+        {
+          "label": "seam-left",
+          "layer": "81/23",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 2,
+          "triangleCount": 20,
+          "milliseconds": 0.501
+        },
+        {
+          "label": "seam-right",
+          "layer": "81/23",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 4,
+          "triangleCount": 44,
+          "milliseconds": 0.57
+        },
+        {
+          "label": "detail",
+          "layer": "83/44",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.569
+        },
+        {
+          "label": "seam-left",
+          "layer": "83/44",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.429
+        },
+        {
+          "label": "seam-right",
+          "layer": "83/44",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 0.413
+        },
+        {
+          "label": "detail",
+          "layer": "93/44",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 20,
+          "triangleCount": 50,
+          "milliseconds": 0.803
+        },
+        {
+          "label": "seam-left",
+          "layer": "93/44",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 9,
+          "triangleCount": 16,
+          "milliseconds": 0.556
+        },
+        {
+          "label": "seam-right",
+          "layer": "93/44",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 15,
+          "triangleCount": 50,
+          "milliseconds": 0.622
+        },
+        {
+          "label": "detail",
+          "layer": "94/20",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 25,
+          "triangleCount": 150,
+          "milliseconds": 1.056
+        },
+        {
+          "label": "seam-left",
+          "layer": "94/20",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 11,
+          "triangleCount": 56,
+          "milliseconds": 0.684
+        },
+        {
+          "label": "seam-right",
+          "layer": "94/20",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 19,
+          "triangleCount": 118,
+          "milliseconds": 0.781
+        },
+        {
+          "label": "detail",
+          "layer": "95/20",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 9,
+          "triangleCount": 240,
+          "milliseconds": 1.021
+        },
+        {
+          "label": "seam-left",
+          "layer": "95/20",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 6,
+          "triangleCount": 124,
+          "milliseconds": 0.744
+        },
+        {
+          "label": "seam-right",
+          "layer": "95/20",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 6,
+          "triangleCount": 140,
+          "milliseconds": 0.809
+        },
+        {
+          "label": "detail",
+          "layer": "122/16",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 16,
+          "triangleCount": 154,
+          "milliseconds": 0.983
+        },
+        {
+          "label": "seam-left",
+          "layer": "122/16",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 8,
+          "triangleCount": 70,
+          "milliseconds": 0.622
+        },
+        {
+          "label": "seam-right",
+          "layer": "122/16",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 8,
+          "triangleCount": 84,
+          "milliseconds": 0.602
+        },
+        {
+          "label": "detail",
+          "layer": "235/4",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 1,
+          "triangleCount": 4,
+          "milliseconds": 0.629
+        },
+        {
+          "label": "seam-left",
+          "layer": "235/4",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 1,
+          "triangleCount": 4,
+          "milliseconds": 0.47
+        },
+        {
+          "label": "seam-right",
+          "layer": "235/4",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 1,
+          "triangleCount": 4,
+          "milliseconds": 0.449
+        },
+        {
+          "label": "detail",
+          "layer": "236/0",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 14,
+          "triangleCount": 48,
+          "milliseconds": 0.784
+        },
+        {
+          "label": "seam-left",
+          "layer": "236/0",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 8,
+          "triangleCount": 18,
+          "milliseconds": 0.564
+        },
+        {
+          "label": "seam-right",
+          "layer": "236/0",
+          "mode": "exact",
+          "cacheHit": false,
+          "shapeCount": 10,
+          "triangleCount": 38,
+          "milliseconds": 0.582
+        },
+        {
+          "label": "after-worker-restart",
+          "layer": "64/5",
+          "mode": "empty",
+          "cacheHit": false,
+          "shapeCount": 0,
+          "triangleCount": 0,
+          "milliseconds": 103.32
+        }
+      ],
+      "cycles": [
+        {
+          "cycle": 1,
+          "generation": 2,
+          "requests": 44,
+          "cacheHits": 44,
+          "cacheBytes": 2752471,
+          "cacheEntries": 164,
+          "milliseconds": 0.841
+        },
+        {
+          "cycle": 2,
+          "generation": 3,
+          "requests": 44,
+          "cacheHits": 44,
+          "cacheBytes": 2752471,
+          "cacheEntries": 164,
+          "milliseconds": 0.652
+        },
+        {
+          "cycle": 3,
+          "generation": 4,
+          "requests": 44,
+          "cacheHits": 44,
+          "cacheBytes": 2752471,
+          "cacheEntries": 164,
+          "milliseconds": 0.628
+        },
+        {
+          "cycle": 4,
+          "generation": 5,
+          "requests": 44,
+          "cacheHits": 44,
+          "cacheBytes": 2752471,
+          "cacheEntries": 164,
+          "milliseconds": 0.663
+        },
+        {
+          "cycle": 5,
+          "generation": 6,
+          "requests": 44,
+          "cacheHits": 44,
+          "cacheBytes": 2752471,
+          "cacheEntries": 164,
+          "milliseconds": 0.655
+        },
+        {
+          "cycle": 6,
+          "generation": 7,
+          "requests": 44,
+          "cacheHits": 44,
+          "cacheBytes": 2752471,
+          "cacheEntries": 164,
+          "milliseconds": 0.648
+        },
+        {
+          "cycle": 7,
+          "generation": 8,
+          "requests": 44,
+          "cacheHits": 44,
+          "cacheBytes": 2752471,
+          "cacheEntries": 164,
+          "milliseconds": 0.673
+        },
+        {
+          "cycle": 8,
+          "generation": 9,
+          "requests": 44,
+          "cacheHits": 44,
+          "cacheBytes": 2752471,
+          "cacheEntries": 164,
+          "milliseconds": 0.764
+        },
+        {
+          "cycle": 9,
+          "generation": 10,
+          "requests": 44,
+          "cacheHits": 44,
+          "cacheBytes": 2752471,
+          "cacheEntries": 164,
+          "milliseconds": 0.698
+        },
+        {
+          "cycle": 10,
+          "generation": 11,
+          "requests": 44,
+          "cacheHits": 44,
+          "cacheBytes": 2752471,
+          "cacheEntries": 164,
+          "milliseconds": 0.65
+        },
+        {
+          "cycle": 11,
+          "generation": 12,
+          "requests": 44,
+          "cacheHits": 44,
+          "cacheBytes": 2752471,
+          "cacheEntries": 164,
+          "milliseconds": 0.676
+        },
+        {
+          "cycle": 12,
+          "generation": 13,
+          "requests": 44,
+          "cacheHits": 44,
+          "cacheBytes": 2752471,
+          "cacheEntries": 164,
+          "milliseconds": 0.714
+        }
+      ],
+      "status": "passed",
+      "loadMilliseconds": 101.094,
+      "oracle": {
+        "passed": true,
+        "tileChecks": 123,
+        "seamChecks": 41,
+        "nonemptyTileChecks": 68,
+        "tileFailures": [],
+        "seamFailures": []
+      },
+      "recovery": {
+        "inFlightRejected": "KLayout renderer stopped. Retry the viewport.",
+        "uncachedRequestSucceeded": true,
+        "identicalGeometry": true,
+        "workersStarted": 2
+      },
+      "sourceUnchanged": true,
+      "memoryStats": {
+        "peakRssBytes": 86294528,
+        "samples": 291,
+        "source": "self-rss",
+        "monitor": "self-rss"
+      },
+      "maxLiveWorkers": 1,
+      "cacheBytes": 2752948,
+      "cacheEntries": 165
+    }
+  ],
+  "status": "passed",
+  "finished": "2026-10-19T09:25:07.832Z"
+}
