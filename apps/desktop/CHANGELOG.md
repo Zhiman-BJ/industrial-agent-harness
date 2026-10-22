@@ -3,6 +3,15 @@
 桌面应用各版本的主要内容（由 release-please 依据 conventional commits 自动维护，可在 Release PR 中润色）。
 每版的完整验证范围、发布条件与已知问题见 `doc/releases/<版本>.md`。
 
+## [1.0.1-beta.8](https://github.com/Zhiman-BJ/industrial-agent-harness/compare/desktop-v1.0.1-beta.7...desktop-v1.0.1-beta.8) (2026-10-21)
+
+### 本版内容
+
+- **修复打包版 GDS 查看器启动失败**：将 `layout.py` 与配色模块解包到真实磁盘目录，外部 Python 使用解包路径启动；保留退出码、信号和有界 stderr，便于定位缺依赖及启动异常。打包首启回归新增发布脚本可读性检查。
+- **统一管理 KLayout Python**（#241）：Chip Pack 声明固定的 CPython 3.12.15 与 KLayout 0.30.12，由共享依赖管理器提供“安装查看器支持”和“准备／修复查看器”。仅准备 Viewer 无需宿主 Python 或 Docker；Viewer 就绪与工程工具链就绪分别显示。
+- **PCB 官方模型 API 下载支持**：下载器新增固定项目、完整文件路径和提交 SHA 的 GitLab API 通道，配套 PCB 0.3.4 领域包启用。7,252 份 STEP 的路径、大小和 SHA-256 保持原值；打开板图仍只离线计算缺失清单，用户明确下载后才联网，校验成功才写入缓存。
+- **远端连接与 macOS 界面修正**：修复 beta.7 对兼容 MCP 1.3.1 服务的连接误判（#244）；隐藏侧栏时，分栏聊天标题避让 macOS 窗口控制按钮（#247）。
+
 ## [1.0.1-beta.7](https://github.com/Zhiman-BJ/industrial-agent-harness/compare/desktop-v1.0.1-beta.6...desktop-v1.0.1-beta.7) (2026-10-21)
 
 ### 本版内容
