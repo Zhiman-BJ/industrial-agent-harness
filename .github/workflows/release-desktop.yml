@@ -244,6 +244,8 @@ jobs:
         env:
           FEISHU_WEBHOOK_URL: ${{ secrets.FEISHU_WEBHOOK_URL }}
           GH_TOKEN: ${{ github.token }}
+          # The notify job has no checkout; gh needs an explicit repository.
+          GH_REPO: ${{ github.repository }}
           PACKS_RESULT: ${{ needs.domain-packs.result }}
           INSTALLERS_RESULT: ${{ needs.installers.result }}
           FEED_RESULT: ${{ needs.publish-feed.result }}
