@@ -4621,8 +4621,9 @@ body {
 
 /* With the sidebar collapsed the tab strip owns the top-left corner, so it
    needs the same traffic-light reservation and doubles as a drag region.
-   In split layout there is no tab strip, so the chat header takes over the
-   top-left corner and needs the same reservation. */
+   In split layout there is no tab strip, so the chat header (or the
+   capability center header on that page) takes over the top-left corner
+   and needs the same reservation. */
 .ia-workbench-tabbar {
   -webkit-app-region: drag;
 }
@@ -4630,7 +4631,8 @@ body {
   -webkit-app-region: no-drag;
 }
 .ia-workbench-tabbar.ia-lights-gap,
-.ia-chat-header.ia-lights-gap {
+.ia-chat-header.ia-lights-gap,
+.ia-capability-header.ia-lights-gap {
   padding-inline-start: 92px;
 }
 
