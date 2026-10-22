@@ -243,6 +243,7 @@ jobs:
       - name: Notify the Feishu release channel
         env:
           FEISHU_WEBHOOK_URL: ${{ secrets.FEISHU_WEBHOOK_URL }}
+          GH_TOKEN: ${{ github.token }}
           PACKS_RESULT: ${{ needs.domain-packs.result }}
           INSTALLERS_RESULT: ${{ needs.installers.result }}
           FEED_RESULT: ${{ needs.publish-feed.result }}
@@ -268,7 +269,11 @@ jobs:
           if test -n "$failed"; then
             text="$(printf '🔴 Desktop 发版流水线未完成：%s\ntag: %s\n详情: %s' "$failed" "$GITHUB_REF_NAME" "$run_url")"
           else
-            text="$(printf '✅ Desktop 发版完成\n版本: %s（tag %s）\n安装包: macOS arm64 DMG/ZIP + Windows x64 EXE 已上传 Release\n签名: mac=%s, win=%s\nRelease: %s' "$version" "$GITHUB_REF_NAME" "$MAC_SIGNING" "$WIN_SIGNING" "$release_url")"
+            dmg_url=$(gh release view "$GITHUB_REF_NAME" --json assets --jq '[.assets[].browserDownloadUrl | select(endswith(".dmg"))][0]' || true)
+            exe_url=$(gh release view "$GITHUB_REF_NAME" --json assets --jq '[.assets[].browserDownloadUrl | select(endswith(".exe"))][0]' || true)
+            text="$(printf '✅ Desktop 发版完成\n版本: %s（tag %s）\n签名: mac=%s, win=%s\nRelease: %s' "$version" "$GITHUB_REF_NAME" "$MAC_SIGNING" "$WIN_SIGNING" "$release_url")"
+            if test -n "$dmg_url"; then text="$text$(printf '\nmac 下载: %s' "$dmg_url")"; fi
+            if test -n "$exe_url"; then text="$text$(printf '\nwin 下载: %s' "$exe_url")"; fi
           fi
           payload=$(jq -n --arg t "$text" '{msg_type:"text",content:{text:$t}}')
           curl -sS -f -X POST "$FEISHU_WEBHOOK_URL" -H 'Content-Type: application/json' -d "$payload"
