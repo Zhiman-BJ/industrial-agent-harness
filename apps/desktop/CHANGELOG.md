@@ -4,6 +4,24 @@
 每版的完整验证范围、发布条件与已知问题见 `doc/releases/<版本>.md`。
 自 1.1.0-beta.9 起版本线为 `1.1.0-beta.N`：feat/fix 只递增 beta 序号；特殊版本（如转正式版）用提交 footer `Release-As: <版本>` 指定。
 
+## [1.1.0-beta.9](https://github.com/Zhiman-BJ/industrial-agent-harness/compare/desktop-v1.0.1-beta.8...desktop-v1.1.0-beta.9) (2026-10-22)
+
+
+### Features
+
+* **ci:** adopt release-please for desktop version bumps and release tags ([#250](https://github.com/Zhiman-BJ/industrial-agent-harness/issues/250)) ([5239e03](https://github.com/Zhiman-BJ/industrial-agent-harness/commit/5239e03fbe48492337ae126c1613aa5e24ac318b))
+* **viewer:** stream source-accurate 2.5D layout tiles ([#226](https://github.com/Zhiman-BJ/industrial-agent-harness/issues/226)) ([3f4e002](https://github.com/Zhiman-BJ/industrial-agent-harness/commit/3f4e002350a5d96683dbe2dc10388cdf02f781ac))
+
+
+### Bug Fixes
+
+* **runtime:** repair packaged subprocess startup and validation ([#255](https://github.com/Zhiman-BJ/industrial-agent-harness/issues/255)) ([231fcfa](https://github.com/Zhiman-BJ/industrial-agent-harness/commit/231fcfa5a95e07296554f1dc91e15f73af47ec23))
+
+
+### Miscellaneous Chores
+
+* **release:** record the 1.1.0-beta.N line in the desktop changelog ([#259](https://github.com/Zhiman-BJ/industrial-agent-harness/issues/259)) ([79e73f3](https://github.com/Zhiman-BJ/industrial-agent-harness/commit/79e73f33700c675bcaa584f4af4626aa19c2a964))
+
 ## [1.0.1-beta.8](https://github.com/Zhiman-BJ/industrial-agent-harness/compare/desktop-v1.0.1-beta.7...desktop-v1.0.1-beta.8) (2026-10-21)
 
 ### 本版内容
