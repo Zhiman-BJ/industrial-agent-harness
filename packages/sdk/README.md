@@ -4,6 +4,11 @@
 
 源码使用、类型、JSON-RPC framing、错误和验收边界见 [SDK 文档](../../doc/sdk.md)。包还未发布到 npm；仓库测试验证源码 CLI 与进程消费链路。
 
+When an Electron host reuses its own executable as the CLI interpreter, the SDK
+sets `ELECTRON_RUN_AS_NODE=1`, including canonical path aliases. A different
+configured interpreter retains its configured environment. This does not load
+Electron into the SDK or change the headless CLI dependency boundary.
+
 ```js
 const { createClient } = require('./packages/sdk');
 const client = createClient({ cliPath: '/absolute/headless/industrial-harness.cjs', projectDir: '/absolute/project', domain: 'chip' });

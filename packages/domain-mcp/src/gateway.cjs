@@ -14,6 +14,18 @@ function providerRuntime(provider, environment = process.env) {
   const resource = registered(provider);
   return packGatewayAdapter(resource).providerRuntime(resource, environment);
 }
+function resolveGatewayScript(directory = __dirname) {
+  // External Python cannot read Electron's virtual ASAR filesystem.
+  const unpacked = directory.replace(/(^|[\\/])app\.asar(?=[\\/]|$)/, '$1app.asar.unpacked');
+  const script = path.join(unpacked, 'gateway.py');
+  try {
+    if (!fs.statSync(script).isFile()) throw Error('Not a regular file.');
+    fs.accessSync(script, fs.constants.R_OK);
+  } catch {
+    throw Error('Domain MCP gateway script is missing or unreadable. Reinstall the application.');
+  }
+  return script;
+}
 function gatewayConfig(directory, provider, projectDir, environment, options = {}) {
   if (!projectDir || !path.isAbsolute(projectDir))
     throw Error('Domain MCP requires an explicit absolute project directory.');
@@ -22,7 +34,7 @@ function gatewayConfig(directory, provider, projectDir, environment, options = {
   const resource = registered(provider);
   return packGatewayAdapter(resource).gatewayConfig(directory, resource, project, environment, {
     ...options,
-    gatewayScript: path.join(__dirname, 'gateway.py'),
+    gatewayScript: resolveGatewayScript(),
   });
 }
-module.exports = { providerRuntime, gatewayConfig };
+module.exports = { providerRuntime, gatewayConfig, resolveGatewayScript };

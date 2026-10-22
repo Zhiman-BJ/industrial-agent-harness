@@ -133,7 +133,25 @@ function createClient(config) {
     maxBufferedEvents > 100000
   )
     throw new HarnessError('INVALID_ARGUMENT', 'Invalid cancellation grace or event buffer limit.');
+  const nodeExecutable = config.nodeExecutable || process.execPath;
   const environment = { ...process.env, ...(config.environment || {}) };
+  if (process.versions.electron) {
+    let currentRuntime = nodeExecutable === process.execPath;
+    if (
+      !currentRuntime &&
+      typeof nodeExecutable === 'string' &&
+      (path.isAbsolute(nodeExecutable) || /[\\/]/.test(nodeExecutable))
+    ) {
+      try {
+        currentRuntime =
+          fs.realpathSync(path.resolve(projectDir, nodeExecutable)) ===
+          fs.realpathSync(process.execPath);
+      } catch {}
+    }
+    // Reusing Electron as the CLI interpreter must enter Node mode; an
+    // environment override must not accidentally relaunch the GUI instead.
+    if (currentRuntime) environment.ELECTRON_RUN_AS_NODE = '1';
+  }
   const secrets = environmentSecrets(environment);
   const active = new Set();
   let closed = false;
@@ -203,7 +221,7 @@ function createClient(config) {
     const startedAt = Date.now();
     let child;
     try {
-      child = startProcess(config.nodeExecutable || process.execPath, args, {
+      child = startProcess(nodeExecutable, args, {
         env: environment,
         cwd: projectDir,
       });
