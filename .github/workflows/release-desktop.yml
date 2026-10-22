@@ -232,3 +232,43 @@ jobs:
           MAC_SIGNING: ${{ needs.installers.outputs.macSigning }}
           WIN_SIGNING: ${{ needs.installers.outputs.winSigning }}
         run: node scripts/publish-desktop-feed.cjs release-assets
+
+  notify:
+    # Posts the outcome to the Feishu group bot. It runs whether the release
+    # succeeded or failed: a silent red pipeline is worse than a noisy chat.
+    needs: [domain-packs, installers, publish-feed]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify the Feishu release channel
+        env:
+          FEISHU_WEBHOOK_URL: ${{ secrets.FEISHU_WEBHOOK_URL }}
+          PACKS_RESULT: ${{ needs.domain-packs.result }}
+          INSTALLERS_RESULT: ${{ needs.installers.result }}
+          FEED_RESULT: ${{ needs.publish-feed.result }}
+          MAC_SIGNING: ${{ needs.installers.outputs.macSigning }}
+          WIN_SIGNING: ${{ needs.installers.outputs.winSigning }}
+        run: |
+          if test -z "$FEISHU_WEBHOOK_URL"; then
+            echo "FEISHU_WEBHOOK_URL is not configured; skipping the Feishu notification."
+            exit 0
+          fi
+          version="${GITHUB_REF_NAME#desktop-v}"
+          run_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          release_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/$GITHUB_REF_NAME"
+          failed=""
+          for pair in "domain-packs:$PACKS_RESULT" "installers:$INSTALLERS_RESULT" "publish-feed:$FEED_RESULT"; do
+            name="${pair%%:*}"
+            result="${pair#*:}"
+            if test "$result" != "success"; then failed="$failed $name($result)"; fi
+          done
+          # printf keeps each message on one YAML line: block scalars end at
+          # the first unindented line, so multi-line shell strings must not
+          # continue at column zero.
+          if test -n "$failed"; then
+            text="$(printf '🔴 Desktop 发版流水线未完成：%s\ntag: %s\n详情: %s' "$failed" "$GITHUB_REF_NAME" "$run_url")"
+          else
+            text="$(printf '✅ Desktop 发版完成\n版本: %s（tag %s）\n安装包: macOS arm64 DMG/ZIP + Windows x64 EXE 已上传 Release\n签名: mac=%s, win=%s\nRelease: %s' "$version" "$GITHUB_REF_NAME" "$MAC_SIGNING" "$WIN_SIGNING" "$release_url")"
+          fi
+          payload=$(jq -n --arg t "$text" '{msg_type:"text",content:{text:$t}}')
+          curl -sS -f -X POST "$FEISHU_WEBHOOK_URL" -H 'Content-Type: application/json' -d "$payload"
