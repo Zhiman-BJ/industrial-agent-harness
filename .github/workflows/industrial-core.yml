@@ -2,6 +2,11 @@ name: Industrial Core acceptance
 
 on:
   workflow_call:
+    inputs:
+      extended:
+        description: 'Add the macos-26 forward-compatibility matrix (nightly and manual full runs)'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -11,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-15, macos-26]
+        os: ${{ inputs.extended && fromJSON('["macos-15", "macos-26"]') || fromJSON('["macos-15"]') }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 25
     env:
@@ -140,7 +145,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-15, macos-26]
+        os: ${{ inputs.extended && fromJSON('["macos-15", "macos-26"]') || fromJSON('["macos-15"]') }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 25
     env:

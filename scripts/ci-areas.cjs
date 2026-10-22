@@ -26,11 +26,23 @@ function classify(entries) {
   return { docsOnly, sharedChanged };
 }
 
-// PRs exercise the core product paths. Main pushes and an explicit manual full
-// run also qualify fresh installations and both supported macOS versions.
+// PRs exercise the core product paths. The nightly schedule, an explicit
+// manual full run and PRs that bump the pinned Domain Pack lockfile qualify
+// fresh installations and the macOS native matrices; plain main merges only
+// repeat the layers their merged PRs already ran.
 function plan(entries, { eventName, full = false }) {
   if (typeof full !== 'boolean') throw Error('full must be a boolean.');
-  const complete = full || !['pull_request', 'workflow_dispatch'].includes(eventName);
+  const pinBump =
+    eventName === 'pull_request' &&
+    entries.some(
+      entry =>
+        entry?.filename === 'pnpm-lock.yaml' || entry?.previous_filename === 'pnpm-lock.yaml',
+    );
+  const complete =
+    full ||
+    pinBump ||
+    eventName === 'schedule' ||
+    !['pull_request', 'workflow_dispatch', 'push'].includes(eventName);
   return {
     core: complete || eventName !== 'pull_request' || !classify(entries).docsOnly,
     full: complete,
