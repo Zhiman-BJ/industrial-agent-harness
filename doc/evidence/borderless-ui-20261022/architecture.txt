@@ -1,0 +1,98 @@
+$ node scripts/check-architecture-contract.cjs && node --test tests/architecture/*.test.cjs
+{
+  "revision": "IH-ARCH-001",
+  "role": "harness",
+  "ok": true,
+  "failures": [],
+  "frozenFiles": 0
+}
+✔ core, contracts and runtime cannot depend on Kimi or Electron (358.587583ms)
+✔ core packages cannot grow concrete domain IDs (24.733959ms)
+✔ Broker cannot import concrete runtimes, domains or viewers (5.729792ms)
+✔ known agent domain mapping is frozen until ToolDescriptor replaces it (5.044ms)
+✔ Desktop and CLI cannot directly spawn industrial executables (24.0305ms)
+✔ Viewer dispatch uses a registry and static Capability IDs cannot expand (13.022833ms)
+✔ prototype exceptions are explicit and core milestone cannot be claimed early (1.766583ms)
+✔ mutating capability tools must declare verification (546.422291ms)
+✔ a stale scoped Agent tool call is rejected at its handler (50.234666ms)
+✔ unscoped direct Domain MCP servers cannot be added before a Gateway (12.884083ms)
+✔ the computer-use plugin tool surface is frozen (2.403458ms)
+✔ the workbench-browser plugin tool surface is frozen (2.127541ms)
+✔ the computer-use binary is only referenced by the bridge package source (11.099042ms)
+✔ both adapters consume TaskService and have no remaining lifecycle exceptions (1.224708ms)
+✔ fork and same-repository PRs fetch only the canonical PR ref and verify exact SHA (760.93775ms)
+✔ fetch failure, stale head, malformed identity and existing destination fail closed (105.515375ms)
+✔ raw Git paths, symlinks, gitlinks, duplicates and resource limits are rejected (0.627333ms)
+✖ failed materialization removes partial data and never overwrites a trusted sibling (111.391583ms)
+✔ actual Git symlink and submodule entries are rejected without materialization (265.968791ms)
+✔ Git subprocesses ignore inherited config and object-directory overrides (105.551166ms)
+✔ candidate scripts, checker, policy, attributes and Git hooks cannot authorize or execute a violation (313.443666ms)
+✔ workflow separates read-only candidate inspection from status publishing and uses only trusted code (0.5645ms)
+✔ a scoped fetch token rides only as a GitHub-URL header, never raw (0.183583ms)
+✔ both application adapters reject cross-imports and industrial process bypasses (33.141916ms)
+✔ a new domain ID or agent dependency cannot enter generic core (8.7415ms)
+✔ manifest-only adapter and peer dependency violations are rejected before import (8.821917ms)
+✔ satellites cannot publish a competing canonical package (2.579167ms)
+✔ legacy orchestration may shrink but cannot grow or move into another adapter (9.322959ms)
+✔ frozen domain implementations cannot be edited, extended or rebaselined (8.167792ms)
+✔ a feature cannot widen its own exceptions or replace the trusted checker (7.537375ms)
+✔ domain source owns tools but cannot grow an application or canonical core (5.971166ms)
+✔ remote consumers require an exact Pack commit and matching locked integrity (6.895667ms)
+✔ remote domain verification and edits to canonical vendor snapshots are rejected (12.974ms)
+✔ source and policy paths cannot escape through symlinks or traversal (3.345916ms)
+✔ real repository: every module and resource is classified and the dev gate passes (206.588625ms)
+✔ real repository: the release gate passes the decided repo/license and blocks only on pending #102 isolation (128.538167ms)
+✔ a new unclassified repository path fails validation (3.057209ms)
+✔ longest declared path wins, so an internal file overrides its public package prefix (0.079625ms)
+✔ relative and workspace-package imports resolve to repository paths (0.113666ms)
+✔ planned-internal reference budget may shrink but never grow (6.627583ms)
+✔ enforced-internal entries reject any public import (3.876458ms)
+✔ a configured and fully isolated manifest passes the release gate (1.425958ms)
+✔ schema validation rejects structural mistakes (0.160958ms)
+✔ public entries must cite an existing public statement with its anchor (5.033041ms)
+✔ required tests must exist for every entry that declares them (3.45275ms)
+✔ the superseding decision PD-070 is recorded and names the clause it replaces (0.935666ms)
+✔ AGENTS.md carries the qualified replay rule instead of the absolute ban (0.370667ms)
+✔ the governance hash ledger matches the revised AGENTS.md bytes (1.126292ms)
+ℹ tests 48
+ℹ suites 0
+ℹ pass 47
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2353.668875
+
+✖ failing tests:
+
+test at tests/architecture/candidate-fetch.test.cjs:173:1
+✖ failed materialization removes partial data and never overwrites a trusted sibling (111.391583ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /size limit/. Input:
+  
+  'Error: spawnSync git ENOBUFS'
+  
+      at TestContext.<anonymous> (/Users/roger/.codex/.chatgpt-projects/g-p-6a97bb9a4c6c8191a842ad700c51e704/implementation/industrial-agent-harness-borderless-ui-20261022/tests/architecture/candidate-fetch.test.cjs:178:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: Error: spawnSync git ENOBUFS
+        at Object.spawnSync (node:internal/child_process:1175:20)
+        at spawnSync (node:child_process:929:24)
+        at execFileSync (node:child_process:972:15)
+        at git (/Users/roger/.codex/.chatgpt-projects/g-p-6a97bb9a4c6c8191a842ad700c51e704/implementation/industrial-agent-harness-borderless-ui-20261022/scripts/fetch-architecture-candidate.cjs:33:10)
+        at materializeTree (/Users/roger/.codex/.chatgpt-projects/g-p-6a97bb9a4c6c8191a842ad700c51e704/implementation/industrial-agent-harness-borderless-ui-20261022/scripts/fetch-architecture-candidate.cjs:91:21)
+        at /Users/roger/.codex/.chatgpt-projects/g-p-6a97bb9a4c6c8191a842ad700c51e704/implementation/industrial-agent-harness-borderless-ui-20261022/tests/architecture/candidate-fetch.test.cjs:180:7
+        at getActual (node:assert:580:5)
+        at strict.throws (node:assert:728:24)
+        at TestContext.<anonymous> (/Users/roger/.codex/.chatgpt-projects/g-p-6a97bb9a4c6c8191a842ad700c51e704/implementation/industrial-agent-harness-borderless-ui-20261022/tests/architecture/candidate-fetch.test.cjs:178:10)
+        at Test.runInAsyncScope (node:async_hooks:226:14),
+    expected: /size limit/,
+    operator: 'throws',
+    diff: 'simple'
+  }
+[ELIFECYCLE] Command failed with exit code 1.
