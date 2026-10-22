@@ -247,3 +247,77 @@ test('every playback speed converges to the same final state, with wall time sca
   assert.equal(snapshot.position, 5);
   assert.deepEqual(snapshot.display, JSON.parse(finals[0]));
 });
+
+test('timeline lookup includes equal timestamps and takes logarithmic reads on large recordings', () => {
+  const list = records(
+    Array.from({ length: 39940 }, (_, index) => [Math.floor(index / 4), text(index)]),
+  );
+  const timeline = buildTimeline(list);
+  let reads = 0;
+  for (const point of timeline.points) {
+    const displayMs = point.displayMs;
+    Object.defineProperty(point, 'displayMs', {
+      get() {
+        reads++;
+        return displayMs;
+      },
+    });
+  }
+  assert.equal(timeline.positionAt(9983), 39936);
+  assert.ok(reads <= 16, `upper-bound lookup read ${reads} points`);
+  assert.equal(timeline.positionAt(-1), 0);
+  assert.equal(timeline.positionAt(0), 4);
+  assert.equal(timeline.positionAt(9984), 39940);
+});
+
+test('a 39,940-event six-agent replay retains all 4,360 tool exchanges and seeks deterministically', () => {
+  const events = [{ type: 'text', text: 'start', replayAgentId: 'main', replayTurnId: 't1' }];
+  const agents = ['main', 'agent-0', 'agent-1', 'agent-2', 'agent-3', 'agent-4'];
+  for (let index = 0; index < 4360; index++) {
+    const replayAgentId = agents[index % agents.length];
+    const id = `${replayAgentId}:call-${index}`;
+    events.push(
+      { type: 'tool', id, name: 'recorded_tool', arguments: '{}', replayAgentId },
+      { type: 'tool-result', id, error: false, output: `result ${index}`, replayAgentId },
+    );
+  }
+  events.push({ type: 'done', replayAgentId: 'main', result: { status: 'success' } });
+  while (events.length < 39940)
+    events.push({ type: 'status', replayAgentId: agents[events.length % agents.length] });
+  const list = records(events.map((event, index) => [index * 2, event]));
+  let eventReads = 0;
+  for (const record of list) {
+    const event = record.event;
+    Object.defineProperty(record, 'event', {
+      get() {
+        eventReads++;
+        return event;
+      },
+    });
+  }
+  const engine = createReplayEngine(list);
+  engine.play();
+  engine.tick(engine.timeline.durationMs);
+  const final = engine.snapshot();
+  assert.equal(final.position, 39940);
+  assert.equal(final.running, false);
+  assert.equal(final.atEnd, true);
+  assert.equal(final.display.filter(event => event.type === 'tool').length, 4360);
+  assert.equal(final.display.filter(event => event.type === 'tool-result').length, 4360);
+  assert.equal(new Set(final.display.map(event => event.replayAgentId)).size, 6);
+
+  eventReads = 0;
+  for (let index = 0; index < 1000; index++) engine.snapshot();
+  assert.equal(eventReads, 0, 'snapshots must not rescan the long native metadata tail');
+
+  engine.seekToPosition(4361);
+  engine.seekToPosition(list.length);
+  assert.deepEqual(engine.snapshot().display, final.display);
+  engine.reset();
+  engine.setSpeed(4);
+  engine.play();
+  for (let index = 0; index < 100; index++)
+    engine.tick(Math.ceil(engine.timeline.durationMs / 400));
+  assert.deepEqual(engine.snapshot().display, final.display);
+  assert.equal(engine.snapshot().atEnd, true);
+});

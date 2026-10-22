@@ -12,6 +12,8 @@ module.exports = {
   loadBundle: require('./loader.cjs').loadBundle,
   streamEvents: require('./loader.cjs').streamEvents,
   RecordingError: require('./loader.cjs').RecordingError,
+  loadReplayInput: require('./replay-input.cjs').loadReplayInput,
+  INPUT_LIMITS: require('./replay-input.cjs').INPUT_LIMITS,
   ...require('./redact.cjs'),
   exportDemoBundle: require('./demo-export.cjs').exportDemoBundle,
   markDemoReview: require('./demo-export.cjs').markDemoReview,
