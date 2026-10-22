@@ -1,0 +1,10 @@
+{
+  "pass": true,
+  "scope": "HTTP page-open lifecycle, not browser rendering",
+  "sourceHash": "8d51593e15cb0dfd179b7fee444daee9407773d49fe7e379596c366d172082cd",
+  "previousGeneration": 100,
+  "reloadedGeneration": 1,
+  "newToken": true,
+  "identicalExactGeometry": true,
+  "triangles": 1214
+}

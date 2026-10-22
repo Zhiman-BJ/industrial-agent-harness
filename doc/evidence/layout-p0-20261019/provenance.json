@@ -1,0 +1,224 @@
+{
+  "schema": "industrial-harness/layout-fixture-provenance/1",
+  "recordedAtUtc": "2026-10-19T09:27:02.378904+00:00",
+  "auditType": "Local read-only provenance and byte-identity audit; this JSON is the only file written by this evidence task.",
+  "workspaceRoot": "local-workspace (absolute path omitted)",
+  "sourceEvidence": [
+    {
+      "path": "examples/chip-sobel/README.md",
+      "workspaceRelativePath": "examples/chip-sobel/README.md",
+      "sha256": "e9e0c80261d30f676a1b2afb057922c6c59d0ea4d51910535dcb6e367d35029d",
+      "bytes": 1424,
+      "role": "Recorded Sobel archive origin, extraction method and reduced-snapshot limitations."
+    },
+    {
+      "path": "examples/chip-sobel/docs/requirements.md",
+      "workspaceRelativePath": "examples/chip-sobel/docs/requirements.md",
+      "sha256": "773995659ab402b0fdad88c5f62be691ca75fe8ba10e43947903f324d990b5b9",
+      "bytes": 2482,
+      "role": "Sobel teaching-process requirements and no-foundry-signoff limitation."
+    },
+    {
+      "path": "examples/chip-sobel/docs/architecture.md",
+      "workspaceRelativePath": "examples/chip-sobel/docs/architecture.md",
+      "sha256": "27e9cd939c4eda014625307bec6301ada1721529688d084e8154790b0ab8f289",
+      "bytes": 3824,
+      "role": "Recorded Sobel physical design parameters and process limitations."
+    },
+    {
+      "path": "examples/chip-sobel/outputs/sobel_layout.gds",
+      "workspaceRelativePath": "examples/chip-sobel/outputs/sobel_layout.gds",
+      "sha256": "88eb101db90f76a960f5b83e446423b7f8d66fa28240dc1110c49b6ceeabac95",
+      "bytes": 9191390,
+      "role": "Current recorded Sobel GDS bytes; not regenerated in this audit."
+    },
+    {
+      "path": "external-fixtures/sync-fifo-provenance/eda/openlane/README.md",
+      "workspaceRelativePath": "external-fixtures/sync-fifo-provenance/eda/openlane/README.md",
+      "sha256": "5e28c19d23bcce03b8a3985e94d687a4ab6f6b5c9dd6fa37e12bac76762e987c",
+      "bytes": 1661,
+      "role": "Documented FIFO toolchain, process, design size and validation workflow."
+    },
+    {
+      "path": "external-fixtures/sync-fifo-provenance/eda/openlane/designs/sync_fifo/config.json",
+      "workspaceRelativePath": "external-fixtures/sync-fifo-provenance/eda/openlane/designs/sync_fifo/config.json",
+      "sha256": "7d349f4a0f3089599834b259bf72563a734dbdfe52ed4bfa4c7db7238d2d6c32",
+      "bytes": 451,
+      "role": "FIFO OpenLane input and clock/process configuration."
+    },
+    {
+      "path": "external-fixtures/sync-fifo-provenance/eda/openlane/designs/sync_fifo/case.json",
+      "workspaceRelativePath": "external-fixtures/sync-fifo-provenance/eda/openlane/designs/sync_fifo/case.json",
+      "sha256": "d1ad0bb0f9d7cc6c01fbfd859dc9cc54b419d44e36021e83548a6abf16096287",
+      "bytes": 812,
+      "role": "FIFO design identity and declared functional/metric gates."
+    },
+    {
+      "path": "external-fixtures/sync-fifo-provenance/eda/openlane/designs/sync_fifo/src/sync_fifo.sv",
+      "workspaceRelativePath": "external-fixtures/sync-fifo-provenance/eda/openlane/designs/sync_fifo/src/sync_fifo.sv",
+      "sha256": "a1119496d1c53a3c3d4f87ee3af5e27ea290adbe70f7581f7b3c953f54532c89",
+      "bytes": 1598,
+      "role": "Current FIFO RTL, independently hashed against recorded provenance."
+    },
+    {
+      "path": "external-fixtures/sync-fifo-provenance/eda/openlane/runs/golden-pass/final/sim/simulation.log",
+      "workspaceRelativePath": "external-fixtures/sync-fifo-provenance/eda/openlane/runs/golden-pass/final/sim/simulation.log",
+      "sha256": "19d12ff0f32024dcbba414f7b19d6c0ecc1c20a0b7dba227a57c277df7219f88",
+      "bytes": 147,
+      "role": "Historical functional pass marker; no new simulation performed."
+    },
+    {
+      "path": "external-fixtures/sync-fifo-provenance/eda/openlane/runs/golden-pass/final/metrics.json",
+      "workspaceRelativePath": "external-fixtures/sync-fifo-provenance/eda/openlane/runs/golden-pass/final/metrics.json",
+      "sha256": "ca2d51c7179c9d82e55234f392cf8b4aa90632d70486c4059c43dfe65ee410fc",
+      "bytes": 16185,
+      "role": "Historical physical-run metrics; no new signoff performed."
+    },
+    {
+      "path": "external-fixtures/sync-fifo-provenance/eda/openlane/runs/golden-pass/final/def/sync_fifo.def",
+      "workspaceRelativePath": "external-fixtures/sync-fifo-provenance/eda/openlane/runs/golden-pass/final/def/sync_fifo.def",
+      "sha256": "c2d31fcd48d0ac343e90c69a0ac142fb7910fd68733b5a40ba350e9e0232906f",
+      "bytes": 2519587,
+      "role": "Current golden DEF, independently hashed against recorded provenance."
+    },
+    {
+      "path": "external-fixtures/sync-fifo-provenance/eda/openlane/runs/golden-pass/final/nl/sync_fifo.nl.v",
+      "workspaceRelativePath": "external-fixtures/sync-fifo-provenance/eda/openlane/runs/golden-pass/final/nl/sync_fifo.nl.v",
+      "sha256": "7be8d2b254413129458887db9763fe7751ca5f9e141ca1fe52b5b8bf473dfd47",
+      "bytes": 513868,
+      "role": "Current golden netlist, independently hashed against recorded provenance."
+    },
+    {
+      "path": "external-fixtures/sync-fifo-provenance/eda/openlane/runs/golden-pass/final/sim/sync_fifo.vcd",
+      "workspaceRelativePath": "external-fixtures/sync-fifo-provenance/eda/openlane/runs/golden-pass/final/sim/sync_fifo.vcd",
+      "sha256": "ff308e1ccc595d9eee6656730e07d2740785797725cb02bb0644982e776d257c",
+      "bytes": 12533,
+      "role": "Current golden waveform, independently hashed against recorded provenance."
+    },
+    {
+      "path": "external-fixtures/sync_fifo.gds",
+      "workspaceRelativePath": "external-fixtures/sync_fifo.gds",
+      "sha256": "8d51593e15cb0dfd179b7fee444daee9407773d49fe7e379596c366d172082cd",
+      "bytes": 6697992,
+      "role": "Current golden FIFO GDS bytes; no GDS hash binding in the inspected Yosys provenance."
+    },
+    {
+      "path": "external-fixtures/sync-fifo-provenance/public/yosys/sync-fifo-logical.json",
+      "workspaceRelativePath": "external-fixtures/sync-fifo-provenance/public/yosys/sync-fifo-logical.json",
+      "sha256": "049b1fe6a63f358ab73da506d08dc0e8913e84f99ebe8bd1d9d16b8c6093d8bf",
+      "bytes": 134866,
+      "role": "Recorded input/DEF/netlist/waveform provenance for logical view."
+    },
+    {
+      "path": "external-fixtures/sync-fifo-provenance/public/yosys/sync-fifo-full-mapped-cone.json",
+      "workspaceRelativePath": "external-fixtures/sync-fifo-provenance/public/yosys/sync-fifo-full-mapped-cone.json",
+      "sha256": "231dc3bfa37c5e7c48124db0094067841cdbc4d87b3827a087620804c8ee1b71",
+      "bytes": 1202672,
+      "role": "Recorded input/DEF/netlist/waveform provenance for synthesis view."
+    },
+    {
+      "path": "external-fixtures/sync-fifo-provenance/scripts/export-fifo-linked.cjs",
+      "workspaceRelativePath": "external-fixtures/sync-fifo-provenance/scripts/export-fifo-linked.cjs",
+      "sha256": "28127dd0fbdcabad84cdcd88354022ed3b05a075133327c946681456b14e48fd",
+      "bytes": 3126,
+      "role": "Exporter requires matching golden DEF/netlist/waveform and RTL; records equivalence as not proven."
+    }
+  ],
+  "sobel": {
+    "artifact": "examples/chip-sobel/outputs/sobel_layout.gds",
+    "sha256": "88eb101db90f76a960f5b83e446423b7f8d66fa28240dc1110c49b6ceeabac95",
+    "bytes": 9191390,
+    "classification": "Recorded physical-layout output from a teaching-process demonstration; a reduced source snapshot is bundled for viewer exercises.",
+    "documentedOrigin": "Zhiman-BJ/eda-harness-demo, demos/sobel/artifacts.tar.gz, extracted by recorded manifest path and SHA-256.",
+    "originVerificationScope": "The local README records this archive origin. This audit did not fetch the upstream archive or independently verify its manifest.",
+    "documentedProcess": "Nangate45 / FreePDK45 teaching process.",
+    "documentedPhysicalParameters": {
+      "dieUm": [
+        250,
+        250
+      ],
+      "coreUm": [
+        230,
+        230
+      ],
+      "signalRouting": "metal2-metal10"
+    },
+    "limitations": [
+      "The reduced snapshot does not include the PDK, full flow outputs or a verified runnable EDA environment.",
+      "Recorded outputs do not prove this reduced snapshot can reproduce the full flow.",
+      "The requirements explicitly exclude foundry-signoff claims."
+    ]
+  },
+  "fifo": {
+    "artifact": "external-fixtures/sync_fifo.gds",
+    "sha256": "8d51593e15cb0dfd179b7fee444daee9407773d49fe7e379596c366d172082cd",
+    "bytes": 6697992,
+    "classification": "Existing SKY130 OpenLane golden physical-design artifact with accompanying RTL, DEF, netlist, waveform and historical run records.",
+    "documentedToolchain": {
+      "openlane": "2.3.10",
+      "container": "ghcr.io/efabless/openlane2:2.3.10",
+      "pdk": "sky130A",
+      "standardCellLibrary": "sky130_fd_sc_hd"
+    },
+    "documentedDesign": {
+      "name": "sync_fifo",
+      "widthBits": 32,
+      "depthWords": 16,
+      "clockPeriodNs": 20
+    },
+    "recordedSnapshot": "sync-fifo-20260831-062042-77631",
+    "historicalFunctionalMarker": "FIFO_TEST_PASS transactions=38",
+    "historicalMetrics": {
+      "timing__setup__ws": 13.012016721291491,
+      "timing__hold__ws": 0.11074885766374208,
+      "route__drc_errors": 0,
+      "design__lvs_error__count": 0
+    },
+    "independentlyCheckedHashBindings": [
+      {
+        "path": "external-fixtures/sync-fifo-provenance/eda/openlane/designs/sync_fifo/src/sync_fifo.sv",
+        "recordedSha256": "a1119496d1c53a3c3d4f87ee3af5e27ea290adbe70f7581f7b3c953f54532c89",
+        "observedSha256": "a1119496d1c53a3c3d4f87ee3af5e27ea290adbe70f7581f7b3c953f54532c89",
+        "matches": true
+      },
+      {
+        "path": "external-fixtures/sync-fifo-provenance/eda/openlane/runs/golden-pass/final/def/sync_fifo.def",
+        "recordedSha256": "c2d31fcd48d0ac343e90c69a0ac142fb7910fd68733b5a40ba350e9e0232906f",
+        "observedSha256": "c2d31fcd48d0ac343e90c69a0ac142fb7910fd68733b5a40ba350e9e0232906f",
+        "matches": true
+      },
+      {
+        "path": "external-fixtures/sync-fifo-provenance/eda/openlane/runs/golden-pass/final/nl/sync_fifo.nl.v",
+        "recordedSha256": "7be8d2b254413129458887db9763fe7751ca5f9e141ca1fe52b5b8bf473dfd47",
+        "observedSha256": "7be8d2b254413129458887db9763fe7751ca5f9e141ca1fe52b5b8bf473dfd47",
+        "matches": true
+      },
+      {
+        "path": "external-fixtures/sync-fifo-provenance/eda/openlane/runs/golden-pass/final/sim/sync_fifo.vcd",
+        "recordedSha256": "ff308e1ccc595d9eee6656730e07d2740785797725cb02bb0644982e776d257c",
+        "observedSha256": "ff308e1ccc595d9eee6656730e07d2740785797725cb02bb0644982e776d257c",
+        "matches": true
+      }
+    ],
+    "logicalAndMappedProvenanceAgree": true,
+    "recordedProvenanceLimits": {
+      "equivalence": "not-proven",
+      "cellMap": "unavailable",
+      "waveformComparison": "identical-except-date-header"
+    },
+    "limitations": [
+      "The inspected provenance binds RTL, DEF, netlist and waveform, but does not bind the GDS hash.",
+      "The original full OpenLane working directory and PDK are not present in the committed golden subset; this audit did not reproduce the physical flow.",
+      "Historical metrics and functional logs are retained evidence, not newly executed engineering verification.",
+      "This small FIFO does not substitute for a real large industrial-layout stress sample."
+    ]
+  },
+  "workspaceInventory": {
+    "fileCount": 113,
+    "uniqueSha256Count": 11,
+    "gdsFileCount": 113,
+    "oasisFileCount": 0,
+    "note": "Historical local-workspace inventory counts only. Unrelated file paths, per-file hashes, directory lists and scan details were omitted for public release; these counts do not expand the two selected fixtures or their verification scope."
+  },
+  "publicationNote": "Path metadata was normalized for public release. Repository sources use repository-relative paths; external-fixtures references identify selected external sources and are not bundled files. Historical measurements, selected-source hashes and verification conclusions are unchanged."
+}

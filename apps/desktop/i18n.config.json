@@ -4,11 +4,15 @@
   "locales": {
     "zh-CN": {
       "label": "简体中文",
-      "systemLanguages": ["zh"]
+      "systemLanguages": [
+        "zh"
+      ]
     },
     "en": {
       "label": "English",
-      "systemLanguages": ["en"]
+      "systemLanguages": [
+        "en"
+      ]
     }
   },
   "messages": {
@@ -4572,6 +4576,422 @@
     "Some component model references are unsupported or invalid; those bodies are unavailable.": {
       "en": "Some component model references are unsupported or invalid; those bodies are unavailable.",
       "zh-CN": "部分元器件模型引用不受支持或无效，无法显示这些实体。"
+    },
+    "Layout view mode": {
+      "en": "Layout view mode",
+      "zh-CN": "版图查看模式"
+    },
+    "2D layout": {
+      "en": "2D layout",
+      "zh-CN": "二维版图"
+    },
+    "2.5D layout": {
+      "en": "2.5D layout",
+      "zh-CN": "立体版图"
+    },
+    "Layer spacing": {
+      "en": "Layer spacing",
+      "zh-CN": "层间距"
+    },
+    "Reload 3D": {
+      "en": "Reload 3D",
+      "zh-CN": "重新加载立体视图"
+    },
+    "3D layout: drag to rotate, Shift-drag to pan; arrows rotate, Home fits.": {
+      "en": "3D layout: drag to rotate, Shift-drag to pan; arrows rotate, Home fits.",
+      "zh-CN": "立体版图：拖动旋转，Shift 拖动平移；方向键旋转，Home 适配画面。"
+    },
+    "Preparing local 3D geometry…": {
+      "en": "Preparing local 3D geometry…",
+      "zh-CN": "正在提取当前区域的立体几何…"
+    },
+    "No geometry in this region. Return to 2D and select another region or layer.": {
+      "en": "No geometry in this region. Return to 2D and select another region or layer.",
+      "zh-CN": "当前区域没有图形。请返回二维视图，选择其他区域或图层。"
+    },
+    "Drag to rotate · Shift-drag to pan": {
+      "en": "Drag to rotate · Shift-drag to pan",
+      "zh-CN": "拖动旋转 · Shift 拖动平移"
+    },
+    "Illustrative layer stack · not process dimensions": {
+      "en": "Illustrative layer stack · not process dimensions",
+      "zh-CN": "示意层叠 · 非工艺尺寸"
+    },
+    "shapes": {
+      "en": "shapes",
+      "zh-CN": "个图形"
+    },
+    "3D graphics are unavailable. Return to 2D.": {
+      "en": "3D graphics are unavailable. Return to 2D.",
+      "zh-CN": "立体图形不可用，请返回二维视图。"
+    },
+    "Could not initialize the 3D view.": {
+      "en": "Could not initialize the 3D view.",
+      "zh-CN": "无法初始化立体视图。"
+    },
+    "3D graphics were interrupted. Return to 2D or retry.": {
+      "en": "3D graphics were interrupted. Return to 2D or retry.",
+      "zh-CN": "立体图形已中断。请返回二维视图或重新加载。"
+    },
+    "Layout selection changed. Return to 2D and reopen the 3D view.": {
+      "en": "Layout selection changed. Return to 2D and reopen the 3D view.",
+      "zh-CN": "版图选择已变化。请返回二维视图，再打开立体视图。"
+    },
+    "Layout geometry limit reached. Zoom in or show fewer layers, then retry.": {
+      "en": "Layout geometry limit reached. Zoom in or show fewer layers, then retry.",
+      "zh-CN": "版图几何超出限制。请先放大区域或减少显示的图层，然后重试。"
+    },
+    "Layout polygon is too complex. Show fewer layers, then retry.": {
+      "en": "Layout polygon is too complex. Show fewer layers, then retry.",
+      "zh-CN": "版图多边形过于复杂。请减少显示的图层，然后重试。"
+    },
+    "KLayout geometry timed out. Reopen the layout to restore the renderer.": {
+      "en": "KLayout geometry timed out. Reopen the layout to restore the renderer.",
+      "zh-CN": "KLayout 几何提取超时。请重新打开版图以恢复渲染。"
+    },
+    "Zoom in in 2D": {
+      "en": "Zoom in in 2D",
+      "zh-CN": "返回二维并放大区域"
+    },
+    "Return to 2D": {
+      "en": "Return to 2D",
+      "zh-CN": "返回二维视图"
+    },
+    "Zoom in on a smaller region in 2D, then reopen 2.5D. You can also hide layers.": {
+      "en": "Zoom in on a smaller region in 2D, then reopen 2.5D. You can also hide layers.",
+      "zh-CN": "请在二维视图中放大较小区域，再打开立体视图；也可以隐藏部分图层。"
+    },
+    "Projection": {
+      "en": "Projection",
+      "zh-CN": "投影方式"
+    },
+    "Angled": {
+      "en": "Angled",
+      "zh-CN": "立体角度"
+    },
+    "Top / XY": {
+      "en": "Top / XY",
+      "zh-CN": "俯视 / XY"
+    },
+    "Extracted region": {
+      "en": "Extracted region",
+      "zh-CN": "提取区域"
+    },
+    "Current 2D region": {
+      "en": "Current 2D region",
+      "zh-CN": "当前二维区域"
+    },
+    "Selected GDS layer": {
+      "en": "Selected GDS layer",
+      "zh-CN": "已选 GDS 图层"
+    },
+    "GDS layer inspector": {
+      "en": "GDS layer inspector",
+      "zh-CN": "GDS 图层检查"
+    },
+    "GDS layers": {
+      "en": "GDS layers",
+      "zh-CN": "GDS 图层"
+    },
+    "Click a shape or a layer to inspect it.": {
+      "en": "Click a shape or a layer to inspect it.",
+      "zh-CN": "点击图形或列表中的图层进行检查。"
+    },
+    "GDS layer / datatype": {
+      "en": "GDS layer / datatype",
+      "zh-CN": "GDS 层号 / 数据类型"
+    },
+    "Isolate selected layer": {
+      "en": "Isolate selected layer",
+      "zh-CN": "仅显示选中图层"
+    },
+    "Compare selected in 2D": {
+      "en": "Compare selected in 2D",
+      "zh-CN": "在二维中对照选中图层"
+    },
+    "Clear selection": {
+      "en": "Clear selection",
+      "zh-CN": "取消选择"
+    },
+    "No layer selected": {
+      "en": "No layer selected",
+      "zh-CN": "未选择图层"
+    },
+    "Select GDS layer": {
+      "en": "Select GDS layer",
+      "zh-CN": "选择 GDS 图层"
+    },
+    "Show layer": {
+      "en": "Show layer",
+      "zh-CN": "显示图层"
+    },
+    "GDS layer order; process stack and physical heights are not loaded.": {
+      "en": "GDS layer order; process stack and physical heights are not loaded.",
+      "zh-CN": "按 GDS 层号展开，未加载工艺层叠与物理高度。"
+    },
+    "Selected layer highlighted through other layers": {
+      "en": "Selected layer highlighted through other layers",
+      "zh-CN": "选中图层透过其他图层高亮显示"
+    },
+    "Selected layer is hidden. Enable its visibility to show it.": {
+      "en": "Selected layer is hidden. Enable its visibility to show it.",
+      "zh-CN": "选中图层当前隐藏，请勾选可见性以显示。"
+    },
+    "Top layout: click to select a layer, drag to pan, Home fits.": {
+      "en": "Top layout: click to select a layer, drag to pan, Home fits.",
+      "zh-CN": "俯视版图：点击选层，拖动平移，Home 适应视图。"
+    },
+    "3D layout: click to select a layer, drag to rotate, Shift-drag to pan; Home fits.": {
+      "en": "3D layout: click to select a layer, drag to rotate, Shift-drag to pan; Home fits.",
+      "zh-CN": "立体版图：点击选层，拖动旋转，Shift 拖动平移；Home 适应视图。"
+    },
+    "Click to select a layer · Drag to pan": {
+      "en": "Click to select a layer · Drag to pan",
+      "zh-CN": "点击选层 · 拖动平移"
+    },
+    "Click to select a layer · Drag to rotate · Shift-drag to pan": {
+      "en": "Click to select a layer · Drag to rotate · Shift-drag to pan",
+      "zh-CN": "点击选层 · 拖动旋转 · Shift 拖动平移"
+    },
+    "Loading real layer overview…": {
+      "en": "Loading real layer overview…",
+      "zh-CN": "正在加载真实图层概览…"
+    },
+    "Could not load layout overview. Return to 2D or retry.": {
+      "en": "Could not load layout overview. Return to 2D or retry.",
+      "zh-CN": "无法加载版图概览。请返回二维视图或重试。"
+    },
+    "Overview pixels · zoom in for exact detail": {
+      "en": "Overview pixels · zoom in for exact detail",
+      "zh-CN": "概览像素 · 放大加载精确几何"
+    },
+    "Exact detail available in loaded tiles": {
+      "en": "Exact detail available in loaded tiles",
+      "zh-CN": "已加载图块提供精确几何"
+    },
+    "Picked from exact geometry": {
+      "en": "Picked from exact geometry",
+      "zh-CN": "已从精确几何选中"
+    },
+    "Picked from overview pixels": {
+      "en": "Picked from overview pixels",
+      "zh-CN": "已从概览像素选中"
+    },
+    "overview layers": {
+      "en": "overview layers",
+      "zh-CN": "概览图层"
+    },
+    "exact tiles": {
+      "en": "exact tiles",
+      "zh-CN": "精确图块"
+    },
+    "tiles unavailable; other layers remain visible": {
+      "en": "tiles unavailable; other layers remain visible",
+      "zh-CN": "个图块暂不可用；其他图层仍可查看"
+    },
+    "Overview retained within memory budget. Select one layer for more detail.": {
+      "en": "Overview retained within memory budget. Select one layer for more detail.",
+      "zh-CN": "已在内存预算内保留概览。选择单个图层可加载更多细节。"
+    },
+    "Requested region": {
+      "en": "Requested region",
+      "zh-CN": "请求查看区域"
+    },
+    "Layout input exceeds the supported import size.": {
+      "en": "Layout input exceeds the supported import size.",
+      "zh-CN": "版图输入超过支持的导入大小。"
+    },
+    "Layout snapshot storage budget reached. Close another layout and retry.": {
+      "en": "Layout snapshot storage budget reached. Close another layout and retry.",
+      "zh-CN": "版图快照存储已达预算上限。请关闭其他版图后重试。"
+    },
+    "Not enough disk space for the layout snapshot.": {
+      "en": "Not enough disk space for the layout snapshot.",
+      "zh-CN": "磁盘空间不足，无法创建版图快照。"
+    },
+    "Layout artifact changed; reopen this view.": {
+      "en": "Layout artifact changed; reopen this view.",
+      "zh-CN": "版图文件已变化，请重新打开此视图。"
+    },
+    "tiles loaded": {
+      "en": "tiles loaded",
+      "zh-CN": "个图块已加载"
+    },
+    "dense tiles shown as overview": {
+      "en": "dense tiles shown as overview",
+      "zh-CN": "个密集图块以概览显示"
+    },
+    "Layout request superseded by a newer viewport.": {
+      "en": "Layout request superseded by a newer viewport.",
+      "zh-CN": "此请求已被新的查看区域替代。"
+    },
+    "Layout request queue is full. Retry the current viewport.": {
+      "en": "Layout request queue is full. Retry the current viewport.",
+      "zh-CN": "版图请求队列已满，请重试当前区域。"
+    },
+    "Layout input exceeds the supported 128 MiB limit.": {
+      "en": "Layout input exceeds the supported 128 MiB limit.",
+      "zh-CN": "版图输入超过支持的 128 MiB 限制。"
+    },
+    "KLayout worker exceeded its memory budget. Retry a smaller viewport.": {
+      "en": "KLayout worker exceeded its memory budget. Retry a smaller viewport.",
+      "zh-CN": "KLayout 工作进程超过内存预算，请重试更小区域。"
+    },
+    "KLayout render timed out. Retry the viewport.": {
+      "en": "KLayout render timed out. Retry the viewport.",
+      "zh-CN": "KLayout 渲染超时，请重试当前区域。"
+    },
+    "Layout tile rendering unsupported: resource monitoring is unavailable on this platform.": {
+      "en": "Layout tile rendering unsupported: resource monitoring is unavailable on this platform.",
+      "zh-CN": "此平台无法监控资源，暂不支持版图图块渲染。"
+    },
+    "Layer {0}": {
+      "en": "Layer {0}",
+      "zh-CN": "图层 {0}"
+    },
+    "KLayout rendering of {0}": {
+      "en": "KLayout rendering of {0}",
+      "zh-CN": "{0} 的 KLayout 渲染"
+    },
+    "Loading real layout…": {
+      "en": "Loading real layout…",
+      "zh-CN": "正在加载真实版图…"
+    },
+    "{0} layers · read-only verification": {
+      "en": "{0} layers · read-only verification",
+      "zh-CN": "{0} 个图层 · 只读验证"
+    },
+    "Layout import unsupported: input exceeds the 128 MiB local limit.": {
+      "en": "Layout import unsupported: input exceeds the 128 MiB local limit.",
+      "zh-CN": "暂不支持导入此版图：文件超过本地 128 MiB 上限。"
+    },
+    "This viewer requires a layout with exactly one top cell.": {
+      "en": "This viewer requires a layout with exactly one top cell.",
+      "zh-CN": "此查看器要求版图恰好包含一个顶层单元。"
+    },
+    "Layout contains no geometry.": {
+      "en": "Layout contains no geometry.",
+      "zh-CN": "版图不含几何图形。"
+    },
+    "Invalid layout snapshot directory.": {
+      "en": "Invalid layout snapshot directory.",
+      "zh-CN": "版图快照目录无效。"
+    },
+    "Invalid layout source identity.": {
+      "en": "Invalid layout source identity.",
+      "zh-CN": "版图来源标识无效。"
+    },
+    "Unsupported layout input.": {
+      "en": "Unsupported layout input.",
+      "zh-CN": "不支持此版图输入。"
+    },
+    "KLayout Python is unavailable. Set KLAYOUT_PYTHON or run pnpm setup:layout.": {
+      "en": "KLayout Python is unavailable. Set KLAYOUT_PYTHON or run pnpm setup:layout.",
+      "zh-CN": "KLayout Python 不可用，请设置 KLAYOUT_PYTHON 或运行 pnpm setup:layout。"
+    },
+    "Layout selection changed; reopen this artifact.": {
+      "en": "Layout selection changed; reopen this artifact.",
+      "zh-CN": "版图选择已改变，请重新打开此文件。"
+    },
+    "Layout selection changed.": {
+      "en": "Layout selection changed.",
+      "zh-CN": "版图选择已改变。"
+    },
+    "Renderer closed.": {
+      "en": "Renderer closed.",
+      "zh-CN": "渲染器已关闭。"
+    },
+    "KLayout renderer stopped. Retry the viewport.": {
+      "en": "KLayout renderer stopped. Retry the viewport.",
+      "zh-CN": "KLayout 渲染器已停止，请重试当前区域。"
+    },
+    "KLayout response exceeded the display budget.": {
+      "en": "KLayout response exceeded the display budget.",
+      "zh-CN": "KLayout 响应超过显示资源预算。"
+    },
+    "Invalid KLayout response.": {
+      "en": "Invalid KLayout response.",
+      "zh-CN": "KLayout 响应无效。"
+    },
+    "Invalid KLayout tile preview.": {
+      "en": "Invalid KLayout tile preview.",
+      "zh-CN": "KLayout 图块预览无效。"
+    },
+    "KLayout worker changed.": {
+      "en": "KLayout worker changed.",
+      "zh-CN": "KLayout 工作进程已改变。"
+    },
+    "Invalid layout generation.": {
+      "en": "Invalid layout generation.",
+      "zh-CN": "版图请求批次无效。"
+    },
+    "Invalid viewport.": {
+      "en": "Invalid viewport.",
+      "zh-CN": "显示区域无效。"
+    },
+    "Viewport coordinates are outside the supported range.": {
+      "en": "Viewport coordinates are outside the supported range.",
+      "zh-CN": "显示区域坐标超出支持范围。"
+    },
+    "Viewport is smaller than one layout database unit.": {
+      "en": "Viewport is smaller than one layout database unit.",
+      "zh-CN": "显示区域小于一个版图数据库单位。"
+    },
+    "Invalid visible layers.": {
+      "en": "Invalid visible layers.",
+      "zh-CN": "可见图层无效。"
+    },
+    "Invalid layout database unit.": {
+      "en": "Invalid layout database unit.",
+      "zh-CN": "版图数据库单位无效。"
+    },
+    "Unknown layout layer.": {
+      "en": "Unknown layout layer.",
+      "zh-CN": "未知版图图层。"
+    },
+    "Invalid tile viewport.": {
+      "en": "Invalid tile viewport.",
+      "zh-CN": "图块显示区域无效。"
+    },
+    "Invalid tile generation.": {
+      "en": "Invalid tile generation.",
+      "zh-CN": "图块请求批次无效。"
+    },
+    "Invalid tile mode.": {
+      "en": "Invalid tile mode.",
+      "zh-CN": "图块模式无效。"
+    },
+    "Invalid tile raster size.": {
+      "en": "Invalid tile raster size.",
+      "zh-CN": "图块栅格尺寸无效。"
+    },
+    "Layout viewing is only available from the workspace.": {
+      "en": "Layout viewing is only available from the workspace.",
+      "zh-CN": "只能从工作区查看版图。"
+    },
+    "Artifact content changed; reopen the file.": {
+      "en": "Artifact content changed; reopen the file.",
+      "zh-CN": "文件内容已改变，请重新打开。"
+    },
+    "Result belongs to another project.": {
+      "en": "Result belongs to another project.",
+      "zh-CN": "此结果属于另一个项目。"
+    },
+    "Layout tile response does not match the request.": {
+      "en": "Layout tile response does not match the request.",
+      "zh-CN": "版图图块响应与请求不匹配。"
+    },
+    "Invalid layout tile geometry.": {
+      "en": "Invalid layout tile geometry.",
+      "zh-CN": "版图图块几何数据无效。"
+    },
+    "Invalid layout overview.": {
+      "en": "Invalid layout overview.",
+      "zh-CN": "版图概览无效。"
+    },
+    "Invalid or cancelled layout overview.": {
+      "en": "Invalid or cancelled layout overview.",
+      "zh-CN": "版图概览无效或已取消。"
     }
   }
 }

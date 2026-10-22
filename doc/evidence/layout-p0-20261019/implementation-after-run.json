@@ -1,0 +1,12 @@
+{
+  "note": "Implementation and acceptance tool hashes captured immediately after the completed run",
+  "files": {
+    "packages/viewer-builtin/src/layout/raster.cjs": "25ab9064723b676ca5f987273e1441270d89a43259971cf0634df15fcb1151ae",
+    "packages/viewer-builtin/src/layout/layout.py": "9a019a0d174fc29b5705f548a6badd7ac7d2297c96202463a1599272e88cab97",
+    "packages/viewer-builtin/src/layout/layout_tiles.py": "c4c103646181687795d7c179a96c972012cedf391b68d7fb55e0e1d94b287ecc",
+    "packages/viewer-builtin/src/layout/geometry.py": "132570b68a6dddd35714799663a624e3db371082ddc2edb45b218b1931b16bff",
+    "packages/viewer-builtin/tests/tools/verify-layout-tiles.py": "f81eccda8d5a578b23149651f6592c9f5788e37eff90426da6eddf4aed8571ae",
+    "doc/evidence/layout-p0-20261019/inspect-real-layouts.py": "575481f582b8ff58f036b50ff7c8e18b0286ee0f76fe3fbc58fc8ce952a8db2d",
+    "doc/evidence/layout-p0-20261019/test-real-layouts.cjs": "79316bee464c182af85b062a84a03008f875248f79ffbb41c1bdde98ba7a15fc"
+  }
+}

@@ -25,13 +25,19 @@ function load() {
 function service(t, script, scriptDirectory) {
   const launches = [];
   t.mock.method(childProcess, 'spawn', (python, args, options) => {
-    launches.push({ python, args, options });
-    return realSpawn(process.execPath, ['--eval', script], options);
+    const child = realSpawn(process.execPath, ['--eval', script], options);
+    launches.push({ python, args, options, child });
+    return child;
   });
   const { RasterService } = load();
   const worker = new RasterService('selected-python', { scriptDirectory });
   t.after(() => worker.close());
   return { worker, launches };
+}
+function input(t, directory) {
+  const file = path.join(directory, 'input.gds');
+  fs.writeFileSync(file, 'fixture layout input');
+  return file;
 }
 
 test('layout worker retains source paths and only rewrites the complete app.asar segment', t => {
@@ -59,9 +65,13 @@ test('layout worker rejects missing or non-file companion scripts before launchi
   fs.mkdirSync(path.join(root, 'layout_themes.py'));
   assert.throws(() => resolveLayoutScript(root), /layout_themes\.py.*Reinstall/);
   const { worker, launches } = service(t, 'process.exit(0)', root);
-  await assert.rejects(worker.call({ op: 'load' }), /layout_themes\.py.*Reinstall/);
+  await assert.rejects(
+    worker.call({ op: 'load', token: 't', path: input(t, root) }),
+    /layout_themes\.py.*Reinstall/,
+  );
   assert.equal(launches.length, 0);
-  assert.equal(worker.pending.size, 0);
+  assert.equal(worker.active, null);
+  assert.equal(worker.queue.length, 0);
 });
 
 test('layout worker passes unpacked paths and isolated Python flags to the interpreter', async t => {
@@ -76,10 +86,20 @@ test('layout worker passes unpacked paths and isolated Python flags to the inter
     `process.stdin.once('data', bytes => { const request = JSON.parse(bytes); process.stdout.write(JSON.stringify({id: request.id, result: {cell: 'TOP'}})+'\\n'); });`,
     archived,
   );
-  assert.deepEqual(await worker.call({ op: 'load' }), { cell: 'TOP' });
+  assert.deepEqual(await worker.call({ op: 'load', token: 't', path: input(t, root) }), {
+    cell: 'TOP',
+  });
   assert.equal(launches.length, 1);
   assert.equal(launches[0].python, 'selected-python');
-  assert.deepEqual(launches[0].args, ['-B', '-E', '-s', '-u', path.join(unpacked, 'layout.py')]);
+  assert.deepEqual(launches[0].args, [
+    '-B',
+    '-E',
+    '-s',
+    '-u',
+    path.join(unpacked, 'layout.py'),
+    '--max-rss-bytes',
+    String(768 * 1024 * 1024),
+  ]);
   assert.deepEqual(launches[0].options.stdio, ['pipe', 'pipe', 'pipe']);
 });
 
@@ -91,7 +111,7 @@ test('layout worker retains a bounded stderr tail and the real exit code after s
     `process.stdin.once('data', () => { process.stderr.write('discarded-prefix'+ 'x'.repeat(20000) + '\\nFINAL_IMPORT_ERROR: no module klayout\\n', () => process.exit(7)); });`,
     root,
   );
-  await assert.rejects(worker.call({ op: 'load' }), error => {
+  await assert.rejects(worker.call({ op: 'load', token: 't', path: input(t, root) }), error => {
     assert.match(error.message, /KLayout renderer stopped/);
     assert.match(error.message, /exit code 7/);
     assert.match(error.message, /FINAL_IMPORT_ERROR: no module klayout/);
@@ -99,23 +119,31 @@ test('layout worker retains a bounded stderr tail and the real exit code after s
     assert.ok(Buffer.byteLength(error.message) < 4600, 'stderr must remain bounded');
     return true;
   });
-  assert.equal(worker.pending.size, 0);
-  await assert.rejects(worker.call({ op: 'load' }), /FINAL_IMPORT_ERROR/);
+  assert.equal(worker.active, null);
+  assert.equal(worker.queue.length, 0);
+  await assert.rejects(
+    worker.call({ op: 'load', token: 't', path: input(t, root) }),
+    /FINAL_IMPORT_ERROR/,
+  );
 });
 
 test('layout worker preserves the first protocol failure when the child later exits', async t => {
   const root = directory(t);
   scripts(root);
-  const { worker } = service(
+  const { worker, launches } = service(
     t,
     `process.stdin.once('data', () => { process.stdout.write('not-json\\n'); setTimeout(() => process.exit(9), 20); });`,
     root,
   );
-  await assert.rejects(worker.call({ op: 'load' }), /Invalid KLayout response/);
-  await new Promise(resolve => worker.worker.once('close', resolve));
-  assert.match(worker.failure, /Invalid KLayout response/);
-  assert.doesNotMatch(worker.failure, /exit code 9/);
-  assert.equal(worker.pending.size, 0);
+  await assert.rejects(
+    worker.call({ op: 'load', token: 't', path: input(t, root) }),
+    /Invalid KLayout response/,
+  );
+  await new Promise(resolve => launches[0].child.once('close', resolve));
+  assert.match(worker.lastError, /Invalid KLayout response/);
+  assert.doesNotMatch(worker.lastError, /exit code 9/);
+  assert.equal(worker.active, null);
+  assert.equal(worker.queue.length, 0);
 });
 
 test('layout worker reports interpreter launch failure without replacing it with an exit message', async t => {
@@ -124,10 +152,13 @@ test('layout worker reports interpreter launch failure without replacing it with
   const { RasterService } = load();
   const worker = new RasterService(path.join(root, 'missing-python'), { scriptDirectory: root });
   t.after(() => worker.close());
-  await assert.rejects(worker.call({ op: 'load' }), /KLayout renderer could not start.*ENOENT/);
-  await new Promise(resolve => worker.worker.once('close', resolve));
-  assert.match(worker.failure, /could not start.*ENOENT/);
-  assert.equal(worker.pending.size, 0);
+  await assert.rejects(
+    worker.call({ op: 'load', token: 't', path: input(t, root) }),
+    /KLayout renderer could not start.*ENOENT/,
+  );
+  assert.match(worker.lastError, /could not start.*ENOENT/);
+  assert.equal(worker.active, null);
+  assert.equal(worker.queue.length, 0);
 });
 
 test('layout worker includes a termination signal and drained stderr in diagnostics', async t => {
@@ -150,8 +181,12 @@ test('layout worker includes a termination signal and drained stderr in diagnost
   const { RasterService } = load();
   const worker = new RasterService('selected-python', { scriptDirectory: root });
   t.after(() => worker.close());
-  await assert.rejects(worker.call({ op: 'load' }), /signal SIGTERM[\s\S]*worker was terminated/);
-  assert.equal(worker.pending.size, 0);
+  await assert.rejects(
+    worker.call({ op: 'load', token: 't', path: input(t, root) }),
+    /signal SIGTERM[\s\S]*worker was terminated/,
+  );
+  assert.equal(worker.active, null);
+  assert.equal(worker.queue.length, 0);
 });
 
 test('packaged layout smoke canonicalizes application aliases before checking unpacked scripts', t => {
