@@ -57,7 +57,10 @@ function fixture(t, { executeTask, tasks, execPath = process.execPath } = {}) {
       );
       assert.equal(result.executionSucceeded, true);
       const report = JSON.parse(fs.readFileSync(result.artifacts[0].file, 'utf8'));
-      return { report, check: report.checks.find(item => item.name === 'protected local execution') };
+      return {
+        report,
+        check: report.checks.find(item => item.name === 'protected local execution'),
+      };
     },
   };
 }

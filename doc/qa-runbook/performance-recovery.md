@@ -31,7 +31,9 @@ pnpm --filter @industrial-agent-harness/desktop test:parallel
 
 同一 macOS smoke 还在临时工程声明固定的 Electron-as-Node 任务，经共享 Runtime 的审批、输入快照、执行、独立 checks-json Verifier 路径完成。必须保留 canonical Action、execution/check artifact 身份与 `passed` 验证；五项断言检查 Node 模式、选中输入可读、未选中项目文件拒读、外部测试文件拒读、输出目录可写。执行身份必须仅开放应用的 `Contents`，不能扩大为 `.app` 根或其父目录。测试不改写安装包文件；普通首页 ready、源码 Node 测试不能代替这条 Framework/Node 模式打包回归。
 
-这两项检查用于覆盖 beta.7 的 DYLD/SIGABRT 启动崩溃及修复后的任务边界。macOS 验收同时保留应用版本/源码 SHA、可执行文件路径、报告及 stderr，确认没有新增对应子进程崩溃报告；若出现崩溃，按 PF-09 保留 OS 报告与父子 PID，分别判断主进程、Renderer 和探针。只读应用依赖的写保护等完整边界仍需独立执行 Runtime 测试。当前 Linux 环境不能证明 macOS 安装包已通过，须在目标平台实际运行命令后记录结果。
+每次 smoke 使用独立的截图文件名，旧截图不能满足新运行的检查，也不会删除并发运行的截图。发布流水线的两项 smoke 使用 Bash 依次执行，首项失败立即终止；临时目录清理采用有界重试，耗尽后仍失败，并保留原始诊断与关闭错误。
+
+这两项检查用于覆盖 beta.7 的 DYLD/SIGABRT 启动崩溃及修复后的任务边界。macOS 验收同时保留应用版本/源码 SHA、可执行文件路径、报告及 stderr，确认没有新增对应子进程崩溃报告；若出现崩溃，按 PF-09 保留 OS 报告与父子 PID，分别判断主进程、Renderer 和探针。只读应用依赖的写保护等完整边界仍需独立执行 Runtime 测试。跨平台单测、路径模拟和被宿主策略阻止的沙箱启动均不能证明 macOS 安装包通过；`sandbox_apply` 被拒绝时记录 blocked，须在目标平台可运行的环境中实际执行后记录结果。
 
 展示函数的旧版对照可指定源码目录，该目录必须同时包含 `agent-events.ts` 与 `chat-history.ts`（例如目标版本的 `apps/desktop/src`）；不传参数默认当前工作区这两份源码：
 

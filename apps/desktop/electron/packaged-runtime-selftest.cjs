@@ -142,13 +142,14 @@ async function run({ TaskService, getRegistry }) {
     path: path.join(directory, 'project'),
     domain: 'general',
   };
-  fs.mkdirSync(project.path);
   const environment = {
     ...process.env,
     INDUSTRIAL_HARNESS_CONFIG_DIR: path.join(directory, 'resources'),
   };
-  let service;
+  let service, result;
+  const errors = [];
   try {
+    fs.mkdirSync(project.path);
     service = new TaskService({
       environment,
       getRegistry,
@@ -158,21 +159,35 @@ async function run({ TaskService, getRegistry }) {
     });
     // Inspect the canonical check itself: overall ready can hide a failed
     // optional probe when an empty project has no declared local tasks.
-    const result = await service.diagnose(project);
+    result = await service.diagnose(project);
     result.executable = fs.realpathSync(process.execPath);
     if (process.platform === 'darwin') {
       const outsidePrivate = path.join(directory, 'outside-private.txt');
       fs.writeFileSync(outsidePrivate, 'outside host fixture');
       result.electronTask = await electronTask(service, project, getRegistry(), outsidePrivate);
     }
-    return verify(result, process.platform, process.arch, result.executable);
-  } finally {
-    try {
-      await service?.close();
-    } finally {
-      fs.rmSync(directory, { recursive: true, force: true });
-    }
+    verify(result, process.platform, process.arch, result.executable);
+  } catch (error) {
+    errors.push(error);
   }
+  try {
+    await service?.close();
+  } catch (error) {
+    errors.push(error);
+  }
+  try {
+    // Native recursive removal retries transient Windows EPERM with a
+    // bounded backoff; an exhausted cleanup failure still fails the smoke.
+    fs.rmSync(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  } catch (error) {
+    errors.push(error);
+  }
+  if (errors.length === 1) throw errors[0];
+  if (errors.length > 1)
+    throw new AggregateError(errors, 'Packaged runtime smoke encountered multiple failures.', {
+      cause: errors[0],
+    });
+  return result;
 }
 
 module.exports = { run, verify };

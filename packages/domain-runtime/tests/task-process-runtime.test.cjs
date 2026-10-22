@@ -40,6 +40,8 @@ function fixture(t) {
       omitProjectDir = false,
       environment = {},
       filesystem = {},
+      readOnlyDirs = [],
+      homeDir = os.homedir(),
     }) {
       const directory = path.join(projectDir, '.harness-runs', 'runtime-check');
       const input = path.join(directory, 'input');
@@ -62,7 +64,7 @@ function fixture(t) {
           ...filesystem,
         },
         'node:path': path,
-        'node:os': os,
+        'node:os': { ...os, homedir: () => homeDir },
         'node:child_process': {
           spawnSync: () => assert.fail('Local execution must not probe a Docker subprocess.'),
           spawn(command, args, options) {
@@ -100,7 +102,7 @@ function fixture(t) {
         clearTimeout,
       });
       const result = await module.exports.executeTask(
-        { command: [target, '-e', '0'], runtime: { kind: 'local' }, timeoutMs: 5000 },
+        { command: [target, '-e', '0'], runtime: { kind: 'local', readOnlyDirs }, timeoutMs: 5000 },
         {
           ...(!omitProjectDir ? { projectDir } : {}),
           directory,
@@ -383,4 +385,115 @@ test('Linux Electron never grants the shared temporary directory as a runtime ro
   });
   assert.equal(roots.includes(shared), false);
   assert.ok(roots.includes(executable));
+});
+
+function assertNotGranted(result, directory) {
+  for (const root of new Set([directory, fs.realpathSync(directory)])) {
+    assert.equal(result.roots.includes(root), false, root);
+    assert.equal(
+      result.profile?.includes(`(subpath ${JSON.stringify(root)})`) ?? false,
+      false,
+      root,
+    );
+  }
+}
+
+test('an embedded project interpreter does not auto-expose unselected Resources', async t => {
+  const instance = fixture(t);
+  const bundle = instance.bundle('Project Python', instance.project);
+  const resources = path.join(bundle.contents, 'Resources');
+  const executable = writeExecutable(path.join(resources, 'bin', 'python'));
+  const result = await instance.run({ target: executable });
+  assertNotGranted(result, resources);
+  assertNotGranted(result, bundle.contents);
+});
+
+test('a project tools/bin executable does not auto-expose the tools directory', async t => {
+  const instance = fixture(t);
+  const tools = path.join(instance.project, 'tools');
+  const executable = writeExecutable(path.join(tools, 'bin', 'tool'));
+  const result = await instance.run({ target: executable });
+  assertNotGranted(result, tools);
+});
+
+test('a project bin alias cannot grant its unselected sibling source files', async t => {
+  const instance = fixture(t);
+  const external = writeExecutable(path.join(instance.root, 'external-runtime', 'bin', 'tool'));
+  const tools = path.join(instance.project, 'tools');
+  fs.mkdirSync(tools, { recursive: true });
+  fs.symlinkSync(path.dirname(external), path.join(tools, 'bin'), 'junction');
+  const result = await instance.run({ target: path.join(tools, 'bin', 'tool') });
+  assertNotGranted(result, tools);
+  assert.ok(result.roots.includes(fs.realpathSync(path.resolve(external, '..', '..'))));
+});
+
+function virtualEnvironment(instance) {
+  const base = writeExecutable(path.join(instance.root, 'base-python', 'bin', 'python'));
+  const environment = path.join(instance.root, 'real-venv');
+  fs.mkdirSync(environment);
+  fs.writeFileSync(path.join(environment, 'pyvenv.cfg'), 'fixture venv');
+  fs.symlinkSync(path.dirname(base), path.join(environment, 'bin'), 'junction');
+  const alias = path.join(instance.root, 'managed-alias');
+  fs.symlinkSync(environment, alias, 'junction');
+  return { base, environment, alias, executable: path.join(alias, 'bin', 'python') };
+}
+
+test('a venv launch alias grants its canonical configuration and library directory', async t => {
+  const instance = fixture(t);
+  const venv = virtualEnvironment(instance);
+  const result = await instance.run({ target: venv.executable });
+  const canonical = fs.realpathSync(venv.environment);
+  assert.ok(result.roots.includes(canonical), 'Seatbelt must allow the resolved venv directory.');
+  assert.ok(result.profile.includes(`(subpath ${JSON.stringify(canonical)})`));
+  assert.equal(result.identity.launchPath, venv.executable);
+});
+
+test('a Linux venv launch alias retains a safe read-only mount at its launch location', async t => {
+  const instance = fixture(t);
+  const venv = virtualEnvironment(instance);
+  const result = await instance.run({ platform: 'linux', target: venv.executable });
+  const canonical = fs.realpathSync(venv.environment);
+  assert.ok(result.roots.includes(canonical));
+  assert.ok(result.roots.includes(venv.alias));
+  const mounts = result.call.args.flatMap((arg, index, args) =>
+    arg === '--ro-bind' ? [{ source: args[index + 1], destination: args[index + 2] }] : [],
+  );
+  assert.ok(
+    mounts.some(mount => mount.source === canonical && mount.destination === venv.alias),
+    'The checked venv installation must also exist at the preserved launch alias.',
+  );
+  assert.equal(result.identity.launchPath, venv.executable);
+});
+
+test('an installation prefix containing the project does not expose that project', async t => {
+  const instance = fixture(t);
+  const installation = path.join(instance.root, 'installation');
+  const executable = writeExecutable(path.join(installation, 'bin', 'tool'));
+  const projectDir = path.join(installation, 'project');
+  fs.mkdirSync(projectDir);
+  const result = await instance.run({ target: executable, projectDir });
+  assertNotGranted(result, installation);
+});
+
+test('an alias of the user local directory does not bypass shared-prefix exclusions', async t => {
+  const instance = fixture(t);
+  const homeDir = path.join(instance.root, 'test-home');
+  const local = path.join(homeDir, '.local');
+  const executable = writeExecutable(path.join(local, 'bin', 'tool'));
+  const alias = path.join(instance.root, 'alias-local');
+  fs.symlinkSync(local, alias, 'junction');
+  const result = await instance.run({ target: path.join(alias, 'bin', 'tool'), homeDir });
+  assertNotGranted(result, local);
+  assertNotGranted(result, alias);
+  assert.equal(result.roots.includes(fs.realpathSync(executable)), true);
+});
+
+test('explicit readOnlyDirs continue to authorize a checked project dependency', async t => {
+  const instance = fixture(t);
+  const tools = path.join(instance.project, 'tools');
+  const executable = writeExecutable(path.join(tools, 'bin', 'tool'));
+  const result = await instance.run({ target: executable, readOnlyDirs: [tools] });
+  const canonical = fs.realpathSync(tools);
+  assert.ok(result.roots.includes(canonical));
+  assert.ok(result.profile.includes(`(subpath ${JSON.stringify(canonical)})`));
 });

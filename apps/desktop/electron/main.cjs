@@ -585,7 +585,7 @@ let cachedAgentRuntime;
 function agentRuntimeStatus() {
   const executable = kimiExecutable();
   if (cachedAgentRuntime?.executable === executable) return cachedAgentRuntime;
-  const script = /\.[cm]?js$/.test(executable);
+  const script = /\.[cm]?js$/i.test(executable);
   const command = script ? process.execPath : executable;
   const prefix = script ? [executable] : [];
   const probeOptions = {

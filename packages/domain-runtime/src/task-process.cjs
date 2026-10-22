@@ -105,6 +105,14 @@ function inside(file, root) {
   );
 }
 
+function canonicalPath(file) {
+  try {
+    return fs.realpathSync(file);
+  } catch {
+    return path.resolve(file);
+  }
+}
+
 function runtimeInstallation(target, projectDir, runAsNode) {
   let root;
   if (process.platform === 'darwin') {
@@ -141,16 +149,7 @@ function runtimeInstallation(target, projectDir, runAsNode) {
       os.homedir(),
       os.tmpdir(),
     ];
-    if (
-      sharedRoots.some(file => {
-        try {
-          return root === fs.realpathSync(file);
-        } catch {
-          return root === path.resolve(file);
-        }
-      })
-    )
-      root = null;
+    if (sharedRoots.some(file => root === canonicalPath(file))) root = null;
   }
   // A project-controlled bundle must not expose unselected source files.
   // Symlink launch aliases cannot widen this grant: target is already realpath.
@@ -197,11 +196,13 @@ function localCommand(argv, directory, input, work, environment, task, projectDi
           '/etc/ssl/certs',
         ];
   const roots = new Set(systemRoots.filter(file => fs.existsSync(file)));
+  const launchAliases = new Map();
   // Preserve virtual-environment launch paths, and expose that installation's
   // libraries without granting the enclosing user home or arbitrary host data.
   for (const file of [target, launchPath]) {
     const parent = path.dirname(file),
-      prefix = path.dirname(parent);
+      launchPrefix = path.dirname(parent),
+      prefix = canonicalPath(launchPrefix);
     if (
       ['bin', 'sbin'].includes(path.basename(parent)) &&
       ![
@@ -211,15 +212,25 @@ function localCommand(argv, directory, input, work, environment, task, projectDi
         '/opt',
         '/usr/local',
         '/opt/homebrew',
+        '/tmp',
+        '/var/tmp',
         os.homedir(),
+        os.tmpdir(),
         path.join(os.homedir(), '.local'),
-      ].includes(prefix) &&
-      !['/Users', '/home'].includes(path.dirname(prefix)) &&
-      // A launcher in the original project must not expose unselected sources.
-      prefix !== path.resolve(directory, '..', '..')
-    )
+      ].some(root => prefix === canonicalPath(root)) &&
+      !['/Users', '/home'].some(root => path.dirname(prefix) === canonicalPath(root)) &&
+      // Both a project-local prefix and an installation containing the project
+      // would expose inputs that were never selected for this task.
+      (!projectDir || (!inside(prefix, projectDir) && !inside(projectDir, prefix)))
+    ) {
       roots.add(prefix);
-    else roots.add(file);
+      // Seatbelt checks resolved paths. Linux also needs the checked launch
+      // alias mounted in its namespace so virtual-environment discovery works.
+      if (process.platform === 'linux' && launchPrefix !== prefix) {
+        roots.add(launchPrefix);
+        launchAliases.set(launchPrefix, prefix);
+      }
+    } else roots.add(file);
   }
   const installation = runtimeInstallation(target, projectDir, runAsNode);
   if (installation) roots.add(installation);
@@ -264,7 +275,7 @@ function localCommand(argv, directory, input, work, environment, task, projectDi
         'ALL',
         '--tmpfs',
         '/',
-        ...[...roots].flatMap(root => ['--ro-bind', root, root]),
+        ...[...roots].flatMap(root => ['--ro-bind', launchAliases.get(root) || root, root]),
         '--proc',
         '/proc',
         '--dev',

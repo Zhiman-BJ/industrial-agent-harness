@@ -43,7 +43,7 @@ if (!executable || !fs.existsSync(executable))
 const layout = require('./smoke-packaged-layout.cjs').verifyPackagedLayout(executable);
 const screenshot = path.join(
   os.tmpdir(),
-  `industrial-harness-first-run-${process.platform}-${process.arch}.png`,
+  `industrial-harness-first-run-${process.platform}-${process.arch}-${crypto.randomUUID()}.png`,
 );
 const environment = { ...process.env, HARNESS_PACKAGED_SMOKE_SCREENSHOT: screenshot };
 let fixture;

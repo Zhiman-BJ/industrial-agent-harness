@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const vm = require('node:vm');
 const { createRequire } = require('node:module');
 const { execFileSync } = require('node:child_process');
 
@@ -81,17 +82,43 @@ test('the release ASAR rules unpack external Python scripts while retaining ordi
   );
   const physical = [];
   for (const [relative, bytes] of files) {
+    // ASAR 3 traverses header entries using the host path separator.
+    const archiveRelative = path.normalize(relative);
     const file = path.join(archive + '.unpacked', relative);
     if (external.includes(relative)) {
-      assert.equal(asar.statFile(archive, relative).unpacked, true, relative);
+      assert.equal(asar.statFile(archive, archiveRelative).unpacked, true, relative);
       assert.deepEqual(fs.readFileSync(file), bytes);
       physical.push(file);
     } else {
-      assert.notEqual(asar.statFile(archive, relative).unpacked, true, relative);
+      assert.notEqual(asar.statFile(archive, archiveRelative).unpacked, true, relative);
       assert.equal(fs.existsSync(file), false, relative);
-      assert.deepEqual(asar.extractFile(archive, relative), bytes);
+      assert.deepEqual(asar.extractFile(archive, archiveRelative), bytes);
     }
   }
+  // Exercise the pinned library's Windows traversal on every host using the
+  // real archive header, rather than assuming POSIX separators are portable.
+  const asarRequire = createRequire(libRequire.resolve('@electron/asar'));
+  const filesystemSource = fs.readFileSync(asarRequire.resolve('./filesystem'), 'utf8');
+  const windowsModule = { exports: {} };
+  vm.runInNewContext(filesystemSource, {
+    module: windowsModule,
+    exports: windowsModule.exports,
+    require: name => (name === 'path' ? path.win32 : asarRequire(name)),
+  });
+  const windowsFilesystem = new windowsModule.exports.Filesystem('C:\\fixture\\app.asar');
+  const header = asar.getRawHeader(archive);
+  windowsFilesystem.setHeader(JSON.parse(header.headerString), header.headerSize);
+  assert.throws(
+    () => windowsFilesystem.getFile(external[0]),
+    /was not found in this archive/,
+    'Raw POSIX entry paths reproduce the Windows lookup failure.',
+  );
+  for (const relative of files.keys())
+    assert.equal(
+      windowsFilesystem.getFile(path.win32.normalize(relative)).unpacked === true,
+      external.includes(relative),
+      relative,
+    );
   const output = execFileSync(
     process.execPath,
     [

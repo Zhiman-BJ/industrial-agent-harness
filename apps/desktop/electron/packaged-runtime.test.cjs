@@ -183,3 +183,123 @@ for (const failure of [false, true]) {
     assert.equal(fs.existsSync(fixture), false);
   });
 }
+
+function windowsFixture(t, { diagnosisError, closeError, removalError } = {}) {
+  let directory,
+    closed = false;
+  const calls = [];
+  const module = { exports: {} };
+  const filesystem = {
+    ...fs,
+    rmSync(file, options) {
+      assert.equal(file, directory);
+      assert.equal(closed, true, 'Removal must follow the awaited service close.');
+      assert.deepEqual(
+        { ...options },
+        {
+          recursive: true,
+          force: true,
+          maxRetries: 5,
+          retryDelay: 100,
+        },
+      );
+      calls.push('remove');
+      if (removalError) throw removalError;
+      return fs.rmSync(file, options);
+    },
+  };
+  vm.runInNewContext(
+    fs.readFileSync(path.join(__dirname, 'packaged-runtime-selftest.cjs'), 'utf8'),
+    {
+      module,
+      process: { platform: 'win32', arch: 'x64', execPath: process.execPath, env: process.env },
+      require: name => (name === 'node:fs' ? filesystem : require(name)),
+    },
+  );
+  class TaskService {
+    constructor(options) {
+      directory = path.dirname(options.resourceDirectory);
+      t.after(() =>
+        fs.rmSync(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }),
+      );
+    }
+    async diagnose() {
+      calls.push('diagnose');
+      if (diagnosisError) throw diagnosisError;
+      const result = report(
+        'unavailable',
+        'Protected local task execution is unavailable on this platform.',
+      );
+      result.report.platform = 'win32';
+      result.report.arch = 'x64';
+      return result;
+    }
+    async close() {
+      await Promise.resolve();
+      closed = true;
+      calls.push('close');
+      if (closeError) throw closeError;
+    }
+  }
+  return {
+    calls,
+    run: () => module.exports.run({ TaskService, getRegistry: () => ({}) }),
+    exists: () => fs.existsSync(directory),
+  };
+}
+
+test('Windows fixture cleanup requests bounded native EPERM retries after awaited close', async t => {
+  const instance = windowsFixture(t);
+  assert.equal((await instance.run()).actionId, 'environment-action');
+  assert.deepEqual(instance.calls, ['diagnose', 'close', 'remove']);
+  assert.equal(instance.exists(), false);
+});
+
+test('exhausted cleanup EPERM remains a failure after successful diagnosis', async t => {
+  const removalError = Object.assign(Error('EPERM after native removal retries'), {
+    code: 'EPERM',
+  });
+  const instance = windowsFixture(t, { removalError });
+  await assert.rejects(instance.run(), error => error === removalError);
+  assert.deepEqual(instance.calls, ['diagnose', 'close', 'remove']);
+  assert.equal(instance.exists(), true);
+});
+
+test('cleanup EPERM preserves the original diagnosis error as the first cause', async t => {
+  const diagnosisError = Error('original diagnosis failure');
+  const removalError = Object.assign(Error('EPERM after native removal retries'), {
+    code: 'EPERM',
+  });
+  const instance = windowsFixture(t, { diagnosisError, removalError });
+  await assert.rejects(instance.run(), error => {
+    assert.equal(error.name, 'AggregateError');
+    assert.equal(error.cause, diagnosisError);
+    assert.deepEqual(Array.from(error.errors), [diagnosisError, removalError]);
+    return true;
+  });
+  assert.deepEqual(instance.calls, ['diagnose', 'close', 'remove']);
+});
+
+test('diagnosis, service-close and removal failures all remain visible in order', async t => {
+  const diagnosisError = Error('original diagnosis failure');
+  const closeError = Error('service close failure');
+  const removalError = Object.assign(Error('EPERM after native removal retries'), {
+    code: 'EPERM',
+  });
+  const instance = windowsFixture(t, { diagnosisError, closeError, removalError });
+  await assert.rejects(instance.run(), error => {
+    assert.equal(error.name, 'AggregateError');
+    assert.equal(error.cause, diagnosisError);
+    assert.deepEqual(Array.from(error.errors), [diagnosisError, closeError, removalError]);
+    return true;
+  });
+  assert.deepEqual(instance.calls, ['diagnose', 'close', 'remove']);
+});
+
+test('a service-close failure still removes the fixture and cannot become success', async t => {
+  const closeError = Error('service close failure');
+  const instance = windowsFixture(t, { closeError });
+  await assert.rejects(instance.run(), error => error === closeError);
+  assert.deepEqual(instance.calls, ['diagnose', 'close', 'remove']);
+  assert.equal(instance.exists(), false);
+});

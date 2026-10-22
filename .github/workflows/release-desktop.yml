@@ -152,6 +152,7 @@ jobs:
             & .\apps\desktop\node_modules\.bin\electron-builder.cmd --projectDir dist/desktop-stage-release --config "$env:GITHUB_WORKSPACE\electron-builder.config.cjs" --win nsis --publish never
           }
       - name: Verify packaged application first run
+        shell: bash
         run: |
           node scripts/smoke-packaged-desktop.cjs
           node scripts/smoke-packaged-kimi.cjs
