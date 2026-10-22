@@ -7,6 +7,7 @@ export interface ViewNavigation {
   zoomOut: () => void;
   fit: () => void;
   ready: boolean;
+  status?: 'loading' | 'ready' | 'error';
   percent?: number;
   description?: string;
 }
@@ -24,10 +25,11 @@ export function useViewNavigation(value: ViewNavigation) {
       zoomOut: () => latest.current.zoomOut(),
       fit: () => latest.current.fit(),
       ready: value.ready,
+      status: value.status,
       percent: value.percent,
       description: value.description,
     });
-  }, [publish, value.ready, value.percent, value.description]);
+  }, [publish, value.ready, value.status, value.percent, value.description]);
   // Updating the scale must not briefly remove an otherwise ready controller.
   // Clear it when the Viewer or its host changes, not on every zoom event.
   useEffect(() => () => publish?.(null), [publish]);

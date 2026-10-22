@@ -12,7 +12,7 @@ Harness 自有控件消费 `./text` 导出的只读展示 `DisplayTextProvider`�
 
 | 模块              | 渲染能力                                                                                                                                                 |
 | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/layout`      | KLayout Python `LayoutView` 按视口渲染 GDS                                                                                                               |
+| `src/layout`      | KLayout Python `LayoutView` 按视口渲染 GDS/OAS；WebGL 2.5D 按层概览、动态精确 tile、图层选择与 XY/二维对比                |
 | `src/netlist`     | netlistsvg 在独立 worker 中渲染 Yosys JSON 网表                                                                                                          |
 | `src/waveform`    | 本地 Surfer WASM 通过受限页面查看 VCD 等波形                                                                                                             |
 | `src/assets`      | 图片、Sprite 图集与动作动画；有界只读资源解析与 Canvas 预览                                                                                              |
@@ -33,6 +33,15 @@ pnpm --filter @industrial-agent-harness/viewer-builtin test
 `ViewerCanvas` 按需加载各 Viewport，加载期间显示状态，加载或渲染失败交给原有错误回调。桌面宿主只挂载与当前选中 Artifact ID 一致的 Viewer。导航状态更新直接发布新的控制器，卸载时清理，避免缩放过程中反复清空标题栏状态；进入全屏保留已挂载视图。
 
 接入说明见 [EDA Viewer 参考](../../doc/viewer-eda-reference.md)，通用约束见 [Viewer 层设计](../../doc/viewer-layer.md)。
+
+版图默认二维，切换立体时保留该二维 ROI，先逐层加载真实 KLayout 栅格概览，再根据立体相机、缩放和可见范围请求局部精确 tile；不自动缩小 ROI。密集 tile 超出精确预算时保留明确标识的概览，加载/失败/延后状态分别展示。固定世界坐标支持 XY 俯视、区域坐标/尺寸、图层选择/穿透高亮、隔离及二维对比；概览像素拾取与精确几何拾取有区别。层号与 datatype 来自源文件，包括未知用途图层；没有 PDK 层序、高度、金属/通孔或网络推断。继续使用共享缩放/Fit、滚轮/捏合与全屏。
+
+Desktop 将经 Artifact 摘要核对的源复制为私有只读快照；普通项目文件的 tile 请求复核源/快照身份与活动项目/token，不再每次对大源文件哈希两遍。recorded result 仍走 TaskService 的聊天/Action/结果组/配套与哈希校验，保留其成本。输入限制 128 MiB、快照每进程 256 MiB；仍是完整 KLayout 解析，没有外存索引或 GPU 实例复用，不能承诺任意大版图。依赖固定 KLayout Python 0.30.12 与 WebGL。
+
+当前显示缓存计账预算为 CPU 128 MiB、GPU 64 MiB、250000 个精确三角形；后端响应缓存 64 MiB、排队最多 32 项。精确 tile 限制 2000 次源图形出现、50000 源点、单图形 10000 点、20000 三角形、2 秒协作检查；tile worker 超时 8 秒。768 MiB worker RSS 监控是软保护，不是 OS 硬隔离；缓存预算也不等于整个进程内存上限。取消过期任务、丢弃旧响应与 LRU 释放保护当前有效覆盖；原生操作不能保证即时中断。
+
+本次构建、单元检查与 301 次后端请求验收通过；192 次精确 tile 对照及 64 次接缝检查无几何差异/假墙。浮动原点、DBU 网格 LOD（最深 30 级）及世界焦点保持的纯前端回归 25/25 通过；真实 HTTP Host 的 metadata/cancel/overview/detail 链路通过。该结果不代表 GPU/界面验收，Chrome 实际预览和新版原生 Electron 仍待完成。近千万逻辑实例 fixture 用于按层概览/局部请求，不代表千万三角形全量驻留。早期 macOS 验收仅覆盖此前整 ROI 实现，不替代本次修订。详细实现、预算与剩余边界见 [版图 Viewer](../../doc/viewer-layer.md#版图-25d-示意层叠)及[大版图方案与阶段记录](../../doc/layout-large-designs.md)。
+
 Godot 导出和桥接说明见 [Godot Viewer V1](../../doc/godot-viewer.md)。
 仓库内 [Godot Playground](../../examples/godot-viewer/README.md) 提供源项目和导出脚本；真实 Web 运行时与 Viewer 控制已在 macOS Electron 实测。
 

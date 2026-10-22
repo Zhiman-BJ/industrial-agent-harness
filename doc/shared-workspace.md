@@ -28,6 +28,12 @@ industrial_artifact_read 分页读取，单页最多 64 KiB。
 它会实际启动受保护的本地探针，检查已声明命令、依赖目录和本地 Docker 镜像，不下载依赖，
 不连接已注册外部 MCP。环境通过不表示工程测试通过。模型也可调用 project.environment.inspect。
 
+受保护本地探针使用固定的原生系统 Shell 输出就绪标记，不依赖宿主 Node/Electron 的
+`process.execPath`，也不需要继承 `ELECTRON_RUN_AS_NODE`。macOS 安装包的首次启动 smoke
+通过共享诊断接口独立校验该检查与 Action 身份；环境报告顶层 `ready` 不能代替检查本身，
+因为没有本地任务时探针失败不一定阻断整体就绪。回归命令和证据要求见
+[打包版受保护本地探针](qa-runbook/performance-recovery.md#打包版受保护本地探针)。
+
 在工程中创建 harness.tasks.json：
 
 ```json

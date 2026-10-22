@@ -1,0 +1,68 @@
+{
+  "date": "2026-10-19",
+  "scope": "Local HTTP adapter with production RasterService and immutable source snapshots; not browser GPU, Electron IPC, first-frame or FPS acceptance.",
+  "results": [
+    {
+      "fixture": "sobel-real",
+      "sourceHash": "88eb101db90f76a960f5b83e446423b7f8d66fa28240dc1110c49b6ceeabac95",
+      "cell": "sobel_top",
+      "layers": 22,
+      "layer": "17/0",
+      "box": [
+        120,
+        120,
+        130,
+        130
+      ],
+      "loadHttpMs": 356.87,
+      "overview": {
+        "mode": "overview",
+        "httpMs": 8.54,
+        "pngBase64Bytes": 2688
+      },
+      "detail": {
+        "mode": "exact",
+        "httpMs": 9.39,
+        "triangles": 226,
+        "shapes": 48,
+        "clipBox": [
+          120,
+          120,
+          130,
+          130
+        ]
+      }
+    },
+    {
+      "fixture": "sync-fifo-real",
+      "sourceHash": "8d51593e15cb0dfd179b7fee444daee9407773d49fe7e379596c366d172082cd",
+      "cell": "sync_fifo",
+      "layers": 41,
+      "layer": "68/20",
+      "box": [
+        111.707,
+        117.067,
+        121.707,
+        127.067
+      ],
+      "loadHttpMs": 112.07,
+      "overview": {
+        "mode": "overview",
+        "httpMs": 5.55,
+        "pngBase64Bytes": 4508
+      },
+      "detail": {
+        "mode": "exact",
+        "httpMs": 6.13,
+        "triangles": 1214,
+        "shapes": 156,
+        "clipBox": [
+          111.70700000000001,
+          117.06700000000001,
+          121.70700000000001,
+          127.06700000000001
+        ]
+      }
+    }
+  ]
+}

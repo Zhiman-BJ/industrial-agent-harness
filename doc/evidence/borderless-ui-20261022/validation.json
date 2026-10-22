@@ -218,5 +218,14 @@
     "desktopBuild": "desktop-build.txt",
     "desktopUnitTests": "desktop-unit.txt",
     "architectureTests": "architecture.txt"
+  },
+  "mainSynchronization": {
+    "mainCommit": "3f4e002350a5d96683dbe2dc10388cdf02f781ac",
+    "resolution": "Preserved main PD-095 and appended the borderless UI decision as PD-096. The tested CSS and UI selftest source hashes are unchanged.",
+    "desktopBuild": "passed; TypeScript check and Vite bundle completed",
+    "desktopBuildLog": "main-sync-build.txt",
+    "architectureChecker": "passed",
+    "prettierChangedFiles": "passed",
+    "nativeAcceptance": "The recorded native pass and screenshots were produced on sourceCommit before main synchronization; the native selftest was not rerun after synchronization."
   }
 }

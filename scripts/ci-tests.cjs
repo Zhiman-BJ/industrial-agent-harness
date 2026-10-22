@@ -40,8 +40,33 @@ const nativeInstalledFiles = [
   'tests/integration/pcb-godot-installed.test.cjs',
 ];
 const nativeTestCounts = { native: 72, 'native-installed': 3 };
+// Keep the portable assertions in these mixed files, while requiring every
+// KLayout assertion to execute in the Desktop PR lane with the pinned runtime.
+const layoutNativeFiles = [
+  'packages/viewer-builtin/tests/layout-geometry.test.cjs',
+  'packages/viewer-builtin/tests/layout-tiles.test.cjs',
+];
+const layoutNativeTestNames = [
+  'GDS holes keep their empty area and only their true boundary walls',
+  'hierarchy rotation, paths, hidden layers and offscreen geometry use real coordinates',
+  'geometry rejects stale identity and malformed bounds while preserving 2D rendering',
+  'dense view is rejected without returning partial geometry and a smaller view recovers',
+  'actual Sobel crop has the same per-layer XY regions as the source GDS',
+  'native adjacent exact tiles preserve holes, diagonal boundaries and transformed instances without seam walls',
+  'native dense multilayer full-chip requests return coverage overviews, then exact detail recovers',
+  'native single huge OASIS polygon falls back to a valid overview instead of rejecting the viewport',
+  'native tile identity and parameter rejection leave the worker usable; offscreen tiles are explicitly empty',
+  'native shared tile edges quantize consistently at exact, fractional and negative-half DBU boundaries',
+  'native worker enforces its own RSS budget during load without waiting for an external monitor',
+  'native exact caps retain positive winding for tiny geometry at a large world origin',
+];
+const layoutNativeTestCount = 23; // 12 KLayout assertions and 11 portable assertions.
 function testConcurrency(suite) {
-  return suite === 'native-installed' ? 1 : suite.startsWith('native') ? 2 : 4;
+  return suite === 'native-installed' || suite === 'layout-native'
+    ? 1
+    : suite.startsWith('native')
+      ? 2
+      : 4;
 }
 const transportFiles = [
   'tests/integration/external-mcp.test.cjs',
@@ -120,7 +145,10 @@ function allowedSkips(suite, platform = process.platform) {
     ];
   }
   if (suite !== 'portable') return [];
-  const skips = ['KLayout LayoutView renders a bounded GDS viewport when available'];
+  const skips = [
+    'KLayout LayoutView renders a bounded GDS viewport when available',
+    ...layoutNativeTestNames,
+  ];
   if (platform === 'win32') {
     skips.push(
       'timeout and cancellation kill descendants and close the result promise',
@@ -186,7 +214,7 @@ async function runFiles({
   // Keep a bounded watchdog below the 25-minute job limit; individual test
   // deadlines and the cancellation/skip gate still apply.
   timeout = suite === 'portable' ? 600000 : undefined,
-  expectedTests = nativeTestCounts[suite],
+  expectedTests = suite === 'layout-native' ? layoutNativeTestCount : nativeTestCounts[suite],
 }) {
   if (files.length === 0) throw Error('CI test catalog is empty.');
   for (const file of files) {
@@ -238,9 +266,15 @@ async function runFiles({
 async function main(suite) {
   // pnpm forwards an optional separator to scripts.
   if (
-    !['portable', 'native', 'native-installed', 'native-linux', 'benchmark', 'transport'].includes(
-      suite,
-    )
+    ![
+      'portable',
+      'native',
+      'native-installed',
+      'native-linux',
+      'layout-native',
+      'benchmark',
+      'transport',
+    ].includes(suite)
   )
     throw Error(`Unknown CI suite: ${suite}`);
   process.chdir(root);
@@ -250,6 +284,17 @@ async function main(suite) {
   ]) {
     if (process.env[variable] && process.env[variable] !== actual) {
       throw Error(`${variable}: expected ${process.env[variable]}, got ${actual}`);
+    }
+  }
+  if (suite === 'layout-native') {
+    const python = process.env.KLAYOUT_PYTHON;
+    if (!python) throw Error('layout-native requires KLAYOUT_PYTHON; skips are not acceptance.');
+    const result = spawnSync(python, ['-c', 'import klayout.db; import klayout.lay'], {
+      encoding: 'utf8',
+      timeout: 15000,
+    });
+    if (result.error || result.status !== 0) {
+      throw Error('layout-native requires a working KLayout db/lay Python runtime.');
     }
   }
   if (suite.startsWith('native')) {
@@ -297,9 +342,11 @@ async function main(suite) {
           ? nativeInstalledFiles
           : suite === 'native-linux'
             ? linuxNativeFiles
-            : suite === 'transport'
-              ? transportFiles
-              : ['tests/benchmark/paired.test.cjs'];
+            : suite === 'layout-native'
+              ? layoutNativeFiles
+              : suite === 'transport'
+                ? transportFiles
+                : ['tests/benchmark/paired.test.cjs'];
   const report = await runFiles({
     suite,
     files: files.map(file => path.join(root, file)),
@@ -316,6 +363,9 @@ module.exports = {
   nativeFiles,
   nativeInstalledFiles,
   nativeTestCounts,
+  layoutNativeFiles,
+  layoutNativeTestNames,
+  layoutNativeTestCount,
   testConcurrency,
   portableFiles,
 };

@@ -2,10 +2,28 @@
 import base64
 import json
 import math
+import os
 import sys
+
+# Keep native KLayout diagnostics off the line-delimited JSON protocol. GDS
+# reader warnings can write directly to fd 1, bypassing Python's sys.stdout.
+protocol = os.fdopen(os.dup(sys.stdout.fileno()), 'w', buffering=1)
+os.dup2(sys.stderr.fileno(), sys.stdout.fileno())
+
+
+def respond(message):
+    for key in ('result', 'preview'):
+        if key in message:
+            message[key]['resource'] = resource_status()
+    print(json.dumps(message), file=protocol, flush=True)
+
+
 import klayout.db as db
 import klayout.lay as lay
 from layout_themes import THEMES
+from geometry import extract_geometry
+from layout_tiles import render_tile
+from layout_resources import MemoryBudgetError, check_resources, resource_status
 
 view = None
 identity = None
@@ -14,10 +32,19 @@ for line in sys.stdin:
     request = {}
     try:
         request = json.loads(line)
+        check_resources()
         if request['op'] == 'load':
+            # No simultaneous old/new database residency during a replacement.
+            if view:
+                view.destroy()
+                view = None
+            identity = None
+            if os.path.getsize(request['path']) > 128 * 1024 * 1024:
+                raise ValueError('Layout import unsupported: input exceeds the 128 MiB local limit.')
             candidate = lay.LayoutView()
             try:
                 index = candidate.load_layout(request['path'], 0)
+                check_resources()
                 cv = candidate.cellview(index)
                 tops = list(cv.layout().top_cells())
                 if len(tops) != 1:
@@ -47,7 +74,17 @@ for line in sys.stdin:
                 view.destroy()
             view = candidate
             identity = request['token']
-            result = {'token': identity, 'cell': cv.cell.name, 'bbox': [bbox.left, bbox.bottom, bbox.right, bbox.top], 'layers': layers, 'klayout': db.__version__}
+            result = {'token': identity, 'cell': cv.cell.name, 'bbox': [bbox.left, bbox.bottom, bbox.right, bbox.top], 'layers': layers, 'klayout': db.__version__, 'dbu': cv.layout().dbu}
+        elif request['op'] == 'tile':
+            if view is None or request['token'] != identity:
+                raise ValueError('Layout selection changed; reopen this artifact.')
+            result = render_tile(view, request,
+                                 lambda preview: respond({'id': request['id'], 'preview': preview}))
+        elif request['op'] == 'geometry':
+            if view is None or request['token'] != identity:
+                raise ValueError('Layout selection changed; reopen this artifact.')
+            cv = view.active_cellview()
+            result = extract_geometry(cv.layout(), cv.cell, request)
         elif request['op'] == 'render':
             if view is None or request['token'] != identity:
                 raise ValueError('Layout selection changed; reopen this artifact.')
@@ -74,8 +111,12 @@ for line in sys.stdin:
             pixels.destroy()
         else:
             raise ValueError('Unknown operation.')
-        print(json.dumps({'id': request['id'], 'result': result}), flush=True)
+        check_resources()
+        respond({'id': request['id'], 'result': result})
     except Exception as error:
-        print(json.dumps({'id': request.get('id'), 'error': str(error)}), flush=True)
+        respond({'id': request.get('id'), 'error': str(error),
+                 'fatal': isinstance(error, MemoryBudgetError)})
+        if isinstance(error, MemoryBudgetError):
+            break
 if view:
     view.destroy()

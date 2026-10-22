@@ -1,0 +1,1420 @@
+{
+  "source": "examples/chip-sobel/outputs/sobel_layout.gds",
+  "sha256": "88eb101db90f76a960f5b83e446423b7f8d66fa28240dc1110c49b6ceeabac95",
+  "cell": "sobel_top",
+  "dbu": 0.001,
+  "klayout": "0.30.12",
+  "rois": [
+    {
+      "box": [
+        122.5,
+        122.5,
+        127.5,
+        127.5
+      ],
+      "integerClip": [
+        122500,
+        122500,
+        127500,
+        127500
+      ],
+      "layers": [
+        {
+          "key": "1/0",
+          "shapes": 30,
+          "triangles": 516,
+          "topTriangles": 98,
+          "sourceArea_um2": 6.785775,
+          "topArea_um2": 6.785775,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0.27143,
+          "clippedBounds": [
+            122.5,
+            122.5,
+            127.5,
+            127.5
+          ]
+        },
+        {
+          "key": "2/0",
+          "shapes": 25,
+          "triangles": 300,
+          "topTriangles": 50,
+          "sourceArea_um2": 11.8,
+          "topArea_um2": 11.8,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0.472,
+          "clippedBounds": [
+            122.5,
+            122.61,
+            127.5,
+            126.59
+          ]
+        },
+        {
+          "key": "3/0",
+          "shapes": 30,
+          "triangles": 360,
+          "topTriangles": 60,
+          "sourceArea_um2": 13.2,
+          "topArea_um2": 13.2,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0.528,
+          "clippedBounds": [
+            122.5,
+            122.5,
+            127.5,
+            127.5
+          ]
+        },
+        {
+          "key": "4/0",
+          "shapes": 25,
+          "triangles": 300,
+          "topTriangles": 50,
+          "sourceArea_um2": 11.5627,
+          "topArea_um2": 11.5627,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0.46251,
+          "clippedBounds": [
+            122.5,
+            122.61,
+            127.5,
+            126.59
+          ]
+        },
+        {
+          "key": "5/0",
+          "shapes": 30,
+          "triangles": 360,
+          "topTriangles": 60,
+          "sourceArea_um2": 12.9543,
+          "topArea_um2": 12.9543,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0.51817,
+          "clippedBounds": [
+            122.5,
+            122.5,
+            127.5,
+            127.5
+          ]
+        },
+        {
+          "key": "9/0",
+          "shapes": 46,
+          "triangles": 1456,
+          "topTriangles": 300,
+          "sourceArea_um2": 3.03345,
+          "topArea_um2": 3.03345,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0.12134,
+          "clippedBounds": [
+            122.5,
+            122.5,
+            127.5,
+            127.5
+          ]
+        },
+        {
+          "key": "10/0",
+          "shapes": 174,
+          "triangles": 2088,
+          "topTriangles": 348,
+          "sourceArea_um2": 0.713375,
+          "topArea_um2": 0.713375,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0.02854,
+          "clippedBounds": [
+            122.5,
+            122.575,
+            127.43,
+            127.28
+          ]
+        },
+        {
+          "key": "11/0",
+          "shapes": 128,
+          "triangles": 2596,
+          "topTriangles": 474,
+          "sourceArea_um2": 7.3594,
+          "topArea_um2": 7.3594,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0.29438,
+          "clippedBounds": [
+            122.5,
+            122.5,
+            127.5,
+            127.5
+          ]
+        },
+        {
+          "key": "12/0",
+          "shapes": 34,
+          "triangles": 408,
+          "topTriangles": 68,
+          "sourceArea_um2": 0.1666,
+          "topArea_um2": 0.1666,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0.00666,
+          "clippedBounds": [
+            122.8,
+            122.535,
+            127.43,
+            127.08500000000001
+          ]
+        },
+        {
+          "key": "13/0",
+          "shapes": 118,
+          "triangles": 1416,
+          "topTriangles": 236,
+          "sourceArea_um2": 4.65255,
+          "topArea_um2": 4.65255,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0.1861,
+          "clippedBounds": [
+            122.61,
+            122.5,
+            127.5,
+            127.5
+          ]
+        },
+        {
+          "key": "14/0",
+          "shapes": 42,
+          "triangles": 504,
+          "topTriangles": 84,
+          "sourceArea_um2": 0.20545,
+          "topArea_um2": 0.20545,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0.00822,
+          "clippedBounds": [
+            122.8,
+            122.535,
+            127.43,
+            127.5
+          ]
+        },
+        {
+          "key": "15/0",
+          "shapes": 97,
+          "triangles": 1164,
+          "topTriangles": 194,
+          "sourceArea_um2": 5.381625,
+          "topArea_um2": 5.381625,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0.21527,
+          "clippedBounds": [
+            122.5,
+            122.535,
+            127.5,
+            127.5
+          ]
+        },
+        {
+          "key": "16/0",
+          "shapes": 14,
+          "triangles": 168,
+          "topTriangles": 28,
+          "sourceArea_um2": 0.06615,
+          "topArea_um2": 0.06615,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0.00265,
+          "clippedBounds": [
+            122.98,
+            122.675,
+            127.5,
+            127.5
+          ]
+        },
+        {
+          "key": "17/0",
+          "shapes": 25,
+          "triangles": 300,
+          "topTriangles": 50,
+          "sourceArea_um2": 8.0268,
+          "topArea_um2": 8.0268,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0.32107,
+          "clippedBounds": [
+            122.5,
+            122.5,
+            127.5,
+            127.5
+          ]
+        },
+        {
+          "key": "18/0",
+          "shapes": 0,
+          "triangles": 0,
+          "topTriangles": 0,
+          "sourceArea_um2": 0,
+          "topArea_um2": 0,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0
+        },
+        {
+          "key": "19/0",
+          "shapes": 0,
+          "triangles": 0,
+          "topTriangles": 0,
+          "sourceArea_um2": 0,
+          "topArea_um2": 0,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0
+        },
+        {
+          "key": "20/0",
+          "shapes": 0,
+          "triangles": 0,
+          "topTriangles": 0,
+          "sourceArea_um2": 0,
+          "topArea_um2": 0,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0
+        },
+        {
+          "key": "21/0",
+          "shapes": 0,
+          "triangles": 0,
+          "topTriangles": 0,
+          "sourceArea_um2": 0,
+          "topArea_um2": 0,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0
+        },
+        {
+          "key": "22/0",
+          "shapes": 0,
+          "triangles": 0,
+          "topTriangles": 0,
+          "sourceArea_um2": 0,
+          "topArea_um2": 0,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0
+        },
+        {
+          "key": "23/0",
+          "shapes": 0,
+          "triangles": 0,
+          "topTriangles": 0,
+          "sourceArea_um2": 0,
+          "topArea_um2": 0,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0
+        },
+        {
+          "key": "63/63",
+          "shapes": 0,
+          "triangles": 0,
+          "topTriangles": 0,
+          "sourceArea_um2": 0,
+          "topArea_um2": 0,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0
+        },
+        {
+          "key": "235/0",
+          "shapes": 31,
+          "triangles": 372,
+          "topTriangles": 62,
+          "sourceArea_um2": 25,
+          "topArea_um2": 25,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 1,
+          "clippedBounds": [
+            122.5,
+            122.5,
+            127.5,
+            127.5
+          ]
+        }
+      ],
+      "topDiffArea_um2": 0,
+      "allShapes": 849,
+      "allTriangles": 12308
+    },
+    {
+      "box": [
+        120.7355,
+        120.7355,
+        129.2645,
+        129.2645
+      ],
+      "integerClip": [
+        120736,
+        120736,
+        129264,
+        129264
+      ],
+      "layers": [
+        {
+          "key": "1/0",
+          "shapes": 53,
+          "triangles": 868,
+          "topTriangles": 162,
+          "sourceArea_um2": 17.865215,
+          "topArea_um2": 17.865215,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0.24565,
+          "clippedBounds": [
+            120.736,
+            120.736,
+            129.264,
+            129.264
+          ]
+        },
+        {
+          "key": "2/0",
+          "shapes": 71,
+          "triangles": 852,
+          "topTriangles": 142,
+          "sourceArea_um2": 31.280704,
+          "topArea_um2": 31.280704,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0.43011,
+          "clippedBounds": [
+            120.736,
+            120.736,
+            129.264,
+            129.264
+          ]
+        },
+        {
+          "key": "3/0",
+          "shapes": 59,
+          "triangles": 708,
+          "topTriangles": 118,
+          "sourceArea_um2": 41.44608,
+          "topArea_um2": 41.44608,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0.56989,
+          "clippedBounds": [
+            120.736,
+            120.99000000000001,
+            129.264,
+            128.21
+          ]
+        },
+        {
+          "key": "4/0",
+          "shapes": 70,
+          "triangles": 840,
+          "topTriangles": 140,
+          "sourceArea_um2": 30.348864,
+          "topArea_um2": 30.348864,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0.4173,
+          "clippedBounds": [
+            120.736,
+            120.736,
+            129.264,
+            129.264
+          ]
+        },
+        {
+          "key": "5/0",
+          "shapes": 58,
+          "triangles": 696,
+          "topTriangles": 116,
+          "sourceArea_um2": 40.34708,
+          "topArea_um2": 40.34708,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0.55478,
+          "clippedBounds": [
+            120.736,
+            120.99000000000001,
+            129.264,
+            128.21
+          ]
+        },
+        {
+          "key": "9/0",
+          "shapes": 92,
+          "triangles": 2936,
+          "topTriangles": 604,
+          "sourceArea_um2": 7.141245,
+          "topArea_um2": 7.141245,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0.09819,
+          "clippedBounds": [
+            120.765,
+            120.736,
+            129.264,
+            129.264
+          ]
+        },
+        {
+          "key": "10/0",
+          "shapes": 425,
+          "triangles": 5100,
+          "topTriangles": 850,
+          "sourceArea_um2": 1.75968,
+          "topArea_um2": 1.75968,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0.0242,
+          "clippedBounds": [
+            120.736,
+            120.736,
+            129.264,
+            129.19
+          ]
+        },
+        {
+          "key": "11/0",
+          "shapes": 287,
+          "triangles": 5900,
+          "topTriangles": 1070,
+          "sourceArea_um2": 17.80678,
+          "topArea_um2": 17.80678,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0.24484,
+          "clippedBounds": [
+            120.736,
+            120.736,
+            129.264,
+            129.264
+          ]
+        },
+        {
+          "key": "12/0",
+          "shapes": 73,
+          "triangles": 876,
+          "topTriangles": 146,
+          "sourceArea_um2": 0.3577,
+          "topArea_um2": 0.3577,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0.00492,
+          "clippedBounds": [
+            120.9,
+            120.995,
+            129.14000000000001,
+            129.185
+          ]
+        },
+        {
+          "key": "13/0",
+          "shapes": 307,
+          "triangles": 3684,
+          "topTriangles": 614,
+          "sourceArea_um2": 14.382067,
+          "topArea_um2": 14.382067,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0.19775,
+          "clippedBounds": [
+            120.736,
+            120.736,
+            129.264,
+            129.264
+          ]
+        },
+        {
+          "key": "14/0",
+          "shapes": 106,
+          "triangles": 1272,
+          "topTriangles": 212,
+          "sourceArea_um2": 0.50575,
+          "topArea_um2": 0.50575,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0.00695,
+          "clippedBounds": [
+            120.736,
+            120.736,
+            129.264,
+            129.264
+          ]
+        },
+        {
+          "key": "15/0",
+          "shapes": 225,
+          "triangles": 2700,
+          "topTriangles": 450,
+          "sourceArea_um2": 12.812291,
+          "topArea_um2": 12.812291,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0.17617,
+          "clippedBounds": [
+            120.736,
+            120.736,
+            129.264,
+            129.264
+          ]
+        },
+        {
+          "key": "16/0",
+          "shapes": 25,
+          "triangles": 300,
+          "topTriangles": 50,
+          "sourceArea_um2": 0.12103,
+          "topArea_um2": 0.12103,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0.00166,
+          "clippedBounds": [
+            122.7,
+            120.736,
+            128.93,
+            129.185
+          ]
+        },
+        {
+          "key": "17/0",
+          "shapes": 39,
+          "triangles": 468,
+          "topTriangles": 78,
+          "sourceArea_um2": 17.65328,
+          "topArea_um2": 17.65328,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0.24273,
+          "clippedBounds": [
+            122.105,
+            120.736,
+            128.965,
+            129.264
+          ]
+        },
+        {
+          "key": "18/0",
+          "shapes": 0,
+          "triangles": 0,
+          "topTriangles": 0,
+          "sourceArea_um2": 0,
+          "topArea_um2": 0,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0
+        },
+        {
+          "key": "19/0",
+          "shapes": 0,
+          "triangles": 0,
+          "topTriangles": 0,
+          "sourceArea_um2": 0,
+          "topArea_um2": 0,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0
+        },
+        {
+          "key": "20/0",
+          "shapes": 0,
+          "triangles": 0,
+          "topTriangles": 0,
+          "sourceArea_um2": 0,
+          "topArea_um2": 0,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0
+        },
+        {
+          "key": "21/0",
+          "shapes": 0,
+          "triangles": 0,
+          "topTriangles": 0,
+          "sourceArea_um2": 0,
+          "topArea_um2": 0,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0
+        },
+        {
+          "key": "22/0",
+          "shapes": 0,
+          "triangles": 0,
+          "topTriangles": 0,
+          "sourceArea_um2": 0,
+          "topArea_um2": 0,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0
+        },
+        {
+          "key": "23/0",
+          "shapes": 0,
+          "triangles": 0,
+          "topTriangles": 0,
+          "sourceArea_um2": 0,
+          "topArea_um2": 0,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0
+        },
+        {
+          "key": "63/63",
+          "shapes": 0,
+          "triangles": 0,
+          "topTriangles": 0,
+          "sourceArea_um2": 0,
+          "topArea_um2": 0,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0
+        },
+        {
+          "key": "235/0",
+          "shapes": 71,
+          "triangles": 852,
+          "topTriangles": 142,
+          "sourceArea_um2": 72.726784,
+          "topArea_um2": 72.726784,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 1,
+          "clippedBounds": [
+            120.736,
+            120.736,
+            129.264,
+            129.264
+          ]
+        }
+      ],
+      "topDiffArea_um2": 0,
+      "allShapes": 1961,
+      "allTriangles": 28052
+    },
+    {
+      "box": [
+        120,
+        120,
+        130,
+        130
+      ],
+      "integerClip": [
+        120000,
+        120000,
+        130000,
+        130000
+      ],
+      "layers": [
+        {
+          "key": "1/0",
+          "shapes": 66,
+          "triangles": 1080,
+          "topTriangles": 202,
+          "sourceArea_um2": 23.037125,
+          "topArea_um2": 23.037125,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0.23037,
+          "clippedBounds": [
+            120,
+            120,
+            129.9,
+            130
+          ]
+        },
+        {
+          "key": "2/0",
+          "shapes": 94,
+          "triangles": 1128,
+          "topTriangles": 188,
+          "sourceArea_um2": 45.3,
+          "topArea_um2": 45.3,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0.453,
+          "clippedBounds": [
+            120,
+            120,
+            130,
+            129.39000000000001
+          ]
+        },
+        {
+          "key": "3/0",
+          "shapes": 82,
+          "triangles": 984,
+          "topTriangles": 164,
+          "sourceArea_um2": 54.7,
+          "topArea_um2": 54.7,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0.547,
+          "clippedBounds": [
+            120,
+            120.99000000000001,
+            130,
+            130
+          ]
+        },
+        {
+          "key": "4/0",
+          "shapes": 89,
+          "triangles": 1068,
+          "topTriangles": 178,
+          "sourceArea_um2": 44.0537,
+          "topArea_um2": 44.0537,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0.44054,
+          "clippedBounds": [
+            120,
+            120,
+            130,
+            129.39000000000001
+          ]
+        },
+        {
+          "key": "5/0",
+          "shapes": 78,
+          "triangles": 936,
+          "topTriangles": 156,
+          "sourceArea_um2": 53.190425,
+          "topArea_um2": 53.190425,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0.5319,
+          "clippedBounds": [
+            120,
+            120.99000000000001,
+            130,
+            130
+          ]
+        },
+        {
+          "key": "9/0",
+          "shapes": 109,
+          "triangles": 3604,
+          "topTriangles": 746,
+          "sourceArea_um2": 9.005,
+          "topArea_um2": 9.005,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0.09005,
+          "clippedBounds": [
+            120.095,
+            120,
+            129.79500000000002,
+            130
+          ]
+        },
+        {
+          "key": "10/0",
+          "shapes": 560,
+          "triangles": 6720,
+          "topTriangles": 1120,
+          "sourceArea_um2": 2.340325,
+          "topArea_um2": 2.340325,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0.0234,
+          "clippedBounds": [
+            120,
+            120.01,
+            129.895,
+            130
+          ]
+        },
+        {
+          "key": "11/0",
+          "shapes": 383,
+          "triangles": 7608,
+          "topTriangles": 1382,
+          "sourceArea_um2": 23.677175,
+          "topArea_um2": 23.677175,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0.23677,
+          "clippedBounds": [
+            120,
+            120,
+            130,
+            130
+          ]
+        },
+        {
+          "key": "12/0",
+          "shapes": 100,
+          "triangles": 1200,
+          "topTriangles": 200,
+          "sourceArea_um2": 0.48475,
+          "topArea_um2": 0.48475,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0.00485,
+          "clippedBounds": [
+            120,
+            120.155,
+            129.9,
+            130
+          ]
+        },
+        {
+          "key": "13/0",
+          "shapes": 392,
+          "triangles": 4704,
+          "topTriangles": 784,
+          "sourceArea_um2": 19.8707,
+          "topArea_um2": 19.8707,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0.19871,
+          "clippedBounds": [
+            120,
+            120,
+            129.9,
+            130
+          ]
+        },
+        {
+          "key": "14/0",
+          "shapes": 135,
+          "triangles": 1620,
+          "topTriangles": 270,
+          "sourceArea_um2": 0.651,
+          "topArea_um2": 0.651,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0.00651,
+          "clippedBounds": [
+            120,
+            120.015,
+            129.9,
+            129.885
+          ]
+        },
+        {
+          "key": "15/0",
+          "shapes": 291,
+          "triangles": 3492,
+          "topTriangles": 582,
+          "sourceArea_um2": 18.0446,
+          "topArea_um2": 18.0446,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0.18045,
+          "clippedBounds": [
+            120,
+            120.015,
+            130,
+            129.885
+          ]
+        },
+        {
+          "key": "16/0",
+          "shapes": 33,
+          "triangles": 396,
+          "topTriangles": 66,
+          "sourceArea_um2": 0.1617,
+          "topArea_um2": 0.1617,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0.00162,
+          "clippedBounds": [
+            122.14,
+            120.155,
+            129.77,
+            129.465
+          ]
+        },
+        {
+          "key": "17/0",
+          "shapes": 48,
+          "triangles": 576,
+          "topTriangles": 96,
+          "sourceArea_um2": 22.3112,
+          "topArea_um2": 22.3112,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0.22311,
+          "clippedBounds": [
+            120.145,
+            120,
+            129.805,
+            130
+          ]
+        },
+        {
+          "key": "18/0",
+          "shapes": 0,
+          "triangles": 0,
+          "topTriangles": 0,
+          "sourceArea_um2": 0,
+          "topArea_um2": 0,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0
+        },
+        {
+          "key": "19/0",
+          "shapes": 0,
+          "triangles": 0,
+          "topTriangles": 0,
+          "sourceArea_um2": 0,
+          "topArea_um2": 0,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0
+        },
+        {
+          "key": "20/0",
+          "shapes": 0,
+          "triangles": 0,
+          "topTriangles": 0,
+          "sourceArea_um2": 0,
+          "topArea_um2": 0,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0
+        },
+        {
+          "key": "21/0",
+          "shapes": 0,
+          "triangles": 0,
+          "topTriangles": 0,
+          "sourceArea_um2": 0,
+          "topArea_um2": 0,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0
+        },
+        {
+          "key": "22/0",
+          "shapes": 0,
+          "triangles": 0,
+          "topTriangles": 0,
+          "sourceArea_um2": 0,
+          "topArea_um2": 0,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0
+        },
+        {
+          "key": "23/0",
+          "shapes": 0,
+          "triangles": 0,
+          "topTriangles": 0,
+          "sourceArea_um2": 0,
+          "topArea_um2": 0,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0
+        },
+        {
+          "key": "63/63",
+          "shapes": 0,
+          "triangles": 0,
+          "topTriangles": 0,
+          "sourceArea_um2": 0,
+          "topArea_um2": 0,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0
+        },
+        {
+          "key": "235/0",
+          "shapes": 94,
+          "triangles": 1128,
+          "topTriangles": 188,
+          "sourceArea_um2": 100,
+          "topArea_um2": 100,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 1,
+          "clippedBounds": [
+            120,
+            120,
+            130,
+            130
+          ]
+        }
+      ],
+      "topDiffArea_um2": 0,
+      "allShapes": 2554,
+      "allTriangles": 36244
+    },
+    {
+      "box": [
+        117.5,
+        117.5,
+        132.5,
+        132.5
+      ],
+      "integerClip": [
+        117500,
+        117500,
+        132500,
+        132500
+      ],
+      "layers": [
+        {
+          "key": "1/0",
+          "shapes": 158,
+          "triangles": 2740,
+          "topTriangles": 520,
+          "sourceArea_um2": 46.791775,
+          "topArea_um2": 46.791775,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0.20796,
+          "clippedBounds": [
+            117.5,
+            117.5,
+            132.5,
+            132.5
+          ]
+        },
+        {
+          "key": "2/0",
+          "shapes": 175,
+          "triangles": 2100,
+          "topTriangles": 350,
+          "sourceArea_um2": 98.85,
+          "topArea_um2": 98.85,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0.43933,
+          "clippedBounds": [
+            117.5,
+            117.5,
+            132.5,
+            132.19
+          ]
+        },
+        {
+          "key": "3/0",
+          "shapes": 168,
+          "triangles": 2016,
+          "topTriangles": 336,
+          "sourceArea_um2": 126.15,
+          "topArea_um2": 126.15,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0.56067,
+          "clippedBounds": [
+            117.5,
+            118.19,
+            132.5,
+            132.5
+          ]
+        },
+        {
+          "key": "4/0",
+          "shapes": 168,
+          "triangles": 2016,
+          "topTriangles": 336,
+          "sourceArea_um2": 96.4996,
+          "topArea_um2": 96.4996,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0.42889,
+          "clippedBounds": [
+            117.5,
+            117.5,
+            132.5,
+            132.19
+          ]
+        },
+        {
+          "key": "5/0",
+          "shapes": 161,
+          "triangles": 1932,
+          "topTriangles": 322,
+          "sourceArea_um2": 123.10065,
+          "topArea_um2": 123.10065,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0.54711,
+          "clippedBounds": [
+            117.5,
+            118.19,
+            132.5,
+            132.5
+          ]
+        },
+        {
+          "key": "9/0",
+          "shapes": 254,
+          "triangles": 8016,
+          "topTriangles": 1676,
+          "sourceArea_um2": 19.418725,
+          "topArea_um2": 19.418725,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0.08631,
+          "clippedBounds": [
+            117.5,
+            117.5,
+            132.5,
+            132.5
+          ]
+        },
+        {
+          "key": "10/0",
+          "shapes": 1174,
+          "triangles": 14088,
+          "topTriangles": 2348,
+          "sourceArea_um2": 4.904575,
+          "topArea_um2": 4.904575,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0.0218,
+          "clippedBounds": [
+            117.5,
+            117.73,
+            132.5,
+            132.225
+          ]
+        },
+        {
+          "key": "11/0",
+          "shapes": 820,
+          "triangles": 16552,
+          "topTriangles": 3034,
+          "sourceArea_um2": 53.73285,
+          "topArea_um2": 53.73285,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0.23881,
+          "clippedBounds": [
+            117.5,
+            117.5,
+            132.5,
+            132.5
+          ]
+        },
+        {
+          "key": "12/0",
+          "shapes": 210,
+          "triangles": 2520,
+          "topTriangles": 420,
+          "sourceArea_um2": 1.01745,
+          "topArea_um2": 1.01745,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0.00452,
+          "clippedBounds": [
+            117.5,
+            117.565,
+            132.37,
+            132.5
+          ]
+        },
+        {
+          "key": "13/0",
+          "shapes": 816,
+          "triangles": 9792,
+          "topTriangles": 1632,
+          "sourceArea_um2": 42.472,
+          "topArea_um2": 42.472,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0.18876,
+          "clippedBounds": [
+            117.5,
+            117.5,
+            132.5,
+            132.5
+          ]
+        },
+        {
+          "key": "14/0",
+          "shapes": 278,
+          "triangles": 3336,
+          "topTriangles": 556,
+          "sourceArea_um2": 1.3524,
+          "topArea_um2": 1.3524,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0.00601,
+          "clippedBounds": [
+            117.5,
+            117.565,
+            132.5,
+            132.405
+          ]
+        },
+        {
+          "key": "15/0",
+          "shapes": 550,
+          "triangles": 6600,
+          "topTriangles": 1100,
+          "sourceArea_um2": 36.55365,
+          "topArea_um2": 36.55365,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0.16246,
+          "clippedBounds": [
+            117.5,
+            117.53,
+            132.5,
+            132.405
+          ]
+        },
+        {
+          "key": "16/0",
+          "shapes": 53,
+          "triangles": 636,
+          "topTriangles": 106,
+          "sourceArea_um2": 0.2597,
+          "topArea_um2": 0.2597,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0.00115,
+          "clippedBounds": [
+            119.06,
+            117.565,
+            131.17000000000002,
+            132.26500000000001
+          ]
+        },
+        {
+          "key": "17/0",
+          "shapes": 74,
+          "triangles": 888,
+          "topTriangles": 148,
+          "sourceArea_um2": 33.996,
+          "topArea_um2": 33.996,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0.15109,
+          "clippedBounds": [
+            119.025,
+            117.5,
+            131.205,
+            132.5
+          ]
+        },
+        {
+          "key": "18/0",
+          "shapes": 0,
+          "triangles": 0,
+          "topTriangles": 0,
+          "sourceArea_um2": 0,
+          "topArea_um2": 0,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0
+        },
+        {
+          "key": "19/0",
+          "shapes": 0,
+          "triangles": 0,
+          "topTriangles": 0,
+          "sourceArea_um2": 0,
+          "topArea_um2": 0,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0
+        },
+        {
+          "key": "20/0",
+          "shapes": 0,
+          "triangles": 0,
+          "topTriangles": 0,
+          "sourceArea_um2": 0,
+          "topArea_um2": 0,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0
+        },
+        {
+          "key": "21/0",
+          "shapes": 0,
+          "triangles": 0,
+          "topTriangles": 0,
+          "sourceArea_um2": 0,
+          "topArea_um2": 0,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0
+        },
+        {
+          "key": "22/0",
+          "shapes": 0,
+          "triangles": 0,
+          "topTriangles": 0,
+          "sourceArea_um2": 0,
+          "topArea_um2": 0,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0
+        },
+        {
+          "key": "23/0",
+          "shapes": 1,
+          "triangles": 12,
+          "topTriangles": 2,
+          "sourceArea_um2": 21,
+          "topArea_um2": 21,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0.09333,
+          "clippedBounds": [
+            117.5,
+            117.5,
+            132.5,
+            118.9
+          ]
+        },
+        {
+          "key": "63/63",
+          "shapes": 0,
+          "triangles": 0,
+          "topTriangles": 0,
+          "sourceArea_um2": 0,
+          "topArea_um2": 0,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 0
+        },
+        {
+          "key": "235/0",
+          "shapes": 175,
+          "triangles": 2100,
+          "topTriangles": 350,
+          "sourceArea_um2": 225,
+          "topArea_um2": 225,
+          "missing_um2": 0,
+          "extra_um2": 0,
+          "coverage": 1,
+          "clippedBounds": [
+            117.5,
+            117.5,
+            132.5,
+            132.5
+          ]
+        }
+      ],
+      "topDiffArea_um2": 0,
+      "allShapes": 5235,
+      "allTriangles": 75344
+    }
+  ],
+  "sourceUnchanged": true
+}

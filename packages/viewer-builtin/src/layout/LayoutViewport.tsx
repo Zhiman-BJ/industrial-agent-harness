@@ -1,259 +1,88 @@
-import { useDisplayText } from '../text';
-import { useEffect, useRef, useState } from 'react';
+import { useContext, useRef, useState } from 'react';
 import { Layers } from 'lucide-react';
 import type { LayoutMeta } from '../api';
-import { useViewNavigation, wheelZoomFactor } from '../navigation';
+import { useDisplayText } from '../text';
+import { ViewNavigationContext } from '../navigation';
+import { LayoutRasterViewport } from './LayoutRasterViewport';
+import type { RasterControls } from './LayoutRasterViewport';
+import { Layout3DViewport } from './Layout3DViewport';
 
-type Controls = {
-  zoom: (factor: number) => void;
-  fit: () => void;
-  layers: (keys: string[]) => void;
-  theme: (name: string) => void;
-};
-export function LayoutViewport({
-  meta,
-  onReady,
-  onError,
-}: {
-  meta: LayoutMeta;
-  onReady: () => void;
-  onError: (message: string) => void;
-}) {
+type Props = { meta: LayoutMeta; onReady: () => void; onError: (message: string) => void };
+export function LayoutViewport(props: Props) {
+  return <LayoutViews key={props.meta.token} {...props} />;
+}
+function LayoutViews({ meta, onReady, onError }: Props) {
   const { t } = useDisplayText();
-  const host = useRef<HTMLDivElement>(null);
-  const canvas = useRef<HTMLCanvasElement>(null);
-  const controls = useRef<Controls | undefined>(undefined);
-  const ready = useRef(onReady);
-  ready.current = onReady;
-  const failure = useRef(onError);
-  failure.current = onError;
+  const publish = useContext(ViewNavigationContext);
+  const controls = useRef<RasterControls | undefined>(undefined);
   const [theme, setTheme] = useState('02_blueprint');
-  const [visible, setVisible] = useState(meta.layers.map(l => l.key));
-  const [error, setError] = useState('');
+  const [visible, setVisible] = useState(meta.layers.map(layer => layer.key));
   const [layerMenu, setLayerMenu] = useState(false);
-  const [span, setSpan] = useState('');
-  const [percent, setPercent] = useState(100);
-  useViewNavigation({
-    ready: !error,
-    percent,
-    zoomIn: () => controls.current?.zoom(0.8),
-    zoomOut: () => controls.current?.zoom(1.25),
-    fit: () => controls.current?.fit(),
-  });
-  useEffect(() => {
-    const element = host.current!,
-      surface = canvas.current!,
-      ctx = surface.getContext('2d')!;
-    let disposed = false,
-      busy = false,
-      dirty = false,
-      revision = 0,
-      styleRevision = 0,
-      lastInput = 0;
-    let timer: ReturnType<typeof setTimeout> | undefined,
-      settle: ReturnType<typeof setTimeout> | undefined;
-    let frame: { image: ImageBitmap; box: number[] } | null = null;
-    let themeName = '02_blueprint';
-    let w = 800,
-      h = 600,
-      fitHeight = 1,
-      cam = { x: 0, y: 0, h: 1 },
-      keys = meta.layers.map(l => l.key);
-    let drag: { x: number; y: number; cam: typeof cam } | null = null;
-    function box() {
-      const width = (cam.h * w) / h;
-      return [cam.x - width / 2, cam.y - cam.h / 2, cam.x + width / 2, cam.y + cam.h / 2];
-    }
-    function draw() {
-      ctx.fillStyle = (
-        {
-          '01_neon': '#05090f',
-          '02_blueprint': '#071421',
-          '03_ember': '#120d13',
-          '04_routing': '#080c12',
-        } as Record<string, string>
-      )[themeName];
-      ctx.fillRect(0, 0, surface.width, surface.height);
-      if (frame) {
-        const b = box(),
-          scale = surface.height / cam.h;
-        ctx.drawImage(
-          frame.image,
-          (frame.box[0] - b[0]) * scale,
-          (b[3] - frame.box[3]) * scale,
-          (frame.box[2] - frame.box[0]) * scale,
-          (frame.box[3] - frame.box[1]) * scale,
-        );
-      }
-      setSpan(`${((cam.h * w) / h).toFixed(1)} µm · ${(fitHeight / cam.h).toFixed(2)}×`);
-      setPercent(Math.round((fitHeight / cam.h) * 100));
-    }
-    function schedule() {
-      if (!timer)
-        timer = setTimeout(() => {
-          timer = undefined;
-          void pump();
-        }, 12);
-    }
-    function change(style = false) {
-      revision++;
-      dirty = true;
-      lastInput = performance.now();
-      if (style) {
-        styleRevision++;
-        frame?.image.close();
-        frame = null;
-      }
-      draw();
-      schedule();
-      clearTimeout(settle);
-      settle = setTimeout(() => {
-        dirty = true;
-        schedule();
-      }, 170);
-    }
-    async function pump() {
-      if (disposed || busy || !dirty) return;
-      busy = true;
-      dirty = false;
-      const version = revision,
-        style = styleRevision;
-      try {
-        const result = await window.viewerHost!.render({
-          token: meta.token,
-          box: box(),
-          width: surface.width,
-          height: surface.height,
-          visible: keys,
-          theme: themeName,
-          quality: performance.now() - lastInput < 150 ? 'fast' : 'fine',
-        });
-        const bytes = Uint8Array.from(atob(result.png), c => c.charCodeAt(0));
-        const image = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
-        if (disposed || style !== styleRevision) {
-          image.close();
-          return;
-        }
-        frame?.image.close();
-        frame = { image, box: result.box };
-        draw();
-        ready.current();
-        if (version !== revision) dirty = true;
-      } catch (e) {
-        if (!disposed) {
-          setError(String((e as Error).message));
-          failure.current((e as Error).message);
-          dirty = false;
-        }
-      } finally {
-        busy = false;
-        if (dirty && !disposed) schedule();
-      }
-    }
-    function fit() {
-      const [l, b, r, t] = meta.bbox;
-      fitHeight = Math.max(t - b, ((r - l) * h) / w) * 1.1;
-      cam = { x: (l + r) / 2, y: (b + t) / 2, h: fitHeight };
-      change();
-    }
-    function zoom(factor: number, x = w / 2, y = h / 2) {
-      const old = cam.h,
-        next = Math.max(0.01, Math.min(fitHeight * 100, old * factor));
-      cam.x += (((x / w - 0.5) * w) / h) * (old - next);
-      cam.y += (0.5 - y / h) * (old - next);
-      cam.h = next;
-      change();
-    }
-    const wheel = (event: WheelEvent) => {
-      event.preventDefault();
-      const r = element.getBoundingClientRect();
-      zoom(
-        1 / wheelZoomFactor(event.deltaY, event.deltaMode),
-        ((event.clientX - r.left) * w) / r.width,
-        ((event.clientY - r.top) * h) / r.height,
-      );
-    };
-    const down = (event: PointerEvent) => {
-      if (event.button !== 0) return;
-      drag = { x: event.clientX, y: event.clientY, cam: { ...cam } };
-      element.setPointerCapture(event.pointerId);
-    };
-    const move = (event: PointerEvent) => {
-      if (!drag) return;
-      const size = element.getBoundingClientRect();
-      cam.x = drag.cam.x - ((event.clientX - drag.x) * drag.cam.h) / size.height;
-      cam.y = drag.cam.y + ((event.clientY - drag.y) * drag.cam.h) / size.height;
-      change();
-    };
-    const up = () => {
-      drag = null;
-    };
-    const resize = new ResizeObserver(() => {
-      if (!element.clientWidth || !element.clientHeight) return;
-      const ratio = Math.min(
-        devicePixelRatio || 1,
-        1.5,
-        3000 / Math.max(64, element.clientWidth),
-        3000 / Math.max(64, element.clientHeight),
-      );
-      surface.width = Math.max(64, Math.round(element.clientWidth * ratio));
-      surface.height = Math.max(64, Math.round(element.clientHeight * ratio));
-      w = surface.width;
-      h = surface.height;
-      if (!frame) fit();
-      else change();
-    });
-    resize.observe(element);
-    element.addEventListener('wheel', wheel, { passive: false });
-    element.addEventListener('pointerdown', down);
-    element.addEventListener('pointermove', move);
-    element.addEventListener('pointerup', up);
-    element.addEventListener('pointercancel', up);
-    element.addEventListener('lostpointercapture', up);
-    element.addEventListener('dblclick', fit);
-    controls.current = {
-      zoom: f => zoom(f),
-      fit,
-      layers: next => {
-        keys = next;
-        change(true);
-      },
-      theme: name => {
-        themeName = name;
-        change(true);
-      },
-    };
-    return () => {
-      disposed = true;
-      clearTimeout(timer);
-      clearTimeout(settle);
-      resize.disconnect();
-      frame?.image.close();
-      element.removeEventListener('wheel', wheel);
-      element.removeEventListener('pointerdown', down);
-      element.removeEventListener('pointermove', move);
-      element.removeEventListener('pointerup', up);
-      element.removeEventListener('pointercancel', up);
-      element.removeEventListener('lostpointercapture', up);
-      element.removeEventListener('dblclick', fit);
-      controls.current = undefined;
-    };
-  }, [meta]);
-  function toggle(key: string) {
-    const next = visible.includes(key) ? visible.filter(k => k !== key) : [...visible, key];
-    setVisible(next);
-    controls.current?.layers(next);
+  const [mode, setMode] = useState<'2d' | '3d'>('2d');
+  const [box, setBox] = useState<number[] | null>(null);
+  const viewBox = useRef<number[] | null>(null);
+  const [spacing, setSpacing] = useState(1);
+  const [revision, setRevision] = useState(0);
+  const [rasterReady, setRasterReady] = useState(false);
+  const [selectedLayer, setSelectedLayer] = useState<string | null>(null);
+  const [viewPreset, setViewPreset] = useState<'isometric' | 'top'>('isometric');
+  const selected = meta.layers.find(layer => layer.key === selectedLayer);
+  const layerLabel = (layer: LayoutMeta['layers'][number]) =>
+    layer.name === `Layer ${layer.key}` ? t('Layer {0}', { 0: layer.key }) : layer.name;
+  function toggleLayer(key: string) {
+    const selected = new Set(visible);
+    if (selected.has(key)) selected.delete(key);
+    else selected.add(key);
+    layers(meta.layers.filter(layer => selected.has(layer.key)).map(layer => layer.key));
+  }
+  function isolateLayer(key: string) {
+    setSelectedLayer(key);
+    layers([key]);
+  }
+
+  function layers(keys: string[]) {
+    setVisible(keys);
+    setSelectedLayer(current => (current && keys.includes(current) ? current : null));
+    controls.current?.layers(keys);
+  }
+  function open3D() {
+    if (mode === '3d') return;
+    const current = controls.current?.box();
+    if (!current) return;
+    viewBox.current = current;
+    setBox(previous => (JSON.stringify(previous) === JSON.stringify(current) ? previous : current));
+    setMode('3d');
   }
   return (
     <div className="rp-layout">
-      <div className="rp-view-tools">
-        <span className="rp-tool-caption">{meta.cell}</span>
+      <div className="rp-view-tools rp-layout-tools">
+        <span className="rp-tool-caption">
+          {meta.cell}
+          {selected ? ` · ${selected.key}` : ''}
+        </span>
+        <div className="rp-layout-modes" role="group" aria-label={t('Layout view mode')}>
+          <button
+            aria-label={t('2D layout')}
+            aria-pressed={mode === '2d'}
+            onClick={() => setMode('2d')}
+          >
+            2D
+          </button>
+          <button
+            aria-label={t('2.5D layout')}
+            aria-pressed={mode === '3d'}
+            disabled={!rasterReady}
+            onClick={open3D}
+          >
+            2.5D
+          </button>
+        </div>
         <select
           aria-label={t('Layout theme')}
           value={theme}
-          onChange={e => {
-            setTheme(e.target.value);
-            controls.current?.theme(e.target.value);
+          onChange={event => {
+            setTheme(event.target.value);
+            controls.current?.theme(event.target.value);
           }}
         >
           <option value="01_neon">{t('Neon')}</option>
@@ -270,14 +99,16 @@ export function LayoutViewport({
           {t('Layers')}
         </button>
         {layerMenu ? (
-          <div className="rp-layer-menu">
-            <button
-              onClick={() => {
-                const all = meta.layers.map(l => l.key);
-                setVisible(all);
-                controls.current?.layers(all);
-              }}
-            >
+          <div
+            className="rp-layer-menu"
+            onKeyDown={event => {
+              if (event.key === 'Escape') {
+                event.stopPropagation();
+                setLayerMenu(false);
+              }
+            }}
+          >
+            <button onClick={() => layers(meta.layers.map(layer => layer.key))}>
               {t('Show all')}
             </button>
             {meta.layers.map(layer => (
@@ -285,14 +116,13 @@ export function LayoutViewport({
                 <input
                   type="checkbox"
                   checked={visible.includes(layer.key)}
-                  onChange={() => toggle(layer.key)}
+                  onChange={() => toggleLayer(layer.key)}
                 />
-                {layer.name}
+                {layerLabel(layer)}
                 <button
-                  onClick={e => {
-                    e.preventDefault();
-                    setVisible([layer.key]);
-                    controls.current?.layers([layer.key]);
+                  onClick={event => {
+                    event.preventDefault();
+                    isolateLayer(layer.key);
                   }}
                 >
                   {t('Only')}
@@ -302,20 +132,150 @@ export function LayoutViewport({
           </div>
         ) : null}
       </div>
-      <div ref={host} className="rp-canvas-host">
-        <canvas ref={canvas} aria-label={`KLayout rendering of ${meta.cell}`} />
-        {error ? (
-          <div className="rp-view-error" role="alert">
-            {t(error)}
+      {mode === '3d' ? (
+        <div className="rp-layout-stack-tools">
+          <div className="rp-layout-modes" role="group" aria-label={t('Projection')}>
+            <button
+              aria-pressed={viewPreset === 'isometric'}
+              onClick={() => setViewPreset('isometric')}
+            >
+              {t('Angled')}
+            </button>
+            <button aria-pressed={viewPreset === 'top'} onClick={() => setViewPreset('top')}>
+              {t('Top / XY')}
+            </button>
           </div>
-        ) : null}
+          <label>
+            {t('Layer spacing')}
+            <input
+              type="range"
+              min="0.2"
+              max="3"
+              step="0.1"
+              value={spacing}
+              onChange={event => setSpacing(Number(event.target.value))}
+            />
+            <output>{spacing.toFixed(1)}×</output>
+          </label>
+          <button onClick={() => setRevision(value => value + 1)}>{t('Reload 3D')}</button>
+        </div>
+      ) : null}
+      {mode === '3d' && box ? (
+        <div className="rp-layout-region" aria-label={t('Extracted region')}>
+          <span>
+            {t('Requested region')}: {(box[2] - box[0]).toFixed(2)} × {(box[3] - box[1]).toFixed(2)}{' '}
+            µm
+          </span>
+          <span>
+            X {box[0].toFixed(2)}–{box[2].toFixed(2)} · Y {box[1].toFixed(2)}–{box[3].toFixed(2)} µm
+          </span>
+        </div>
+      ) : null}
+      <div className="rp-layout-pane" hidden={mode !== '2d'}>
+        <ViewNavigationContext.Provider value={mode === '2d' ? publish : undefined}>
+          <LayoutRasterViewport
+            meta={meta}
+            active={mode === '2d'}
+            controls={controls}
+            onReady={() => {
+              setRasterReady(true);
+              onReady();
+            }}
+            onError={message => {
+              setRasterReady(false);
+              onError(message);
+            }}
+          />
+        </ViewNavigationContext.Provider>
       </div>
-      <footer className="rp-view-footer">
-        <span>
-          KLayout {meta.klayout} {t('· generic layer colors')}
-        </span>
-        <span>{span}</span>
-      </footer>
+      {box ? (
+        <div className="rp-layout-pane rp-layout-inspect-pane" hidden={mode !== '3d'}>
+          <ViewNavigationContext.Provider value={mode === '3d' ? publish : undefined}>
+            <Layout3DViewport
+              key={revision}
+              meta={meta}
+              box={box}
+              visible={visible}
+              theme={theme}
+              spacing={spacing}
+              active={mode === '3d'}
+              selectedLayer={selectedLayer}
+              onSelectLayer={setSelectedLayer}
+              viewPreset={viewPreset}
+              onViewBox={next => {
+                viewBox.current = next;
+              }}
+              onReturnTo2D={() => setMode('2d')}
+            />
+          </ViewNavigationContext.Provider>
+          <aside className="rp-layout-inspector" aria-label={t('GDS layer inspector')}>
+            <header>
+              <strong>{t('GDS layers')}</strong>
+              <button onClick={() => layers(meta.layers.map(layer => layer.key))}>
+                {t('Show all')}
+              </button>
+            </header>
+            <p>{t('Click a shape or a layer to inspect it.')}</p>
+            <div className="rp-layout-selection" aria-live="polite">
+              {selected ? (
+                <>
+                  <strong>{layerLabel(selected)}</strong>
+                  <code>{selected.key}</code>
+                  <span>{t('GDS layer / datatype')}</span>
+                  <span>
+                    {t(
+                      visible.includes(selected.key)
+                        ? 'Selected layer highlighted through other layers'
+                        : 'Selected layer is hidden. Enable its visibility to show it.',
+                    )}
+                  </span>
+                  <button onClick={() => isolateLayer(selected.key)}>
+                    {t('Isolate selected layer')}
+                  </button>
+                  <button
+                    onClick={() => {
+                      isolateLayer(selected.key);
+                      if (viewBox.current) controls.current?.region(viewBox.current);
+                      setMode('2d');
+                    }}
+                  >
+                    {t('Compare selected in 2D')}
+                  </button>
+                  <button onClick={() => setSelectedLayer(null)}>{t('Clear selection')}</button>
+                </>
+              ) : (
+                <span>{t('No layer selected')}</span>
+              )}
+            </div>
+            <div className="rp-layout-layer-list" role="group" aria-label={t('Select GDS layer')}>
+              {[...meta.layers].reverse().map(layer => (
+                <div
+                  className="rp-layout-layer-row"
+                  key={layer.key}
+                  data-selected={selectedLayer === layer.key}
+                >
+                  <input
+                    type="checkbox"
+                    aria-label={`${t('Show layer')} ${layer.key}`}
+                    checked={visible.includes(layer.key)}
+                    onChange={() => toggleLayer(layer.key)}
+                  />
+                  <button
+                    data-layer-key={layer.key}
+                    aria-pressed={selectedLayer === layer.key}
+                    onClick={() => setSelectedLayer(layer.key)}
+                    title={`${t('GDS layer / datatype')}: ${layer.key}`}
+                  >
+                    <span>{layerLabel(layer)}</span>
+                    <code>{layer.key}</code>
+                  </button>
+                </div>
+              ))}
+            </div>
+            <p>{t('GDS layer order; process stack and physical heights are not loaded.')}</p>
+          </aside>
+        </div>
+      ) : null}
     </div>
   );
 }

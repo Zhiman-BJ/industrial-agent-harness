@@ -1,0 +1,65 @@
+[
+  {
+    "fixture": "hierarchy-32",
+    "loadMs": 86,
+    "calls": 132,
+    "totalCallMs": 415.23,
+    "medianCallMs": 0.5785,
+    "p95CallMs": 11.352,
+    "maxCallMs": 12.03,
+    "wholeModes": {
+      "overview": 32,
+      "exact": 0,
+      "empty": 0
+    },
+    "fallbackReasons": [
+      "shape-budget"
+    ],
+    "peakRssMiB": 75.22,
+    "cacheBytes": 302986,
+    "maxLiveWorkers": 1,
+    "sourceUnchanged": true
+  },
+  {
+    "fixture": "flat-unique-32",
+    "loadMs": 102,
+    "calls": 132,
+    "totalCallMs": 407.2,
+    "medianCallMs": 0.515,
+    "p95CallMs": 11.45,
+    "maxCallMs": 11.87,
+    "wholeModes": {
+      "overview": 32,
+      "exact": 0,
+      "empty": 0
+    },
+    "fallbackReasons": [
+      "shape-budget"
+    ],
+    "peakRssMiB": 79.11,
+    "cacheBytes": 282351,
+    "maxLiveWorkers": 1,
+    "sourceUnchanged": true
+  },
+  {
+    "fixture": "complex-polygon-12002",
+    "loadMs": 87,
+    "calls": 37,
+    "totalCallMs": 32.16,
+    "medianCallMs": 0.533,
+    "p95CallMs": 2.457,
+    "maxCallMs": 9.124,
+    "wholeModes": {
+      "overview": 1,
+      "exact": 31,
+      "empty": 0
+    },
+    "fallbackReasons": [
+      "complex-polygon"
+    ],
+    "peakRssMiB": 74.75,
+    "cacheBytes": 54962,
+    "maxLiveWorkers": 1,
+    "sourceUnchanged": true
+  }
+]

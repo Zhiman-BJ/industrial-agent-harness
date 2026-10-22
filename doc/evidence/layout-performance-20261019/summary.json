@@ -1,0 +1,338 @@
+{
+  "status": "passed",
+  "protocol": {
+    "epochs": 4,
+    "epochSeconds": 15,
+    "maxColdRequestsPerEpoch": 300,
+    "pairSpacingMs": 50,
+    "hardWallSeconds": 115,
+    "workload": "Deterministic varying 4/8/16/32 um ROI, 256px auto tiles; each cold request followed by an immediate cache replay",
+    "memoryNote": "Worker resource.ru_maxrss is per-process peak/high-water RSS, not current residency or proof of a leak. Node parent RSS is current process.memoryUsage().rss."
+  },
+  "durationMilliseconds": 60874.64,
+  "latencyMilliseconds": {
+    "coldWorker": {
+      "count": 1200,
+      "p50": 7.337,
+      "p95": 32.272,
+      "max": 105.246
+    },
+    "warmCache": {
+      "count": 1200,
+      "p50": 0.032,
+      "p95": 0.132,
+      "max": 6.172
+    },
+    "sourceLoad": {
+      "count": 4,
+      "p50": 124.274,
+      "p95": 379.637,
+      "max": 379.637
+    },
+    "workerRecovery": {
+      "count": 1,
+      "p50": 276.562,
+      "p95": 276.562,
+      "max": 276.562
+    }
+  },
+  "modes": {
+    "exact": 1118,
+    "overview": 0,
+    "empty": 82
+  },
+  "bounds": {
+    "maxQueue": 32,
+    "maxCacheBytes": 65018458,
+    "maxLiveWorkersAwaitingExit": 2,
+    "maxWorkersNotYetSignalled": 1,
+    "parentMaxCurrentRssBytes": 179611616,
+    "workerMaxSelfPeakRssBytes": 105283584,
+    "configuredQueue": 32,
+    "configuredCacheBytes": 67108864,
+    "configuredWorkerSoftRssBytes": 805306368
+  },
+  "epochs": [
+    {
+      "epoch": 0,
+      "fixture": "sobel-real",
+      "coldRequests": 300,
+      "milliseconds": 15000,
+      "cacheBytes": 53582801,
+      "cacheEntries": 300,
+      "workerPid": 92304,
+      "workerSelfPeakRssBytes": 103202816
+    },
+    {
+      "epoch": 1,
+      "fixture": "sync-fifo-real",
+      "coldRequests": 300,
+      "milliseconds": 15001,
+      "cacheBytes": 65018458,
+      "cacheEntries": 300,
+      "workerPid": 92342,
+      "workerSelfPeakRssBytes": 92536832
+    },
+    {
+      "epoch": 2,
+      "fixture": "sobel-real",
+      "coldRequests": 300,
+      "milliseconds": 15001,
+      "cacheBytes": 55904038,
+      "cacheEntries": 302,
+      "workerPid": 92378,
+      "workerSelfPeakRssBytes": 105283584
+    },
+    {
+      "epoch": 3,
+      "fixture": "sync-fifo-real",
+      "coldRequests": 300,
+      "milliseconds": 15000,
+      "cacheBytes": 63558056,
+      "cacheEntries": 300,
+      "workerPid": 92411,
+      "workerSelfPeakRssBytes": 89620480
+    }
+  ],
+  "faults": [
+    {
+      "case": "queue-bound-and-cancel",
+      "ms": 399.87,
+      "count": 40,
+      "superseded": 33,
+      "queueFull": 7
+    },
+    {
+      "case": "viewport-generation-cancel",
+      "ms": 4357.145,
+      "count": 8,
+      "superseded": 8,
+      "queueFull": 0
+    },
+    {
+      "case": "viewport-generation-cancel",
+      "ms": 8364.643,
+      "count": 8,
+      "superseded": 8,
+      "queueFull": 0
+    },
+    {
+      "case": "viewport-generation-cancel",
+      "ms": 12366.112,
+      "count": 8,
+      "superseded": 8,
+      "queueFull": 0
+    },
+    {
+      "case": "source-switch",
+      "ms": 15527.526,
+      "rejectedQueuedOrInFlight": 8,
+      "oldTokenRejected": true
+    },
+    {
+      "case": "viewport-generation-cancel",
+      "ms": 19495.822,
+      "count": 8,
+      "superseded": 8,
+      "queueFull": 0
+    },
+    {
+      "case": "viewport-generation-cancel",
+      "ms": 23484.143,
+      "count": 8,
+      "superseded": 8,
+      "queueFull": 0
+    },
+    {
+      "case": "viewport-generation-cancel",
+      "ms": 27486.343,
+      "count": 8,
+      "superseded": 8,
+      "queueFull": 0
+    },
+    {
+      "case": "source-switch",
+      "ms": 30720.107,
+      "rejectedQueuedOrInFlight": 8,
+      "oldTokenRejected": true
+    },
+    {
+      "case": "forced-worker-crash",
+      "ms": 32215.388,
+      "inFlightRejected": "KLayout renderer stopped. Retry the viewport.",
+      "identicalUncachedGeometry": true,
+      "recoveryMilliseconds": 277.086
+    },
+    {
+      "case": "viewport-generation-cancel",
+      "ms": 34679.139,
+      "count": 8,
+      "superseded": 8,
+      "queueFull": 0
+    },
+    {
+      "case": "viewport-generation-cancel",
+      "ms": 38678.304,
+      "count": 8,
+      "superseded": 8,
+      "queueFull": 0
+    },
+    {
+      "case": "viewport-generation-cancel",
+      "ms": 42681.355,
+      "count": 8,
+      "superseded": 8,
+      "queueFull": 0
+    },
+    {
+      "case": "source-switch",
+      "ms": 45848,
+      "rejectedQueuedOrInFlight": 8,
+      "oldTokenRejected": true
+    },
+    {
+      "case": "viewport-generation-cancel",
+      "ms": 49806.65,
+      "count": 8,
+      "superseded": 8,
+      "queueFull": 0
+    },
+    {
+      "case": "viewport-generation-cancel",
+      "ms": 53815.085,
+      "count": 8,
+      "superseded": 8,
+      "queueFull": 0
+    },
+    {
+      "case": "viewport-generation-cancel",
+      "ms": 57805.816,
+      "count": 8,
+      "superseded": 8,
+      "queueFull": 0
+    }
+  ],
+  "cleanup": {
+    "liveWorkers": 0,
+    "queue": 0,
+    "cacheBytes": 0,
+    "cacheEntries": 0,
+    "closed": true,
+    "workerPointer": true
+  },
+  "sourceUnchanged": true,
+  "findings": [
+    "Observed source-switch worker exit overlap: 1.006 ms, 0.559 ms, 1.048 ms"
+  ],
+  "interpretation": [
+    "This run completed 1200 varying-ROI worker requests and 1200 immediate cache replays over four 15-second epochs.",
+    "Cold modes were 1118 exact and 82 empty; this soak did not trigger overview fallback or cache eviction. Those paths require their separate evidence.",
+    "Source changes reset the cache. Four bounded epochs do not establish long-session leak freedom or performance on larger industrial designs.",
+    "Timing is end-to-end RasterService response latency without GUI upload, WebGL drawing, input-to-frame latency, or FPS.",
+    "Worker ru_maxrss is a per-process high-water measurement; monotonic growth alone is not evidence of a leak. Parent Node RSS is current RSS.",
+    "Three source changes briefly overlapped an exiting SIGKILL-signalled worker and its replacement. Strict single-live-process behavior is not established; one not-yet-signalled worker was observed."
+  ],
+  "sourceSwitchWorkerOverlap": [
+    {
+      "oldPid": 92304,
+      "newPid": 92342,
+      "milliseconds": 1.006
+    },
+    {
+      "oldPid": 92342,
+      "newPid": 92366,
+      "milliseconds": 0.559
+    },
+    {
+      "oldPid": 92378,
+      "newPid": 92411,
+      "milliseconds": 1.048
+    }
+  ],
+  "latencyByFixtureAndMode": {
+    "sobel-real": {
+      "all": {
+        "count": 600,
+        "p50": 8.198,
+        "p95": 29.987,
+        "max": 37.141
+      },
+      "exact": {
+        "count": 538,
+        "p50": 9.476,
+        "p95": 30.669,
+        "max": 37.141
+      },
+      "empty": {
+        "count": 62,
+        "p50": 1.822,
+        "p95": 5.437,
+        "max": 14.587
+      },
+      "overview": {
+        "count": 0
+      }
+    },
+    "sync-fifo-real": {
+      "all": {
+        "count": 600,
+        "p50": 6.502,
+        "p95": 35.419,
+        "max": 105.246
+      },
+      "exact": {
+        "count": 580,
+        "p50": 6.854,
+        "p95": 35.516,
+        "max": 105.246
+      },
+      "empty": {
+        "count": 20,
+        "p50": 2.693,
+        "p95": 4.809,
+        "max": 7.652
+      },
+      "overview": {
+        "count": 0
+      }
+    }
+  },
+  "workerRssPeaks": [
+    {
+      "pid": 92304,
+      "sourceEpoch": 0,
+      "peakSelfRssBytes": 103202816,
+      "spawnMs": 22.961,
+      "exitMs": 15406.269
+    },
+    {
+      "pid": 92342,
+      "sourceEpoch": 1,
+      "peakSelfRssBytes": 92536832,
+      "spawnMs": 15405.263,
+      "exitMs": 30532.719
+    },
+    {
+      "pid": 92366,
+      "sourceEpoch": 2,
+      "peakSelfRssBytes": 105136128,
+      "spawnMs": 30532.16,
+      "exitMs": 31938.205
+    },
+    {
+      "pid": 92378,
+      "sourceEpoch": 2,
+      "peakSelfRssBytes": 105283584,
+      "spawnMs": 31938.886,
+      "exitMs": 45727.136
+    },
+    {
+      "pid": 92411,
+      "sourceEpoch": 3,
+      "peakSelfRssBytes": 89620480,
+      "spawnMs": 45726.088,
+      "exitMs": 60865.758
+    }
+  ],
+  "monitorImplementationSha256AfterRun": "bdc55a1a7a147b189801211c00cab9c0d032d5a74f71e44f0fac3c70b66b7d2b"
+}

@@ -97,9 +97,91 @@ function filter() {
   });
   return bytes;
 }
-function localCommand(argv, directory, input, work, environment, task) {
+function directoryIdentity(file, optional = false) {
+  const stat = fs.statSync(file, { bigint: true, throwIfNoEntry: !optional });
+  if (!stat) return null;
+  if (
+    !stat.isDirectory() ||
+    typeof stat.dev !== 'bigint' ||
+    typeof stat.ino !== 'bigint' ||
+    stat.ino === 0n
+  )
+    throw Error('Task runtime directory identity is unavailable: ' + file);
+  return `${stat.dev}:${stat.ino}`;
+}
+
+function sameDirectory(file, root) {
+  return directoryIdentity(file) === directoryIdentity(root, true);
+}
+
+function inside(file, root) {
+  const identity = directoryIdentity(root);
+  // realpath resolves symlinks, but can preserve casing aliases on macOS.
+  // Compare physical ancestors instead of lowercasing case-sensitive paths.
+  for (let directory = fs.realpathSync(file); ; directory = path.dirname(directory)) {
+    if (directoryIdentity(directory) === identity) return true;
+    if (directory === path.dirname(directory)) return false;
+  }
+}
+
+function canonicalPath(file) {
+  try {
+    return fs.realpathSync(file);
+  } catch {
+    return path.resolve(file);
+  }
+}
+
+function runtimeInstallation(target, projectDir, runAsNode) {
+  let root;
+  if (process.platform === 'darwin') {
+    // Embedded interpreters may live under Resources or Frameworks, rather
+    // than MacOS. Resolve only the nearest enclosing canonical application.
+    for (
+      let parent = path.dirname(target);
+      parent !== path.dirname(parent);
+      parent = path.dirname(parent)
+    ) {
+      if (
+        path.basename(parent) === 'Contents' &&
+        path.basename(path.dirname(parent)).toLowerCase().endsWith('.app') &&
+        fs.statSync(path.join(parent, 'Info.plist'), { throwIfNoEntry: false })?.isFile()
+      ) {
+        root = parent;
+        break;
+      }
+    }
+  } else if (process.platform === 'linux' && runAsNode) {
+    // Electron's Linux distribution keeps shared libraries and V8 data beside
+    // the executable. Only the bound host runtime gets this implicit grant.
+    root = path.dirname(target);
+    if (!fs.statSync(path.join(root, 'icudtl.dat'), { throwIfNoEntry: false })?.isFile())
+      return null;
+    const sharedRoots = [
+      '/',
+      '/opt',
+      '/home',
+      '/usr',
+      '/usr/local',
+      '/tmp',
+      '/var/tmp',
+      os.homedir(),
+      os.tmpdir(),
+    ];
+    if (sharedRoots.some(file => sameDirectory(root, file))) root = null;
+  }
+  // A project-controlled bundle must not expose unselected source files.
+  // Symlink launch aliases cannot widen this grant: target is already realpath.
+  if (root && projectDir && (inside(root, projectDir) || inside(projectDir, root))) return null;
+  return root;
+}
+
+function localCommand(argv, directory, input, work, environment, task, projectDir) {
   const target = executable(argv[0], environment);
   const launchPath = executable(argv[0], environment, true);
+  const runAsNode = Boolean(
+    process.versions.electron && target === fs.realpathSync(process.execPath),
+  );
   const systemRoots =
     process.platform === 'darwin'
       ? [
@@ -133,11 +215,13 @@ function localCommand(argv, directory, input, work, environment, task) {
           '/etc/ssl/certs',
         ];
   const roots = new Set(systemRoots.filter(file => fs.existsSync(file)));
+  const launchAliases = new Map();
   // Preserve virtual-environment launch paths, and expose that installation's
   // libraries without granting the enclosing user home or arbitrary host data.
   for (const file of [target, launchPath]) {
     const parent = path.dirname(file),
-      prefix = path.dirname(parent);
+      launchPrefix = path.dirname(parent),
+      prefix = canonicalPath(launchPrefix);
     if (
       ['bin', 'sbin'].includes(path.basename(parent)) &&
       ![
@@ -147,16 +231,28 @@ function localCommand(argv, directory, input, work, environment, task) {
         '/opt',
         '/usr/local',
         '/opt/homebrew',
+        '/tmp',
+        '/var/tmp',
         os.homedir(),
+        os.tmpdir(),
         path.join(os.homedir(), '.local'),
-      ].includes(prefix) &&
-      !['/Users', '/home'].includes(path.dirname(prefix)) &&
-      // A launcher in the original project must not expose unselected sources.
-      prefix !== path.resolve(directory, '..', '..')
-    )
+      ].some(root => sameDirectory(prefix, root)) &&
+      !['/Users', '/home'].some(root => sameDirectory(path.dirname(prefix), root)) &&
+      // Both a project-local prefix and an installation containing the project
+      // would expose inputs that were never selected for this task.
+      (!projectDir || (!inside(prefix, projectDir) && !inside(projectDir, prefix)))
+    ) {
       roots.add(prefix);
-    else roots.add(file);
+      // Seatbelt checks resolved paths. Linux also needs the checked launch
+      // alias mounted in its namespace so virtual-environment discovery works.
+      if (process.platform === 'linux' && launchPrefix !== prefix) {
+        roots.add(launchPrefix);
+        launchAliases.set(launchPrefix, prefix);
+      }
+    } else roots.add(file);
   }
+  const installation = runtimeInstallation(target, projectDir, runAsNode);
+  if (installation) roots.add(installation);
   for (const dependency of task.runtime.readOnlyDirs || []) {
     const root = fs.realpathSync(dependency);
     if (!fs.statSync(root).isDirectory()) throw Error('Task dependency is not a directory.');
@@ -168,6 +264,7 @@ function localCommand(argv, directory, input, work, environment, task) {
     launchPath,
     sha256: hash(fs.readFileSync(target)),
     readOnlyRoots: [...roots],
+    ...(runAsNode ? { runAsNode: true } : {}),
   };
   if (process.platform === 'darwin' && fs.existsSync('/usr/bin/sandbox-exec')) {
     const profile = path.join(directory, 'task.sb');
@@ -180,6 +277,7 @@ function localCommand(argv, directory, input, work, environment, task) {
     return {
       argv: ['/usr/bin/sandbox-exec', '-f', profile, launchPath, ...argv.slice(1)],
       identity,
+      runAsNode,
     };
   }
   if (process.platform === 'linux') {
@@ -196,7 +294,7 @@ function localCommand(argv, directory, input, work, environment, task) {
         'ALL',
         '--tmpfs',
         '/',
-        ...[...roots].flatMap(root => ['--ro-bind', root, root]),
+        ...[...roots].flatMap(root => ['--ro-bind', launchAliases.get(root) || root, root]),
         '--proc',
         '/proc',
         '--dev',
@@ -214,6 +312,7 @@ function localCommand(argv, directory, input, work, environment, task) {
       ],
       identity,
       seccomp,
+      runAsNode,
     };
   }
   throw Error('Protected local task execution is unavailable on this platform.');
@@ -288,7 +387,10 @@ function runProcess(argv, { cwd, env, timeoutMs, signal, seccomp }) {
     }
   });
 }
-async function executeTask(task, { directory, input, work, actionId, environment, signal }) {
+async function executeTask(
+  task,
+  { directory, input, work, actionId, environment, signal, projectDir },
+) {
   const container = task.runtime.kind === 'docker';
   const inputRoot = container ? '/inputs' : input,
     outputRoot = container ? '/work' : work;
@@ -376,10 +478,26 @@ async function executeTask(task, { directory, input, work, actionId, environment
     cleanup = () =>
       spawnSync(docker, ['rm', '--force', name], { env, timeout: 10000, stdio: 'ignore' });
   } else {
-    const local = localCommand(argv, directory, input, work, environment, task);
+    const project =
+      projectDir ||
+      (path.basename(path.dirname(directory)) === '.harness-runs'
+        ? path.resolve(directory, '..', '..')
+        : null);
+    const local = localCommand(
+      argv,
+      directory,
+      input,
+      work,
+      environment,
+      task,
+      project ? fs.realpathSync(project) : null,
+    );
     command = local.argv;
     identity = local.identity;
     seccomp = local.seccomp;
+    // Set this only for the current, bound Electron runtime. Arbitrary task
+    // environment variables remain filtered, including NODE_OPTIONS and secrets.
+    if (local.runAsNode) env.ELECTRON_RUN_AS_NODE = '1';
   }
   try {
     const result = await runProcess(command, {

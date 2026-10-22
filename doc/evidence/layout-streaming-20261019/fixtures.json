@@ -1,0 +1,149 @@
+{
+  "generatorVersion": 1,
+  "seed": 20261019,
+  "layers": 32,
+  "klayoutVersion": "0.30.12",
+  "generatorSha256": "24ef30655246bc57ad6f7971b7784500966be67a9f622c8e2b1cdae14e52593b",
+  "fixtures": [
+    {
+      "name": "hierarchy-32",
+      "kind": "hierarchy",
+      "path": "synthetic-fixtures/hierarchy-32.gds",
+      "bytes": 42574,
+      "sha256": "52b1977879e6d3ee4f67b61a420be730ad3638af937a1ccb983260eb208c9d1f",
+      "boxes": {
+        "detail": [
+          8,
+          8,
+          18,
+          18
+        ],
+        "seam": [
+          31.99,
+          31.99,
+          32.03,
+          32.03
+        ],
+        "full": [
+          0.0,
+          0.0,
+          11124.0,
+          11124.0
+        ]
+      },
+      "stats": {
+        "layerCount": 32,
+        "cellCount": 6,
+        "uniqueShapeRecords": 640,
+        "logicalShapeOccurrences": 9961504,
+        "hierarchyDepth": 6,
+        "instanceRecords": 8,
+        "regularArrayRecords": 3,
+        "maxPolygonPoints": 10
+      },
+      "generationSeconds": 0.011168,
+      "features": [
+        "32 layers",
+        "6 cell levels",
+        "8x8/4x4/2x2 regular arrays",
+        "all orthogonal rotations",
+        "mirrored hierarchy",
+        "polygon holes",
+        "8 nm leaf paths",
+        "20 nm cross-macro paths"
+      ],
+      "expectedLogicalShapes": 9961504
+    },
+    {
+      "name": "flat-unique-32",
+      "kind": "flat",
+      "path": "synthetic-fixtures/flat-unique-32.gds",
+      "bytes": 16903288,
+      "sha256": "10192fe0f7865c81966e7c0dd9152062622f655734055544ea90b294cead51a5",
+      "boxes": {
+        "detail": [
+          10,
+          10,
+          14,
+          14
+        ],
+        "seam": [
+          11.95,
+          10,
+          12.05,
+          14
+        ],
+        "full": [
+          0.0,
+          -0.011,
+          258.099,
+          127.58800000000001
+        ]
+      },
+      "stats": {
+        "layerCount": 32,
+        "cellCount": 1,
+        "uniqueShapeRecords": 262144,
+        "logicalShapeOccurrences": 262144,
+        "hierarchyDepth": 1,
+        "instanceRecords": 0,
+        "regularArrayRecords": 0,
+        "maxPolygonPoints": 10
+      },
+      "generationSeconds": 1.182185,
+      "features": [
+        "32 layers",
+        "no instances",
+        "seeded unique coordinates/sizes",
+        "holes",
+        "thin paths crossing multiple grid cells"
+      ],
+      "expectedLogicalShapes": 262144
+    },
+    {
+      "name": "complex-polygon-12002",
+      "kind": "complex",
+      "path": "synthetic-fixtures/complex-polygon-12002.gds",
+      "bytes": 98158,
+      "sha256": "53414ab3f14cb35198a5ecbbe1aad456222407648a7d1ee0f4e7c8b60c08f871",
+      "boxes": {
+        "detail": [
+          2199.9,
+          2199.9,
+          2200.1,
+          2200.1
+        ],
+        "seam": [
+          2199.99,
+          2199.9,
+          2200.01,
+          2200.1
+        ],
+        "full": [
+          200.0,
+          200.0,
+          4200.0,
+          4200.0
+        ]
+      },
+      "stats": {
+        "layerCount": 32,
+        "cellCount": 1,
+        "uniqueShapeRecords": 32,
+        "logicalShapeOccurrences": 32,
+        "hierarchyDepth": 1,
+        "instanceRecords": 0,
+        "regularArrayRecords": 0,
+        "maxPolygonPoints": 12002
+      },
+      "generationSeconds": 0.007136,
+      "features": [
+        "32 layers",
+        "one unfractured 12002-point concave boundary"
+      ],
+      "expectedLogicalShapes": 32,
+      "minimumPolygonPoints": 12002,
+      "gdsMultiXYExtension": true
+    }
+  ]
+}

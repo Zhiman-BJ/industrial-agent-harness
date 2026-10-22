@@ -2,7 +2,7 @@
 
 2026-10-20 起按 [PD-088](local-agent-execution.md) 验证三平台当前用户 Agent：应能正常启动、如实报告 `osIsolation=false` / `projectWritable=true`，保留凭据过滤、审批与取消/恢复。Agent 不再测试或要求工程写入拒绝、Seatbelt/bubblewrap 启动；声明式本地任务的独立隔离断言与远端租户隔离继续保留。历史 CI 结果不改写，新的目标平台结果以对应提交运行记录为准。
 
-入口是 [Harness CI](../.github/workflows/ci.yml)：代码 PR 和默认手动运行执行核心检查；`main` 推送以及手动选择 `full=true` 时执行完整验收。纯文档 PR 仅运行仓库层，独立的 Architecture contract 检查仍按原有规则执行。环境由 GitHub 托管 runner 提供，每个 job 获得独立的干净机器，不需要维护自有虚拟机池。调度修订见 [ADR-008](decisions.md#adr-008核心-pr-检查与完整验收分层)。
+入口是 [Harness CI](../.github/workflows/ci.yml)：代码 PR 和默认手动运行执行核心检查；nightly 计划（20:00 UTC / 北京 04:00）、手动选择 `full=true` 以及改动 `pnpm-lock.yaml`（Domain Pack 固定 pin）的 PR 执行完整验收；`main` 推送复跑其 PR 已验证的核心层。纯文档 PR 仅运行仓库层，独立的 Architecture contract 检查仍按原有规则执行。环境由 GitHub 托管 runner 提供，每个 job 获得独立的干净机器，不需要维护自有虚拟机池。调度修订见 [ADR-008](decisions.md#adr-008核心-pr-检查与完整验收分层)。
 
 | 回归层               | 托管环境                                                   | 核心检查                                                                                                                                | 完整验收额外执行                                                                                                                                                                                |
 | -------------------- | ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -10,8 +10,8 @@
 | 跨平台基础           | Ubuntu 24.04 x64 / ARM64、macOS 15 ARM64、Windows 2025 x64 | 共享包、CLI、SDK、Viewer 边界、资源与持久化，以及 Chip/PCB/Godot/CAD 四种独立 CLI 包的实际消费                                          | —                                                                                                                                                                                               |
 | 桌面安装             | macOS 15 ARM64、Windows 2025 x64                           | 打包应用首次启动、安装引导、工作台、语言切换、并行会话与设置                                                                            | 完整 Domain 安装；macOS 真实 CAD 安装、修复与工程任务                                                                                                                                           |
 | Linux 工业闭环与安装 | Ubuntu 22.04 x86-64                                        | 当前用户 Kimi 启动与权限、声明式本地任务 bubblewrap/seccomp、真实 Verilator、成功/失败/取消/恢复、打包 Headless Agent 与 bootstrap 回归 | 旧版升级、干净 Chip 安装包、实际安装消费、重复安装及宿主 Docker 执行                                                                                                                            |
-| 原生工业闭环         | macOS 15 / 26 ARM64                                        | —                                                                                                                                       | 当前用户 Kimi 启动与权限、声明式本地任务 Seatbelt、Verilator、FreeCAD、固定 Kimi Code、持久化事实、审批拒绝、失败恢复、图像/并行会话、聊天恢复、空闲回收与强制中断，以及真实 CAD 产物的桌面查看 |
-| 原生安装消费         | macOS 15 / 26 ARM64                                        | —                                                                                                                                       | 独立安装 CAD、PCB、Godot，保留签名、原生准备、API/CLI/Desktop 工程任务、独立验证和恢复断言                                                                                                      |
+| 原生工业闭环         | macOS 15 ARM64（nightly/手动另加 macOS 26）                | —                                                                                                                                       | 当前用户 Kimi 启动与权限、声明式本地任务 Seatbelt、Verilator、FreeCAD、固定 Kimi Code、持久化事实、审批拒绝、失败恢复、图像/并行会话、聊天恢复、空闲回收与强制中断，以及真实 CAD 产物的桌面查看 |
+| 原生安装消费         | macOS 15 ARM64（nightly/手动另加 macOS 26）                | —                                                                                                                                       | 独立安装 CAD、PCB、Godot，保留签名、原生准备、API/CLI/Desktop 工程任务、独立验证和恢复断言                                                                                                      |
 
 账号登录回归保留在独立的 Account integration workflow；本次不改变它的触发条件。仅改 Desktop 的代码 PR 也执行全部四个平台的基础回归，避免漏掉平台专属的账号存储行为。
 
@@ -69,7 +69,7 @@ KIMI_EXECUTABLE="$PWD/apps/desktop/.venv-kimi/bin/kimi" pnpm run test:ci -- nati
 
 FreeCAD 首批 native suite 和实际 Electron CAD Viewer 加入 macOS arm64 原生门禁。CI 下载并校验官方 FreeCAD 1.1.4 DMG 的固定 SHA，只读挂载提供 `freecadcmd`；缺少依赖会失败。配方/STL/文件边界及 CAD CLI 包的 Scope 检查加入四平台 Portable 层。详见 [FreeCAD 接入与回归](freecad-domain-pack.md)。
 
-FreeCAD 1.1.4 的原生 CAD/RTL/Kimi 综合门禁覆盖 `macos-15` 和 `macos-26` arm64；四平台 Portable 与 Desktop macOS 打包仍固定 `macos-15`。FreeCAD 的配置、数据与缓存目录在每次 Action 内独立创建和验证，确保全新托管环境无需预先启动桌面 FreeCAD。
+FreeCAD 1.1.4 的原生 CAD/RTL/Kimi 综合门禁固定覆盖 `macos-15` arm64，nightly 与手动完整运行（`extended`）另加 `macos-26`；四平台 Portable 与 Desktop macOS 打包仍固定 `macos-15`。FreeCAD 的配置、数据与缓存目录在每次 Action 内独立创建和验证，确保全新托管环境无需预先启动桌面 FreeCAD。
 
 2026-10-05 共享底座：四平台 Portable 覆盖文件边界和真实 stdio/HTTP/SSE；macOS arm64 与 Linux x86-64 native 强制真实 Kimi 的空工程→编辑→通过→失败→修复及外部 MCP 审批/图片/禁用。独立 Chip/PCB 包和 Linux 安装消费者重复闭环，Linux 实际 Docker 镜像另验共享任务。缺少必需依赖不跳过。
 

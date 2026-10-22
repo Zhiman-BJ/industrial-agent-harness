@@ -11,7 +11,11 @@ const {
   nativeFiles,
   nativeInstalledFiles,
   nativeTestCounts,
+  layoutNativeFiles,
+  layoutNativeTestNames,
+  layoutNativeTestCount,
   testConcurrency,
+  portableFiles,
 } = require('../../scripts/ci-tests.cjs');
 
 test('CI cannot pass with no tests, failed, cancelled, TODO or unaccounted skipped tests', () => {
@@ -30,6 +34,7 @@ test('CI cannot pass with no tests, failed, cancelled, TODO or unaccounted skipp
   assert.equal(assess({ success: false, counts }, []).ok, false);
   assert.deepEqual(allowedSkips('native', 'darwin'), []);
   assert.deepEqual(allowedSkips('native-installed', 'darwin'), []);
+  assert.deepEqual(allowedSkips('layout-native', 'darwin'), []);
   assert.deepEqual(allowedSkips('benchmark', 'linux'), []);
 });
 
@@ -56,6 +61,124 @@ test('native launcher skips are limited to portable runners of the other operati
     allowedSkips('portable', 'win32').some(name => windowsOnly.includes(name)),
     false,
   );
+});
+
+test('layout native catalog covers every dependency-gated assertion without removing portable coverage', () => {
+  assert.deepEqual(layoutNativeFiles, [
+    'packages/viewer-builtin/tests/layout-geometry.test.cjs',
+    'packages/viewer-builtin/tests/layout-tiles.test.cjs',
+  ]);
+  const portable = portableFiles();
+  const sources = layoutNativeFiles.map(file => {
+    assert.ok(portable.includes(file), `${file} retains its portable assertions`);
+    return fs.readFileSync(path.resolve(__dirname, '../..', file), 'utf8');
+  });
+  const nativeNames = sources.flatMap(source =>
+    [...source.matchAll(/test\(\s*'([^']+)'\s*,\s*(?:available|native)\s*,/g)].map(
+      match => match[1],
+    ),
+  );
+  assert.equal(nativeNames.length, 12);
+  assert.equal(new Set(layoutNativeTestNames).size, 12);
+  assert.deepEqual(layoutNativeTestNames.toSorted(), nativeNames.toSorted());
+  assert.equal(layoutNativeTestCount, 23);
+  assert.equal(
+    sources.reduce((count, source) => count + [...source.matchAll(/^test\(/gm)].length, 0),
+    layoutNativeTestCount,
+  );
+  assert.equal(testConcurrency('layout-native'), 1);
+  for (const platform of ['linux', 'darwin', 'win32']) {
+    for (const name of nativeNames) assert.ok(allowedSkips('portable', platform).includes(name));
+    assert.deepEqual(allowedSkips('layout-native', platform), []);
+  }
+});
+
+test('missing KLayout passes only the portable gate; the native lane rejects skips and missing runtimes', t => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-layout-ci-'));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const runner = path.resolve(__dirname, '../../scripts/ci-tests.cjs');
+  const launcher = path.join(directory, 'runner.cjs');
+  fs.writeFileSync(
+    launcher,
+    `require(${JSON.stringify(runner)}).runFiles(${JSON.stringify({
+      suite: 'layout-native',
+      files: layoutNativeFiles.map(file => path.resolve(__dirname, '../..', file)),
+      reportDirectory: directory,
+    })}).then(report => { process.exitCode = report.ok ? 0 : 1; });`,
+  );
+  const env = { ...process.env, KLAYOUT_PYTHON: '', NODE_TEST_CONTEXT: undefined };
+  const result = spawnSync(process.execPath, [launcher], {
+    encoding: 'utf8',
+    timeout: 15000,
+    env,
+  });
+  assert.ifError(result.error);
+  assert.equal(result.status, 1, result.stdout + result.stderr);
+  const report = JSON.parse(fs.readFileSync(path.join(directory, 'layout-native.json')));
+  assert.equal(report.expectedTests, 23);
+  assert.equal(report.summary.counts.tests, 23);
+  assert.equal(report.summary.counts.passed, 11);
+  assert.deepEqual(report.skipped.toSorted(), layoutNativeTestNames.toSorted());
+  assert.equal(report.ok, false);
+  assert.equal(assess(report.summary, report.skipped, allowedSkips('portable')).ok, true);
+  assert.equal(
+    assess(
+      { ...report.summary, counts: { ...report.summary.counts, skipped: 13 } },
+      [...report.skipped, 'an unreviewed native dependency'],
+      allowedSkips('portable'),
+    ).ok,
+    false,
+  );
+  const complete = {
+    success: true,
+    counts: { tests: 23, passed: 23, failed: 0, cancelled: 0, todo: 0, skipped: 0 },
+  };
+  assert.equal(assess(complete, [], [], layoutNativeTestCount).ok, true);
+  assert.equal(
+    assess(
+      { ...complete, counts: { ...complete.counts, tests: 22 } },
+      [],
+      [],
+      layoutNativeTestCount,
+    ).ok,
+    false,
+  );
+  for (const python of ['', path.join(directory, 'missing-python')]) {
+    const rejected = spawnSync(process.execPath, [runner, 'layout-native'], {
+      encoding: 'utf8',
+      timeout: 15000,
+      env: { ...env, KLAYOUT_PYTHON: python },
+    });
+    assert.ifError(rejected.error);
+    assert.equal(rejected.status, 1, rejected.stdout + rejected.stderr);
+    assert.match(rejected.stderr, /layout-native requires/);
+  }
+});
+
+test('every core PR runs the KLayout native gate in the required Desktop lane and retains its report', () => {
+  const workflow = fs.readFileSync(
+    path.resolve(__dirname, '../../.github/workflows/desktop-package.yml'),
+    'utf8',
+  );
+  const step = workflow
+    .split('      - name: Verify native layout geometry and tile recovery\n')[1]
+    ?.split('\n      - ')[0];
+  assert.ok(step, 'The Desktop native layout step must exist');
+  assert.match(step, /if: matrix\.platform == 'mac'/);
+  assert.doesNotMatch(step, /inputs\.full|continue-on-error/);
+  assert.match(step, /shell: bash/);
+  assert.match(step, /pnpm --filter @industrial-agent-harness\/desktop setup:layout/);
+  assert.match(
+    step,
+    /export KLAYOUT_PYTHON="\$\(sed -n 's\/\^Managed layout Viewer Python is ready: \/\/p' dist\/ci-reports\/layout-setup\.log \| tail -1\)"/,
+  );
+  assert.match(step, /pnpm run test:ci -- layout-native 2>&1/);
+  assert.match(workflow, /dist\/ci-reports\/layout-native\.json/);
+  const ci = fs.readFileSync(path.resolve(__dirname, '../../.github/workflows/ci.yml'), 'utf8');
+  const desktop = ci.split('  desktop:\n')[1].split(/\n {2}[a-z][\w-]*:/)[0];
+  assert.match(desktop, /if: needs\.changes\.outputs\.core == 'true'/);
+  assert.match(desktop, /uses: \.\/\.github\/workflows\/desktop-package\.yml/);
+  assert.match(ci.split('  all-checks-passed:\n')[1], /needs: \[[^\]]*\bdesktop\b/);
 });
 
 test('native lanes retain the complete acceptance catalog without overlap or reduced test counts', () => {
@@ -118,7 +241,12 @@ test('both native matrices must succeed; a missing, skipped, cancelled or failed
   );
   for (const name of ['native-vertical-slice', 'native-installed']) {
     const job = workflow.split(`  ${name}:\n`)[1].split(/\n {2}[a-z][\w-]*:/)[0];
-    assert.match(job, /os: \[macos-15, macos-26\]/);
+    // macos-15 always runs; the macos-26 forward-compatibility lane only
+    // joins when the caller requests the extended (nightly/manual) matrix.
+    assert.match(
+      job,
+      /os: \$\{\{ inputs\.extended && fromJSON\('\["macos-15", "macos-26"\]'\) \|\| fromJSON\('\["macos-15"\]'\) \}\}/,
+    );
     assert.match(job, /timeout-minutes: 25/);
     assert.doesNotMatch(job, /continue-on-error:/);
     assert.match(

@@ -72,6 +72,20 @@ createWorkspacePlugin 提供所有领域共用的初始化、受控文件读写�
 
 `doctor --project-dir DIR --domain DOMAIN` runs without model credentials and records a read-only environment Action. It probes protected local execution, declared executables/dependency roots and available offline Docker images. Exit 2 means a required prerequisite is missing. Shared tools include `project.environment.inspect`; input selection, local read permissions and approval previews are documented in [Shared workspace](../../doc/shared-workspace.md).
 
+The protected execution probe uses a fixed native shell command, independent of
+the application's Node or Electron executable. Local macOS app executables receive
+read-only access to their canonical `Contents` installation, including frameworks
+and resources, without exposing adjacent apps. Installations overlapping the source
+project require explicit dependency grants. Reusing the current Electron runtime
+sets Node mode inside the backend; arbitrary host environment variables remain
+filtered. Readiness is distinct from task verification.
+
+Automatic runtime-directory grants compare physical directory identities and
+ancestors, including project overlaps and excluded shared prefixes. Case aliases
+on macOS cannot widen those grants; distinct directories on case-sensitive volumes
+remain distinct. If a required directory identity cannot be established, the task
+stops before launch rather than granting an unchecked directory.
+
 `RemoteRuntime` 保持规范 Runtime 接口，并按持久服务契约选择历史 canonical gateway 或当前 MCP adapter。当前 adapter 的行为和限制见本页开头；不再使用 0.2 job 协议。远程模式不启动本地领域 MCP 或声明任务。`IndustrialRuntime` 可由可信宿主传入已绑定的规范 `projectRef`，不由模型指定。见[内置远程运行](../../doc/remote-execution.md)。
 
 The public module exposes `executeTask` and `runtimeFiles` for trusted owner plugins injected through the shared factory. Protected task lifecycle stays in this backend. Multi-phase native actions can reuse their per-action HOME/TMPDIR; creating those bounded directories is idempotent.

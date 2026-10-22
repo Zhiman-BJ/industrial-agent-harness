@@ -1,0 +1,556 @@
+{
+  "scope": "Existing local chip artifacts, separate from synthetic stress fixtures",
+  "klayoutVersion": "0.30.12",
+  "fixtures": [
+    {
+      "name": "sobel-real",
+      "kind": "existing-chip-artifact",
+      "path": "examples/chip-sobel/outputs/sobel_layout.gds",
+      "bytes": 9191390,
+      "sha256": "88eb101db90f76a960f5b83e446423b7f8d66fa28240dc1110c49b6ceeabac95",
+      "cell": "sobel_top",
+      "dbu": 0.001,
+      "boxes": {
+        "full": [
+          0.0,
+          0.0,
+          250.0,
+          250.0
+        ],
+        "detail": [
+          120.0,
+          120.0,
+          130.0,
+          130.0
+        ],
+        "seam": [
+          120.0,
+          120.0,
+          130.0,
+          130.0
+        ]
+      },
+      "stats": {
+        "layerCount": 22,
+        "cellCount": 63,
+        "uniqueShapeRecords": 71718,
+        "logicalShapeOccurrences": 1025550,
+        "hierarchyDepth": 2,
+        "instanceRecords": 96293,
+        "regularArrayRecords": 0,
+        "maxPolygonPoints": 36
+      },
+      "roiLayers": [
+        {
+          "key": "17/0",
+          "overlappingRecords": 48,
+          "mergedPolygons": 21,
+          "areaDbu2": 22311200,
+          "coverage": 0.223112
+        },
+        {
+          "key": "19/0",
+          "overlappingRecords": 0,
+          "mergedPolygons": 0,
+          "areaDbu2": 0,
+          "coverage": 0.0
+        },
+        {
+          "key": "18/0",
+          "overlappingRecords": 0,
+          "mergedPolygons": 0,
+          "areaDbu2": 0,
+          "coverage": 0.0
+        },
+        {
+          "key": "15/0",
+          "overlappingRecords": 291,
+          "mergedPolygons": 89,
+          "areaDbu2": 18044600,
+          "coverage": 0.180446
+        },
+        {
+          "key": "16/0",
+          "overlappingRecords": 33,
+          "mergedPolygons": 33,
+          "areaDbu2": 161700,
+          "coverage": 0.001617
+        },
+        {
+          "key": "13/0",
+          "overlappingRecords": 392,
+          "mergedPolygons": 131,
+          "areaDbu2": 19870700,
+          "coverage": 0.198707
+        },
+        {
+          "key": "11/0",
+          "overlappingRecords": 472,
+          "mergedPolygons": 135,
+          "areaDbu2": 23677175,
+          "coverage": 0.23677175
+        },
+        {
+          "key": "12/0",
+          "overlappingRecords": 100,
+          "mergedPolygons": 100,
+          "areaDbu2": 484750,
+          "coverage": 0.0048475
+        },
+        {
+          "key": "14/0",
+          "overlappingRecords": 135,
+          "mergedPolygons": 135,
+          "areaDbu2": 651000,
+          "coverage": 0.00651
+        },
+        {
+          "key": "21/0",
+          "overlappingRecords": 0,
+          "mergedPolygons": 0,
+          "areaDbu2": 0,
+          "coverage": 0.0
+        },
+        {
+          "key": "20/0",
+          "overlappingRecords": 0,
+          "mergedPolygons": 0,
+          "areaDbu2": 0,
+          "coverage": 0.0
+        },
+        {
+          "key": "23/0",
+          "overlappingRecords": 0,
+          "mergedPolygons": 0,
+          "areaDbu2": 0,
+          "coverage": 0.0
+        },
+        {
+          "key": "22/0",
+          "overlappingRecords": 0,
+          "mergedPolygons": 0,
+          "areaDbu2": 0,
+          "coverage": 0.0
+        },
+        {
+          "key": "235/0",
+          "overlappingRecords": 94,
+          "mergedPolygons": 1,
+          "areaDbu2": 100000000,
+          "coverage": 1.0
+        },
+        {
+          "key": "3/0",
+          "overlappingRecords": 82,
+          "mergedPolygons": 4,
+          "areaDbu2": 54700000,
+          "coverage": 0.547
+        },
+        {
+          "key": "2/0",
+          "overlappingRecords": 94,
+          "mergedPolygons": 4,
+          "areaDbu2": 45300000,
+          "coverage": 0.453
+        },
+        {
+          "key": "4/0",
+          "overlappingRecords": 89,
+          "mergedPolygons": 4,
+          "areaDbu2": 44053700,
+          "coverage": 0.440537
+        },
+        {
+          "key": "5/0",
+          "overlappingRecords": 78,
+          "mergedPolygons": 7,
+          "areaDbu2": 53190425,
+          "coverage": 0.53190425
+        },
+        {
+          "key": "10/0",
+          "overlappingRecords": 560,
+          "mergedPolygons": 560,
+          "areaDbu2": 2340325,
+          "coverage": 0.02340325
+        },
+        {
+          "key": "63/63",
+          "overlappingRecords": 0,
+          "mergedPolygons": 0,
+          "areaDbu2": 0,
+          "coverage": 0.0
+        },
+        {
+          "key": "1/0",
+          "overlappingRecords": 66,
+          "mergedPolygons": 66,
+          "areaDbu2": 23037125,
+          "coverage": 0.23037125
+        },
+        {
+          "key": "9/0",
+          "overlappingRecords": 109,
+          "mergedPolygons": 109,
+          "areaDbu2": 9005000,
+          "coverage": 0.09005
+        }
+      ],
+      "patternedLayerCandidates": [
+        "11/0",
+        "13/0",
+        "9/0",
+        "15/0",
+        "1/0",
+        "17/0",
+        "5/0",
+        "3/0",
+        "2/0",
+        "4/0"
+      ]
+    },
+    {
+      "name": "sync-fifo-real",
+      "kind": "existing-chip-artifact",
+      "path": "external-fixtures/sync_fifo.gds",
+      "bytes": 6697992,
+      "sha256": "8d51593e15cb0dfd179b7fee444daee9407773d49fe7e379596c366d172082cd",
+      "cell": "sync_fifo",
+      "dbu": 0.001,
+      "boxes": {
+        "full": [
+          0.0,
+          0.0,
+          233.415,
+          244.135
+        ],
+        "detail": [
+          111.707,
+          117.067,
+          121.707,
+          127.067
+        ],
+        "seam": [
+          111.707,
+          117.067,
+          121.707,
+          127.067
+        ]
+      },
+      "stats": {
+        "layerCount": 41,
+        "cellCount": 77,
+        "uniqueShapeRecords": 95126,
+        "logicalShapeOccurrences": 536769,
+        "hierarchyDepth": 2,
+        "instanceRecords": 7326,
+        "regularArrayRecords": 0,
+        "maxPolygonPoints": 124
+      },
+      "roiLayers": [
+        {
+          "key": "236/0",
+          "overlappingRecords": 14,
+          "mergedPolygons": 1,
+          "areaDbu2": 95098751,
+          "coverage": 0.95098751
+        },
+        {
+          "key": "68/16",
+          "overlappingRecords": 23,
+          "mergedPolygons": 21,
+          "areaDbu2": 616725,
+          "coverage": 0.00616725
+        },
+        {
+          "key": "64/16",
+          "overlappingRecords": 8,
+          "mergedPolygons": 6,
+          "areaDbu2": 151810,
+          "coverage": 0.0015181
+        },
+        {
+          "key": "122/16",
+          "overlappingRecords": 16,
+          "mergedPolygons": 13,
+          "areaDbu2": 350310,
+          "coverage": 0.0035031
+        },
+        {
+          "key": "65/20",
+          "overlappingRecords": 35,
+          "mergedPolygons": 34,
+          "areaDbu2": 36480040,
+          "coverage": 0.3648004
+        },
+        {
+          "key": "67/16",
+          "overlappingRecords": 101,
+          "mergedPolygons": 101,
+          "areaDbu2": 2867220,
+          "coverage": 0.0286722
+        },
+        {
+          "key": "66/44",
+          "overlappingRecords": 239,
+          "mergedPolygons": 239,
+          "areaDbu2": 6662300,
+          "coverage": 0.066623
+        },
+        {
+          "key": "93/44",
+          "overlappingRecords": 20,
+          "mergedPolygons": 4,
+          "areaDbu2": 40609879,
+          "coverage": 0.40609879
+        },
+        {
+          "key": "67/5",
+          "overlappingRecords": 13,
+          "mergedPolygons": 0,
+          "areaDbu2": 0,
+          "coverage": 0.0
+        },
+        {
+          "key": "81/4",
+          "overlappingRecords": 18,
+          "mergedPolygons": 1,
+          "areaDbu2": 100000000,
+          "coverage": 1.0
+        },
+        {
+          "key": "68/5",
+          "overlappingRecords": 2,
+          "mergedPolygons": 0,
+          "areaDbu2": 0,
+          "coverage": 0.0
+        },
+        {
+          "key": "78/44",
+          "overlappingRecords": 18,
+          "mergedPolygons": 3,
+          "areaDbu2": 50000000,
+          "coverage": 0.5
+        },
+        {
+          "key": "68/20",
+          "overlappingRecords": 156,
+          "mergedPolygons": 44,
+          "areaDbu2": 34049590,
+          "coverage": 0.3404959
+        },
+        {
+          "key": "67/44",
+          "overlappingRecords": 165,
+          "mergedPolygons": 99,
+          "areaDbu2": 2827100,
+          "coverage": 0.028271
+        },
+        {
+          "key": "67/20",
+          "overlappingRecords": 115,
+          "mergedPolygons": 68,
+          "areaDbu2": 51501144,
+          "coverage": 0.51501144
+        },
+        {
+          "key": "94/20",
+          "overlappingRecords": 25,
+          "mergedPolygons": 5,
+          "areaDbu2": 42053611,
+          "coverage": 0.42053611
+        },
+        {
+          "key": "64/20",
+          "overlappingRecords": 24,
+          "mergedPolygons": 3,
+          "areaDbu2": 47800000,
+          "coverage": 0.478
+        },
+        {
+          "key": "64/5",
+          "overlappingRecords": 0,
+          "mergedPolygons": 0,
+          "areaDbu2": 0,
+          "coverage": 0.0
+        },
+        {
+          "key": "64/59",
+          "overlappingRecords": 0,
+          "mergedPolygons": 0,
+          "areaDbu2": 0,
+          "coverage": 0.0
+        },
+        {
+          "key": "81/23",
+          "overlappingRecords": 5,
+          "mergedPolygons": 5,
+          "areaDbu2": 1959600,
+          "coverage": 0.019596
+        },
+        {
+          "key": "83/44",
+          "overlappingRecords": 0,
+          "mergedPolygons": 0,
+          "areaDbu2": 0,
+          "coverage": 0.0
+        },
+        {
+          "key": "66/20",
+          "overlappingRecords": 45,
+          "mergedPolygons": 45,
+          "areaDbu2": 26578855,
+          "coverage": 0.26578855
+        },
+        {
+          "key": "95/20",
+          "overlappingRecords": 9,
+          "mergedPolygons": 5,
+          "areaDbu2": 16710055,
+          "coverage": 0.16710055
+        },
+        {
+          "key": "65/44",
+          "overlappingRecords": 4,
+          "mergedPolygons": 4,
+          "areaDbu2": 286334,
+          "coverage": 0.00286334
+        },
+        {
+          "key": "235/4",
+          "overlappingRecords": 1,
+          "mergedPolygons": 1,
+          "areaDbu2": 100000000,
+          "coverage": 1.0
+        },
+        {
+          "key": "68/44",
+          "overlappingRecords": 29,
+          "mergedPolygons": 29,
+          "areaDbu2": 652500,
+          "coverage": 0.006525
+        },
+        {
+          "key": "69/20",
+          "overlappingRecords": 54,
+          "mergedPolygons": 20,
+          "areaDbu2": 11445860,
+          "coverage": 0.1144586
+        },
+        {
+          "key": "69/44",
+          "overlappingRecords": 0,
+          "mergedPolygons": 0,
+          "areaDbu2": 0,
+          "coverage": 0.0
+        },
+        {
+          "key": "70/20",
+          "overlappingRecords": 5,
+          "mergedPolygons": 3,
+          "areaDbu2": 6002640,
+          "coverage": 0.0600264
+        },
+        {
+          "key": "70/44",
+          "overlappingRecords": 0,
+          "mergedPolygons": 0,
+          "areaDbu2": 0,
+          "coverage": 0.0
+        },
+        {
+          "key": "71/20",
+          "overlappingRecords": 0,
+          "mergedPolygons": 0,
+          "areaDbu2": 0,
+          "coverage": 0.0
+        },
+        {
+          "key": "71/44",
+          "overlappingRecords": 0,
+          "mergedPolygons": 0,
+          "areaDbu2": 0,
+          "coverage": 0.0
+        },
+        {
+          "key": "72/20",
+          "overlappingRecords": 0,
+          "mergedPolygons": 0,
+          "areaDbu2": 0,
+          "coverage": 0.0
+        },
+        {
+          "key": "69/5",
+          "overlappingRecords": 3,
+          "mergedPolygons": 0,
+          "areaDbu2": 0,
+          "coverage": 0.0
+        },
+        {
+          "key": "70/5",
+          "overlappingRecords": 0,
+          "mergedPolygons": 0,
+          "areaDbu2": 0,
+          "coverage": 0.0
+        },
+        {
+          "key": "72/5",
+          "overlappingRecords": 0,
+          "mergedPolygons": 0,
+          "areaDbu2": 0,
+          "coverage": 0.0
+        },
+        {
+          "key": "72/16",
+          "overlappingRecords": 0,
+          "mergedPolygons": 0,
+          "areaDbu2": 0,
+          "coverage": 0.0
+        },
+        {
+          "key": "71/5",
+          "overlappingRecords": 0,
+          "mergedPolygons": 0,
+          "areaDbu2": 0,
+          "coverage": 0.0
+        },
+        {
+          "key": "71/16",
+          "overlappingRecords": 0,
+          "mergedPolygons": 0,
+          "areaDbu2": 0,
+          "coverage": 0.0
+        },
+        {
+          "key": "69/16",
+          "overlappingRecords": 0,
+          "mergedPolygons": 0,
+          "areaDbu2": 0,
+          "coverage": 0.0
+        },
+        {
+          "key": "70/16",
+          "overlappingRecords": 0,
+          "mergedPolygons": 0,
+          "areaDbu2": 0,
+          "coverage": 0.0
+        }
+      ],
+      "patternedLayerCandidates": [
+        "66/44",
+        "67/20",
+        "66/20",
+        "68/20",
+        "65/20",
+        "69/20",
+        "94/20",
+        "95/20",
+        "93/44",
+        "78/44",
+        "64/20",
+        "70/20"
+      ],
+      "pathEnv": "LAYOUT_FIFO_FILE"
+    }
+  ]
+}

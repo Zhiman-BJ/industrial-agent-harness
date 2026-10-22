@@ -38,11 +38,13 @@ async function preflight({ projectDir, action, signal }, environment, protectedP
   try {
     const result = await executeTask(
       {
-        command: [process.execPath, '-e', 'console.log("HARNESS_PROTECTED_TASK_READY")'],
+        // Probe the OS boundary without relaunching the host runtime. In a
+        // packaged Desktop process, execPath is Electron rather than Node.
+        command: ['/bin/sh', '-c', 'printf "%s\\n" HARNESS_PROTECTED_TASK_READY'],
         runtime: { kind: 'local' },
         timeoutMs: 5000,
       },
-      { directory, input, work, actionId: action.id, environment, signal },
+      { projectDir, directory, input, work, actionId: action.id, environment, signal },
     );
     checks.push({
       name: 'protected local execution',

@@ -1,0 +1,66 @@
+{
+  "scope": "Immediate newest-generation latency and stale-result cache exclusion",
+  "trials": [
+    {
+      "fixture": "sobel-real",
+      "trial": 0,
+      "newestMilliseconds": 57.863,
+      "totalSinceCancelMilliseconds": 58.009,
+      "obsoleteRejected": 8,
+      "obsoleteCacheEntries": 0,
+      "newestMode": "exact",
+      "workerSelfPeakRssBytes": 103563264
+    },
+    {
+      "fixture": "sobel-real",
+      "trial": 1,
+      "newestMilliseconds": 46.343,
+      "totalSinceCancelMilliseconds": 46.383,
+      "obsoleteRejected": 8,
+      "obsoleteCacheEntries": 0,
+      "newestMode": "exact",
+      "workerSelfPeakRssBytes": 103645184
+    },
+    {
+      "fixture": "sobel-real",
+      "trial": 2,
+      "newestMilliseconds": 37.68,
+      "totalSinceCancelMilliseconds": 37.715,
+      "obsoleteRejected": 8,
+      "obsoleteCacheEntries": 0,
+      "newestMode": "exact",
+      "workerSelfPeakRssBytes": 103989248
+    },
+    {
+      "fixture": "sync-fifo-real",
+      "trial": 0,
+      "newestMilliseconds": 38.026,
+      "totalSinceCancelMilliseconds": 38.062,
+      "obsoleteRejected": 8,
+      "obsoleteCacheEntries": 0,
+      "newestMode": "exact",
+      "workerSelfPeakRssBytes": 85950464
+    },
+    {
+      "fixture": "sync-fifo-real",
+      "trial": 1,
+      "newestMilliseconds": 25.77,
+      "totalSinceCancelMilliseconds": 25.801,
+      "obsoleteRejected": 8,
+      "obsoleteCacheEntries": 0,
+      "newestMode": "exact",
+      "workerSelfPeakRssBytes": 86392832
+    },
+    {
+      "fixture": "sync-fifo-real",
+      "trial": 2,
+      "newestMilliseconds": 27.181,
+      "totalSinceCancelMilliseconds": 27.216,
+      "obsoleteRejected": 8,
+      "obsoleteCacheEntries": 0,
+      "newestMode": "exact",
+      "workerSelfPeakRssBytes": 86622208
+    }
+  ],
+  "status": "passed"
+}

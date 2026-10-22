@@ -82,6 +82,8 @@ if (process.argv.includes('--packaged-smoke') && process.env.HARNESS_PACKAGED_SM
 }
 const { spawnSync } = require('node:child_process');
 const { RasterService } = require('@industrial-agent-harness/viewer-builtin/runtime/layout');
+const { layoutRequest } = require('./layout-request.cjs');
+const { LayoutSourceStore } = require('./layout-source.cjs');
 const {
   resolveViewerInterpreter,
   ResolvedViewerService,
@@ -171,6 +173,7 @@ if (
     '--remote-connection-selftest',
     '--task-results-selftest',
     '--viewer-selftest',
+    '--layout-selftest',
     '--kicad-selftest',
     '--godot-selftest',
     '--documents-selftest',
@@ -254,6 +257,10 @@ async function availablePacks(options = {}) {
 const artifacts = new Map();
 const netlistSessions = new Map();
 let activeLayoutToken;
+let activeLayoutSource;
+let layoutSources;
+let layoutSourceAbort;
+let layoutOpenSequence = 0;
 let raster;
 let viewerProtocol;
 const godotRuntime = new GodotRuntimeManager();
@@ -524,7 +531,12 @@ function clearProjectArtifacts() {
   artifacts.clear();
   netlistSessions.clear();
   activeLayoutToken = undefined;
+  layoutSourceAbort?.abort();
+  void activeLayoutSource?.snapshot.close().catch(error => console.error(error.message));
+  activeLayoutSource = undefined;
+  layoutOpenSequence += 1;
   raster?.close();
+  raster = undefined;
   godotRuntime.close();
   kicadRuntime.close();
 }
@@ -585,7 +597,7 @@ let cachedAgentRuntime;
 function agentRuntimeStatus() {
   const executable = kimiExecutable();
   if (cachedAgentRuntime?.executable === executable) return cachedAgentRuntime;
-  const script = /\.[cm]?js$/.test(executable);
+  const script = /\.[cm]?js$/i.test(executable);
   const command = script ? process.execPath : executable;
   const prefix = script ? [executable] : [];
   const probeOptions = {
@@ -763,9 +775,42 @@ const viewerRegistry = createViewerRegistry([
       ['.gds', '.gdsii', '.oas', '.oasis'].includes(path.extname(file).toLowerCase()),
     open: async ({ artifact, file }) => {
       const token = crypto.randomUUID();
-      const data = await getRaster(true).call({ op: 'load', path: file, token });
-      activeLayoutToken = token;
-      return { artifact, kind: 'layout', data };
+      const sequence = ++layoutOpenSequence;
+      const projectId = activeProject()?.id;
+      activeLayoutToken = undefined;
+      layoutSourceAbort?.abort();
+      const sourceAbort = new AbortController();
+      layoutSourceAbort = sourceAbort;
+      const previous = activeLayoutSource;
+      activeLayoutSource = undefined;
+      // Cancel old native work before loading a different source; otherwise an
+      // obsolete geometry request can block this open and retain both databases.
+      raster?.close();
+      raster = undefined;
+      await previous?.snapshot.close();
+      layoutSources ||= new LayoutSourceStore(
+        path.join(app.getPath('userData'), 'layout-snapshots'),
+      );
+      const snapshot = await layoutSources.prepare({
+        file,
+        sha256: artifact.sha256,
+        signal: sourceAbort.signal,
+      });
+      try {
+        sourceAbort.signal.throwIfAborted();
+        if (sequence !== layoutOpenSequence || projectId !== activeProject()?.id)
+          throw Error('Layout artifact changed; reopen this view.');
+        const data = await getRaster().call({ op: 'load', path: snapshot.path, token });
+        await snapshot.assertCurrent();
+        if (sequence !== layoutOpenSequence || projectId !== activeProject()?.id)
+          throw Error('Layout artifact changed; reopen this view.');
+        activeLayoutToken = token;
+        activeLayoutSource = { artifactId: artifact.id, projectId, snapshot };
+        return { artifact, kind: 'layout', data: { ...data, sourceHash: snapshot.sha256 } };
+      } catch (error) {
+        await snapshot.close();
+        throw error;
+      }
     },
   },
   {
@@ -1741,11 +1786,82 @@ function registerHandlers() {
     if (error) throw Error(`Could not open the system application: ${error}`);
     return { launched: true };
   });
-  ipcMain.handle('viewer:render', (_event, request) => {
-    if (request?.token !== activeLayoutToken)
+  async function checkedLayout(token) {
+    const source = activeLayoutSource;
+    if (
+      !source ||
+      !token ||
+      token !== activeLayoutToken ||
+      source.projectId !== activeProject()?.id
+    )
       throw Error('Layout artifact changed; reopen this view.');
-    return getRaster().call({ ...request, op: 'render' });
-  });
+    const entry = artifacts.get(source.artifactId);
+    if (!entry || entry.artifact.sha256 !== source.snapshot.sha256)
+      throw Error('Layout artifact changed; reopen this view.');
+    if (entry.recorded && entry.projectId !== activeProject()?.id)
+      throw Error('Result belongs to another project.');
+    // Recorded results additionally carry chat/action lineage and companion
+    // checks owned by TaskService. Do not replace those with a file snapshot.
+    if (entry.recorded) await tasks.openResult(selectedSession(), entry.recorded);
+    await source.snapshot.assertCurrent();
+    if (
+      source !== activeLayoutSource ||
+      token !== activeLayoutToken ||
+      source.projectId !== activeProject()?.id
+    )
+      throw Error('Layout artifact changed; reopen this view.');
+  }
+  ipcMain.handle('viewer:render', (event, request) =>
+    layoutRequest({
+      event,
+      getWindow: () => mainWindow,
+      validate: () => checkedLayout(request?.token),
+      render: () => getRaster().call({ ...request, op: 'render' }),
+    }),
+  );
+  ipcMain.handle('viewer:layout-geometry', (event, request) =>
+    layoutRequest({
+      event,
+      getWindow: () => mainWindow,
+      validate: () => checkedLayout(request?.token),
+      render: () =>
+        getRaster().call({
+          op: 'geometry',
+          token: request.token,
+          box: request.box,
+          visible: request.visible,
+        }),
+    }),
+  );
+  ipcMain.handle('viewer:layout-tile', (event, request) =>
+    layoutRequest({
+      event,
+      getWindow: () => mainWindow,
+      validate: () => checkedLayout(request?.token),
+      render: () =>
+        getRaster().call({
+          op: 'tile',
+          token: request.token,
+          generation: request.generation,
+          layer: request.layer,
+          box: request.box,
+          mode: request.mode,
+          pixels: request.pixels,
+        }),
+    }),
+  );
+  ipcMain.handle('viewer:layout-tiles-cancel', (event, request) =>
+    layoutRequest({
+      event,
+      getWindow: () => mainWindow,
+      validate: () => checkedLayout(request?.token),
+      render: () => {
+        if (!Number.isSafeInteger(request.generation) || request.generation < 0)
+          throw Error('Invalid layout generation.');
+        getRaster().setGeneration(request.token, request.generation);
+      },
+    }),
+  );
   ipcMain.handle('viewer:netlist', async (_event, request) => {
     const file = netlistSessions.get(request?.token);
     if (!file) throw Error('Unknown netlist view.');
@@ -1964,6 +2080,11 @@ async function createWindow() {
   }
   if (process.argv.includes('--packaged-smoke')) {
     if (!app.isPackaged) throw Error('Packaged smoke requires an installed app.');
+    const packagedLocalExecution = await require('./packaged-runtime-selftest.cjs').run({
+      TaskService,
+      getRegistry: currentRegistry,
+    });
+    console.log(JSON.stringify({ packagedLocalExecution }));
     await require('./selftest-language.cjs').setLanguage(window, 'en');
     async function waitFor(script, timeout = 15000) {
       const end = Date.now() + timeout;
@@ -2239,6 +2360,20 @@ async function createWindow() {
   if (process.argv.includes('--godot-selftest')) {
     await require('./godot-selftest.cjs').run(window);
     app.quit();
+    return;
+  }
+  if (process.argv.includes('--layout-selftest')) {
+    try {
+      await require('./layout-selftest.cjs').runFromProject(window);
+    } catch (error) {
+      if (!process.argv.includes('--keep-open')) throw error;
+      fs.writeSync(
+        2,
+        `Layout selftest FAILED; keeping window open for diagnosis:\n${error.stack || error}\n`,
+      );
+      return;
+    }
+    if (!process.argv.includes('--keep-open')) app.quit();
     return;
   }
   if (process.argv.includes('--viewer-selftest')) {
@@ -2595,12 +2730,14 @@ app.on('before-quit', event => {
   if (shutdownPromise) return;
   account?.close();
   raster?.close();
+  layoutSourceAbort?.abort();
   viewerProtocol?.close();
   godotRuntime.close();
   viewerResourceHost.close();
   kicadRuntime.close();
   shutdownPromise = (async () => {
     try {
+      await layoutSources?.close();
       await domainOperationDone;
       await tasks.close();
     } finally {

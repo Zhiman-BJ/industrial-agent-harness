@@ -2464,11 +2464,19 @@ export function App() {
                     {selectedArtifact && (
                       <footer className="ia-viewer-footer">
                         {selectedArtifact.kind.toUpperCase()} ·{' '}
-                        {activeViewer && isViewerReady
-                          ? t('Ready')
-                          : activeViewState?.error
-                            ? t('Error')
-                            : t('Loading')}{' '}
+                        {viewNavigation?.status
+                          ? t(
+                              viewNavigation.status === 'ready'
+                                ? 'Ready'
+                                : viewNavigation.status === 'error'
+                                  ? 'Error'
+                                  : 'Loading',
+                            )
+                          : activeViewer && isViewerReady
+                            ? t('Ready')
+                            : activeViewState?.error
+                              ? t('Error')
+                              : t('Loading')}{' '}
                         · SHA-256 {selectedArtifact.sha256.slice(0, 16)}…
                       </footer>
                     )}

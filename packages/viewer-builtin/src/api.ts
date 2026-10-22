@@ -1,9 +1,50 @@
 export interface LayoutMeta {
   token: string;
+  sourceHash?: string;
+  dbu?: number;
   cell: string;
   bbox: number[];
   layers: Array<{ key: string; name: string }>;
   klayout: string;
+}
+
+/** Display-only tile; overview pixels must never be presented as exact geometry. */
+export interface LayoutTileRequest {
+  token: string;
+  generation: number;
+  layer: string;
+  box: number[];
+  mode: 'auto' | 'exact' | 'overview';
+  pixels: 128 | 256 | 512;
+}
+
+export interface LayoutTile {
+  token: string;
+  generation: number;
+  layer: string;
+  box: number[];
+  /** Actual clipping frame snapped consistently to source integer DBU. */
+  clipBox?: number[];
+  mode: 'exact' | 'overview' | 'empty';
+  /** Base64 little-endian Float64 XYZ triangles; source XY, illustrative unit Z. */
+  positions?: string;
+  encoding?: 'f64le-xyz';
+  /** White coverage on black, sampled from the actual source layer. */
+  png?: string;
+  shapeCount: number;
+  triangleCount: number;
+  reason?: string;
+  cacheHit?: boolean;
+  limits: { maxShapes: number; maxTriangles: number; maxSeconds: number };
+}
+
+export interface LayoutGeometry {
+  token: string;
+  box: number[];
+  layers: Array<{ key: string; triangles: number[] }>;
+  shapeCount: number;
+  triangleCount: number;
+  limits: { maxShapes: number; maxTriangles: number; maxSeconds: number };
 }
 
 export interface NetlistData {
@@ -224,6 +265,13 @@ export interface ViewerHostApi {
       total?: number;
     }) => void,
   ): () => void;
+  layoutTile(request: LayoutTileRequest): Promise<LayoutTile>;
+  layoutTilesCancel(request: { token: string; generation: number }): Promise<void>;
+  layoutGeometry(request: {
+    token: string;
+    box: number[];
+    visible: string[];
+  }): Promise<LayoutGeometry>;
   openExternalArtifact(artifactId: string): Promise<{ launched: true }>;
   render(request: {
     token: string;
