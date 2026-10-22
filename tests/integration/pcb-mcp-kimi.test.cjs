@@ -1,4 +1,5 @@
 const test = require('node:test');
+const { taskArguments } = require('./fixtures/task-service-process.cjs');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
@@ -14,7 +15,7 @@ const kimi =
   require('../../packages/agent-kimi/src/code-session.cjs').bundledExecutable();
 
 test(
-  'real PCB CLI keeps the shared Runtime scope and requires approval for current-user native fixture writes',
+  'real PCB TaskService keeps the shared Runtime scope and requires approval for current-user native fixture writes',
   { timeout: 90000 },
   async t => {
     assert.ok(fs.existsSync(kimi), 'The pinned native Kimi executable is required.');
@@ -46,35 +47,21 @@ test(
       const before = model.requests.length;
       const { stdout, stderr } = await execute(
         process.execPath,
-        [
-          path.join(root, 'apps/cli/src/main.cjs'),
-          'run',
-          '--project-dir',
-          project,
-          '--domain',
-          'pcb',
-          '--task',
-          'pcb mcp 写入 native-agent-marker.txt 合成测试标记',
-          '--approval',
-          approval,
-          '--provider',
-          'openai_legacy',
-          '--endpoint',
-          model.endpoint,
-          '--model',
-          'controlled-pcb',
-          '--no-thinking',
-          '--kimi-executable',
-          kimi,
-          '--timeout-ms',
-          '25000',
-          '--chat-dir',
-          path.join(directory, 'chats'),
-          '--state-dir',
-          path.join(directory, 'state'),
-          '--log-dir',
-          path.join(directory, 'logs'),
-        ],
+        taskArguments({
+          projectDir: project,
+          domain: 'pcb',
+          task: 'pcb mcp 写入 native-agent-marker.txt 合成测试标记',
+          approval: approval,
+          provider: 'openai_legacy',
+          endpoint: model.endpoint,
+          model: 'controlled-pcb',
+          thinking: false,
+          kimiExecutable: kimi,
+          timeoutMs: 25000,
+          chatDir: path.join(directory, 'chats'),
+          stateDir: path.join(directory, 'state'),
+          logDir: path.join(directory, 'logs'),
+        }),
         {
           cwd: root,
           timeout: 40000,

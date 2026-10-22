@@ -13,6 +13,6 @@ Exposes compact discovery, selected tool schemas, and scoped calls backed by a d
 
 共享网关、安装、分页与真实验证见 [Chip Pack MCP 接入](../../doc/domain-mcp-integration.md)。
 
-`ExternalMcpRegistry` 是显式用户注册的独立入口，保存在用户私有配置目录；项目不能自行提供启动命令。支持 stdio、Streamable HTTP、SSE 和凭据环境引用。Desktop / CLI 共用注册快照与策略；受保护会话的发现/describe/call 由宿主 Runtime callback 提供，完整响应通过 immutable artifact 分页。旧 Gateway 保留协议测试。实际调用标为 mutating，经 Runtime 审批，调用前重查 Scope、参数、注册 revision 和 live 工具快照；图片保持 ImageContent，文字有界、分页并脱敏。外部 host 服务不产生工业验收事实，roots 不是 OS 沙箱。行为、限制与测试见 [外部 MCP](../../doc/external-mcp.md)。
+`ExternalMcpRegistry` 是显式用户注册的独立入口，保存在用户私有配置目录；项目不能自行提供启动命令。支持 stdio、Streamable HTTP、SSE 和凭据环境引用。Desktop 共用注册快照与策略；受保护会话的发现/describe/call 由宿主 Runtime callback 提供，完整响应通过 immutable artifact 分页。旧 Gateway 保留协议测试。实际调用标为 mutating，经 Runtime 审批，调用前重查 Scope、参数、注册 revision 和 live 工具快照；图片保持 ImageContent，文字有界、分页并脱敏。外部 host 服务不产生工业验收事实，roots 不是 OS 沙箱。行为、限制与测试见 [外部 MCP](../../doc/external-mcp.md)。
 
 Domain Pack 中 `transport: runtime` 的宿主工具提供方由 Domain Runtime 加载，不进入 MCP server 清单或子进程配置。FreeCAD 通过这一边界复用持久执行与审批，见 [FreeCAD CAD Pack](../../doc/freecad-domain-pack.md)。

@@ -40,7 +40,7 @@ Pack Manager 解码归档时再检查必需 Skill、Provider 和 Runtime 入口�
 
 ## 3. 本地开发安装
 
-生产 CLI 只接受信任公钥验证过的 HTTPS 目录。以下本地 Node 片段显式使用
+桌面生产安装只接受信任公钥验证过的 HTTPS 目录。以下本地 Node 片段显式使用
 `allowUnsigned: true` 与内存归档，供独立开发者测试自己刚构建的包：
 
 ```sh
@@ -56,23 +56,14 @@ new PackManager().install({
   platforms: [`${process.platform}-${process.arch}`],
 }, { bytes, allowUnsigned: true }).then(pack => console.log(pack.domain, pack.version));
 NODE
-node apps/cli/src/main.cjs domains list
+node -e "console.log(new (require('./packages/pack-manager/src/index.cjs').PackManager)().list())"
 ```
 
 安装库动态发现 `review-fixture`，不要求编辑静态 Domain 注册表或 Core。
 
 ## 4. 验证真实披露与附属资源
 
-```sh
-mkdir "$TASK_PACK_TMP/project"
-INDUSTRIAL_HARNESS_CONFIG_DIR="$TASK_PACK_TMP/config" \
-node apps/cli/src/main.cjs run \
-  --project-dir "$TASK_PACK_TMP/project" --domain review-fixture \
-  --task 'inspect report' --state-dir "$TASK_PACK_TMP/state" --scope-only
-```
-
-输出 Scope 必须包含 `review-fixture.inspect`。`--scope-only` 不启动模型；为证明安装后的
-Skill 内容确实进入会话，再通过生产材料化函数读取相对参考与模板：
+以下片段直接检查生产 Registry/Broker 与资源材料化；不启动模型，也不作为单独的 CLI 产品。输出 Scope 必须包含 `review-fixture.inspect`，并读取完整相对参考与模板：
 
 ```sh
 node <<'NODE'
@@ -88,8 +79,7 @@ for (const resource of ['references/criteria.md', 'assets/report-template.md'])
 NODE
 ```
 
-需要模型生成报告时，按 [CLI 模型配置](../apps/cli/README.md) 设置模型，再运行同一任务并去掉
-`--scope-only`。该示例没有工具和独立验证器，模型生成的报告不能建立工业验收。
+需要模型生成报告时，在桌面 Model API 设置中配置模型，新建绑定 `review-fixture` 领域的专用项目并发送任务。该示例没有工具和独立验证器，模型生成的报告不能建立工业验收。
 
 ## 5. 发布、更新与失败行为
 
@@ -98,12 +88,9 @@ NODE
 Domain、版本、归档摘要、大小、URL 和真实支持的平台列表。私钥保留在发布环境；消费方明确
 信任对应公钥。生产安装示例：
 
-```sh
-node apps/cli/src/main.cjs domains install review-fixture \
-  --catalog https://YOUR-HOST/catalog.json --keys-file ./trusted-keys.json
-```
+应用发行方配置受信目录与公钥后，在桌面能力中心选择该领域并安装。
 
-上面地址和公钥文件由实际发布者提供；CLI 默认消费 `stable` 渠道。公钥文件形状为
+上面地址和公钥文件由实际发布者提供；应用默认消费 `stable` 渠道。公钥文件形状为
 `{"publisher-key-id":"-----BEGIN PUBLIC KEY-----..."}`。仓库自有发布可使用
 `HARNESS_PACK_CHANNEL=stable`、`HARNESS_PACK_SIGNING_KEY_FILE`、`HARNESS_PACK_SIGNING_KEY_ID`
 与 `scripts/build-pack-distribution.cjs`；该命令构建内置领域，不替代外部源目录构建命令。

@@ -8,7 +8,7 @@ English · [简体中文](README.zh-CN.md)
 
 **An AI workbench for engineering projects, with scoped tools and verifiable results.**
 
-Industrial Agent Harness connects local projects, Kimi Code, professional software and engineering evidence through a desktop workbench. Domain Packs provide the knowledge, tools and verification methods for each field.
+Industrial Agent Harness is a GUI product connecting local projects, Kimi Code, professional software and engineering evidence through a desktop workbench. Domain Packs provide the knowledge, tools and verification methods for each field.
 
 > [!IMPORTANT]
 > **Developer Preview.** The project is a Workbench MVP with persistent, scoped engineering runtimes. APIs, Pack interfaces and runtime behavior are still evolving. This README describes the current source tree; published preview archives follow their own release notes.
@@ -164,7 +164,7 @@ pnpm run test:release
 pnpm run format:check
 ```
 
-The [Harness CI gate](.github/workflows/ci.yml) runs shared-package and packaged CLI regressions on Linux x64/arm64, macOS arm64 and Windows x64, desktop installation on macOS/Windows, and declares industrial Core acceptance lanes for Apple Silicon and Linux x86-64, including the actual installed Chip CLI. The container-backed Mac lanes currently require a suitable runner with local Docker; local acceptance does not mean those GitHub-hosted lanes are passing. [CI regression coverage](doc/ci-regression.md) documents dependencies, retained evidence and explicit coverage gaps; a skipped test does not establish support. Report security issues through the process in [SECURITY.md](SECURITY.md).
+The [Harness CI gate](.github/workflows/ci.yml) runs shared-package regressions on Linux x64/arm64, macOS arm64 and Windows x64, desktop installation on macOS/Windows, and industrial Core acceptance through shared application tests. The container-backed Mac lanes currently require a suitable runner with local Docker; local acceptance does not mean those GitHub-hosted lanes are passing. [CI regression coverage](doc/ci-regression.md) documents dependencies, retained evidence and explicit coverage gaps; a skipped test does not establish support. Report security issues through the process in [SECURITY.md](SECURITY.md).
 
 ## Preview scope
 
@@ -188,7 +188,7 @@ Workspace approvals show file diffs, declared commands and external arguments. `
 
 ### Built-in remote execution (internal trial)
 
-Remote execution now uses the session-based Gateway v1.1: Kimi/Agent stays local, while the remote service supplies domain MCP, professional software and sandbox execution. Desktop and CLI share persistent chat bindings, explicit immutable file uploads, canonical evidence import and verified artifact downloads that never overwrite existing files. Changed local files require another upload review; stopping the local wait does not cancel remote computation. Connection readiness and qualified software/worker execution remain separate. Explicit rebind creates a new remote project while retaining the old binding history; it does not migrate old 0.2 jobs or engineering facts. Public endpoint/sign-in defaults remain unset, and this refactor does not qualify KiCad or a production Linux worker. Historical H200 RTL checks apply to the previous protocol. See [remote execution and CLI commands](doc/remote-execution.md).
+Remote execution now uses the session-based Gateway v1.1: Kimi/Agent stays local, while the remote service supplies domain MCP, professional software and sandbox execution. Desktop uses persistent chat bindings, explicit immutable file uploads, canonical evidence import and verified artifact downloads that never overwrite existing files. Changed local files require another upload review; stopping the local wait does not cancel remote computation. Connection readiness and qualified software/worker execution remain separate. Explicit rebind creates a new remote project while retaining the old binding history; it does not migrate old 0.2 jobs or engineering facts. Public endpoint/sign-in defaults remain unset, and this refactor does not qualify KiCad or a production Linux worker. Historical H200 RTL checks apply to the previous protocol. See [remote execution](doc/remote-execution.md).
 
 The desktop chat combines remote and task state in a collapsible execution card. Chat columns at least 960 px wide reserve a side gutter; narrower columns keep the card above messages with bounded scrolling. Task progress, pending work and remote failures have distinct summaries; project/settings pages retain background polling without showing the card. When remote readiness blocks input, the composer explains the blocker and links to project execution settings; a missing Kimi runtime keeps its higher-priority hint. These presentation changes preserve upload confirmation, task approvals and the existing readiness gate.
 
@@ -202,6 +202,6 @@ MOCK_REMOTE_TOKEN=mock-token node scripts/remote-ui-fixture.cjs
 
 Launch the test client with `INDUSTRIAL_REMOTE_SERVICE_URL=http://127.0.0.1:8787`, `INDUSTRIAL_REMOTE_CREDENTIAL_ENV=MOCK_REMOTE_TOKEN` and the same `MOCK_REMOTE_TOKEN`. File upload still requires explicit review and confirmation. This fixture establishes UI protocol behavior only, not production remote execution or engineering qualification.
 
-The Harness task application is shared across Desktop and the internal headless surface; domain metadata, Skills and implementations come from one immutable Domain Packs release. See [consumer migration and validation](doc/shared-task-and-pack-consumption.md).
+Desktop uses the shared Harness task application; domain metadata, Skills and implementations come from one immutable Domain Packs release. CLI, Node SDK and headless distribution are retired; historical release assets retain their original scope. See [consumer migration and validation](doc/shared-task-and-pack-consumption.md).
 
 The preceding managed release pinned Domain Packs 0.6.0 by immutable commit and prepared the declared Harbor assets through the generic Pack Manager. Its historical evidence follows. macOS ARM64 qualification covers the declared CAD, PCB and Godot profiles and the CUDA remote client; managed Chip also passed Linux x86-64 installation and native checks. See [installation evidence](doc/install-experience.md) and each domain's qualification limits. Historical preview archives retain their original dependencies and scope.

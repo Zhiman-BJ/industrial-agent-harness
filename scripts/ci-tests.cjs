@@ -97,7 +97,6 @@ function portableFiles() {
   // Discover the same suites as pnpm test, including future tests in these packages.
   const packages = [
     ...fs.globSync('packages/*/package.json', { cwd: root }),
-    'apps/cli/package.json',
     'apps/desktop/package.json',
   ];
   const files = packages.flatMap(manifest => {
@@ -119,10 +118,12 @@ function portableFiles() {
     ...new Set([
       ...files,
       'tests/ci/ci-tests.test.cjs',
+      'tests/benchmark/process.test.cjs',
+      'tests/benchmark/redact.test.cjs',
       'tests/ci/ci-areas.test.cjs',
       'tests/ci/native-evidence.test.cjs',
       'tests/ci/runtime-archives.test.cjs',
-      'tests/ci/current-user-installers.test.cjs',
+      'tests/ci/agent-boundary-fixtures.test.cjs',
       'tests/ci/remote-chat-model-fixture.test.cjs',
       'tests/ci/qa-cleanup.test.cjs',
       'tests/ci/smoke-packaged-cad-fixture.test.cjs',

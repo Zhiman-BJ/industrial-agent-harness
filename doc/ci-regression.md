@@ -7,11 +7,11 @@
 | 回归层               | 托管环境                                                   | 核心检查                                                                                                                                | 完整验收额外执行                                                                                                                                                                                |
 | -------------------- | ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 仓库与协议           | Ubuntu 24.04 x64                                           | 格式、架构边界、Pack/类型兼容、桌面构建、Python Runtime、实际 MCP transport、Icarus 独立 RTL 验证                                       | —                                                                                                                                                                                               |
-| 跨平台基础           | Ubuntu 24.04 x64 / ARM64、macOS 15 ARM64、Windows 2025 x64 | 共享包、CLI、SDK、Viewer 边界、资源与持久化，以及 Chip/PCB/Godot/CAD 四种独立 CLI 包的实际消费                                          | —                                                                                                                                                                                               |
+| 跨平台基础           | Ubuntu 24.04 x64 / ARM64、macOS 15 ARM64、Windows 2025 x64 | 共享应用、Runtime、Viewer 边界、资源与持久化                                          | —                                                                                                                                                                                               |
 | 桌面安装             | macOS 15 ARM64、Windows 2025 x64                           | 打包应用首次启动、安装引导、工作台、语言切换、并行会话与设置                                                                            | 完整 Domain 安装；macOS 真实 CAD 安装、修复与工程任务                                                                                                                                           |
-| Linux 工业闭环与安装 | Ubuntu 22.04 x86-64                                        | 当前用户 Kimi 启动与权限、声明式本地任务 bubblewrap/seccomp、真实 Verilator、成功/失败/取消/恢复、打包 Headless Agent 与 bootstrap 回归 | 旧版升级、干净 Chip 安装包、实际安装消费、重复安装及宿主 Docker 执行                                                                                                                            |
+| Linux 工业后端 | Ubuntu 22.04 x86-64 | 当前用户 Kimi 启动与权限、声明式本地任务 bubblewrap/seccomp、真实 Verilator、共享应用层成功/失败/取消/恢复 | — |
 | 原生工业闭环         | macOS 15 ARM64（nightly/手动另加 macOS 26）                | —                                                                                                                                       | 当前用户 Kimi 启动与权限、声明式本地任务 Seatbelt、Verilator、FreeCAD、固定 Kimi Code、持久化事实、审批拒绝、失败恢复、图像/并行会话、聊天恢复、空闲回收与强制中断，以及真实 CAD 产物的桌面查看 |
-| 原生安装消费         | macOS 15 ARM64（nightly/手动另加 macOS 26）                | —                                                                                                                                       | 独立安装 CAD、PCB、Godot，保留签名、原生准备、API/CLI/Desktop 工程任务、独立验证和恢复断言                                                                                                      |
+| 原生安装消费         | macOS 15 ARM64（nightly/手动另加 macOS 26）                | —                                                                                                                                       | 独立安装 CAD、PCB、Godot，保留签名、原生准备、API/Desktop 工程任务、独立验证和恢复断言                                                                                                      |
 
 账号登录回归保留在独立的 Account integration workflow；本次不改变它的触发条件。仅改 Desktop 的代码 PR 也执行全部四个平台的基础回归，避免漏掉平台专属的账号存储行为。
 
@@ -23,19 +23,18 @@
 
 `All checks passed` 按本次核心/完整计划汇总：任何必需层缺席、失败、取消或意外跳过，汇总都失败；只接受调度计划明确省略的层。文件列表获取失败会阻止通过，列表达到 API 上限则执行完整验收。分支保护继续要求 `All checks passed` 和 `Architecture contract`；本次不修改保护规则、架构 checker、policy 或已有原生测试目录。Windows 核心检查仍是必需项。
 
-`scripts/ci-tests.cjs` 记录执行文件、平台、Node 版本、计数与跳过项；零测试、失败、取消、TODO 或未登记跳过都失败。原生闭环和独立 RTL benchmark 不允许跳过，缺少对应门禁要求的 Kimi、Python Runtime、FreeCAD、Verilator 或 Icarus 会失败。回归 JSON 与桌面/原生/CLI 日志通过 Actions artifacts 保留 14 天；失败和取消时也尝试上传已产生的证据。更新 PR 会取消同一 PR 的旧运行。
+`scripts/ci-tests.cjs` 记录执行文件、平台、Node 版本、计数与跳过项；零测试、失败、取消、TODO 或未登记跳过都失败。原生闭环和独立 RTL benchmark 不允许跳过，缺少对应门禁要求的 Kimi、Python Runtime、FreeCAD、Verilator 或 Icarus 会失败。回归 JSON 与桌面/原生/应用层日志通过 Actions artifacts 保留 14 天；失败和取消时也尝试上传已产生的证据。更新 PR 会取消同一 PR 的旧运行。
 
 Portable 测试流设有三分钟的终止信号；测试已通过但进程仍持有未清理的句柄时，也会中止并记录失败文件，避免等待整个 job 到期。Windows 打包步骤限时十分钟，卡住时明确失败。超时与取消仍导致门禁失败。原生工业套件沿用原有时限。完整验收中，`native-installed` 在独立必跑机器上串行执行三个全新托管安装用例，`native` 保留其余工业闭环；两者都不允许跳过，任一失败仍阻止汇总通过。隔离避免大型 app 准备和 Desktop Godot 任务与有明确执行截止的 CAD/RTL 测试争用同一台机器。官方归档缓存仍完整校验后复制到每个独立 store，不复用已经安装的 app。收集报告时只排除 fixture 中的 `installed/.runtime-assets` 原生输入，保留工程输出、聊天、安装报告及 Pack 身份；Actions 原先也不上传该隐藏依赖目录。
 
-有三类明确的覆盖缺口，保留在报告中：
+有以下明确的覆盖缺口，保留在报告中：
 
 - 基础层允许跳过可选的 KLayout 原生渲染测试；未安装 KLayout 的机器仍执行其余 Viewer 测试。该门禁不证明 GDS 渲染可用。
-- Windows 基础层保留两项已有的 POSIX 子进程树清理测试跳过；其余 SDK transport、协议、背压与实际 CLI 消费仍必须执行。这两项需要后续补 Windows 专用验收。
 - 协议层允许跳过依赖独立 PCB-bench 源码的那一项测试；仍强制执行官方 MCP transport、参数/范围拒绝、完整大响应和 schema 变化拒绝。私有/外部 PCB 后端与原生工程工具需另行验收。
 
 POSIX 文件权限位断言只在 macOS/Linux 执行，Windows 的 ACL 需单独验收；其他断言保留。Windows archive fixture 使用系统 tar 生成 ZIP，解包使用 runner 自带 Git for Windows 的 unzip。Git attributes 固定源码 LF 并禁止转换按哈希校验的上游 Viewer 资源，避免 Windows checkout 改写发行字节。SQLite fixture 先关闭数据库再删除目录；Linux 子进程清理断言区分已死亡、等待 PID 1 回收的 zombie 与仍然运行的进程。
 
-Linux/Windows 基础回归与 Windows 桌面启动不等于工业 Agent 验收。新增 `native-linux` 门禁和安装消费验证单独覆盖 Linux x86-64；Linux ARM64 与 Windows 工业 Agent 仍未支持。Intel Mac 按 [PD-036](product-decisions.md#pd-036暂停-intel-mac-支持) 暂停支持。签名发行、真实 OTA、真实模型 API 和完整工程任务评测仍属于独立发布验收。
+Linux/Windows 基础回归与 Windows 桌面启动不等于工业 Agent 验收。`native-linux` 门禁单独覆盖 Linux x86-64 的共享后端；Linux ARM64 与 Windows 工业 Agent 仍未支持。Intel Mac 按 [PD-036](product-decisions.md#pd-036暂停-intel-mac-支持) 暂停支持。签名发行、真实 OTA、真实模型 API 和完整工程任务评测仍属于独立发布验收。
 
 ## Apple Silicon CAD 安装门禁
 
@@ -47,14 +46,13 @@ Linux/Windows 基础回归与 Windows 桌面启动不等于工业 Agent 验收�
 
 ```sh
 pnpm run test:ci -- portable
-pnpm run smoke:ci-packages
 pnpm run test:ci -- benchmark
 pnpm run test:ci -- transport
 KIMI_EXECUTABLE="$PWD/apps/desktop/.venv-kimi/bin/kimi" pnpm run test:ci -- native
 KIMI_EXECUTABLE="$PWD/apps/desktop/.venv-kimi/bin/kimi" pnpm run test:ci -- native-installed
 ```
 
-`benchmark` 需要 `iverilog` 和 `vvp`；`transport` 需要 Chip/PCB 锁定 Python 环境；`native` 需要 Apple Silicon、Verilator、FreeCAD 1.1.4、Chip Python 环境与固定 Kimi，准备步骤见 [Industrial Core workflow](../.github/workflows/industrial-core.yml)。`native-installed` 需要固定 Kimi、签名 Pack 构建和独立 CLI/Desktop payload，以及官方原生归档；每个 fixture 经生产安装层独立解包、签名检查和版本探测。CLI 冒烟只清理自身的 `dist/ci-headless` 临时目录，之后从独立临时工作目录运行四个领域包，检查领域绑定、资源、共享配置与禁用策略。
+`benchmark` 需要 `iverilog` 和 `vvp`；`transport` 需要 Chip/PCB 锁定 Python 环境；`native` 需要 Apple Silicon、Verilator、FreeCAD 1.1.4、Chip Python 环境与固定 Kimi，准备步骤见 [Industrial Core workflow](../.github/workflows/industrial-core.yml)。`native-installed` 需要固定 Kimi、签名 Pack 构建和独立 Desktop payload，以及官方原生归档；每个 fixture 经生产安装层独立解包、签名检查和版本探测。CLI/SDK 与 headless 产品打包已退役；共享行为由直接 TaskService 集成测试继续验证。
 
 ## 参考来源
 
@@ -67,7 +65,7 @@ KIMI_EXECUTABLE="$PWD/apps/desktop/.venv-kimi/bin/kimi" pnpm run test:ci -- nati
 
 本仓库使用自己的 Node 测试与现有工业契约，未复制上游的特定服务、密钥、Windows 观察项或自托管环境。
 
-FreeCAD 首批 native suite 和实际 Electron CAD Viewer 加入 macOS arm64 原生门禁。CI 下载并校验官方 FreeCAD 1.1.4 DMG 的固定 SHA，只读挂载提供 `freecadcmd`；缺少依赖会失败。配方/STL/文件边界及 CAD CLI 包的 Scope 检查加入四平台 Portable 层。详见 [FreeCAD 接入与回归](freecad-domain-pack.md)。
+FreeCAD 首批 native suite 和实际 Electron CAD Viewer 加入 macOS arm64 原生门禁。CI 下载并校验官方 FreeCAD 1.1.4 DMG 的固定 SHA，只读挂载提供 `freecadcmd`；缺少依赖会失败。配方/STL/文件边界及共享应用层的 Scope 检查加入四平台 Portable 层。详见 [FreeCAD 接入与回归](freecad-domain-pack.md)。
 
 FreeCAD 1.1.4 的原生 CAD/RTL/Kimi 综合门禁固定覆盖 `macos-15` arm64，nightly 与手动完整运行（`extended`）另加 `macos-26`；四平台 Portable 与 Desktop macOS 打包仍固定 `macos-15`。FreeCAD 的配置、数据与缓存目录在每次 Action 内独立创建和验证，确保全新托管环境无需预先启动桌面 FreeCAD。
 
@@ -78,5 +76,5 @@ MCP 同聊天状态连续性/跨聊天隔离/过期失败、旧 SSE 断连拒绝
 无模型环境诊断。桌面安装 job 增加实际 UI 和语言切换自测，保留截图与日志。
 Linux 候选安装从公开 preview.4 升级：旧包创建真实聊天/原生上下文、模型配置、MCP 注册及
 项目开关，新包续聊，验证旧历史/原生文件保留、上下文版本分段和新段跨进程继续。
-升级验收报告由 scripts/smoke-cli-upgrade.cjs 生成；CI 结果以对应 commit 的运行记录为准。
+当前仅维护桌面安装/更新与共享后端验收。历史 CLI 安装器报告仍按其源提交解读，不作为 GUI 产品验收。
 子问题仅验事件转发协议；固定内核 coder Profile 未开放 AskUserQuestion，不声称该原生路径可用。

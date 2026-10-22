@@ -4,8 +4,8 @@ const os = require('node:os');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { StringDecoder } = require('node:string_decoder');
-const { startProcess, signalProcess } = require('../packages/sdk/src/process.cjs');
-const { StreamRedactor, environmentSecrets } = require('../packages/sdk/src/redact.cjs');
+const { startProcess, signalProcess } = require('./lib/benchmark-process.cjs');
+const { StreamRedactor, environmentSecrets } = require('./lib/benchmark-redact.cjs');
 
 const sha = value => crypto.createHash('sha256').update(value).digest('hex');
 const hashFile = file => sha(fs.readFileSync(file));

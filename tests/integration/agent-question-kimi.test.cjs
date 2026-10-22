@@ -1,4 +1,5 @@
 const test = require('node:test');
+const { taskArguments } = require('./fixtures/task-service-process.cjs');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
@@ -176,7 +177,7 @@ for (const scenario of [
   );
 
 test(
-  'real noninteractive CLI preserves native questions as needs_input without reporting a question error',
+  'noninteractive application host preserves native questions as needs_input without reporting a question error',
   { timeout: 30000 },
   async t => {
     let asked = false;
@@ -208,31 +209,19 @@ test(
     fs.mkdirSync(project);
     const result = await promisify(execFile)(
       process.execPath,
-      [
-        path.join(root, 'apps/cli/src/main.cjs'),
-        'run',
-        '--project-dir',
-        project,
-        '--domain',
-        'godot',
-        '--task',
-        'Ask me about layers and continue after dismissal',
-        '--provider',
-        'openai_legacy',
-        '--endpoint',
-        fixture.endpoint,
-        '--model',
-        'controlled-question',
-        '--no-thinking',
-        '--approval',
-        'auto',
-        '--chat-dir',
-        path.join(directory, 'chats'),
-        '--state-dir',
-        path.join(directory, 'state'),
-        '--log-dir',
-        path.join(directory, 'logs'),
-      ],
+      taskArguments({
+        projectDir: project,
+        domain: 'godot',
+        task: 'Ask me about layers and continue after dismissal',
+        provider: 'openai_legacy',
+        endpoint: fixture.endpoint,
+        model: 'controlled-question',
+        thinking: false,
+        approval: 'auto',
+        chatDir: path.join(directory, 'chats'),
+        stateDir: path.join(directory, 'state'),
+        logDir: path.join(directory, 'logs'),
+      }),
       {
         cwd: root,
         timeout: 25000,

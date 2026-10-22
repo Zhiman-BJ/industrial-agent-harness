@@ -1,7 +1,6 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { PackManager, readDataLibraryBindings } = require('@industrial-agent-harness/pack-manager');
-const { distributionDomain } = require('./distribution.cjs');
 const staticCapabilities = require('@zhiman-bj/industrial-domain-packs').consumerMetadata()
   .capabilities;
 const { loadDomainPacks } = require('./packs.cjs');
@@ -35,7 +34,7 @@ function loadRegistry() {
     const capabilities = [
       ...staticCapabilities,
       ...providerPacks.flatMap(pack => pack.capabilities),
-    ].filter(item => !distributionDomain || item.domain === distributionDomain);
+    ];
     return {
       domains: listDomains(capabilities),
       capabilities,
@@ -56,9 +55,7 @@ function loadRegistry() {
     };
   }
   const manager = new PackManager();
-  const bundles = manager
-    .list()
-    .filter(bundle => !distributionDomain || bundle.domain === distributionDomain);
+  const bundles = manager.list();
   const packDomains = bundles
     .map(bundle => ({ id: bundle.domain, label: bundle.label, emoji: bundle.emoji }))
     .sort((a, b) => a.id.localeCompare(b.id));
@@ -126,12 +123,7 @@ function installedSkills(domain) {
 function installedDataLibraries(domain) {
   // A project domain is required; never expose every Pack's data libraries to
   // an unbound workspace. Catalog roots come only from the owning Pack.
-  if (
-    typeof domain !== 'string' ||
-    !domain.trim() ||
-    (distributionDomain && domain !== distributionDomain)
-  )
-    return [];
+  if (typeof domain !== 'string' || !domain.trim()) return [];
   if (process.env.INDUSTRIAL_HARNESS_PACK_STORE)
     return new PackManager()
       .list()
@@ -156,12 +148,7 @@ function installedDataLibraries(domain) {
 function installedPythonEnvironments(domain) {
   // Viewer executables are contributed by the active Domain's authenticated
   // Pack, never by project files or discovery/environment directory overrides.
-  if (
-    typeof domain !== 'string' ||
-    !domain.trim() ||
-    (distributionDomain && domain !== distributionDomain)
-  )
-    return [];
+  if (typeof domain !== 'string' || !domain.trim()) return [];
   const packs = process.env.INDUSTRIAL_HARNESS_PACK_STORE
     ? new PackManager().list()
     : loadDomainPacks();

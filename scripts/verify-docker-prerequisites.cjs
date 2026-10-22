@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Real CLI and packaged Desktop failure acceptance; never stops the host engine.
+// Real packaged Desktop failure acceptance; never stops the host engine.
 // Usage: node scripts/verify-docker-prerequisites.cjs <fresh-output> <release-acceptance-directory> <packaged-executable>
 const fs = require('node:fs');
 const path = require('node:path');
@@ -74,80 +74,57 @@ async function main() {
       delete environment.DOCKER_CONTEXT;
       if (mode === 'missing') environment.PATH = emptyPath;
       else {
-        // A nonexistent local socket tests a real CLI with an unavailable engine.
+        // A nonexistent local socket exercises the actual Docker client with an unavailable engine.
         // The user's selected context and running engine remain untouched.
         assert.notEqual(process.platform, 'win32', 'This socket acceptance runs on macOS/Linux.');
         const socket = `/tmp/industrial-harness-no-engine-${process.pid}.sock`;
         assert.equal(fs.existsSync(socket), false);
         environment.DOCKER_HOST = 'unix://' + socket;
       }
-      for (const adapter of ['cli', 'desktop']) {
-        const directory = path.join(output, `${mode}-${adapter}`),
-          store = path.join(directory, 'store');
-        fs.mkdirSync(directory);
-        const env = {
-          ...environment,
-          INDUSTRIAL_HARNESS_PACK_STORE: store,
-          INDUSTRIAL_HARNESS_CONFIG_DIR: path.join(directory, 'config'),
-        };
-        const log = path.join(directory, 'output.log');
-        const code =
-          adapter === 'cli'
-            ? await child(
-                process.execPath,
-                [
-                  'apps/cli/src/main.cjs',
-                  'domains',
-                  'install',
-                  selected.domain,
-                  '--catalog',
-                  catalogUrl,
-                  '--keys-file',
-                  keys,
-                  '--store',
-                  store,
-                ],
-                env,
-                log,
-              )
-            : await child(
-                executable,
-                ['--packaged-smoke'],
-                {
-                  ...env,
-                  HARNESS_PACKAGED_SMOKE_FEED_DIR: feed,
-                  HARNESS_PACKAGED_SMOKE_STORE: store,
-                  HARNESS_PACKAGED_SMOKE_DOMAINS: '[]',
-                  HARNESS_PACKAGED_SMOKE_DOCKER_FAILURES: JSON.stringify([
-                    { id: selected.domain, label: selected.label },
-                  ]),
-                  HARNESS_PACKAGED_SMOKE_SCREENSHOT: path.join(directory, 'desktop.png'),
-                  INDUSTRIAL_HARNESS_PACK_FEED_FILE: feedConfig,
-                },
-                log,
-              );
-        assert.equal(code, adapter === 'cli' ? 1 : 0, fs.readFileSync(log, 'utf8').slice(-3000));
-        const journal = JSON.parse(
-          fs.readFileSync(path.join(store, '.installation-operation.json')),
-        );
-        assert.equal(journal.outcome, 'failed');
-        assert.equal(journal.active, false);
-        assert.ok(journal.error.startsWith(expected), journal.error);
-        const manager = new PackManager({ directory: store });
-        assert.deepEqual(manager.list(), []);
-        assert.equal(fs.existsSync(manager.containerImages.directory), false);
-        assert.equal(fs.existsSync(manager.runtimeAssets.directory), false);
-        results.push({
-          mode,
-          adapter,
-          passed: true,
-          outcome: journal.outcome,
-          message: journal.error.split('\n')[0],
-          activatedPacks: 0,
-          imageDownloads: 0,
-          nativeDownloads: 0,
-        });
-      }
+      const directory = path.join(output, `${mode}-desktop`),
+        store = path.join(directory, 'store');
+      fs.mkdirSync(directory);
+      const env = {
+        ...environment,
+        INDUSTRIAL_HARNESS_PACK_STORE: store,
+        INDUSTRIAL_HARNESS_CONFIG_DIR: path.join(directory, 'config'),
+      };
+      const log = path.join(directory, 'output.log');
+      const code = await child(
+        executable,
+        ['--packaged-smoke'],
+        {
+          ...env,
+          HARNESS_PACKAGED_SMOKE_FEED_DIR: feed,
+          HARNESS_PACKAGED_SMOKE_STORE: store,
+          HARNESS_PACKAGED_SMOKE_DOMAINS: '[]',
+          HARNESS_PACKAGED_SMOKE_DOCKER_FAILURES: JSON.stringify([
+            { id: selected.domain, label: selected.label },
+          ]),
+          HARNESS_PACKAGED_SMOKE_SCREENSHOT: path.join(directory, 'desktop.png'),
+          INDUSTRIAL_HARNESS_PACK_FEED_FILE: feedConfig,
+        },
+        log,
+      );
+      assert.equal(code, 0, fs.readFileSync(log, 'utf8').slice(-3000));
+      const journal = JSON.parse(fs.readFileSync(path.join(store, '.installation-operation.json')));
+      assert.equal(journal.outcome, 'failed');
+      assert.equal(journal.active, false);
+      assert.ok(journal.error.startsWith(expected), journal.error);
+      const manager = new PackManager({ directory: store });
+      assert.deepEqual(manager.list(), []);
+      assert.equal(fs.existsSync(manager.containerImages.directory), false);
+      assert.equal(fs.existsSync(manager.runtimeAssets.directory), false);
+      results.push({
+        mode,
+        adapter: 'desktop',
+        passed: true,
+        outcome: journal.outcome,
+        message: journal.error.split('\n')[0],
+        activatedPacks: 0,
+        imageDownloads: 0,
+        nativeDownloads: 0,
+      });
     }
     fs.writeFileSync(
       path.join(output, 'summary.json'),
@@ -163,9 +140,7 @@ async function main() {
         2,
       ) + '\n',
     );
-    console.log(
-      'Missing Docker and unreachable-engine acceptance passed for CLI and packaged Desktop.',
-    );
+    console.log('Missing Docker and unreachable-engine acceptance passed for packaged Desktop.');
   } finally {
     await new Promise(resolve => server.close(resolve));
   }

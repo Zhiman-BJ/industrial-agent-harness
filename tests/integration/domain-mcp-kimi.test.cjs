@@ -1,4 +1,5 @@
 const test = require('node:test');
+const { taskArguments } = require('./fixtures/task-service-process.cjs');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
@@ -9,12 +10,11 @@ const { startModel } = require('./fixtures/domain-mcp-model.cjs');
 const { boundaryMatches } = require('./fixtures/execution-boundary.cjs');
 const execute = promisify(execFile);
 const root = path.resolve(__dirname, '../..');
-const entry = process.env.INDUSTRIAL_HARNESS_TEST_CLI || path.join(root, 'apps/cli/src/main.cjs');
 const kimi =
   process.env.KIMI_EXECUTABLE ||
   require('../../packages/agent-kimi/src/code-session.cjs').bundledExecutable();
 test(
-  'real CLI + pinned Kimi honors approval for current-user native writes without disclosing legacy tools or inventing engineering acceptance',
+  'real TaskService + pinned Kimi honors approval for current-user native writes without disclosing legacy tools or inventing engineering acceptance',
   { timeout: 90000, skip: !fs.existsSync(kimi) },
   async t => {
     let activeProject;
@@ -46,35 +46,21 @@ test(
         'name: mcp-test\ntop: top\nruntime:\n  kind: local\ninputs: {}\nactions: {}\nrequired_verification: []\n',
       );
       const before = fixture.requests.length;
-      const args = [
-        entry,
-        'run',
-        '--project-dir',
-        project,
-        '--domain',
-        'chip',
-        '--task',
-        'Write the synthetic native-agent-marker.txt fixture file',
-        '--approval',
-        approval,
-        '--provider',
-        'openai_legacy',
-        '--endpoint',
-        fixture.endpoint,
-        '--model',
-        'controlled-mcp',
-        '--no-thinking',
-        '--kimi-executable',
-        kimi,
-        '--timeout-ms',
-        '25000',
-        '--chat-dir',
-        path.join(directory, 'chats'),
-        '--state-dir',
-        path.join(directory, 'state'),
-        '--log-dir',
-        path.join(directory, 'logs'),
-      ];
+      const args = taskArguments({
+        projectDir: project,
+        domain: 'chip',
+        task: 'Write the synthetic native-agent-marker.txt fixture file',
+        approval: approval,
+        provider: 'openai_legacy',
+        endpoint: fixture.endpoint,
+        model: 'controlled-mcp',
+        thinking: false,
+        kimiExecutable: kimi,
+        timeoutMs: 25000,
+        chatDir: path.join(directory, 'chats'),
+        stateDir: path.join(directory, 'state'),
+        logDir: path.join(directory, 'logs'),
+      });
       const { stdout, stderr } = await execute(process.execPath, args, {
         cwd: root,
         env: {

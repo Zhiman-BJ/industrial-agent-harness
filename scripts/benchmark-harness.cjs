@@ -1,7 +1,8 @@
 #!/usr/bin/env node
+// Development-only model qualification through the application's task API.
 const fs = require('node:fs');
 const path = require('node:path');
-const { createClient } = require('../packages/sdk/src/index.cjs');
+const { runTask } = require('../tests/integration/fixtures/task-service-process.cjs');
 const { readProfile } = require('./benchmark-model-profile.cjs');
 
 async function main(argv = process.argv.slice(2)) {
@@ -9,12 +10,6 @@ async function main(argv = process.argv.slice(2)) {
     throw Error('Usage: benchmark-harness.cjs PROJECT DOMAIN TASK_FILE OUTPUT_DIR PROFILE_FILE');
   const [projectDir, domain, taskFile, outputDir, profileFile] = argv;
   const { profile, apiKeyEnv, executable, configurationId } = readProfile(profileFile);
-  const client = createClient({
-    cliPath: path.resolve(__dirname, '../apps/cli/src/main.cjs'),
-    projectDir,
-    domain,
-    environment: { INDUSTRIAL_HARNESS_CONFIG_DIR: path.join(outputDir, 'resource-settings') },
-  });
   const send = row => process.stdout.write(JSON.stringify(row) + '\n');
   send({
     type: 'benchmark_driver',
@@ -24,39 +19,39 @@ async function main(argv = process.argv.slice(2)) {
     seedControl: 'not-enforced',
     acceptance: 'external-verifier-required',
   });
-  const shutdown = () => {
-    void client.close().finally(() => process.exit(130));
-  };
-  process.once('SIGTERM', shutdown);
-  process.once('SIGINT', shutdown);
-  try {
-    const handle = client.run({
+  let result;
+  const code = await runTask(
+    {
+      projectDir,
+      domain,
       task: fs.readFileSync(taskFile, 'utf8'),
-      provider: profile.provider,
-      endpoint: profile.endpoint,
-      model: profile.model,
-      contextSize: profile.contextSize,
-      thinking: profile.thinking,
-      imageInput: profile.imageInput,
+      ...profile,
       apiKeyEnv,
       kimiExecutable: executable,
       approval: 'auto',
       chatDir: path.join(outputDir, 'chats'),
       stateDir: path.join(outputDir, 'state'),
       logDir: path.join(outputDir, 'logs'),
-    });
-    for await (const event of handle.events) send(event);
-    const result = await handle.result;
-    send({ type: 'benchmark_transport_result', result });
-  } finally {
-    await client.close();
-    process.removeListener('SIGTERM', shutdown);
-    process.removeListener('SIGINT', shutdown);
-  }
+    },
+    {
+      write(line) {
+        const row = JSON.parse(line);
+        if (row.type === 'result') result = row;
+        process.stdout.write(line);
+      },
+    },
+    { ...process.env, INDUSTRIAL_HARNESS_CONFIG_DIR: path.join(outputDir, 'resource-settings') },
+  );
+  send({ type: 'benchmark_transport_result', result });
+  return code;
 }
 module.exports = { main };
 if (require.main === module)
-  main().catch(error => {
-    process.stderr.write(String(error) + '\n');
-    process.exitCode = 1;
-  });
+  main()
+    .then(code => {
+      process.exitCode = code;
+    })
+    .catch(error => {
+      process.stderr.write(String(error) + '\n');
+      process.exitCode = 1;
+    });

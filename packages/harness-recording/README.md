@@ -39,7 +39,7 @@ can be copied between machines with no access to the original project.
 
 ## Not in this package (yet)
 
-- Any composition into apps/desktop or the CLI — that wiring belongs to the
+- Any composition into apps/desktop — that wiring belongs to the
   internal extension surface defined by #102.
 - Archive (zip) import — bundles are directories for now; if compression is
   added later it must validate path traversal, entry counts, compression

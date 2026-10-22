@@ -1,8 +1,6 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { execFile } = require('node:child_process');
-const { promisify } = require('node:util');
 const { ExternalMcpRegistry } = require('@industrial-agent-harness/harness-core');
 const { startModel } = require('../../../tests/integration/fixtures/domain-mcp-model.cjs');
 const { saveBindings } = require('./project-bindings.cjs');
@@ -141,13 +139,9 @@ async function run(window) {
       false,
       'rechecking the global switch must re-enable the server',
     );
-    const cli = path.resolve(__dirname, '../../cli/src/main.cjs');
-    const listed = await promisify(execFile)(process.execPath, [cli, 'mcp', 'list'], {
-      env: { ...process.env, ELECTRON_RUN_AS_NODE: '1', INDUSTRIAL_HARNESS_CONFIG_DIR: settings },
-    });
-    assert.equal(JSON.parse(listed.stdout).servers[0].id, 'external.computer-use');
-    const registry = new ExternalMcpRegistry(settings),
-      tools = registry.records()[0].tools;
+    const registry = new ExternalMcpRegistry(settings);
+    assert.equal(registry.list()[0].id, 'external.computer-use');
+    const tools = registry.records()[0].tools;
     const screenshot = tools.find(tool => tool.name === 'screenshot').id,
       click = tools.find(tool => tool.name === 'click').id;
     calls.push(
@@ -266,7 +260,7 @@ async function run(window) {
       JSON.stringify({
         ok: true,
         desktop: true,
-        cliShared: true,
+        sharedRegistry: true,
         pinnedKimi: true,
         approvals,
         nativeImage: true,

@@ -1,4 +1,4 @@
-# Chip Pack MCP：Desktop 与 CLI 共享接入
+# Chip Pack MCP：Desktop 共享接入
 
 > 2026-10-20 执行政策更新：本页保留当时实现与验收记录。文中本机 Agent 的 Seatbelt/bubblewrap、工程只读或平台拒绝启动要求已由 [PD-088](local-agent-execution.md) 取代，当前三平台 Agent 均使用当前用户权限；声明式 Runtime 任务及远端沙箱隔离保持。历史实测结果不改写，也不代替新模式的平台验收。
 
@@ -21,11 +21,7 @@ uv sync --frozen --no-dev --python 3.13
 UI 的 Settings → MCP & Skills 和 Chip 项目详情页显示 Chip Pack，默认启用。全局默认值、项目覆盖和继承仍共用已有策略。
 CLI 使用相同策略；无需添加专用适配器或修改 `~/.kimi`：
 
-```sh
-node apps/cli/src/main.cjs run --project-dir /absolute/project --domain chip --task '检查环境和工程状态' --scope-only
-node apps/cli/src/main.cjs run --project-dir /absolute/project --domain chip --task '检查工程状态' --approval approve
-node apps/cli/src/main.cjs run --project-dir /absolute/project --domain chip --task '检查工程状态' --disable-mcp chip-pack.eda --scope-only
-```
+在桌面新建 Chip 项目并发送任务；注册、禁用与恢复通过能力设置和共享应用层集成测试核对。
 
 真实 Agent 任务仍需模型配置、API key 和固定 Kimi CLI。CLI 默认拒绝审批；`--approval approve` 仅用于显式选择自动批准的运行。
 未创建 `eda.yaml` 时仍可检查服务身份和环境；初始化任务才允许 `initialize_project`。注册成功不代表 Docker、镜像、PDK 或工程输入已就绪。
@@ -37,7 +33,7 @@ Headless 打包同时携带注册清单、Gateway、领域 Skill 和固定 Chip 
 
 ## 调用链与披露
 
-Desktop / CLI → 共享资源策略和 Broker → 当前 Scope → Kimi 独立会话 mcp.json → Python MCP Gateway → EDA Harness MCP → 已有 EDA Runtime。
+Desktop → 共享资源策略和 Broker → 当前 Scope → Kimi 独立会话 mcp.json → Python MCP Gateway → EDA Harness MCP → 已有 EDA Runtime。
 
 Gateway 使用依赖锁中的官方 MCP ClientSession、stdio transport 和 FastMCP；不自建 Agent loop 或工业运行时。
 它只向 Kimi 提供四个固定工具：

@@ -1,4 +1,5 @@
 const test = require('node:test');
+const { taskArguments } = require('./fixtures/task-service-process.cjs');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
@@ -20,7 +21,7 @@ const executable =
   require('../../packages/agent-kimi/src/code-session.cjs').bundledExecutable();
 
 test(
-  'native idle eviction resumes saved Kimi context; another CLI process shares admission and resident limits',
+  'native idle eviction resumes saved Kimi context; another application host shares admission and resident limits',
   { skip: !fs.existsSync(executable), timeout: 60000 },
   async t => {
     const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'native-session-budget-'));
@@ -80,31 +81,19 @@ test(
     await new Promise(resolve => setTimeout(resolve, 200));
     assert.equal(resources.snapshot().resident, 1, 'TTL does not evict an active request');
     assert.equal(session.running, true);
-    const args = [
-      path.join(root, 'apps/cli/src/main.cjs'),
-      'run',
-      '--project-dir',
-      projectDir,
-      '--domain',
-      'godot',
-      '--task',
-      'Reply ACK.',
-      '--provider',
-      'openai_legacy',
-      '--endpoint',
-      model.endpoint,
-      '--model',
-      'resource-test',
-      '--no-thinking',
-      '--kimi-executable',
-      executable,
-      '--chat-dir',
-      path.join(directory, 'cli-chats'),
-      '--state-dir',
-      path.join(directory, 'state'),
-      '--log-dir',
-      path.join(directory, 'cli-logs'),
-    ];
+    const args = taskArguments({
+      projectDir: projectDir,
+      domain: 'godot',
+      task: 'Reply ACK.',
+      provider: 'openai_legacy',
+      endpoint: model.endpoint,
+      model: 'resource-test',
+      thinking: false,
+      kimiExecutable: executable,
+      chatDir: path.join(directory, 'cli-chats'),
+      stateDir: path.join(directory, 'state'),
+      logDir: path.join(directory, 'cli-logs'),
+    });
     const env = {
       ...process.env,
       OPENAI_API_KEY: 'local-fixture-key',
@@ -118,7 +107,7 @@ test(
       assert.match(error.stdout, /shared limit of 1 running sessions/);
       return true;
     });
-    assert.equal(model.requests.length, 1, 'rejected CLI never sends a model request');
+    assert.equal(model.requests.length, 1, 'rejected application host never sends a model request');
     model.release();
     await running;
     assert.equal(events.at(-1).type, 'done');
@@ -143,7 +132,7 @@ test(
     assert.equal(
       resources.snapshot().resident,
       0,
-      'CLI required the other host to release its idle resident slot',
+      'Application API required the other host to release its idle resident slot',
     );
   },
 );

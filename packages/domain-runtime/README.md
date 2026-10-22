@@ -12,7 +12,7 @@ See [scope and limits](../../doc/evidence-input-binding.md).
 2026-10-16 current MCP gateway integration: the shared factory selects the current
 adapter from the persisted service contract. It uses manifest/object/complete uploads,
 per-request credentials and the protected `requestId/snapshotId/expectedStateId` call.
-The same adapter is consumed by Desktop and CLI. Harness creates its own canonical
+The same adapter is consumed by Desktop. Harness creates its own canonical
 Run/Action/Checkpoint records; the remote response is retained as a separately
 attributed receipt under `remote-receipts`. Local input hashes come from the approved
 snapshot. A null remote state does not create a domain stage. Downloaded outputs are
@@ -48,15 +48,15 @@ approved `chip.rtl.verify` call completed in a fresh remote sandbox lease, the s
 verifier passed, and the model read this run's report and finished its reply.
 Reopened records and all three artifact hashes matched. See the
 [conversation evidence and limits](../../doc/evidence/remote-chat-20261017/README.md).
-These cases do not qualify other domains or CLI live model execution.
+These cases do not qualify other domains or live model execution.
 
 Owns deterministic domain execution, run state, evidence, and artifact provenance. It must not depend on Electron, Kimi, or the MCP transport.
 
-当前已实现 `ObservedContextStore`：CLI 与桌面端按 Project/Domain 在用户数据目录保存 SQLite 工件文件观察与最小 Checkpoint。每次提供给模型前重新核对文件路径与 SHA-256；历史 Checkpoint 仍可分页读取。记录明确标为 `verificationStatus: not_run`，不能代表工程通过。
+当前已实现 `ObservedContextStore`：桌面端按 Project/Domain 在用户数据目录保存 SQLite 工件文件观察与最小 Checkpoint。每次提供给模型前重新核对文件路径与 SHA-256；历史 Checkpoint 仍可分页读取。记录明确标为 `verificationStatus: not_run`，不能代表工程通过。
 
 `ActionJournal` 为已有原生工具调用保存 Run/Action 身份、实际输入、诊断及显式工件集合。它继续保持 `not_run`；仅有进程退出不能建立工程验收。
 
-`IndustrialRuntime` 提供 schemaVersion `1` 的持久 Project、DomainState、Run、Action、Artifact、Verification 与 Checkpoint。注入的 Pack StateProvider 读取实际输入摘要；`execute({toolId,inputs,expectedStateId},{scope,approval})` 在执行边界重查项目、领域、Broker 范围、当前 State 与审批。结果包括 `{run,action,artifacts,verification,state,checkpoint}`，CLI/Desktop 使用同一 Factory/Runtime。拒绝、失败与中断均保留诊断、显式产物集和不足证据结果。
+`IndustrialRuntime` 提供 schemaVersion `1` 的持久 Project、DomainState、Run、Action、Artifact、Verification 与 Checkpoint。注入的 Pack StateProvider 读取实际输入摘要；`execute({toolId,inputs,expectedStateId},{scope,approval})` 在执行边界重查项目、领域、Broker 范围、当前 State 与审批。结果包括 `{run,action,artifacts,verification,state,checkpoint}`，Desktop 使用同一 Factory/Runtime。拒绝、失败与中断均保留诊断、显式产物集和不足证据结果。
 
 SQLite 原子提交规范记录与 State/Checkpoint head；产物进入 SHA-256 内容存储，读取再次验证。输入变化使当前 State 失效为 `stale`，历史验收和产物仍可查询；不修改过去的事实。一个项目同时只能由一个 Runtime 拥有；存活租约拒绝重开，死亡租约将未完成 Action 恢复为失败。`cancel()` 请求 Pack 原生取消，`waitForIdle()` 等待其实际清理，不能通过杀死模型进程假定工业工具也已停止。
 
@@ -90,6 +90,6 @@ stops before launch rather than granting an unchecked directory.
 
 The public module exposes `executeTask` and `runtimeFiles` for trusted owner plugins injected through the shared factory. Protected task lifecycle stays in this backend. Multi-phase native actions can reuse their per-action HOME/TMPDIR; creating those bounded directories is idempotent.
 
-`dockerCli` exposes the shared docker CLI discovery used by doctor, container tasks and image installation: the PATH first, then well-known installs (Docker Desktop's `~/.docker/bin`, `/usr/local/bin`, Homebrew, the Docker.app bundle, per-platform Windows locations), then a timeout-bounded login-shell PATH capture for GUI-launched processes whose environment lacks all of them.
+`dockerCli` exposes the shared docker CLI discovery used by environment diagnostics, container tasks and image installation: the PATH first, then well-known installs (Docker Desktop's `~/.docker/bin`, `/usr/local/bin`, Homebrew, the Docker.app bundle, per-platform Windows locations), then a timeout-bounded login-shell PATH capture for GUI-launched processes whose environment lacks all of them.
 
 Optional producer `presentation` metadata binds only local names from the actual collected output set. Replacement/check inputs require recorded input hashes or a staged snapshot matching actual project bytes. Invalid display metadata yields diagnostics and cannot alter Action/Artifact/Verification facts. The generic file writer declares only explicitly changed nondeleted outputs. [Result contract](../../doc/task-results.md).

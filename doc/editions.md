@@ -5,20 +5,21 @@
 - 来源：[#101](https://github.com/Zhiman-BJ/industrial-agent-harness/issues/101)、[#100](https://github.com/Zhiman-BJ/industrial-agent-harness/issues/100) 双仓库 Epic、2026-10-10 用户产品决定
 - 机器清单：[architecture/editions.json](../architecture/editions.json)（本文档的人类可读配套；冲突时以清单与校验器为准）
 
-本文档定义 industrial-agent-harness 内部开发仓库与外部开源版本（下称 OSS edition）的产品边界、公开清单、机器校验规则和导出约定。内部仓库保留现有名称、完整代码与开发历史；外部仓库只接收经清单批准的版本快照。外部仓库与许可证已于 2026-10-16 定案（`Zhiman-BJ/micius-harness`，默认分支 `main`，MIT，首版 `v0.0.1`）；真实发布仍由发布门禁阻断，直至 #102 隔离完成（planned 条目活引用清零）。
+本文档定义 industrial-agent-harness 内部开发仓库与外部开源版本（下称 OSS edition）的产品边界、公开清单、机器校验规则和导出约定。内部仓库保留现有名称、当前桌面产品代码与开发历史；外部仓库只接收经清单批准的版本快照。外部仓库与许可证已于 2026-10-16 定案（`Zhiman-BJ/micius-harness`，默认分支 `main`，MIT，首版 `v0.0.1`）；真实发布仍由发布门禁阻断，直至 #102 隔离完成（planned 条目活引用清零）。
 
 ## 1. Edition 定义与默认公开面
 
-- **internal edition**：本仓库（私有）。包含全部功能与开发历史，是唯一的开发与 PR 落地点。
+- **internal edition**：本仓库（私有）。包含当前桌面产品功能与开发历史，是唯一的开发与 PR 落地点。
 - **public（OSS）edition**：由 #106 导出器从固定 source ref 生成的版本快照。只包含清单标记为 `public` 的模块。
 
-默认公开面（PD-069，PD-083 收窄）：**已实现且可验证的核心任务流程、必要的错误/状态/记录、选定 Viewer 和扩展接口**。以下五类能力不进入公开源码或发行物：
+默认公开面（PD-069，PD-083 收窄）：**已实现且可验证的核心任务流程、必要的错误/状态/记录、选定 Viewer 和扩展接口**。以下四类能力不进入公开源码或发行物：
 
-1. Debug 面板与完整诊断（提示词、原始 SDK 事件、完整工具参数/返回、上下文快照、诊断浏览器、`inspect-log`）；
+1. Debug 面板与完整诊断（提示词、原始 SDK 事件、完整工具参数/返回、上下文快照、诊断浏览器）；
 2. 轨迹录制与 Demo 重放（#103–#105 新增能力）；
 3. 内部文档中心与 `doc/` 内部文档；
 4. 内部发行流水线与治理机械（架构合约 checker/policy、发行脚本、内部 release 工作流与记录）；
-5. Headless CLI 与 Node SDK（headless 打包链、Linux Chip 安装器、bench CLI runner 及其驱动契约，PD-083）。
+
+CLI、专用 Node SDK 与 headless 发行链已按 [PD-096](product-decisions.md#pd-096仓库仅交付桌面-gui-产品) 从当前仓库删除，既不作为内部产品维护，也不进入公开导出；旧版本 Release 保留历史身份。
 
 Domain Packs 按既有外部仓库（industrial-domain-packs）所有权消费固定版本，不在本清单中展开领域实现，也不自动把领域内容纳入公开面。
 
@@ -40,8 +41,6 @@ Domain Packs 按既有外部仓库（industrial-domain-packs）所有权消费�
 | `tests.public-core` | 核心闭环/共享契约/传输/会话等测试 | public | meta | 已确定 |
 | `scripts.dev-tooling` | 开发工具（含 release-notices：公开许可证物料测试消费） | public | meta | 已确定 |
 | `github.ci-public` | 公开 CI 脚手架（ci/structure/industrial-core/industrial-linux） | public | meta | 已确定 |
-| `internal.apps.cli` | Headless CLI（headless 打包/安装器链、bench runner、inspect-log 诊断） | internal | adapter | 已确定（PD-083） |
-| `internal.packages.sdk` | Node SDK 与 stdio JSON-RPC（运行契约：驱动内部打包的 headless CLI） | internal | adapter | 已确定（PD-083） |
 | `internal.diagnostics.*`（3 条目） | 诊断日志、读取器、Debug 面板、agent-log selftest | internal | diagnostics-internal | 已确定（隔离由 #102 完成） |
 | `internal.recording` / `internal.replay` / `internal.docs-center` | 轨迹录制、重放引擎、文档中心数据核心（PD-070 同批内部能力） | internal | recording/replay/docs-center-internal | 已确定 |
 | `internal.docs` | `doc/` 内部文档 | internal | docs-internal | 已确定 |
@@ -60,7 +59,7 @@ Domain Packs 按既有外部仓库（industrial-domain-packs）所有权消费�
 
 1. **schema 健康**：字段类型、枚举、路径安全（拒绝绝对路径/`..`/反斜杠）、路径唯一归属。
 2. **全仓覆盖**：仓库内每个文件必须命中至少一个条目（最长前缀优先）。**新增未分类路径（例如新的顶层目录、新的根文件）直接失败**——这就是“新增未分类公开候选会使校验失败”。
-3. **依赖方向**：public 文件不得 import 解析到 internal 条目的路径。`isolation.status=enforced` 的条目出现任何引用即失败；`planned` 条目（当前诊断三条目台账 6/1/3，CLI/SDK 条目台账 2/3，PD-083）记录 `legacyReferences` 上限，**只减不增**，#102 完成组合层隔离后归零并转为 enforced。
+3. **依赖方向**：public 文件不得 import 解析到 internal 条目的路径。`isolation.status=enforced` 的条目出现任何引用即失败；`planned` 条目（当前诊断三条目台账见机器清单）记录 `legacyReferences` 上限，**只减不增**，#102 完成组合层隔离后归零并转为 enforced。
 4. **公开说明可溯**：`publicStatementSource` 指向的文件必须存在、属 public 条目，且锚点文本真实出现。
 5. **必需测试存在**：条目声明的测试文件必须在仓库中存在。
 
@@ -100,7 +99,7 @@ release 门禁（`--gate release`，#106 导出与真实发布必跑）：dev �
 
 | 内部规则 | 公开等价物 | 状态 |
 | --- | --- | --- |
-| 适配器不互相 import、CLI 不依赖 Electron/Viewer UI | `tests/architecture/boundaries.test.cjs`（公开）+ editions 校验器依赖方向检查 | 已可用 |
+| Desktop 不越过共享应用层执行工业程序 | `tests/architecture/boundaries.test.cjs`（公开）+ editions 校验器依赖方向检查 | 已可用 |
 | Core 不 import agent 内核/adapter/具体领域 ID | `tests/architecture/boundaries.test.cjs` | 已可用 |
 | 仓库文件全分类、public 不引用 internal | `scripts/check-editions-manifest.cjs` + 派生公开清单 | 本次交付 |
 | 结构脚手架（README/LICENSE/包清单） | `.github/workflows/structure.yml`（公开） | 已可用 |
@@ -110,7 +109,7 @@ release 门禁（`--gate release`，#106 导出与真实发布必跑）：dev �
 
 本节是 #108 的决策输入，#109 只执行与验证：
 
-1. **既有安装版归属**：当前所有已安装桌面版（1.0.1-beta.1 及更早）与无 UI Core/Chip Release 均属 internal edition，不迁移到 OSS 渠道。
+1. **既有安装版归属**：当前所有已安装桌面版（1.0.1-beta.1 及更早）属于 internal edition，不迁移到 OSS 渠道。历史无 UI Core/Chip Release 已退役，保留原有发行身份。
 2. **应用身份**：OSS edition 使用独立的应用 ID、 productName、数据目录与更新渠道（#108 接通）；两个 edition 可在同一机器共存，互不读写对方数据。
 3. **用户数据**：不自动迁移。用户主动切换 edition 时按普通新安装处理。
 4. **下载/更新地址**：内部版现有下载与更新地址继续由内部渠道服务；OSS 版地址由 #108 配置。旧地址的下线/重定向与已公开历史的影响由 #109 统一处理。

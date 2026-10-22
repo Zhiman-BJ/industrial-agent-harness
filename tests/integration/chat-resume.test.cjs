@@ -1,4 +1,5 @@
 const test = require('node:test');
+const { taskArguments } = require('./fixtures/task-service-process.cjs');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
@@ -12,7 +13,7 @@ const executable =
   require('../../packages/agent-kimi/src/code-session.cjs').bundledExecutable();
 
 test(
-  'real pinned Kimi CLI resumes three turns across separate CLI processes and rotates model context',
+  'real pinned Kimi resumes three turns across separate application-host processes and rotates model context',
   { timeout: 90000, skip: !fs.existsSync(executable) },
   async t => {
     const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'industrial-real-resume-'));
@@ -75,34 +76,21 @@ test(
     });
     const endpoint = `http://127.0.0.1:${server.address().port}/v1`;
     async function run(task, chatId, model = 'test-first', interrupt = false) {
-      const args = [
-        path.join(root, 'apps/cli/src/main.cjs'),
-        'run',
-        '--project-dir',
-        projectDir,
-        '--domain',
-        'godot',
-        '--task',
-        task,
-        '--provider',
-        'openai_legacy',
-        '--endpoint',
-        endpoint,
-        '--model',
-        model,
-        '--no-thinking',
-        '--kimi-executable',
-        executable,
-        '--chat-dir',
-        path.join(directory, 'chats'),
-        '--state-dir',
-        path.join(directory, 'state'),
-        '--log-dir',
-        path.join(directory, 'logs'),
-        '--timeout-ms',
-        '15000',
-      ];
-      if (chatId) args.push('--chat-id', chatId);
+      const args = taskArguments({
+        projectDir: projectDir,
+        domain: 'godot',
+        task: task,
+        provider: 'openai_legacy',
+        endpoint: endpoint,
+        model: model,
+        thinking: false,
+        kimiExecutable: executable,
+        chatDir: path.join(directory, 'chats'),
+        stateDir: path.join(directory, 'state'),
+        logDir: path.join(directory, 'logs'),
+        timeoutMs: 15000,
+        chatId,
+      });
       const child = spawn(process.execPath, args, {
         cwd: root,
         env: {

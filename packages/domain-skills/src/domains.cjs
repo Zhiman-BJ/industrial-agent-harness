@@ -1,26 +1,18 @@
-const { distributionDomain } = require('./distribution.cjs');
 const metadata = require('@zhiman-bj/industrial-domain-packs').consumerMetadata();
 const labels = Object.fromEntries(metadata.domains.map(item => [item.id, item.label]));
 const emojis = Object.fromEntries(metadata.domains.map(item => [item.id, item.emoji]));
 
-// The host workspace works without an industrial Pack. Keep fixed-domain
-// distributions bound to their declared domain.
+// The host workspace works without an industrial Pack.
 function builtInDomains() {
-  return distributionDomain
-    ? []
-    : [{ id: 'general', label: 'General', emoji: '⚙️', builtin: true }];
+  return [{ id: 'general', label: 'General', emoji: '⚙️', builtin: true }];
 }
 
 function listDomains(capabilities) {
   const domains = [
-    ...new Set(
-      distributionDomain
-        ? [distributionDomain]
-        : [
-            ...capabilities.map(item => item.domain).filter(Boolean),
-            ...metadata.domains.map(item => item.id),
-          ],
-    ),
+    ...new Set([
+      ...capabilities.map(item => item.domain).filter(Boolean),
+      ...metadata.domains.map(item => item.id),
+    ]),
   ]
     .sort((a, b) => a.localeCompare(b))
     .map(id => ({

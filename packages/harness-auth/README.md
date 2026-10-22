@@ -1,6 +1,6 @@
 # Platform account
 
-Optional native OAuth 2.0 / OpenID Connect sign-in for Desktop and CLI. Local tasks and user-supplied model API keys do not require an account.
+Optional native OAuth 2.0 / OpenID Connect sign-in for Desktop. Local tasks and user-supplied model API keys do not require an account.
 
 The shared module uses pinned `openid-client` 6.8.8 for discovery, Authorization Code + PKCE S256, state/nonce checks, ID-token signature verification, UserInfo, refresh and revocation. The browser callback listens only on `127.0.0.1:0` at `/callback`. Obol’s documented `/oauth/code` page provides a `code#state` paste fallback; it uses the same OIDC library, PKCE and nonce checks, with the redirect URI bound to the chosen path. HTTPS issuers are required; literal loopback HTTP is accepted for development. It never uses an embedded login page, client secret, password grant, implicit grant or unsigned token parsing.
 
@@ -24,7 +24,6 @@ Existing main-branch login sessions retain their binding and acquire service tok
 ## Credentials and lifecycle
 
 - Desktop keeps credential material in the main process and encrypts it with Electron `safeStorage`. Linux `basic_text` is rejected. If encryption is unavailable, credentials stay in memory for that app process. Locked/corrupt storage does not prevent local app startup.
-- CLI uses a separate session. Its default store is memory only. `account login --allow-file-store` explicitly opts into a private 0600 file; this is not encrypted storage. Pass the flag to status/logout as well. Windows ACL qualification is pending.
 - `SessionStore.transaction` serializes local and inter-process operations using `proper-lockfile`; refresh re-reads the latest saved token inside the lock and atomically saves its replacement. Login and both service tokens share this lock; each resource keeps its own cache. Access tokens refresh on demand 60 seconds before expiry. No background polling is required.
 - A durable refresh-in-progress marker prevents replay after a crash or ambiguous network response. `invalid_grant`, uncertain refresh or a crash marker requires sign-in again. Transient discovery failure before refresh leaves the saved refresh token intact.
 - `invalid_target` leaves the refresh family unconsumed: only that service cache is evicted, sign-in and other service tokens remain usable.
@@ -33,28 +32,17 @@ Existing main-branch login sessions retain their binding and acquire service tok
 
 ## Cloud consumers
 
-This implementation targets Obol's existing [account API access contract](https://github.com/zhimanai/obol/blob/main/docs/account-api-access.md), without changing or deploying Obol. Direct API consumers create their own keys in Console; CLI/Desktop account mode uses login access tokens and never creates a user API key. Obol may provision the user's personal billing account on first inference; its internal login billing record has no usable API-key secret. Production model acceptance and real remote connectivity remain separate deployment checks.
+This implementation targets Obol's existing [account API access contract](https://github.com/zhimanai/obol/blob/main/docs/account-api-access.md), without changing or deploying Obol. Direct API consumers create their own keys in Console; Desktop account mode uses login access tokens and never creates a user API key. Obol may provision the user's personal billing account on first inference; its internal login billing record has no usable API-key secret. Production model acceptance and real remote connectivity remain separate deployment checks.
 
 Use `https://api.zhiman.cn/v1` for the OpenAI model protocol, or `https://api.zhiman.cn/anthropic/v1` for Anthropic. Model names, context limits and protocol stay in the existing model settings. There is no silent API-key fallback.
 
 The remote client obtains a token per request through an injected credential provider. Only GET + `401 WWW-Authenticate: Bearer error="invalid_token"` retries once after refresh. It never retries mutation requests or a `403`; existing request journals remain authoritative. Account subject participates in remote binding identity, and existing clients reject account changes.
 
-Desktop's **Use platform account for model API** and CLI `run --platform-account` use a bounded loopback model proxy. It accepts a random local session key, fixed routes and an exact upstream; platform tokens are verified for issuer, exact service audience, subject, client ID, signature, expiry and `typ=at+jwt` before forwarding. An explicit `401 WWW-Authenticate: Bearer error="invalid_token"` refreshes and retries the model request once (including generation); plain 401, transport failure and other statuses never replay. Upstream error bodies are discarded; 402/403/429 receive fixed balance/access/rate-limit explanations. Streaming responses are forwarded without whole-response buffering. The local key is all Kimi receives. BYOK remains a separate model source. Logout closes the local proxy; the selected platform source does not silently fall back to a saved API key. Model name/protocol/context parameters remain in Model API settings.
+Desktop's **Use platform account for model API** uses a bounded loopback model proxy. It accepts a random local session key, fixed routes and an exact upstream; platform tokens are verified for issuer, exact service audience, subject, client ID, signature, expiry and `typ=at+jwt` before forwarding. An explicit `401 WWW-Authenticate: Bearer error="invalid_token"` refreshes and retries the model request once (including generation); plain 401, transport failure and other statuses never replay. Upstream error bodies are discarded; 402/403/429 receive fixed balance/access/rate-limit explanations. Streaming responses are forwarded without whole-response buffering. The local key is all Kimi receives. BYOK remains a separate model source. Logout closes the local proxy; the selected platform source does not silently fall back to a saved API key. Model name/protocol/context parameters remain in Model API settings.
 
-## CLI
+## Desktop sign-in
 
-```sh
-export INDUSTRIAL_AUTH_CLIENT_ID='<registered-native-client-id>'
-export INDUSTRIAL_AUTH_AUDIENCE='<registered-application-slug>'
-export INDUSTRIAL_AUTH_MODEL_BASE_URL='https://api.zhiman.cn/v1'
-node apps/cli/src/main.cjs account login --allow-file-store
-node apps/cli/src/main.cjs account status --allow-file-store
-node apps/cli/src/main.cjs run --platform-account --project-dir /path/to/project --domain DOMAIN --task '...'
-node apps/cli/src/main.cjs remote status --platform-account
-node apps/cli/src/main.cjs account logout --allow-file-store
-```
-
-`--no-browser`, SSH and headless Linux use code paste without opening a browser or listener. Open the printed URL on any device and paste the complete `code#state` on stdin; terminal input is not echoed or retained in command history. Normal CLI login accepts either loopback or paste; the first valid response wins. An unavailable local listener falls back to paste. Desktop offers the same fallback with a selectable link and a masked code input. Invalid paste/state can be retried; cancellation, timeout and logout invalidate the pending attempt. Browser launch failure does not stop paste or cancellation. Device authorization is not implemented. No token-print command is exposed.
+Use Settings → Platform account to sign in through the system browser. If the local listener or browser is unavailable, copy the authorization link and paste the complete `code#state` into the masked application input. The first valid loopback or paste response wins; invalid paste can be retried. Cancellation, timeout and logout invalidate the pending attempt. Device authorization is not implemented, and tokens are never printed.
 
 ## Verification
 

@@ -34,9 +34,7 @@ Run on macOS arm64 with explicitly staged production payloads. Installed Pack pr
 
 ```sh
 pnpm --filter @industrial-agent-harness/desktop build
-node scripts/package-headless.cjs dist/professional-cli
 HARNESS_BOOTSTRAP_DOMAINS='' node scripts/stage-desktop.cjs dist/professional-desktop
-export HARNESS_PROFESSIONAL_TEST_CLI="$PWD/dist/professional-cli/industrial-harness.cjs"
 export HARNESS_PROFESSIONAL_DESKTOP_ENTRY="$PWD/dist/professional-desktop/electron/main.cjs"
 pnpm test:architecture
 node scripts/ci-tests.cjs portable

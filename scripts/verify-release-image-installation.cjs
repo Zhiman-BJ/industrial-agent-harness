@@ -141,12 +141,28 @@ async function main() {
       INDUSTRIAL_HARNESS_PACK_CATALOG_URL: catalog,
       INDUSTRIAL_HARNESS_PACK_KEYS_FILE: keys,
     };
-    const cli = ['apps/cli/src/main.cjs', 'domains'];
+    const config = path.join(output, 'feed-config.json');
+    fs.writeFileSync(config, JSON.stringify({ channel: 'stable' }));
+    const packaged = process.env.HARNESS_CONTAINER_INSTALL_EXECUTABLE;
+    const electron =
+      packaged ||
+      require(require.resolve('electron', { paths: [path.join(root, 'apps/desktop')] }));
     await child(
-      process.execPath,
-      [...cli, 'install', domain, '--catalog', catalog, '--keys-file', keys, '--store', store],
-      environment,
-      'cli-install.jsonl',
+      electron,
+      [...(packaged ? [] : ['apps/desktop']), '--container-install-selftest'],
+      {
+        ...environment,
+        INDUSTRIAL_HARNESS_PACK_FEED_FILE: config,
+        HARNESS_CONTAINER_INSTALL_DOMAIN: domain,
+        HARNESS_CONTAINER_INSTALL_REPORT: output,
+      },
+      'desktop.log',
+    );
+    const desktopReport = JSON.parse(fs.readFileSync(path.join(output, 'desktop.json')));
+    assert.equal(
+      desktopReport.installed.catalog.state,
+      'connected',
+      'Desktop must verify the signed HTTPS feed; bundled fallback is not this acceptance path.',
     );
     const manager = new PackManager({ directory: store });
     assert.deepEqual(manager.scan().errors, []);
@@ -175,41 +191,8 @@ async function main() {
         { timeout: 120000 },
       );
     }
-    await child(
-      process.execPath,
-      [...cli, 'repair', domain, '--store', store],
-      environment,
-      'cli-repair.jsonl',
-    );
-    await child(
-      process.execPath,
-      [...cli, 'remove', domain, '--store', store],
-      environment,
-      'cli-remove.jsonl',
-    );
-    const config = path.join(output, 'feed-config.json');
-    fs.writeFileSync(config, JSON.stringify({ channel: 'stable' }));
-    const packaged = process.env.HARNESS_CONTAINER_INSTALL_EXECUTABLE;
-    const electron =
-      packaged ||
-      require(require.resolve('electron', { paths: [path.join(root, 'apps/desktop')] }));
-    await child(
-      electron,
-      [...(packaged ? [] : ['apps/desktop']), '--container-install-selftest'],
-      {
-        ...environment,
-        INDUSTRIAL_HARNESS_PACK_FEED_FILE: config,
-        HARNESS_CONTAINER_INSTALL_DOMAIN: domain,
-        HARNESS_CONTAINER_INSTALL_REPORT: output,
-      },
-      'desktop.log',
-    );
-    const desktopReport = JSON.parse(fs.readFileSync(path.join(output, 'desktop.json')));
-    assert.equal(
-      desktopReport.installed.catalog.state,
-      'connected',
-      'Desktop must verify the signed HTTPS feed; bundled fallback is not this acceptance path.',
-    );
+    manager.remove(domain);
+    assert.deepEqual(manager.list(), []);
     const summary = {
       started,
       finished: new Date().toISOString(),
@@ -218,12 +201,13 @@ async function main() {
       owner: owner.identity,
       domain,
       images: receipts,
-      cli: `${reuse ? 'verified image reuse' : 'cold install'}, repair and remove passed`,
+      installation: reuse ? 'verified image reuse' : 'cold Desktop installation',
+      removal: 'shared PackManager removal passed',
       nativeArchives: nativeCache
         ? 'existing vendor archives reverified before installation'
         : 'downloaded by native installer',
       desktop:
-        'installation and repair buttons through renderer/preload/IPC passed; verified Docker images reused',
+        'installation and repair buttons through renderer/preload/IPC passed; live Docker image identity and startup verified',
       packaged: Boolean(packaged),
       engine: JSON.parse(await run('docker', ['version', '--format', '{{json .Server}}'])),
       limitation:

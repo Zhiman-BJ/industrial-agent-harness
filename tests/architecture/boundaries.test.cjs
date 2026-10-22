@@ -86,8 +86,8 @@ test('known agent domain mapping is frozen until ToolDescriptor replaces it', ()
   );
 });
 
-test('Desktop and CLI cannot directly spawn industrial executables', () => {
-  for (const area of ['apps/desktop/electron', 'apps/cli/src']) {
+test('Desktop cannot directly spawn industrial executables', () => {
+  for (const area of ['apps/desktop/electron']) {
     for (const file of sourceFiles(area))
       assert.doesNotMatch(
         read(file),
@@ -106,8 +106,6 @@ test('Desktop and CLI cannot directly spawn industrial executables', () => {
     /\b(?:spawn|execFile|execFileSync|execSync)\s*\(/,
     'industrial process execution belongs in Domain Runtime',
   );
-  for (const file of sourceFiles('apps/cli/src'))
-    assert.doesNotMatch(read(file), /node:child_process|require\(['"]child_process['"]\)/, file);
 });
 
 test('Viewer dispatch uses a registry and static Capability IDs cannot expand', () => {
@@ -238,7 +236,6 @@ test('the workbench-browser plugin tool surface is frozen', () => {
 test('the computer-use binary is only referenced by the bridge package source', () => {
   const areas = [
     'apps/desktop/electron',
-    'apps/cli/src',
     'packages/harness-core',
     'packages/agent-kimi',
     'packages/domain-runtime',
@@ -262,11 +259,11 @@ test('the computer-use binary is only referenced by the bridge package source', 
   );
 });
 
-test('both adapters consume TaskService and have no remaining lifecycle exceptions', () => {
+test('Desktop consumes TaskService and has no remaining lifecycle exceptions', () => {
   const policy = JSON.parse(read('architecture/policy.json'));
   assert.deepEqual(policy.adapterCalls, {});
   assert.deepEqual(policy.frozen, {});
-  for (const file of ['apps/cli/src/main.cjs', 'apps/desktop/electron/main.cjs']) {
+  for (const file of ['apps/desktop/electron/main.cjs']) {
     const source = read(file);
     assert.match(source, /harness-application/);
     assert.match(source, /tasks\.prepare\(/);
@@ -275,7 +272,7 @@ test('both adapters consume TaskService and have no remaining lifecycle exceptio
   const pinned = JSON.parse(read('package.json')).dependencies[
     '@zhiman-bj/industrial-domain-packs'
   ];
-  for (const app of ['cli', 'desktop'])
+  for (const app of ['desktop'])
     assert.equal(
       JSON.parse(read(`apps/${app}/package.json`)).dependencies[
         '@zhiman-bj/industrial-domain-packs'
@@ -283,4 +280,14 @@ test('both adapters consume TaskService and have no remaining lifecycle exceptio
       pinned,
     );
   assert.ok(read('pnpm-lock.yaml').includes(pinned));
+});
+
+test('Desktop is the only application product and retired CLI products stay absent', () => {
+  assert.deepEqual(fs.readdirSync(path.join(root, 'apps')).sort(), ['desktop']);
+  assert.equal(fs.existsSync(path.join(root, 'packages/sdk')), false);
+  const manifest = JSON.parse(read('package.json'));
+  assert.equal(manifest.scripts.cli, undefined);
+  assert.equal(manifest.scripts['package:headless'], undefined);
+  for (const name of ['release-headless.yml', 'release-linux-chip.yml'])
+    assert.equal(fs.existsSync(path.join(root, '.github/workflows', name)), false);
 });

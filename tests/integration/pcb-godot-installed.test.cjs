@@ -193,7 +193,7 @@ async function install(t, root) {
       2,
     ),
   );
-  // Prove that both adapters discover managed executables from the shared store.
+  // Prove that TaskService and Desktop discover managed executables from the shared store.
   const variables = manager
     .list()
     .flatMap(bundle =>
@@ -226,7 +226,7 @@ async function install(t, root) {
   return manager;
 }
 test(
-  'signed PCB/Godot Packs outside repositories perform continuous native tasks through real Kimi, shared Desktop TaskService and CLI, then restore durable acceptance',
+  'signed PCB/Godot Packs outside repositories perform continuous native tasks through real Kimi and shared TaskService, then restore durable acceptance',
   { timeout: 20 * 60 * 1000 },
   async t => {
     const evidence = process.env.HARNESS_PROFESSIONAL_EVIDENCE;
@@ -241,256 +241,205 @@ test(
       assert.ok(!fs.existsSync(path.join(installed.location, 'node_modules')));
       assert.ok(!installed.location.startsWith(repo));
     }
-    for (const domain of ['pcb', 'godot'])
-      for (const adapter of ['desktop-task-api', 'cli']) {
-        const directory = path.join(root, domain + '-' + adapter),
-          projectDir = path.join(directory, 'project');
-        const installed = manager.scan().installed.find(p => p.domain === domain);
-        fs.cpSync(
-          path.join(
-            installed.location,
-            'domain-packs',
-            domain,
-            'examples',
-            domain === 'pcb' ? 'mounting-board' : 'structural',
-          ),
-          projectDir,
-          { recursive: true },
+    for (const domain of ['pcb', 'godot']) {
+      const directory = path.join(root, domain + '-task-api'),
+        projectDir = path.join(directory, 'project');
+      const installed = manager.scan().installed.find(p => p.domain === domain);
+      fs.cpSync(
+        path.join(
+          installed.location,
+          'domain-packs',
+          domain,
+          'examples',
+          domain === 'pcb' ? 'mounting-board' : 'structural',
+        ),
+        projectDir,
+        { recursive: true },
+      );
+      const fixture = await model(projectDir, domain);
+      t.after(fixture.close);
+      const environment = {
+        ...process.env,
+        INDUSTRIAL_HARNESS_CONFIG_DIR: path.join(directory, 'config'),
+      };
+      const records = [];
+      let chatId, tasks, entry;
+      const stateDir = path.join(directory, 'state');
+      const share = path.join(directory, 'share');
+      fs.mkdirSync(share, { recursive: true });
+      const profile = {
+        provider: 'openai_legacy',
+        endpoint: fixture.endpoint,
+        model: 'controlled-native-professional',
+        contextSize: 32768,
+        thinking: false,
+      };
+      fs.writeFileSync(path.join(share, 'config.toml'), configToml(profile));
+      tasks = new TaskService({
+        environment,
+        packManager: manager,
+        chatDirectory: path.join(directory, 'chats'),
+        runtimeOptions: { directory: stateDir },
+        contextOptions: { directory: stateDir },
+        logDirectory: path.join(directory, 'logs'),
+        getConfig: () => ({
+          profile,
+          apiKey: 'local-native-key',
+          shareDir: share,
+          env: sessionEnv(profile, 'local-native-key'),
+          environment,
+          executable: bundledExecutable(),
+          approvalMode: 'ask',
+          disabledMcpServers: [],
+        }),
+      });
+      t.after(() => tasks.close());
+      const project = { id: domain, path: projectDir, domain };
+      chatId = tasks.chats.create(projectDir, domain).id;
+      entry = tasks.resume(project, chatId);
+      for (let step = 0; step < 3; step++) {
+        const task = `NATIVE_STEP_${step}: ${domain} native scene board edit and independent verification`;
+        await tasks.prepare(entry, { task });
+        const started = await tasks.start(entry, task, {
+          onEvent: event => {
+            if (event.type === 'approval')
+              tasks.approve(entry, event.id, 'approve').catch(() => {});
+            if (event.type === 'industrial-result') records.push(event);
+          },
+        });
+        const result = await started.completion;
+        assert.equal(
+          result.status,
+          'finished',
+          JSON.stringify(tasks.history(entry.project, chatId)),
         );
-        const fixture = await model(projectDir, domain);
-        t.after(fixture.close);
-        const environment = {
-          ...process.env,
-          INDUSTRIAL_HARNESS_CONFIG_DIR: path.join(directory, 'config'),
-        };
-        const records = [];
-        let chatId, tasks, entry;
-        const stateDir = path.join(directory, 'state');
-        if (adapter === 'desktop-task-api') {
-          const share = path.join(directory, 'share');
-          fs.mkdirSync(share, { recursive: true });
-          const profile = {
-            provider: 'openai_legacy',
-            endpoint: fixture.endpoint,
-            model: 'controlled-native-professional',
-            contextSize: 32768,
-            thinking: false,
-          };
-          fs.writeFileSync(path.join(share, 'config.toml'), configToml(profile));
-          tasks = new TaskService({
-            environment,
-            packManager: manager,
-            chatDirectory: path.join(directory, 'chats'),
-            runtimeOptions: { directory: stateDir },
-            contextOptions: { directory: stateDir },
-            logDirectory: path.join(directory, 'logs'),
-            getConfig: () => ({
-              profile,
-              apiKey: 'local-native-key',
-              shareDir: share,
-              env: sessionEnv(profile, 'local-native-key'),
-              environment,
-              executable: bundledExecutable(),
-              approvalMode: 'ask',
-              disabledMcpServers: [],
-            }),
-          });
-          t.after(() => tasks.close());
-          const project = { id: domain, path: projectDir, domain };
-          chatId = tasks.chats.create(projectDir, domain).id;
-          entry = tasks.resume(project, chatId);
-        }
-        for (let step = 0; step < 3; step++) {
-          const task = `NATIVE_STEP_${step}: ${domain} native scene board edit and independent verification`;
-          if (tasks) {
-            await tasks.prepare(entry, { task });
-            const started = await tasks.start(entry, task, {
-              onEvent: event => {
-                if (event.type === 'approval')
-                  tasks.approve(entry, event.id, 'approve').catch(() => {});
-                if (event.type === 'industrial-result') records.push(event);
-              },
-            });
-            const result = await started.completion;
-            assert.equal(
-              result.status,
-              'finished',
-              JSON.stringify(tasks.history(entry.project, chatId)),
-            );
-          } else {
-            const args = [
-              payload('HARNESS_PROFESSIONAL_TEST_CLI', [
-                './src/main.cjs',
-                '@industrial-agent-harness/harness-application',
-                '@industrial-agent-harness/harness-core',
-                '@zhiman-bj/industrial-domain-packs',
-              ]),
-              'run',
-              '--project-dir',
-              projectDir,
-              '--domain',
-              domain,
-              '--task',
-              task,
-              '--approval',
-              'approve',
-              '--provider',
-              'openai_legacy',
-              '--endpoint',
-              fixture.endpoint,
-              '--model',
-              'controlled-native-professional',
-              '--no-thinking',
-              '--kimi-executable',
-              bundledExecutable(),
-              '--timeout-ms',
-              '90000',
-              '--chat-dir',
-              path.join(directory, 'chats'),
-              '--state-dir',
-              stateDir,
-              '--log-dir',
-              path.join(directory, 'logs'),
-              ...(chatId ? ['--chat-id', chatId] : []),
-            ];
-            const result = await execute(process.execPath, args, {
-              cwd: directory,
-              env: { ...environment, OPENAI_API_KEY: 'local-native-key' },
-              timeout: 120000,
-              maxBuffer: 8 * 1024 * 1024,
-            });
-            const rows = result.stdout.trim().split('\n').map(JSON.parse);
-            assert.equal(rows.at(-1).status, 'finished', result.stderr + result.stdout);
-            chatId = rows.find(r => r.type === 'chat').chatId;
-            records.push(...rows.filter(r => r.type === 'industrial_result'));
-          }
-          assert.equal(records.length, step + 1);
+        assert.equal(records.length, step + 1);
+        assert.equal(
+          records.at(-1).verification.status,
+          step === 1 ? 'not_run' : 'passed',
+          JSON.stringify(records.at(-1)),
+        );
+        assert.equal(records.at(-1).state.status, step === 1 ? 'stale' : 'verified');
+      }
+      await tasks.close();
+      const restored = createProjectRuntime({
+        projectDir,
+        domain,
+        directory: stateDir,
+        environment,
+      });
+      try {
+        assert.equal((await restored.runtime.inspect()).id, records.at(-1).state.id);
+        assert.equal(restored.runtime.latestCheckpoint().id, records.at(-1).checkpoint.id);
+        assert.equal(restored.runtime.listActions().length, 3);
+        for (const a of records[0].artifacts)
           assert.equal(
-            records.at(-1).verification.status,
-            step === 1 ? 'not_run' : 'passed',
-            JSON.stringify(records.at(-1)),
+            crypto
+              .createHash('sha256')
+              .update(restored.runtime.readArtifact(a.id).content)
+              .digest('hex'),
+            a.sha256,
           );
-          assert.equal(records.at(-1).state.status, step === 1 ? 'stale' : 'verified');
+      } finally {
+        await restored.runtime.close();
+      }
+      assert.deepEqual(
+        manager.scan().errors,
+        [],
+        'Native execution must not alter installed verified Pack bytes.',
+      );
+      fs.writeFileSync(path.join(directory, 'results.json'), JSON.stringify(records, null, 2));
+      assert.ok(
+        fixture.requests.length >= 9,
+        'Real pinned Kimi tool loop must execute every turn.',
+      );
+      {
+        const { privateKey, release, payload } = manager.qualification;
+        const source = path.join(release, domain),
+          runtimeDir = path.join(source, 'domain-packs', domain, 'runtime');
+        fs.appendFileSync(
+          path.join(runtimeDir, 'verifier.cjs'),
+          '\n// signed qualification repair changes Verifier byte identity\n',
+        );
+        const declared = JSON.parse(
+          fs.readFileSync(path.join(source, 'domain-packs', domain, 'harness-pack.json')),
+        );
+        declared.provider.sourceFiles['runtime/verifier.cjs'] = digest(
+          fs.readFileSync(path.join(runtimeDir, 'verifier.cjs')),
+        );
+        declared.provider.sourceSha256 = digest(
+          Buffer.from(JSON.stringify(declared.provider.sourceFiles)),
+        );
+        fs.writeFileSync(
+          path.join(source, 'domain-packs', domain, 'harness-pack.json'),
+          JSON.stringify(declared, null, 2),
+        );
+        const manifestPath = path.join(source, 'bundle.json'),
+          manifest = JSON.parse(fs.readFileSync(manifestPath));
+        manifest.providerPacks = manifest.providerPacks.map(p =>
+          p.domain === domain ? declared : p,
+        );
+        fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+        const bytes = createArchive(source),
+          catalog = signCatalog(
+            {
+              ...payload,
+              packs: payload.packs
+                .filter(p => p.domain === domain)
+                .map(p => ({ ...p, sha256: digest(bytes), size: bytes.length })),
+            },
+            'qualification',
+            privateKey,
+          );
+        const originalFetch = global.fetch;
+        global.fetch = async () => new Response(JSON.stringify(catalog));
+        try {
+          const repair = (await manager.catalog('https://qualification.example/catalog.json'))
+            .packs[0];
+          await manager.install(repair, { bytes });
+        } finally {
+          global.fetch = originalFetch;
         }
-        if (tasks) await tasks.close();
-        const restored = createProjectRuntime({
+        assert.deepEqual(manager.scan().errors, []);
+        const repaired = createProjectRuntime({
           projectDir,
           domain,
           directory: stateDir,
           environment,
         });
         try {
-          assert.equal((await restored.runtime.inspect()).id, records.at(-1).state.id);
-          assert.equal(restored.runtime.latestCheckpoint().id, records.at(-1).checkpoint.id);
-          assert.equal(restored.runtime.listActions().length, 3);
-          for (const a of records[0].artifacts)
-            assert.equal(
-              crypto
-                .createHash('sha256')
-                .update(restored.runtime.readArtifact(a.id).content)
-                .digest('hex'),
-              a.sha256,
-            );
-        } finally {
-          await restored.runtime.close();
-        }
-        assert.deepEqual(
-          manager.scan().errors,
-          [],
-          'Native execution must not alter installed verified Pack bytes.',
-        );
-        fs.writeFileSync(path.join(directory, 'results.json'), JSON.stringify(records, null, 2));
-        assert.ok(
-          fixture.requests.length >= 9,
-          'Real pinned Kimi tool loop must execute every turn.',
-        );
-        if (adapter === 'cli') {
-          const { privateKey, release, payload } = manager.qualification;
-          const source = path.join(release, domain),
-            runtimeDir = path.join(source, 'domain-packs', domain, 'runtime');
-          fs.appendFileSync(
-            path.join(runtimeDir, 'verifier.cjs'),
-            '\n// signed qualification repair changes Verifier byte identity\n',
+          const current = await repaired.runtime.inspect();
+          assert.equal(current.status, 'stale');
+          assert.equal(
+            repaired.runtime.listVerifications().find(v => v.id === records[0].verification.id)
+              .status,
+            'passed',
+            'Historical Verification keeps its original identity.',
           );
-          const declared = JSON.parse(
-            fs.readFileSync(path.join(source, 'domain-packs', domain, 'harness-pack.json')),
-          );
-          declared.provider.sourceFiles['runtime/verifier.cjs'] = digest(
-            fs.readFileSync(path.join(runtimeDir, 'verifier.cjs')),
-          );
-          declared.provider.sourceSha256 = digest(
-            Buffer.from(JSON.stringify(declared.provider.sourceFiles)),
-          );
-          fs.writeFileSync(
-            path.join(source, 'domain-packs', domain, 'harness-pack.json'),
-            JSON.stringify(declared, null, 2),
-          );
-          const manifestPath = path.join(source, 'bundle.json'),
-            manifest = JSON.parse(fs.readFileSync(manifestPath));
-          manifest.providerPacks = manifest.providerPacks.map(p =>
-            p.domain === domain ? declared : p,
-          );
-          fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
-          const bytes = createArchive(source),
-            catalog = signCatalog(
+          const p = plan(domain, 2, projectDir),
+            out = await repaired.runtime.execute(
+              { ...p, expectedStateId: current.id },
               {
-                ...payload,
-                packs: payload.packs
-                  .filter(p => p.domain === domain)
-                  .map(p => ({ ...p, sha256: digest(bytes), size: bytes.length })),
-              },
-              'qualification',
-              privateKey,
-            );
-          const originalFetch = global.fetch;
-          global.fetch = async () => new Response(JSON.stringify(catalog));
-          try {
-            const repair = (await manager.catalog('https://qualification.example/catalog.json'))
-              .packs[0];
-            await manager.install(repair, { bytes });
-          } finally {
-            global.fetch = originalFetch;
-          }
-          assert.deepEqual(manager.scan().errors, []);
-          const repaired = createProjectRuntime({
-            projectDir,
-            domain,
-            directory: stateDir,
-            environment,
-          });
-          try {
-            const current = await repaired.runtime.inspect();
-            assert.equal(current.status, 'stale');
-            assert.equal(
-              repaired.runtime.listVerifications().find(v => v.id === records[0].verification.id)
-                .status,
-              'passed',
-              'Historical Verification keeps its original identity.',
-            );
-            const p = plan(domain, 2, projectDir),
-              out = await repaired.runtime.execute(
-                { ...p, expectedStateId: current.id },
-                {
-                  approval: true,
-                  scope: {
-                    domain,
-                    projectId: current.projectId,
-                    stateId: current.id,
-                    tools: [p.toolId],
-                  },
+                approval: true,
+                scope: {
+                  domain,
+                  projectId: current.projectId,
+                  stateId: current.id,
+                  tools: [p.toolId],
                 },
-              );
-            assert.equal(out.verification.status, 'passed', JSON.stringify(out));
-            assert.equal(out.state.status, 'verified');
-            fs.writeFileSync(
-              path.join(directory, 'verifier-repair.json'),
-              JSON.stringify({ before: records.at(-1).state, stale: current, after: out }, null, 2),
+              },
             );
-          } finally {
-            await repaired.runtime.close();
-          }
+          assert.equal(out.verification.status, 'passed', JSON.stringify(out));
+          assert.equal(out.state.status, 'verified');
+          fs.writeFileSync(
+            path.join(directory, 'verifier-repair.json'),
+            JSON.stringify({ before: records.at(-1).state, stale: current, after: out }, null, 2),
+          );
+        } finally {
+          await repaired.runtime.close();
         }
       }
+    }
   },
 );
 

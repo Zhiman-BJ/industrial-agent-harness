@@ -268,19 +268,12 @@ test('workflow jobs use the selected core/full plan and reusable workflows keep 
             'Verify full Domain installation',
             'Verify clean Apple Silicon CAD installation and real native tasks',
           ]
-        : [
-            'Install the previous public preview before upgrading',
-            'Build clean immutable installer and verify actual installed consumer',
-            'Verify installed host Docker execution alongside the current-user Agent',
-          ];
+        : ['Verify host Docker tasks through the shared Runtime'];
     for (const title of expensive) assert.match(step(title), /if: inputs.full/);
     const core =
       name === 'desktop-package'
         ? ['Verify installed application first run', 'Verify workbench UI and language switching']
-        : [
-            'Native Agent, project discovery, real RTL and recovery',
-            'Verify packaged headless Agent through its current-user launcher',
-          ];
+        : ['Native Agent, project discovery, real RTL and recovery'];
     for (const title of core) assert.doesNotMatch(step(title), /if:/);
   }
 });

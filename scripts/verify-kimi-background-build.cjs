@@ -8,6 +8,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
 const { assertAgentBoundary } = require('./assert-agent-boundary.cjs');
+const { taskArguments } = require('../tests/integration/fixtures/task-service-process.cjs');
 
 async function main() {
   const project = path.resolve(__dirname, '..');
@@ -73,33 +74,20 @@ async function main() {
   });
   let stderr = '';
   try {
-    const args = [
-      path.join(project, 'apps/cli/src/main.cjs'),
-      'run',
-      '--project-dir',
-      project,
-      '--domain',
-      'godot',
-      '--task',
-      'Build the actual Harness Desktop in the background, wait using native WaitFor, then inspect the real output artifacts.',
-      '--approval',
-      'approve',
-      '--provider',
-      'openai_legacy',
-      '--endpoint',
-      model.endpoint,
-      '--model',
-      'real-build-controlled',
-      '--no-thinking',
-      '--timeout-ms',
-      '90000',
-      '--chat-dir',
-      path.join(evidence, 'chats'),
-      '--state-dir',
-      path.join(evidence, 'state'),
-      '--log-dir',
-      path.join(evidence, 'logs'),
-    ];
+    const args = taskArguments({
+      projectDir: project,
+      domain: 'godot',
+      task: 'Build the actual Harness Desktop in the background, wait using native WaitFor, then inspect the real output artifacts.',
+      approval: 'approve',
+      provider: 'openai_legacy',
+      endpoint: model.endpoint,
+      model: 'real-build-controlled',
+      thinking: false,
+      timeoutMs: 90000,
+      chatDir: path.join(evidence, 'chats'),
+      stateDir: path.join(evidence, 'state'),
+      logDir: path.join(evidence, 'logs'),
+    });
     const child = spawn(process.execPath, args, {
       cwd: os.tmpdir(),
       env: {

@@ -1,4 +1,5 @@
 const test = require('node:test');
+const { taskArguments } = require('./fixtures/task-service-process.cjs');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
@@ -186,10 +187,10 @@ test(
 
 for (const scenario of ['question', 'timeout'])
   test(
-    `real protected Headless background ${scenario} settles with the expected exit status`,
+    `shared application background ${scenario} settles with the expected exit status`,
     { timeout: 25000 },
     async t => {
-      const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'headless-background-'));
+      const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'application-background-'));
       const project = path.join(directory, 'project');
       fs.mkdirSync(project);
       const model = await startModel({
@@ -209,12 +210,12 @@ for (const scenario of ['question', 'timeout'])
               ]
             : [
                 tool('Bash', {
-                  command: `sleep ${scenario === 'timeout' ? 30 : 1}; echo HEADLESS_OUTPUT`,
-                  description: 'Headless background task',
+                  command: `sleep ${scenario === 'timeout' ? 30 : 1}; echo APPLICATION_OUTPUT`,
+                  description: 'Application background task',
                   run_in_background: true,
                 }),
               ],
-        success: 'HEADLESS_STARTED',
+        success: 'APPLICATION_STARTED',
       });
       t.after(() => {
         model.close();
@@ -224,42 +225,30 @@ for (const scenario of ['question', 'timeout'])
       try {
         await promisify(execFile)(
           process.execPath,
-          [
-            path.resolve(__dirname, '../../apps/cli/src/main.cjs'),
-            'run',
-            '--project-dir',
-            project,
-            '--domain',
-            'godot',
-            '--task',
-            'Run the background task.',
-            '--provider',
-            'openai_legacy',
-            '--endpoint',
-            model.endpoint,
-            '--model',
-            'controlled',
-            '--no-thinking',
-            '--approval',
-            'approve',
-            '--chat-dir',
-            path.join(directory, 'chats'),
-            '--state-dir',
-            path.join(directory, 'state'),
-            '--log-dir',
-            path.join(directory, 'logs'),
-            ...(scenario === 'timeout' ? ['--timeout-ms', '4000'] : []),
-          ],
+          taskArguments({
+            projectDir: project,
+            domain: 'godot',
+            task: 'Run the background task.',
+            provider: 'openai_legacy',
+            endpoint: model.endpoint,
+            model: 'controlled',
+            thinking: false,
+            approval: 'approve',
+            chatDir: path.join(directory, 'chats'),
+            stateDir: path.join(directory, 'state'),
+            logDir: path.join(directory, 'logs'),
+            ...(scenario === 'timeout' ? { timeoutMs: 4000 } : {}),
+          }),
           {
             timeout: 20000,
             env: {
               ...process.env,
-              OPENAI_API_KEY: 'local-headless-background',
+              OPENAI_API_KEY: 'local-application-background',
               INDUSTRIAL_HARNESS_CONFIG_DIR: path.join(directory, 'settings'),
             },
           },
         );
-        assert.fail('Expected a nonzero Headless status');
+        assert.fail('Expected a nonzero fixture status');
       } catch (error) {
         stdout = error.stdout;
         exitCode = error.code;
@@ -268,7 +257,7 @@ for (const scenario of ['question', 'timeout'])
       const rows = stdout.trim().split('\n').map(JSON.parse);
       assert.equal(rows.at(-1).status, scenario === 'question' ? 'needs_input' : 'timeout');
       assert.ok(
-        rows.some(row => row.event?.text === 'HEADLESS_STARTED'),
+        rows.some(row => row.event?.text === 'APPLICATION_STARTED'),
         'initial turn finished before interruption',
       );
       if (scenario === 'question') assert.ok(rows.some(row => row.type === 'needs_input'));

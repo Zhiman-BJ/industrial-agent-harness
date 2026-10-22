@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
     inputs:
       full:
-        description: 'Run full native, installation and upgrade acceptance'
+        description: 'Run full native and Desktop installation acceptance'
         type: boolean
         default: false
 
@@ -131,15 +131,11 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: Add-Content -Path $env:GITHUB_PATH -Value 'C:\Program Files\Git\usr\bin'
-      - name: Shared packages, CLI, SDK and platform boundaries
+      - name: Shared Desktop packages and platform boundaries
         shell: bash
         run: |
           mkdir -p dist/ci-reports
           pnpm run test:ci -- portable 2>&1 | tee dist/ci-reports/portable.log
-      - name: Verify independent packaged CLI consumers
-        shell: bash
-        run: |
-          pnpm run smoke:ci-packages 2>&1 | tee dist/ci-reports/packages.log
       - name: Retain regression evidence
         if: always()
         uses: actions/upload-artifact@v4

@@ -7,7 +7,9 @@
 web
 
 The existing desktop product uses React in Electron. Desktop packaging and
-interaction retain the host platform's native behavior; headless CLI is separate.
+interaction retain the host platform's native behavior. This repository delivers
+only the desktop GUI; the standalone CLI, its SDK, and headless distribution
+are retired by PD-096.
 
 ## Product Purpose
 

@@ -86,9 +86,7 @@ jobs:
           # tests fail on windows runners (git nul-device hooksPath quirk).
           if test "${{ matrix.platform }}" = mac; then pnpm test:architecture; fi
           # Release gate covers the Desktop application and the packages it
-          # ships (filter with dependency closure). The standalone CLI/SDK
-          # product suites stay in main CI - a Desktop release must not be
-          # blocked by them.
+          # ships (filter with dependency closure).
           pnpm --filter @industrial-agent-harness/desktop... test
           pnpm --filter @industrial-agent-harness/desktop build
       - name: Stage packaged app

@@ -1,6 +1,5 @@
 const fs = require('node:fs');
 const path = require('node:path');
-const { distributionDomain } = require('./distribution.cjs');
 
 const owner = require('@zhiman-bj/industrial-domain-packs');
 const skills = [
@@ -17,11 +16,7 @@ const skills = [
 
 function listSkills(domain) {
   return skills
-    .filter(
-      item =>
-        (item.domain === '*' || !distributionDomain || item.domain === distributionDomain) &&
-        (item.domain === '*' || !domain || item.domain === domain),
-    )
+    .filter(item => item.domain === '*' || !domain || item.domain === domain)
     .map(({ directory, packId, resourcePath, ...item }) => ({
       ...item,
       enabledByDefault: true,
@@ -29,11 +24,7 @@ function listSkills(domain) {
 }
 
 function skillFile(id) {
-  const item = skills.find(
-    skill =>
-      skill.id === id &&
-      (skill.domain === '*' || !distributionDomain || skill.domain === distributionDomain),
-  );
+  const item = skills.find(skill => skill.id === id);
   if (!item) throw Error(`Unknown repository skill: ${id}`);
   const file = item.packId
     ? path.join(owner.skillResource(id).directory, 'SKILL.md')
@@ -47,11 +38,7 @@ function integrationSuffix(prefix) {
 }
 
 function skillPackaging(id) {
-  const item = skills.find(
-    skill =>
-      skill.id === id &&
-      (skill.domain === '*' || !distributionDomain || skill.domain === distributionDomain),
-  );
+  const item = skills.find(skill => skill.id === id);
   if (!item) throw Error(`Unknown repository skill: ${id}`);
   return {
     source: path.dirname(skillFile(id)),

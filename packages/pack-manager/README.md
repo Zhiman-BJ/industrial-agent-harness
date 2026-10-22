@@ -1,6 +1,6 @@
 # Domain Pack Manager
 
-Shared installation store for Desktop and CLI. It verifies Ed25519 signed HTTPS catalogs,
+Shared installation store for Desktop. It verifies Ed25519 signed HTTPS catalogs,
 archive SHA-256, every file and required Skill/provider/runtime entry before atomically activating
 a Domain version. A task lease prevents changing or removing a Domain while in use. Failed,
 corrupt and unsupported updates preserve the previous active version.
@@ -30,7 +30,7 @@ simulated; actual installer signing and public-feed recovery require release acc
 
 Core-owned optional `.hpack` files may also ship inside the application resources; their catalog is protected by the Core application signature, and installation verifies the pinned archive hash. This source is supplied only by the desktop main process, never a renderer or project path. Signed HTTPS catalogs remain the update source.
 
-Optional `runtimeAssets` declarations prepare pinned macOS arm64 vendor applications in `<store>/.runtime-assets/`: streaming HTTPS download, exact size/SHA-256, read-only DMG mount or validated ZIP extraction, full app copy with upstream licenses, signature verification, bounded version probe, atomic activation and repair. Large applications remain separate from bounded `.hpack` archives. Interrupted staging is not ready; versions and the verified download cache are retained. Removing a Pack preserves this reusable runtime cache. Desktop and CLI use the same resolved dependency environment.
+Optional `runtimeAssets` declarations prepare pinned macOS arm64 vendor applications in `<store>/.runtime-assets/`: streaming HTTPS download, exact size/SHA-256, read-only DMG mount or validated ZIP extraction, full app copy with upstream licenses, signature verification, bounded version probe, atomic activation and repair. Large applications remain separate from bounded `.hpack` archives. Interrupted staging is not ready; versions and the verified download cache are retained. Removing a Pack preserves this reusable runtime cache. Desktop uses the resolved dependency environment.
 
 ## Optional data libraries: explicit resource acquisition
 
@@ -100,13 +100,13 @@ existing checks. `describeInstalled` separates `viewerState/viewerAssets` from n
 The current consumer is [KLayout Viewer Python](../../doc/managed-viewer-python.md).
 
 Optional `containerImages` declarations select released image IDs from the owner's unchanged
-`provenance/runtime-distribution.json`, included in the authenticated `.hpack`. Desktop and CLI
+`provenance/runtime-distribution.json`, included in the authenticated `.hpack`. Desktop
 install/update/repair call the same `PackManager.prepareRuntime` path before Pack activation.
 The primary image channel is an anonymous HTTPS release tarball; a running Linux Docker engine
 is an external prerequisite. Entries with no published release are not automatically selected.
 When a Pack also declares native applications, Docker availability is checked before either
 native or image downloads. Missing Docker and an unreachable engine produce distinct setup
-messages in both adapters and leave the Pack inactive. The docker CLI is discovered through the
+messages in Desktop and leave the Pack inactive. The docker CLI is discovered through the
 shared ladder in `@industrial-agent-harness/domain-runtime`: the PATH first, then well-known
 installs (`~/.docker/bin`, `/usr/local/bin`, `/opt/homebrew/bin`, the Docker.app bundle) and a
 timeout-bounded login-shell PATH capture for GUI launches whose environment lacks them; the miss
@@ -141,7 +141,7 @@ The standalone developer command is
 Only this discovery API honors `INDUSTRIAL_HARNESS_RUNTIME_DISTRIBUTION`; explicit retention applies
 only after success. Real release acceptance is separate from portable fixtures:
 `node scripts/verify-release-image-installation.cjs <fresh-output> [domain]`, after building
-the Desktop renderer. It exercises CLI cold installation, repair and removal, then the real
+the Desktop renderer. It exercises shared installation API cold installation, repair and removal, then the real
 Desktop renderer/preload/IPC installation and repair with verified Docker images reused.
 Reports distinguish installation/container startup from engineering acceptance.
 

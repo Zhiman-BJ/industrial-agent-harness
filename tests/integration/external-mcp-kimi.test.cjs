@@ -3,22 +3,21 @@ const test = require('node:test'),
 const fs = require('node:fs'),
   os = require('node:os'),
   path = require('node:path');
-const { createRequire } = require('node:module');
+const { taskArguments } = require('./fixtures/task-service-process.cjs');
+const { ResourceSettings, resourceCatalog } = require('../../packages/harness-core/src/index.cjs');
 const { execFile } = require('node:child_process'),
   { promisify } = require('node:util');
 const { ExternalMcpRegistry } = require('../../packages/domain-mcp/src/index.cjs');
 const { startModel } = require('./fixtures/domain-mcp-model.cjs');
 const { boundaryMatches } = require('./fixtures/execution-boundary.cjs');
 const { image } = require('./fixtures/external-mcp-server.cjs');
-const execute = promisify(execFile),
-  root = path.resolve(__dirname, '../..');
-const entry = process.env.INDUSTRIAL_HARNESS_TEST_CLI || path.join(root, 'apps/cli/src/main.cjs');
+const execute = promisify(execFile);
 const kimi =
   process.env.KIMI_EXECUTABLE ||
-  createRequire(fs.realpathSync(entry))('@industrial-agent-harness/agent-kimi').bundledExecutable();
+  require('../../packages/agent-kimi/src/index.cjs').bundledExecutable();
 const server = path.join(__dirname, 'fixtures/external-mcp-server.cjs');
 test(
-  'real CLI and pinned Kimi: registered external MCP is discoverable in current-user execution; approvals, images, durable Actions and disable policy work',
+  'real TaskService and pinned Kimi: registered external MCP is discoverable in current-user execution; approvals, images, durable Actions and disable policy work',
   { timeout: 90000 },
   async t => {
     assert.ok(fs.existsSync(kimi), 'The native MCP gate requires the pinned Kimi runtime.');
@@ -46,15 +45,16 @@ test(
       INDUSTRIAL_HARNESS_CONFIG_DIR: configs,
       OPENAI_API_KEY: 'local-hosted-mcp',
     };
-    const invoke = args =>
-      execute(process.execPath, [entry, ...args], {
+    const invoke = request =>
+      execute(process.execPath, taskArguments(request), {
         cwd: os.tmpdir(),
         env,
         timeout: 45000,
         maxBuffer: 8 * 1024 * 1024,
       });
-    const added = await invoke(['mcp', 'add', '--file', file]);
-    assert.equal(JSON.parse(added.stdout).servers[0].id, 'external.host');
+    const registry = new ExternalMcpRegistry(configs);
+    const added = await registry.add(fs.readFileSync(file, 'utf8'), env);
+    assert.equal(added[0].id, 'external.host');
     const tools = new ExternalMcpRegistry(configs).records()[0].tools;
     const click = tools.find(tool => tool.name === 'click').id,
       screenshot = tools.find(tool => tool.name === 'screenshot').id;
@@ -76,35 +76,22 @@ test(
         ],
       });
       t.after(model.close);
-      const { stdout, stderr } = await invoke([
-        'run',
-        '--project-dir',
-        project,
-        '--domain',
-        'chip',
-        '--task',
-        'Use the registered host service',
-        '--provider',
-        'openai_legacy',
-        '--endpoint',
-        model.endpoint,
-        '--model',
-        'controlled-host',
-        '--no-thinking',
-        '--image-input',
-        '--approval',
-        approval,
-        '--kimi-executable',
-        kimi,
-        '--timeout-ms',
-        '30000',
-        '--chat-dir',
-        path.join(directory, 'chats'),
-        '--state-dir',
-        path.join(directory, 'state'),
-        '--log-dir',
-        path.join(directory, 'logs'),
-      ]);
+      const { stdout, stderr } = await invoke({
+        projectDir: project,
+        domain: 'chip',
+        task: 'Use the registered host service',
+        provider: 'openai_legacy',
+        endpoint: model.endpoint,
+        model: 'controlled-host',
+        thinking: false,
+        imageInput: true,
+        approval: approval,
+        kimiExecutable: kimi,
+        timeoutMs: 30000,
+        chatDir: path.join(directory, 'chats'),
+        stateDir: path.join(directory, 'state'),
+        logDir: path.join(directory, 'logs'),
+      });
       const rows = stdout.trim().split('\n').map(JSON.parse),
         results = rows.filter(row => row.type === 'industrial_result');
       assert.equal(rows.at(-1).status, 'finished', stderr + stdout);
@@ -130,7 +117,7 @@ test(
         assert.equal(
           clickResult.count,
           2,
-          'Actual installed CLI must retain the MCP process across approved calls.',
+          'The application host must retain the MCP process across approved calls.',
         );
         assert.ok(
           results.every(
@@ -148,37 +135,28 @@ test(
         assert.ok(rows.some(boundaryMatches));
       }
     }
-    await invoke(['mcp', 'disable', 'external.host', '--project-dir', project]);
+    new ResourceSettings(configs).set(
+      resourceCatalog(undefined, registry.records()),
+      { kind: 'mcp', id: 'external.host', mode: 'disabled' },
+      fs.realpathSync(project),
+    );
     const model = await startModel({ calls: [], success: 'MCP_DISABLED' });
     t.after(model.close);
-    const { stdout } = await invoke([
-      'run',
-      '--project-dir',
-      project,
-      '--domain',
-      'chip',
-      '--task',
-      'Work on the project',
-      '--provider',
-      'openai_legacy',
-      '--endpoint',
-      model.endpoint,
-      '--model',
-      'controlled-host',
-      '--no-thinking',
-      '--approval',
-      'approve',
-      '--kimi-executable',
-      kimi,
-      '--timeout-ms',
-      '30000',
-      '--chat-dir',
-      path.join(directory, 'chats'),
-      '--state-dir',
-      path.join(directory, 'state'),
-      '--log-dir',
-      path.join(directory, 'logs'),
-    ]);
+    const { stdout } = await invoke({
+      projectDir: project,
+      domain: 'chip',
+      task: 'Work on the project',
+      provider: 'openai_legacy',
+      endpoint: model.endpoint,
+      model: 'controlled-host',
+      thinking: false,
+      approval: 'approve',
+      kimiExecutable: kimi,
+      timeoutMs: 30000,
+      chatDir: path.join(directory, 'chats'),
+      stateDir: path.join(directory, 'state'),
+      logDir: path.join(directory, 'logs'),
+    });
     const rows = stdout.trim().split('\n').map(JSON.parse);
     assert.equal(rows.at(-1).status, 'finished');
     assert.ok(!rows[0].scope.tools.some(id => id.startsWith('external.')));

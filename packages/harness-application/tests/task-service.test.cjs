@@ -4,7 +4,6 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { TaskService } = require('../src/index.cjs');
-const { run } = require('../../../apps/cli/src/main.cjs');
 
 class Kernel {
   constructor(_project, getScope, _read, _detail, emit, _config, _factory, options) {
@@ -56,7 +55,7 @@ function fixture(t, Session = Kernel) {
   const chat = tasks.chats.create(project.path, project.domain);
   return { tasks, project, entry: tasks.resume(project, chat.id), root, options };
 }
-test('Desktop task API and CLI persist the same real file Action, verification and refreshed scope', async t => {
+test('Desktop task API persists real file Actions, verification and scope across service restarts', async t => {
   const desktop = fixture(t);
   const prepared = await desktop.tasks.prepare(desktop.entry, {
     task: 'create and edit project files',
@@ -82,26 +81,20 @@ test('Desktop task API and CLI persist the same real file Action, verification a
     fs.readFileSync(path.join(desktop.project.path, 'answer.txt'), 'utf8'),
     'shared application path\n',
   );
-  const cli = fixture(t);
-  const rows = [];
-  await cli.tasks.close();
-  const code = await run(
-    {
-      projectDir: cli.project.path,
-      domain: cli.project.domain,
-      task: 'create and edit project files',
-      chatDir: path.join(cli.root, 'cli-chats'),
-      stateDir: path.join(cli.root, 'cli-state'),
-    },
-    { write: line => rows.push(JSON.parse(line)) },
-    { ...cli.options.environment, KIMI_API_KEY: 'controlled-key' },
-    Kernel,
-  );
-  assert.equal(code, 0);
-  const cliFact = rows.find(row => row.type === 'industrial_result');
-  assert.equal(cliFact.action.toolId, fact.action.toolId);
-  assert.deepEqual(cliFact.verification.checks, fact.verification.checks);
-  assert.equal(cliFact.state.status, fact.state.status);
+  await desktop.tasks.close();
+  const restored = new TaskService(desktop.options);
+  try {
+    const resumed = restored.resume(desktop.project, desktop.entry.id);
+    const replay = restored.history(desktop.project, resumed.id);
+    const restoredFact = replay.turns[0].events.find(event => event.type === 'industrial-result');
+    assert.equal(restoredFact.action.id, fact.action.id);
+    assert.deepEqual(restoredFact.verification.checks, fact.verification.checks);
+    assert.equal(restoredFact.state.status, fact.state.status);
+    const refreshed = await restored.prepare(resumed, { task: 'inspect project files' });
+    assert.ok(refreshed.scope.tools.includes('project.files.read'));
+  } finally {
+    await restored.close();
+  }
 });
 test('kernel failure releases chat and Pack leases; chat can be resumed and ownership is enforced', async t => {
   let releases = 0;

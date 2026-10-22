@@ -1,4 +1,4 @@
-// Shared expectation for the execution-boundary event that a real CLI or
+// Shared expectation for the execution-boundary event that an application host or
 // KimiSession launch reports on the current host: the launch is OS-isolated
 // when the platform offers a verified primitive (Seatbelt on macOS,
 // bubblewrap on Linux) and falls back to the plain current-user launcher

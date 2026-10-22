@@ -1,4 +1,5 @@
 const test = require('node:test');
+const { taskArguments } = require('./fixtures/task-service-process.cjs');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
@@ -10,7 +11,7 @@ const {
   resolveProjectTask,
 } = require('../../packages/harness-core/src/index.cjs');
 const { selectMcpServers, listMcpServers } = require('../../packages/domain-mcp/src/index.cjs');
-test('Desktop/CLI PCB policy keeps public Skills local and withholds the frozen private MCP modification path', t => {
+test('Desktop PCB policy keeps public Skills local and withholds the frozen private MCP modification path', t => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'public-pcb-policy-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const catalog = resourceCatalog('pcb');
@@ -43,22 +44,17 @@ test('Desktop/CLI PCB policy keeps public Skills local and withholds the frozen 
   );
   assert.ok(disabledProvider.scope.tools.every(id => !provider.toolIds.includes(id)));
 });
-test('real CLI scopes typed PCB Runtime Actions without starting any native process', t => {
+test('shared TaskService scopes typed PCB Runtime Actions without starting any native process', t => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'public-pcb-cli-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const stdout = execFileSync(
     process.execPath,
-    [
-      path.resolve(__dirname, '../../apps/cli/src/main.cjs'),
-      'run',
-      '--project-dir',
-      root,
-      '--domain',
-      'pcb',
-      '--task',
-      'KiCad board edit',
-      '--scope-only',
-    ],
+    taskArguments({
+      projectDir: root,
+      domain: 'pcb',
+      task: 'KiCad board edit',
+      scopeOnly: true,
+    }),
     {
       encoding: 'utf8',
       env: { ...process.env, INDUSTRIAL_HARNESS_CONFIG_DIR: path.join(root, 'config') },
