@@ -97,12 +97,31 @@ function filter() {
   });
   return bytes;
 }
+function directoryIdentity(file, optional = false) {
+  const stat = fs.statSync(file, { bigint: true, throwIfNoEntry: !optional });
+  if (!stat) return null;
+  if (
+    !stat.isDirectory() ||
+    typeof stat.dev !== 'bigint' ||
+    typeof stat.ino !== 'bigint' ||
+    stat.ino === 0n
+  )
+    throw Error('Task runtime directory identity is unavailable: ' + file);
+  return `${stat.dev}:${stat.ino}`;
+}
+
+function sameDirectory(file, root) {
+  return directoryIdentity(file) === directoryIdentity(root, true);
+}
+
 function inside(file, root) {
-  const relative = path.relative(root, file);
-  return (
-    relative === '' ||
-    (!relative.startsWith('..' + path.sep) && relative !== '..' && !path.isAbsolute(relative))
-  );
+  const identity = directoryIdentity(root);
+  // realpath resolves symlinks, but can preserve casing aliases on macOS.
+  // Compare physical ancestors instead of lowercasing case-sensitive paths.
+  for (let directory = fs.realpathSync(file); ; directory = path.dirname(directory)) {
+    if (directoryIdentity(directory) === identity) return true;
+    if (directory === path.dirname(directory)) return false;
+  }
 }
 
 function canonicalPath(file) {
@@ -149,7 +168,7 @@ function runtimeInstallation(target, projectDir, runAsNode) {
       os.homedir(),
       os.tmpdir(),
     ];
-    if (sharedRoots.some(file => root === canonicalPath(file))) root = null;
+    if (sharedRoots.some(file => sameDirectory(root, file))) root = null;
   }
   // A project-controlled bundle must not expose unselected source files.
   // Symlink launch aliases cannot widen this grant: target is already realpath.
@@ -217,8 +236,8 @@ function localCommand(argv, directory, input, work, environment, task, projectDi
         os.homedir(),
         os.tmpdir(),
         path.join(os.homedir(), '.local'),
-      ].some(root => prefix === canonicalPath(root)) &&
-      !['/Users', '/home'].some(root => path.dirname(prefix) === canonicalPath(root)) &&
+      ].some(root => sameDirectory(prefix, root)) &&
+      !['/Users', '/home'].some(root => sameDirectory(path.dirname(prefix), root)) &&
       // Both a project-local prefix and an installation containing the project
       // would expose inputs that were never selected for this task.
       (!projectDir || (!inside(prefix, projectDir) && !inside(projectDir, prefix)))
