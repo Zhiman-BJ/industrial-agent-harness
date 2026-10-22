@@ -20,6 +20,7 @@ const crypto = require('node:crypto');
 const os = require('node:os');
 const languageConfig = require('../i18n.config.json');
 const { packagedAppName } = require('./app-identity.cjs');
+const { createWindowLifecycle } = require('./window-lifecycle.cjs');
 if (app.isPackaged) app.setName(packagedAppName());
 const { guiPermissions, guiPermissionSettingsUrl } = require('./gui-permissions.cjs');
 const {
@@ -383,6 +384,13 @@ let contextStore;
 let projectDir;
 let projectBindings = { projects: [], activeId: null };
 let mainWindow;
+let shutdownComplete = false;
+let shutdownPromise;
+const windowLifecycle = createWindowLifecycle({
+  getWindow: () => mainWindow,
+  createWindow,
+  isQuitting: () => Boolean(shutdownPromise),
+});
 const coreUpdater = new CoreUpdater({
   updater: app.isPackaged ? require('electron-updater').autoUpdater : null,
   packaged: app.isPackaged,
@@ -525,9 +533,13 @@ function projectSnapshot() {
   };
 }
 function clearProjectArtifacts() {
-  viewerResourceHost.close();
   contextStore?.close();
   contextStore = undefined;
+  clearViewerArtifacts();
+}
+function clearViewerArtifacts() {
+  viewerResourceHost.close();
+  viewerProtocol?.close();
   artifacts.clear();
   netlistSessions.clear();
   activeLayoutToken = undefined;
@@ -1739,8 +1751,16 @@ function registerHandlers() {
       throw Error('Open the chat to stop it.');
     return tasks.cancel(selectedSession());
   });
-  ipcMain.handle('viewer:open', async (_event, { artifactId }) => {
+  ipcMain.handle('viewer:open', async (event, { artifactId }) => {
+    const window = mainWindow;
     const { artifact, file } = await checked(artifactId);
+    if (
+      !window ||
+      window.isDestroyed() ||
+      event.sender !== window.webContents ||
+      mainWindow !== window
+    )
+      throw Error('Viewer window changed; reopen the file.');
     const plugin = viewerRegistry.get(artifact.kind);
     if (!plugin) throw Error('Viewer plugin unavailable.');
     return plugin.open({ artifact, file });
@@ -1870,6 +1890,71 @@ function registerHandlers() {
 }
 
 async function createWindow() {
+  const productIcon = path.join(desktopRoot, 'dist', 'app-icon.png');
+  if (fs.existsSync(productIcon)) app.dock?.setIcon(productIcon);
+  const window = new BrowserWindow({
+    show: !process.argv.includes('--gui-settings-selftest'),
+    ...require('./window-bounds.cjs').windowBounds(screen.getPrimaryDisplay().workArea),
+    backgroundColor: '#0c1218',
+    title: 'Industrial Agent Harness',
+    icon: productIcon,
+    // Frameless: the renderer draws its own top bars and drag regions. macOS
+    // keeps the native traffic lights; other platforms get in-page controls.
+    frame: process.platform === 'darwin',
+    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : undefined,
+    trafficLightPosition: { x: 20, y: 18 },
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.cjs'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+      // The workspace browser tab embeds web content in a guest process with
+      // no preload and no Node integration; the host window stays sandboxed.
+      webviewTag: true,
+      // Pixel assertions must keep receiving frames when another test app or
+      // a hosted desktop temporarily covers this window.
+      backgroundThrottling: !process.argv.some(
+        flag => flag.endsWith('-selftest') || flag === '--packaged-smoke',
+      ),
+    },
+  });
+  if (process.argv.includes('--cad-selftest') || process.argv.includes('--cad-resize-selftest'))
+    window.webContents.on('console-message', event =>
+      fs.writeSync(2, 'CAD renderer: ' + event.message + '\n'),
+    );
+  mainWindow = window;
+  const fitDisplay = () => {
+    const bounds = require('./window-bounds.cjs').windowBounds(
+      screen.getDisplayMatching(window.getBounds()).workArea,
+      window.getBounds(),
+    );
+    window.setMinimumSize(bounds.minWidth, bounds.minHeight);
+    if (!window.isFullScreen() && !window.isMaximized()) {
+      const { minWidth, minHeight, ...frame } = bounds;
+      window.setBounds(frame);
+    }
+  };
+  screen.on('display-metrics-changed', fitDisplay);
+  screen.on('display-removed', fitDisplay);
+  window.on('closed', () => {
+    screen.removeListener('display-metrics-changed', fitDisplay);
+    screen.removeListener('display-removed', fitDisplay);
+    if (mainWindow === window) {
+      mainWindow = undefined;
+      clearViewerArtifacts();
+    }
+  });
+  try {
+    if (process.env.INDUSTRIAL_DEV_URL) await window.loadURL(process.env.INDUSTRIAL_DEV_URL);
+    else await window.loadURL('app://viewer/index.html');
+    return window;
+  } catch (error) {
+    if (!window.isDestroyed()) window.destroy();
+    throw error;
+  }
+}
+
+async function startDesktop() {
   const remoteConnectionFixture = process.argv.includes('--remote-connection-selftest')
     ? await require('./remote-connection-selftest.cjs').prepare()
     : null;
@@ -2000,58 +2085,11 @@ async function createWindow() {
       return { action: 'deny' };
     });
   });
-  const productIcon = path.join(desktopRoot, 'dist', 'app-icon.png');
-  if (fs.existsSync(productIcon)) app.dock?.setIcon(productIcon);
-  const window = new BrowserWindow({
-    show: !process.argv.includes('--gui-settings-selftest'),
-    ...require('./window-bounds.cjs').windowBounds(screen.getPrimaryDisplay().workArea),
-    backgroundColor: '#0c1218',
-    title: 'Industrial Agent Harness',
-    icon: productIcon,
-    // Frameless: the renderer draws its own top bars and drag regions. macOS
-    // keeps the native traffic lights; other platforms get in-page controls.
-    frame: process.platform === 'darwin',
-    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : undefined,
-    trafficLightPosition: { x: 20, y: 18 },
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.cjs'),
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: true,
-      // The workspace browser tab embeds web content in a guest process with
-      // no preload and no Node integration; the host window stays sandboxed.
-      webviewTag: true,
-      // Pixel assertions must keep receiving frames when another test app or
-      // a hosted desktop temporarily covers this window.
-      backgroundThrottling: !process.argv.some(
-        flag => flag.endsWith('-selftest') || flag === '--packaged-smoke',
-      ),
-    },
+  app.on('activate', () => {
+    void windowLifecycle.open().catch(error => console.error('Window activation failed:', error));
   });
-  if (process.argv.includes('--cad-selftest') || process.argv.includes('--cad-resize-selftest'))
-    window.webContents.on('console-message', event =>
-      fs.writeSync(2, 'CAD renderer: ' + event.message + '\n'),
-    );
-  mainWindow = window;
-  const fitDisplay = () => {
-    const bounds = require('./window-bounds.cjs').windowBounds(
-      screen.getDisplayMatching(window.getBounds()).workArea,
-      window.getBounds(),
-    );
-    window.setMinimumSize(bounds.minWidth, bounds.minHeight);
-    if (!window.isFullScreen() && !window.isMaximized()) {
-      const { minWidth, minHeight, ...frame } = bounds;
-      window.setBounds(frame);
-    }
-  };
-  screen.on('display-metrics-changed', fitDisplay);
-  screen.on('display-removed', fitDisplay);
-  window.on('closed', () => {
-    screen.removeListener('display-metrics-changed', fitDisplay);
-    screen.removeListener('display-removed', fitDisplay);
-  });
-  if (process.env.INDUSTRIAL_DEV_URL) await window.loadURL(process.env.INDUSTRIAL_DEV_URL);
-  else await window.loadURL('app://viewer/index.html');
+  const window = await windowLifecycle.open();
+  if (!window) return;
   if (process.argv.includes('--project-onboarding-selftest')) {
     await require('./project-onboarding-selftest.cjs').run(window, dialog, {
       manager: packManager,
@@ -2295,6 +2333,14 @@ async function createWindow() {
   }
   if (process.argv.includes('--ui-selftest')) {
     await require('./ui-selftest.cjs').run(window, dialog);
+    if (process.platform === 'darwin')
+      await require('./window-lifecycle-selftest.cjs').run({
+        app,
+        BrowserWindow,
+        screen,
+        getWindow: () => mainWindow,
+        getServices: () => ({ tasks, account, contextStore }),
+      });
     app.quit();
     return;
   }
@@ -2713,7 +2759,7 @@ async function createWindow() {
 
 app
   .whenReady()
-  .then(createWindow)
+  .then(startDesktop)
   .catch(error => {
     fs.writeSync(2, String(error?.stack || error) + '\n');
     app.exit(1);
@@ -2721,8 +2767,6 @@ app
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
-let shutdownComplete = false;
-let shutdownPromise;
 app.on('before-quit', event => {
   if (shutdownComplete) return;
   event.preventDefault();

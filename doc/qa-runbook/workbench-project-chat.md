@@ -19,6 +19,8 @@ pnpm --filter @industrial-agent-harness/desktop test:browser
 
 parallel 另覆盖真实 Renderer 强制崩溃后由测试显式 reload，再检查历史/终态去重和新任务可执行；这是受控恢复路径，不宣称产品自动自愈，也不覆盖 Electron main 崩溃。详细指标与故障边界见 [PF 模块](performance-recovery.md)。
 
+macOS 的 `test:ui` 另覆盖三轮真实窗口关闭/销毁后发送 Electron `activate` 事件：检查仅创建一个新窗口、项目与聊天选择及 IPC 可用、应用服务复用、显示监听无累积、最小化恢复，以及退出时不复活窗口。该自动测试验证 Electron 事件链，实际 Dock 点击仍按 WB-08 单独记录。
+
 ```sh
 pnpm test:chat-resume
 pnpm test:session-resources
@@ -38,6 +40,7 @@ pnpm test:session-chaos
 | WB-05 弹层键盘 | 从按钮打开模型、项目、账号等弹层；Tab/Shift+Tab 进出首尾、Esc 关闭、焦点返回入口；输入法 composing 时 Esc 不误关闭 | 背景不可被 Tab 聚焦；嵌套弹层只关闭最上层；不要把合成键盘事件等同 OS 输入法实测 | 每种弹层的键盘结果、失败焦点目标、小窗截图 |
 | WB-06 消息流 | 观察实时 Thinking 数行、结束默认收起、工具调用和结果同一折叠项、审批可见；查看 Broker 展开详情与复制/悬停行为 | 未完成调用不得显示虚构返回；消息变化不抢用户编辑焦点，历史重载不重复执行 | 工具/结果关联 ID、运行前后与悬停截图 |
 | WB-07 工作区浏览器 | 打开浏览器页，导航/返回/标签切换，检查域名与安全状态；浏览器自动操作默认关闭，开启后 Agent 操作可见且可接管 | 网络页面内容不可信；本地 HTML 走断网沙箱；网页不能读项目文件或产生工业通过事实；不可逆提交另需用户授权 | 页面 URL、开关前后、操作诊断；不保存凭据 |
+| WB-08 macOS 关闭与 Dock 恢复 | 点击红色关闭按钮后进程继续运行；点击 Dock 图标恢复一个可交互窗口；连续三轮后检查项目、聊天、账号及已有任务；最小化后点 Dock 恢复 | 关闭释放 Viewer 展示资源；重开不重复初始化服务。Cmd+Q/菜单退出及升级退出真正结束进程；Windows/Linux 关闭最后窗口仍退出。未发送的草稿与未保存的 Viewer 视图不承诺跨窗口销毁保留 | 应用/OS 版本、三轮前后 PID/窗口、实际 Dock 点击与 IPC 结果、退出结果；与自动事件测试分别记录 |
 
 ## 自动覆盖缺口
 
