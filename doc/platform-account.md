@@ -58,7 +58,7 @@ UI 继续只有一个账号入口，未新增服务授权或 audience 输入项�
 | 打包后的安全存储、Windows ACL | 待验收；受控加密适配器通过不能替代真实钥匙串或安装包验证。 |
 | 2026-10-15 按服务 Token 回归 | 88/88 通过，使用真实回环 HTTP、受控 OIDC/JWKS，覆盖一次登录、服务缓存、跨实例串行轮换、拒绝服务不退出、刷新中退出、错误 Token 拒绝、模型重试与错误脱敏；CLI 持久化恢复、Desktop IPC/加密存储及远程 credential provider 共用同一实现。架构契约 20/20、架构回归 48/48、桌面构建通过。 |
 | 2026-10-15 Obol 本地跨仓验证 | 对 Obol 原样主分支 `7137bd8` 运行其已有 `TestPostgresM0/account_api_access/real_harness_client`，开启 race 检查，通过实际 Harness 登录、模型代理调用、服务刷新及退出后旧 Token 401。使用临时 PostgreSQL/Redis 和合成模型；未改 Obol 源码。 |
-| 2026-10-22 登录免配置 | 桌面构建通过；新增配置与 IPC 定向测试 9/9、GUI 启动器 13/13、架构契约策略 11/11。macOS arm64 真实 Electron 自测通过，覆盖未登录无配置输入框、浏览器回调、授权码备用路径、取消、刷新、退出及深浅色/640×480；运行结果 `completed=true, passed=true, exitCode=0`，使用受控 OIDC 服务。终端协议回归为 92/93，另一个模型代理端口受 `listen EPERM` 限制；完整架构回归有一项候选文件体积测试因 Node 26 的 `spawnSync git ENOBUFS` 未通过。未重测生产账号、模型或远程服务。 |
+| 2026-10-22 登录免配置 | 桌面构建通过；新增配置与 IPC 定向测试 9/9、GUI 启动器 13/13、架构契约策略 11/11。macOS arm64 真实 Electron 自测通过，覆盖未登录无配置输入框、浏览器回调、授权码备用路径、取消、刷新、退出及深浅色/640×480；运行结果 `completed=true, passed=true, exitCode=0`，使用受控 OIDC 服务。本地执行器恢复后，账号协议及桌面 IPC 回归 75/75、完整架构契约检查及回归 20/20，均无跳过；前次受限终端的 `listen EPERM` 和 `spawnSync git ENOBUFS` 阻断已通过重跑消除。未重测生产账号、模型或远程服务。 |
 | 生产模型 / 真实远程服务 | 本轮未验收；按用户要求不连接真实远程 MCP。 |
 
 共享协议测试包含错误 state/nonce/ID Token audience/签名、Access Token audience、刷新轮换与并发、崩溃标记、取消后迟到回调、刷新途中退出撤销最新凭据、模型流式转发和错误脱敏。Desktop IPC 只接受主窗口主 frame，渲染器不能读取 Token。
