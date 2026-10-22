@@ -2,6 +2,7 @@
 
 桌面应用各版本的主要内容（由 release-please 依据 conventional commits 自动维护，可在 Release PR 中润色）。
 每版的完整验证范围、发布条件与已知问题见 `doc/releases/<版本>.md`。
+自 1.1.0-beta.9 起版本线为 `1.1.0-beta.N`：feat/fix 只递增 beta 序号；特殊版本（如转正式版）用提交 footer `Release-As: <版本>` 指定。
 
 ## [1.0.1-beta.8](https://github.com/Zhiman-BJ/industrial-agent-harness/compare/desktop-v1.0.1-beta.7...desktop-v1.0.1-beta.8) (2026-10-21)
 
