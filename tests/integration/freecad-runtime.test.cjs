@@ -11,6 +11,7 @@ const { execFileSync } = require('node:child_process');
 const { execFile } = require('node:child_process');
 const { promisify } = require('node:util');
 const { startModel } = require('./fixtures/domain-mcp-model.cjs');
+const { taskArguments } = require('./fixtures/task-service-process.cjs');
 const crypto = require('node:crypto');
 const execute = promisify(execFile);
 const repo = path.resolve(__dirname, '../..');
@@ -196,7 +197,7 @@ test(
   },
 );
 test(
-  'real CAD CLI and pinned Kimi progressively describe then execute an approved FreeCAD recipe',
+  'shared CAD TaskService and pinned Kimi progressively describe then execute an approved FreeCAD recipe',
   { timeout: 150000 },
   async t => {
     const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'kimi-cad-'));
@@ -268,36 +269,21 @@ test(
     );
     const result = await execute(
       process.execPath,
-      [
-        process.env.HARNESS_FREECAD_TEST_CLI || path.join(repo, 'apps/cli/src/main.cjs'),
-        'run',
-        '--project-dir',
-        project,
-        '--domain',
-        'cad',
-        '--task',
-        'FreeCAD 3D 参数化草图拉伸打孔零件建模',
-        '--approval',
-        'approve',
-        '--enable-gui',
-        '--provider',
-        'openai_legacy',
-        '--endpoint',
-        fixture.endpoint,
-        '--model',
-        'controlled-cad',
-        '--no-thinking',
-        '--kimi-executable',
-        native,
-        '--timeout-ms',
-        '90000',
-        '--chat-dir',
-        path.join(directory, 'chats'),
-        '--state-dir',
-        path.join(directory, 'state'),
-        '--log-dir',
-        path.join(directory, 'logs'),
-      ],
+      taskArguments({
+        projectDir: project,
+        domain: 'cad',
+        task: 'FreeCAD 3D 参数化草图拉伸打孔零件建模',
+        approval: 'approve',
+        provider: 'openai_legacy',
+        endpoint: fixture.endpoint,
+        model: 'controlled-cad',
+        thinking: false,
+        kimiExecutable: native,
+        timeoutMs: 90000,
+        chatDir: path.join(directory, 'chats'),
+        stateDir: path.join(directory, 'state'),
+        logDir: path.join(directory, 'logs'),
+      }),
       {
         cwd: repo,
         env: {
@@ -423,36 +409,22 @@ test(
       INDUSTRIAL_HARNESS_CONFIG_DIR: path.join(directory, 'resources'),
     };
     async function prompt(task, chatId) {
-      const args = [
-        process.env.HARNESS_FREECAD_TEST_CLI || path.join(repo, 'apps/cli/src/main.cjs'),
-        'run',
-        '--project-dir',
-        project,
-        '--domain',
-        'cad',
-        '--task',
+      const args = taskArguments({
+        projectDir: project,
+        domain: 'cad',
         task,
-        '--approval',
-        'approve',
-        '--provider',
-        'openai_legacy',
-        '--endpoint',
-        fixture.endpoint,
-        '--model',
-        'controlled-cad-task',
-        '--no-thinking',
-        '--kimi-executable',
-        native,
-        '--timeout-ms',
-        '90000',
-        '--chat-dir',
-        path.join(directory, 'chats'),
-        '--state-dir',
-        path.join(directory, 'state'),
-        '--log-dir',
-        path.join(directory, 'logs'),
-        ...(chatId ? ['--chat-id', chatId] : []),
-      ];
+        approval: 'approve',
+        provider: 'openai_legacy',
+        endpoint: fixture.endpoint,
+        model: 'controlled-cad-task',
+        thinking: false,
+        kimiExecutable: native,
+        timeoutMs: 90000,
+        chatDir: path.join(directory, 'chats'),
+        stateDir: path.join(directory, 'state'),
+        logDir: path.join(directory, 'logs'),
+        chatId,
+      });
       const result = await execute(process.execPath, args, {
         cwd: repo,
         env,

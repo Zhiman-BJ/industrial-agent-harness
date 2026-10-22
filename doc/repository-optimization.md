@@ -1,5 +1,6 @@
 # 全仓分析与优化记录
 
+> 历史记录：本页 CLI/专用 SDK 与 headless 示例对应当时提交，已按 PD-096 退役；当前 GUI 验收入口见 [QA 手册](qa-runbook.md)。
 2026-10-03，基于 `587b75d` 分析整个 `industrial-agent-harness` monorepo：Desktop、CLI 两个入口、11 个共享包，以及领域包、构建脚本、测试和 CI。本次已落实性能、代码风格、内部命名和职责拆分的优化，并修复回归中发现的并发与 Viewer 生命周期问题。产品功能、公开工具 ID、领域注册、审批语义和工程验证范围保持原有契约。
 
 仓库当前可运行的是 Workbench MVP。完整 Industrial Core Vertical Slice 的缺口仍以[现状与缺口](01-current-state-and-gaps.md)、[架构不变量](02-architecture-invariants.md)和 [Prototype Register](prototype-register.json) 为准；本次没有把这些缺口扩展为新功能。

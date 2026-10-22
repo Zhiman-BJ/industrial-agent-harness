@@ -67,34 +67,30 @@ test('external author Pack survives build, installation, Broker disclosure and s
   );
   const project = path.join(directory, 'project');
   fs.mkdirSync(project);
-  const cli = spawnSync(
-    process.execPath,
-    [
-      path.join(root, 'apps/cli/src/main.cjs'),
-      'run',
-      '--project-dir',
-      project,
-      '--domain',
-      'review-fixture',
-      '--task',
-      'inspect report',
-      '--state-dir',
-      path.join(directory, 'state'),
-      '--scope-only',
-    ],
-    {
-      encoding: 'utf8',
-      env: { ...process.env, INDUSTRIAL_HARNESS_CONFIG_DIR: path.join(directory, 'config') },
+  const { TaskService } = require('../../harness-application/src/index.cjs');
+  const tasks = new TaskService({
+    environment: {
+      ...process.env,
+      INDUSTRIAL_HARNESS_CONFIG_DIR: path.join(directory, 'config'),
     },
-  );
-  assert.equal(cli.status, 0, cli.stderr);
-  const events = cli.stdout
-    .trim()
-    .split('\n')
-    .map(line => JSON.parse(line));
-  assert.deepEqual(events.find(event => event.type === 'scope').scope.skills, [
-    'review-fixture.inspect',
-  ]);
+    chatDirectory: path.join(directory, 'chats'),
+    runtimeOptions: { directory: path.join(directory, 'state') },
+    contextOptions: { directory: path.join(directory, 'state') },
+  });
+  try {
+    const entry = tasks.sessions.get(
+      { id: project, path: project, domain: 'review-fixture' },
+      'preview',
+    );
+    const prepared = await tasks.prepare(
+      entry,
+      { task: 'inspect report' },
+      { preview: true, persist: false },
+    );
+    assert.deepEqual(prepared.scope.skills, ['review-fixture.inspect']);
+  } finally {
+    await tasks.close();
+  }
   const { scope } = resolve(
     { domain: 'review-fixture', stage: 'review', task: 'inspect report' },
     registry.capabilities,

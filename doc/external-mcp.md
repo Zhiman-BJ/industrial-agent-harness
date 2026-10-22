@@ -1,4 +1,4 @@
-# 外部 MCP：Desktop / CLI 共用注册
+# 外部 MCP：Desktop 共用注册
 
 当前接入：显式注册的外部 MCP 通过共享宿主 Runtime 调用，可与当前用户 Kimi 会话组合。每次调用重查审批、Scope、参数和服务快照，持久记录 Run/Action、脱敏响应和 Checkpoint；外部结果保持 not_run，不覆盖工程验收。独立应用控制插件仍受限制。[PD-088](local-agent-execution.md) 移除本机 Agent OS 隔离，不移除这些 Runtime 检查。
 

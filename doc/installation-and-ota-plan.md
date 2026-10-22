@@ -1,14 +1,14 @@
 # macOS / Windows 安装、Domain 补装与 OTA 规划
 
-> 状态：2026-10-04 起，桌面构建与首次启动 CI 目标收敛为 macOS Apple Silicon（arm64）和 Windows x64。因缺少 Intel Mac 测试机，暂停 Intel Mac 支持、CI 与安装包发行，详见 [PD-036](product-decisions.md#pd-036暂停-intel-mac-支持)。2026-09-30 的三平台烟测保留为历史记录。本地未签名候选包与原生准备可分别验收；正式签名安装器、公众下载首启和旧版到新版 Core OTA 仍待验收。当前交付优先级仍以 [P0–P3 实施路线](03-implementation-roadmap.md)为准。现有 `headless-v*` 是按 Domain 分发的 CLI 预览归档，不是桌面安装器，也没有 OTA。
+> 状态：2026-10-04 起，桌面构建与首次启动 CI 目标收敛为 macOS Apple Silicon（arm64）和 Windows x64。因缺少 Intel Mac 测试机，暂停 Intel Mac 支持、CI 与安装包发行，详见 [PD-036](product-decisions.md#pd-036暂停-intel-mac-支持)。2026-09-30 的三平台烟测保留为历史记录。本地未签名候选包与原生准备可分别验收；正式签名安装器、公众下载首启和旧版到新版 Core OTA 仍待验收。当前交付优先级仍以 [P0–P3 实施路线](03-implementation-roadmap.md)为准。历史 `headless-v*` 是现已退役的 CLI 预览归档；当前仓库仅交付桌面 GUI（PD-096），不维护这些归档的安装或 OTA。
 
 ## 当前实现与使用
 
 - `packages/pack-manager` 实现签名目录验证、HTTPS 下载、摘要与文件路径检查、跨进程写锁、事务安装、运行中租约、损坏隔离和重装恢复。`scripts/build-pack-distribution.cjs` 从 Chip、PCB、Godot、CAD 现有资源生成独立 `.hpack`；发布时用 `HARNESS_PACK_SIGNING_KEY_FILE` 和 `HARNESS_PACK_SIGNING_KEY_ID` 生成签名目录。
-- 1.0.1-beta.1 本地 Apple Silicon 候选包列出全部五个领域，默认提供 Chip、PCB、Godot、CAD 四域多选；CUDA 显示远程服务前提和当前无可安装桌面包的状态，能力中心可补装、更新和修复；没有在线目录也能使用这些随包选项。Desktop 与 CLI 从同一用户目录加载已安装包，共用目录与就绪状态描述；开发模式仍使用仓库里的资源。CLI 提供 `domains list/available/install/update/remove/repair`。在线包列表接受发行公钥验证过的目录；随 Core 提供的可选 Pack 继承应用资源的信任边界，并验证清单固定的归档 SHA-256。
+- 1.0.1-beta.1 本地 Apple Silicon 候选包列出全部五个领域，默认提供 Chip、PCB、Godot、CAD 四域多选；CUDA 显示远程服务前提和当前无可安装桌面包的状态，能力中心可补装、更新和修复；没有在线目录也能使用这些随包选项。Desktop 从同一用户目录加载已安装包，共用目录与就绪状态描述；开发模式仍使用仓库里的资源。在线包列表接受发行公钥验证过的目录；随 Core 提供的可选 Pack 继承应用资源的信任边界，并验证清单固定的归档 SHA-256。
 - 当前源码消费端固定 Domain Packs 0.5.2 提交 `f8d0185db5ad668de7e5e3a5bc664dd580dd543c`（含 PCB bench 工具面：89 个 `pcb.bench.*` 工具、vendored actor 与容器网关派发）。PCB、Godot、CAD 按 owner 声明自动下载并准备官方 KiCad 10.0.6、Godot 4.7.2、FreeCAD 1.1.4，用户无需命令或环境变量。界面区分目录未配置／未检查／已连接／不可用，显示下载与安装大小、分阶段进度、可测量的速度与剩余时间，完成后按领域呈现就绪状态和下一步入口。取消等待清理，中断后提示重试，缓存重新校验后复用；空间预估与实际写入前的磁盘检查分开。详见[安装体验](install-experience.md)。
 - `electron-builder.config.cjs` 配置 macOS arm64 DMG/ZIP 和 Windows NSIS；主进程通过 `electron-updater` 检查并下载 Core 更新，任务空闲时允许重启安装。`HARNESS_RELEASE_BUILD=1` 要求 Pack 下载源、公钥文件、Core 更新源并强制代码签名；macOS 同时启用公证。CI 配置 Apple Silicon 和 Windows x64 两个目标平台的打包与首次启动检查。
-- 模块化安装回归覆盖真实 Chip + PCB 首装、Godot 后补装，以及 Broker/CLI 在安装前后的 Domain 可见性。[2026-09-30 的三平台 CI 打包烟测](https://github.com/Zhiman-BJ/industrial-agent-harness/actions/runs/36691521328)是历史记录，通过签名测试目录和模拟下载完成同一路径；当前只在 Apple Silicon 和 Windows x64 用 `node scripts/smoke-packaged-desktop.cjs --domains` 复跑。该测试验证打包应用的界面和安装链，不等同于安装器、线上 HTTPS 下载源与正式发行密钥的验收。
+- 模块化安装回归覆盖真实 Chip + PCB 首装、Godot 后补装，以及 Broker 在安装前后的 Domain 可见性。[2026-09-30 的三平台 CI 打包烟测](https://github.com/Zhiman-BJ/industrial-agent-harness/actions/runs/36691521328)是历史记录，通过签名测试目录和模拟下载完成同一路径；当前只在 Apple Silicon 和 Windows x64 用 `node scripts/smoke-packaged-desktop.cjs --domains` 复跑。该测试验证打包应用的界面和安装链，不等同于安装器、线上 HTTPS 下载源与正式发行密钥的验收。
 - 本地构建：在 Apple Silicon 上先执行 `pnpm --filter @industrial-agent-harness/desktop build`，再执行 `node scripts/stage-desktop.cjs dist/desktop-stage-local`，最后用 `apps/desktop/node_modules/.bin/electron-builder --projectDir dist/desktop-stage-local --config "$PWD/electron-builder.config.cjs" --mac dmg zip --arm64 --publish never`。输出在 `dist/desktop-release/`。目录名称每次须新建；Apple Silicon 本地包包含四个可选 Pack，即使没有在线 Pack 目录也可首装；三个托管原生软件首次准备仍需下载官方归档，已完整校验的缓存可复用。
 - 版本号与标签由 release-please 机器人维护（`.github/workflows/release-please.yml`，配置在 `release-please-config.json`）：main 上的 `feat`/`fix` 类 conventional commits 会累积进一个常驻的 `chore(release): prepare desktop <版本>` Release PR（改 `apps/desktop/package.json`、`apps/desktop/CHANGELOG.md` 与 `.release-please-manifest.json`）。**合并该 Release PR 即发布**：机器人用 `PACK_BUMP_PAT` 打 `desktop-v<版本>` 标签并创建同名 GitHub Release（beta 版标记为 prerelease）。发版说明可在 Release PR 的 CHANGELOG 段落直接润色后合并；紧急时仍可按旧流程手工推 tag，但标签必须等于该提交上 `apps/desktop/package.json` 的版本（`scripts/desktop-release-env.cjs` 强校验）。
 - **版本线政策（自 1.1.0-beta.9 起）**：预发布版本采用 `1.1.0-beta.N` 形态（`X.Y.0-beta.N`）。在此形态下机器人的 prerelease 版本策略对 `feat`/`fix` 一律只递增 beta 序号（beta.9 → beta.10 → …），不再随提交类型升降 major/minor。需要指定特定版本时，在提交信息 footer 写 `Release-As: <版本>`（例如转正式版 `Release-As: 1.1.0`）；该 footer 只影响下一次性命中的 Release PR。1.0.1-beta.2…8 期间在补丁线上迭代，`feat` 会被策略顶到下一个 minor 线——这正是迁移到 `1.1.0-beta.N` 线的原因。
@@ -21,7 +21,7 @@
 以下部分保留发行与 OTA 的规划要求；未在上面的“当前实现与使用”或专项验收中明确实现的项目，不作为本地候选包能力声明。
 
 1. 提供 macOS（Apple Silicon / arm64）与 Windows（x64）的可安装桌面版；每个平台须分别经过真实安装、首次启动和升级测试后才标为支持。Intel Mac 暂停支持，Windows ARM64 待独立验证。
-2. 首次安装时可以多选 Domain；以后在应用内安装遗漏的 Domain。同一套 Pack 管理层供 Desktop 和 CLI 使用。
+2. 首次安装时可以多选 Domain；以后在应用内安装遗漏的 Domain。Desktop 使用同一套共享 Pack 管理层。
 3. 桌面版支持联网检查、下载、验证并应用 Core 与 Domain Pack 更新。更新不能中断正在执行的工业 Action 或覆盖历史工程证据。
 
 模型 API 凭证、PDK 和商业许可仍由用户提供；Apple Silicon 上的 CAD、PCB、Godot 官方原生依赖由应用按固定声明自动准备。某个 Domain 已安装，不等于它的工业执行环境已就绪。健康状态须明确区分“可查看”“可运行 Agent”“工业工具就绪”“需要外部依赖”。
@@ -42,7 +42,7 @@ Settings → Domains 显示“已安装 / 可安装 / 更新可用 / 不兼容 /
 
 ### 更新
 
-启动后及每日检查一次，设置中提供“检查更新”。显示 Core 更新与各 Pack 更新、版本、变化摘要、下载量及是否需要重启。默认后台下载；校验后等待所有受影响的 Session/Action 结束，再激活。Core 更新提示用户重启应用；Pack 更新优先在新会话生效，旧会话使用启动时固定的 Pack 版本。不得在运行中切换其工具、Verifier 或 Scope。CLI/Bench 不在任务执行中自动更新，只提供显式 `harness update` 和版本固定能力。
+启动后及每日检查一次，设置中提供“检查更新”。显示 Core 更新与各 Pack 更新、版本、变化摘要、下载量及是否需要重启。默认后台下载；校验后等待所有受影响的 Session/Action 结束，再激活。Core 更新提示用户重启应用；Pack 更新优先在新会话生效，旧会话使用启动时固定的 Pack 版本。不得在运行中切换其工具、Verifier 或 Scope。
 
 ## 交付物与版本模型
 
@@ -54,7 +54,7 @@ Settings → Domains 显示“已安装 / 可安装 / 更新可用 / 不兼容 /
 
 当前四个默认可选领域沿用 Chip、PCB、Godot、CAD ID；CUDA 保留开发者接入身份。Chip 的 25 工具服务可作为 Pack 一部分安装，但 Python 环境、EDA 镜像、PDK 与项目资源须逐项检查；PCB 的 KiCad Viewer 可以在没有原生 KiCad 的情况下工作，工业动作另行判定；Godot 的 Web Export Viewer 与原生 Godot 安装状态分开展示。不要把现有 Scope 烟测结果写成这些工具已完成工程验证。
 
-Pack 包含 `pack.json`（或等价的验证过的格式），至少声明 `id`、`version`、`manifestSchema`、`coreApi` 兼容范围、`platform/arch`、能力层级、依赖、文件清单、入口、健康检查及迁移版本。Core 与 Pack 的契约版本独立于应用版本；Broker、Runtime 和 Viewer Registry 从已激活的 Pack 发现能力，不在 Core 写死 Chip/PCB/Godot。当前 `packages/domain-skills` 的静态导入、`distribution.json` 过滤和 `package-headless.cjs` 删除其他 Domain 文件的方式只适用于预览包，需迁移到动态注册与安装快照。
+Pack 包含 `pack.json`（或等价的验证过的格式），至少声明 `id`、`version`、`manifestSchema`、`coreApi` 兼容范围、`platform/arch`、能力层级、依赖、文件清单、入口、健康检查及迁移版本。Core 与 Pack 的契约版本独立于应用版本；Broker、Runtime 和 Viewer Registry 从已激活的 Pack 发现能力，不在 Core 写死 Chip/PCB/Godot。Pack 的动态注册与安装快照由共享消费层负责，桌面 UI 不复制领域声明。
 
 发布目录按渠道和平台提供不可变版本及最新版本指针：
 
@@ -69,9 +69,9 @@ packs[]: id, version, coreApi, platform, arch, url, size, sha256,
 
 ## 安装管理层
 
-新建无界面的 Pack Manager，Desktop 和 CLI 共用。它负责目录查询、依赖与兼容解析、下载或本地导入、完整性验证、安装、激活、卸载、健康检查与恢复；Desktop 通过受限 IPC 调用。Pack 文件位于统一的用户级数据目录，工程文件与会话资料仍在原位置。明确管理现有 CLI `~/.industrial-agent-harness` 与 Electron `userData` 的迁移，避免两个入口各有一套已安装 Domain。
+共享 Pack Manager 服务 Desktop。它负责目录查询、依赖与兼容解析、下载或本地导入、完整性验证、安装、激活、卸载、健康检查与恢复；Desktop 通过受限 IPC 调用。Pack 文件位于统一的用户级数据目录，工程文件与会话资料仍在原位置。保留现有共享用户数据目录与 Electron `userData` 的明确归属，避免生成重复安装库。
 
-每次安装为事务：先解析完整选择及依赖 → 下载到临时目录 → 校验签名/摘要/文件路径与解压大小 → 在隔离目录解包 → 运行只读健康检查 → 原子切换“已激活版本”指针 → 刷新注册表。失败保留旧版本，清理临时文件并记录可恢复原因。Pack 不得在安装阶段执行任意脚本；需要的运行时准备通过受控安装步骤处理。保持前一个可用 Pack 版本，以便回退。安装/更新/卸载同一时间只能有一个写事务；跨进程锁保护 Desktop 与 CLI 并发操作。
+每次安装为事务：先解析完整选择及依赖 → 下载到临时目录 → 校验签名/摘要/文件路径与解压大小 → 在隔离目录解包 → 运行只读健康检查 → 原子切换“已激活版本”指针 → 刷新注册表。失败保留旧版本，清理临时文件并记录可恢复原因。Pack 不得在安装阶段执行任意脚本；需要的运行时准备通过受控安装步骤处理。保持前一个可用 Pack 版本，以便回退。安装/更新/卸载同一时间只能有一个写事务；跨进程锁保护 Desktop 并发操作。
 
 Pack 能声明依赖和冲突，但执行时仍由 Broker Scope 与 Domain Runtime 的边界授权。安装签名不等于工具有权读写任何 Project；外部 MCP 和 Viewer 继续按现有项目边界、审批、只读/验证规则运行。损坏或不兼容的 Pack 只影响该 Domain，并提供诊断，不拖垮 Core 或其他 Domain。
 
@@ -83,12 +83,12 @@ Pack 能声明依赖和冲突，但执行时仍由 Broker Scope 与 Domain Runti
 
 ## 实施顺序与验收
 
-1. **前置：P1.3 Loader 与 Pack 契约。** 把静态 Domain 注册迁到可安装目录，保持 Desktop/CLI 一致；用 Test Domain 证明安装和卸载不改 Core 源码，错误 Pack 被隔离。不要跳过当前 Industrial Core Vertical Slice 门槛去先做 UI。
+1. **前置：P1.3 Loader 与 Pack 契约。** 把静态 Domain 注册迁到可安装目录，保持 Desktop 一致；用 Test Domain 证明安装和卸载不改 Core 源码，错误 Pack 被隔离。不要跳过当前 Industrial Core Vertical Slice 门槛去先做 UI。
 2. **P3-A：单平台最小安装链。** Core 与一个小型测试 Pack 分离打包；完成 Pack Manager 的事务、兼容判定、持久安装状态和首次多选流程。可补装 Chip/PCB/Godot/CAD，项目列表与 Broker 真实反映已安装集合。
-3. **P3-B：macOS / Windows 发行。** 两个平台分别完成安装、签名、首次运行、卸载与用户数据保留、CLI 共用 Pack、依赖健康检查；Apple Silicon 与 Windows x64 各用实体或目标架构虚拟机验证。Intel Mac 恢复发行前须有对应测试机并独立完成同等验收。
+3. **P3-B：macOS / Windows 发行。** 两个平台分别完成安装、签名、首次运行、卸载与用户数据保留、依赖健康检查；Apple Silicon 与 Windows x64 各用实体或目标架构虚拟机验证。Intel Mac 恢复发行前须有对应测试机并独立完成同等验收。
 4. **P3-C：OTA。** 完成 beta/stable 渠道、Core 与 Pack 更新、兼容计划、正在运行的 Session 延迟激活、失败恢复与版本回退；用本地更新源和真实已安装应用做旧版 → 新版测试。
 
-最小验收场景：首次只选 Chip + PCB，稍后补装 Godot；安装中断后重试；离线和错误签名拒绝；安装不兼容 Pack 时不影响其他 Domain；Core/Pack 各升一级并保留项目、聊天与资源开关；更新时工业 Action 正在运行，旧版本保持到任务结束；Pack 回退后 Broker/Viewer/CLI 版本一致；macOS 和 Windows 分别完成真实安装到升级的全程。CI 同时校验包内文件、平台和来源提交，发布门禁必须以打包产物而非开发树执行。
+最小验收场景：首次只选 Chip + PCB，稍后补装 Godot；安装中断后重试；离线和错误签名拒绝；安装不兼容 Pack 时不影响其他 Domain；Core/Pack 各升一级并保留项目、聊天与资源开关；更新时工业 Action 正在运行，旧版本保持到任务结束；Pack 回退后 Broker/Viewer 版本一致；macOS 和 Windows 分别完成真实安装到升级的全程。CI 同时校验包内文件、平台和来源提交，发布门禁必须以打包产物而非开发树执行。
 
 ## 仍需在实现前确定的产品参数
 

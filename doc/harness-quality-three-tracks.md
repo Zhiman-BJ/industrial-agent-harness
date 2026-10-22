@@ -1,5 +1,6 @@
 # 三轨整改与验收范围（2026-10-04）
 
+> 历史记录：本页 CLI/专用 SDK 与 headless 示例对应当时提交，已按 PD-096 退役；当前 GUI 验收入口见 [QA 手册](qa-runbook.md)。
 > 2026-10-20 执行政策更新：本页保留当时实现与验收记录。文中本机 Agent 的 Seatbelt/bubblewrap、工程只读或平台拒绝启动要求已由 [PD-088](local-agent-execution.md) 取代，当前三平台 Agent 均使用当前用户权限；声明式 Runtime 任务及远端沙箱隔离保持。历史实测结果不改写，也不代替新模式的平台验收。
 
 这轮改动按 P0、P1、P2 分工，接入真实 CLI 和 Desktop。此前的架构评审保留为历史基线；本页记录新增实现及其边界。平台仍处于 Workbench MVP，首条 RTL 持久化闭环已实现；其他领域的完整工业内核仍需持续推进。
@@ -8,7 +9,7 @@
 | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | P0     | 根 MIT、第三方清单、安全报告入口；真实 Kimi 写入边界；状态驱动 Broker；Runtime 持久化 Run/Action/Artifact/Verification/State/Checkpoint；真实 RTL、失败路径、陈旧输入和重启恢复 | `tests/integration/industrial-core-vertical-slice.test.cjs`、`tests/integration/industrial-core-installed-pack.test.cjs`、`packages/domain-runtime/tests/industrial-recovery.test.cjs`、`packages/agent-kimi/tests/process-sandbox.test.cjs` |
 | P1     | v1 工业契约及 TypeScript 声明；完整 Skill 资源；安装完整性回执；原子替换与失败升级保留旧版；外部 Pack 示例和作者教程                                                            | `scripts/check-pack-release.cjs`、[契约版本](contracts-versioning.md)、[Pack 教程](pack-authoring.md)                                                                                                                                        |
-| P2     | Node SDK、stdio JSON-RPC；取消/超时回收后代；原生 Kimi/Harness 配对入口；独立 RTL 验收与输入、实现、轨迹摘要；CLI 工件读取和桌面 Runtime 生命周期抽取                           | `packages/sdk/tests/`、`tests/benchmark/`、[SDK](sdk.md)、[评测基线](benchmark-baseline.md)                                                                                                                                                  |
+| P2     | Node SDK、stdio JSON-RPC；取消/超时回收后代；原生 Kimi/Harness 配对入口；独立 RTL 验收与输入、实现、轨迹摘要；CLI 工件读取和桌面 Runtime 生命周期抽取                           | `packages/sdk/tests/`、`tests/benchmark/`、[SDK](https://github.com/Zhiman-BJ/industrial-agent-harness/blob/39d7d3057b2b7ebe7db22ee72e9ced86d81b2776/doc/sdk.md)、[评测基线](benchmark-baseline.md)                                                                                                                                                  |
 
 ## 工程结果
 

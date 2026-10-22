@@ -16,7 +16,7 @@ jobs:
           test -f AGENTS.md
           test -f CLAUDE.md
           test -f CONTRIBUTING.md
-          for dir in apps/desktop apps/cli packages/agent-kimi packages/viewer-builtin; do
+          for dir in apps/desktop packages/agent-kimi packages/viewer-builtin; do
             test -f "$dir/AGENTS.md"
           done
           test -f pnpm-workspace.yaml

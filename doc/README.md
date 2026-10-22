@@ -1,16 +1,16 @@
 # 文档目录
 
-开发前必读：[已接受的跨仓架构契约 IH-ARCH-001](architecture-contract.md)。领域源码归属、CLI/Desktop 入口、执行后端和冻结迁移例外由该契约及必跑 CI 约束。
+开发前必读：[已接受的跨仓架构契约 IH-ARCH-001](architecture-contract.md)。领域源码归属、Desktop 入口、执行后端和冻结迁移例外由该契约及必跑 CI 约束。
 
-当前实现：[共享任务服务与 Pack 消费迁移](shared-task-and-pack-consumption.md)。
+当前产品仅交付桌面 GUI；CLI、专用 Node SDK 与 headless 发行链按 [PD-096](product-decisions.md#pd-096仓库仅交付桌面-gui-产品) 退役。当前实现：[共享任务服务与 Pack 消费迁移](shared-task-and-pack-consumption.md)。
 
 项目首页：[English](../README.md) · [简体中文](../README.zh-CN.md)。当前版本为**开发者预览版（Developer Preview）**，许可证见 [MIT License](../LICENSE) 与[第三方清单](../THIRD_PARTY_NOTICES.md)。
 
 这里记录 Industrial Agent Harness 的产品架构与开发计划。1.0.1-beta.1 本地 Apple Silicon 候选包展示全部五域，提供 Chip、PCB、Godot、CAD 四域安装选择，按固定 owner 声明自动准备后三者的官方原生软件；Chip 外部工具链仍需配置，CUDA 明示远程服务前提和当前版本不可安装的状态。
 
-桌面 MVP、三种内置 EDA Viewer、Godot Web Export Viewer V1、素材 Viewer、KiCad Viewer V1、五种通用文件 Viewer、确定性 Broker 和 Kimi Code 接口已落地；Godot、KiCad 与通用文件示例链路已通过 macOS Electron 实测。Chip 的 MCP 与 RTL Runtime、FreeCAD Runtime、PCB／Godot 的有限公开原生 Runtime 通过共享任务接口供 Desktop/CLI 消费。PCB／Godot 原有 MCP 为历史独立诊断路径；三平台完整工业支持仍未验收。文档中的其余接口与验收项，除明确标为“已落实”的事项外，均为设计提案。
+桌面 MVP、三种内置 EDA Viewer、Godot Web Export Viewer V1、素材 Viewer、KiCad Viewer V1、五种通用文件 Viewer、确定性 Broker 和 Kimi Code 接口已落地；Godot、KiCad 与通用文件示例链路已通过 macOS Electron 实测。Chip 的 MCP 与 RTL Runtime、FreeCAD Runtime、PCB／Godot 的有限公开原生 Runtime 通过共享任务接口供 Desktop 消费。PCB／Godot 原有 MCP 为历史独立诊断路径；三平台完整工业支持仍未验收。文档中的其余接口与验收项，除明确标为“已落实”的事项外，均为设计提案。
 
-2026-10-04 更新：[三轨整改记录](harness-quality-three-tracks.md)记录首条真实 RTL 持久化闭环、发行资源修复、SDK 和配对评测入口。受保护的 Agent 当前在 macOS Apple Silicon（arm64）验证；桌面构建与首次启动 CI 保留 Apple Silicon 与 Windows x64，Intel Mac 暂不支持，范围决定见 [PD-036](product-decisions.md#pd-036暂停-intel-mac-支持)。其他领域及平台仍需接入和验收。2026-09-23 评审文件保留为历史基线。
+历史记录（其中 CLI/SDK 入口已退役）：2026-10-04 [三轨整改记录](harness-quality-three-tracks.md)记录首条真实 RTL 持久化闭环、发行资源修复、SDK 和配对评测入口。受保护的 Agent 当前在 macOS Apple Silicon（arm64）验证；桌面构建与首次启动 CI 保留 Apple Silicon 与 Windows x64，Intel Mac 暂不支持，范围决定见 [PD-036](product-decisions.md#pd-036暂停-intel-mac-支持)。其他领域及平台仍需接入和验收。2026-09-23 评审文件保留为历史基线。
 
 Godot/PCB 的源工程文件另有[受限只读预览](engineering-file-viewers.md)，覆盖场景、脚本、库、制造文件和部分 3D 素材；其保真范围与 macOS 验证见该文档。
 
@@ -26,13 +26,13 @@ Godot/PCB 的源工程文件另有[受限只读预览](engineering-file-viewers.
 
 | 文档 | 内容 |
 | --- | --- |
-| [平台账号登录](platform-account.md) | Obol 标准 OIDC、Desktop/CLI、凭证轮换、云端消费者与待完成的真实联调 |
+| [平台账号登录](platform-account.md) | Obol 标准 OIDC、Desktop、凭证轮换、云端消费者与待完成的真实联调 |
 | [Kimi Code 迁移](kimi-code-migration.md) | 固定 2.1.1、认证 Server API、身份映射与外壳兼容验收 |
-| [Kimi 后台兼容](kimi-background-compatibility.md) | 原生后台 Bash、WaitFor、自动续答与 Headless 生命周期 |
+| [Kimi 后台兼容](kimi-background-compatibility.md) | 原生后台 Bash、WaitFor、自动续答与会话生命周期 |
 | [系统架构](architecture.md) | Kimi Code、桌面端、Broker、工业运行时与领域包的职责和数据流 |
-| [容器镜像安装](container-image-installation.md) | release tarball 主通道、共享 Desktop／CLI 安装与修复、身份校验及真实验证 |
+| [容器镜像安装](container-image-installation.md) | release tarball 主通道、Desktop 安装与修复、身份校验及真实验证 |
 | [Capability Broker](capability-broker.md) | Capability 解析、skill 与 MCP 工具的渐进式披露、Scope 和 Trace |
-| [任务成果](task-results.md) | 自动成果卡、确切版本关联、可选选择、CLI/Desktop 与原生验收 |
+| [任务成果](task-results.md) | 自动成果卡、确切版本关联、可选选择、Desktop 与原生验收 |
 | [全领域成果声明与扩展计划（Owner）](https://github.com/Zhiman-BJ/industrial-domain-packs/blob/cf72a46b6b4ba927b091ded71b2d52d227db0351/docs/result-presentation-plan.md) | 五领域、六 Pack 的声明草案、生产缺口、跨仓顺序与待实施测试矩阵 |
 | [Viewer 层](viewer-layer.md) | 内置查看、关键产物预览、外部打开与证据边界 |
 | [通用文件 Viewer](document-viewers.md) | CSV/TSV、JSON、JSONL、Markdown、TXT/LOG 的只读查看、分页与文件边界 |
@@ -41,7 +41,7 @@ Godot/PCB 的源工程文件另有[受限只读预览](engineering-file-viewers.
 | [Godot/PCB 工程文件预览](engineering-file-viewers.md) | 场景、脚本、库、制造文件与 3D 素材的只读查看、格式边界和验证 |
 | [Godot Viewer V1](godot-viewer.md) | Web Export 准备、Scene Tree 与 Viewer Bridge 的当前接入边界 |
 | [领域工具与 MCP 资源](domain-tool-resources.md) | 实际 Runtime 工具清单、独立 MCP、全局默认/项目覆盖与 UI 验证 |
-| [共享 Chip Pack MCP](domain-mcp-integration.md) | Desktop/CLI 注册、Scope 网关、项目绑定、审批与实测 |
+| [共享 Chip Pack MCP](domain-mcp-integration.md) | Desktop 注册、Scope 网关、项目绑定、审批与实测 |
 | [PCB／Godot 专业 Runtime](pcb-godot-runtime.md) | 公开首批任务、精确依赖、独立验证、安装路径与失败／恢复验收 |
 | [领域安装体验](install-experience.md) | 1.0.1-beta.1 五域展示、四域安装、官方依赖准备、取消恢复、旧版数据保留验收及正式发行边界 |
 | [共享 PCB Bench MCP](pcb-mcp-integration.md) | 固定外部 PCB 工具、完整 Skill、资源覆盖、协议验证与原生执行前提 |
@@ -50,7 +50,7 @@ Godot/PCB 的源工程文件另有[受限只读预览](engineering-file-viewers.
 | [PCB-bench 本地六题诊断](pcb-bench-local-trial-2026-09-30.md) | 六个开发集任务的原生试跑、独立验收与 Harness 缺口 |
 | [内置远程运行](remote-execution.md) | 项目运行位置、上传确认、任务状态、共享 Runtime 与空配置边界 |
 | [远程沙箱同步契约](remote-sync-contract.md) | #199 P0 冻结：能力协商、SourceChangeSet、调用恢复与同步状态机 |
-| [外部 MCP](external-mcp.md) | UI/CLI 共用的 stdio/HTTP/SSE 注册、渐进披露、审批、截图与配置边界 |
+| [外部 MCP](external-mcp.md) | 桌面使用的 stdio/HTTP/SSE 注册、渐进披露、审批、截图与配置边界 |
 | [Domain Pack](domain-pack.md) | 芯片与 PCB 等领域的扩展方式和最小契约 |
 | [Pack 作者教程](pack-authoring.md) | 独立构建、安装和验证外部 Pack，资源与升级兼容 |
 | [工业契约版本](contracts-versioning.md) | v1 工业事实、旧观察数据与 TypeScript 消费 |
@@ -60,7 +60,6 @@ Godot/PCB 的源工程文件另有[受限只读预览](engineering-file-viewers.
 | [Kimi 原生机制兼容性审计](kimi-native-compatibility-audit.md) | 项目发现、输入命令、配置、会话、环境和执行边界的实际差异及修复 |
 | [CI 回归与托管环境](ci-regression.md) | 四种原生 OS/架构环境、分层门禁、测试证据与覆盖缺口 |
 | [QA 测试用例与自动执行手册](qa-runbook.md) | 兼容总入口；[执行协议](qa-runbook/protocol.md)、[T0–T6 命令/CI](qa-runbook/tiers.md)与[七模块验收矩阵](qa-runbook/modules.md)，覆盖工作台/聊天、模型账号、领域/MCP、远程、Viewer/成果、诊断打包及[性能/崩溃恢复](qa-runbook/performance-recovery.md) |
-| [Node SDK](sdk.md) | 项目绑定、聊天恢复、流事件、取消和 stdio RPC |
 | [配对评测基线](benchmark-baseline.md) | 原生 Kimi/Harness、冻结输入、独立验收与正式结果边界 |
 | [早期开发计划](development-plan.md) | 两份原始 Plan 的阶段性整理；里程碑顺序以新的实施路线图为准 |
 | [产品决策记录](product-decisions.md) | 已确认的用户交互与项目模型决定，包括 Project、目录、Domain 和 Session 的关系 |
@@ -73,13 +72,10 @@ Godot/PCB 的源工程文件另有[受限只读预览](engineering-file-viewers.
 | [架构决策记录](decisions.md) | 已确定的决定、提案间的差异和需要验证的接口 |
 | [27B / 256k 上下文适配计划](27b-256k-context-plan.md) | Kimi 接入的输出边界、会话复用、观测与后续评测门禁 |
 | [27B 上下文评测结果](27b-evaluation-results.md) | 真实模型的合成检索、SDK 工具调用与压缩后续接证据 |
-| [聊天持久化](chat-persistence.md) | Desktop/CLI 历史聊天、Kimi 原生上下文恢复、Scope 会话段、中断与验证边界 |
-| [按领域下载 CLI](domain-cli-downloads.md) | Chip/PCB/Godot 独立包、默认领域绑定与测试依赖 |
-| [Linux Chip 一键安装 preview.3](../releases/chip-linux-installer-v0.1.0-preview.3.md) | Docker helper 升级、宿主环境检查、受保护 Agent 与安装验证 |
+| [聊天持久化](chat-persistence.md) | Desktop 历史聊天、Kimi 原生上下文恢复、Scope 会话段、中断与验证边界 |
 | [2026-10-07 发布整改](release-readiness-20261007.md) | 全部审计问题修复、本地 DMG、原生 subagent/Viewer/Pack 验收与公众发行边界 |
 | [Apple Silicon CAD 分发](macos-cad-distribution.md) | 首次选择、官方 FreeCAD 自动准备、修复、真实任务与发行边界 |
 | [安装、补装与 OTA 规划](installation-and-ota-plan.md) | macOS/Windows 桌面安装、多选 Domain、后续补装与 Core/Pack 更新的 P3 提案 |
-| [CLI 与 Bench 入口](../apps/cli/README.md) | 无界面单任务命令、JSON Lines 事件、模型与工件输入 |
 | [模型 API 与思考参数](model-api-compatibility.md) | MiniMax 协议修复、OpenCode 研究与不同模型的参数接入边界 |
 | [Computer Use 桥接包](../packages/computer-use-bridge/README.md) | GUI 横切插件：固定二进制安装、18 工具面、MCP 进程模型与已知缺口 |
 | [Agent 聊天 UI 来源](agent-ui-provenance.md) | EDA Harness demo 的思考、Todo、工具呈现如何接入实时 SDK 事件 |

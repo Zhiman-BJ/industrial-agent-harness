@@ -5,7 +5,6 @@ on:
     paths:
       - '.github/workflows/account-login.yml'
       - 'packages/harness-auth/**'
-      - 'apps/cli/**'
       - 'apps/desktop/**'
       - 'pnpm-lock.yaml'
   workflow_dispatch:
@@ -42,7 +41,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist/ci-reports/account
-          node --test packages/harness-auth/tests/*.test.cjs apps/cli/tests/account.test.cjs apps/desktop/electron/account.test.cjs packages/harness-core/tests/account-remote.test.cjs 2>&1 | tee dist/ci-reports/account/protocol.log
+          node --test packages/harness-auth/tests/*.test.cjs apps/desktop/electron/account.test.cjs packages/harness-core/tests/account-remote.test.cjs 2>&1 | tee dist/ci-reports/account/protocol.log
       - name: Build Desktop
         run: pnpm --filter @industrial-agent-harness/desktop build
       - name: Verify real Electron login, refresh, cancellation, paste and logout

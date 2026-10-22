@@ -13,7 +13,7 @@ The repository-root [AGENTS.md](../../AGENTS.md) owns the architecture contract 
 
 ## Adapter boundaries
 
-- Desktop is one adapter over shared Harness packages: never import `apps/cli/`, and never run industrial executables from the app — industrial Actions go through the shared Runtime boundary only.
+- Desktop is the product adapter over shared Harness packages: keep task orchestration below the UI, and never run industrial executables from the app — industrial Actions go through the shared Runtime boundary only.
 - Renderer access stays behind the narrow preload/main-process IPC; mutating actions require explicit permissions and stay bound to the selected project.
 - Keep Electron-specific code (main process, preload, viewer host) here; task, session and broker orchestration belongs below the adapters.
 - Viewer UI state is display-only: it never updates verification or DomainState.

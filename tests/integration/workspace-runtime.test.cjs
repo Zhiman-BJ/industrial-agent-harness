@@ -3,16 +3,15 @@ const test = require('node:test'),
 const fs = require('node:fs'),
   os = require('node:os'),
   path = require('node:path');
-const { createRequire } = require('node:module');
 const { execFile } = require('node:child_process'),
   { promisify } = require('node:util');
 const { createProjectRuntime } = require('../../packages/harness-core/src/index.cjs');
 const { resolveFromState } = require('../../packages/capability-broker/src/index.cjs');
 const { startModel } = require('./fixtures/domain-mcp-model.cjs');
+const { taskArguments } = require('./fixtures/task-service-process.cjs');
 const { boundaryMatches } = require('./fixtures/execution-boundary.cjs');
 const scenario = require('./fixtures/workspace-scenario.cjs');
-const execute = promisify(execFile),
-  root = path.resolve(__dirname, '../..');
+const execute = promisify(execFile);
 function workspace(t, environment = {}) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-workspace-native-')),
     project = path.join(directory, 'project');
@@ -478,10 +477,10 @@ test(
 );
 for (const domain of ['chip', 'pcb'])
   test(
-    `real packaged-compatible CLI + pinned Kimi bootstraps and repairs an empty ${domain} project through the same shared Tools`,
+    `shared TaskService and pinned Kimi bootstrap and repair an empty ${domain} project through the shared Tools`,
     { timeout: 90000 },
     async t => {
-      const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-workspace-cli-')),
+      const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-workspace-task-')),
         project = path.join(directory, 'project');
       fs.mkdirSync(project);
       t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
@@ -492,43 +491,25 @@ for (const domain of ['chip', 'pcb'])
       t.after(model.close);
       const kimi =
         process.env.KIMI_EXECUTABLE ||
-        createRequire(
-          fs.realpathSync(
-            process.env.INDUSTRIAL_HARNESS_TEST_CLI || path.join(root, 'apps/cli/src/main.cjs'),
-          ),
-        )('@industrial-agent-harness/agent-kimi').bundledExecutable();
+        require('../../packages/agent-kimi/src/code-session.cjs').bundledExecutable();
       assert.ok(fs.existsSync(kimi));
       const { stdout, stderr } = await execute(
         process.execPath,
-        [
-          process.env.INDUSTRIAL_HARNESS_TEST_CLI || path.join(root, 'apps/cli/src/main.cjs'),
-          'run',
-          '--project-dir',
-          project,
-          '--domain',
+        taskArguments({
+          projectDir: project,
           domain,
-          '--task',
-          'Create a project and test; repair failed checks',
-          '--approval',
-          'approve',
-          '--provider',
-          'openai_legacy',
-          '--endpoint',
-          model.endpoint,
-          '--model',
-          'controlled-workspace',
-          '--no-thinking',
-          '--kimi-executable',
-          kimi,
-          '--timeout-ms',
-          '60000',
-          '--chat-dir',
-          path.join(directory, 'chats'),
-          '--state-dir',
-          path.join(directory, 'state'),
-          '--log-dir',
-          path.join(directory, 'logs'),
-        ],
+          task: 'Create a project and test; repair failed checks',
+          approval: 'approve',
+          provider: 'openai_legacy',
+          endpoint: model.endpoint,
+          model: 'controlled-workspace',
+          thinking: false,
+          kimiExecutable: kimi,
+          timeoutMs: 60000,
+          chatDir: path.join(directory, 'chats'),
+          stateDir: path.join(directory, 'state'),
+          logDir: path.join(directory, 'logs'),
+        }),
         {
           cwd: os.tmpdir(),
           env: {

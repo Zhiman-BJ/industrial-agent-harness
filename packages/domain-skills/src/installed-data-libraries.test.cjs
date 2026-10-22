@@ -69,16 +69,10 @@ function sourcePack(domain, library) {
   };
 }
 
-// Keep owner metadata and distribution binding isolated in a fresh process.
+// Keep owner metadata isolated in a fresh process.
 // The actual Pack validator, source directory resolution, PackManager, and
 // data-library binding reader are never mocked.
-function readInstalled({
-  domains,
-  packs = [],
-  directories = {},
-  store,
-  distributionDomain = null,
-}) {
+function readInstalled({ domains, packs = [], directories = {}, store }) {
   const environment = {
     ...process.env,
     FIXTURE_DATA_OWNER_ROOT: path.join(os.tmpdir(), 'untrusted-model-override'),
@@ -108,9 +102,6 @@ function readInstalled({
         const originalLoad = Module._load;
         Module._load = function(request, parent, isMain) {
           if (request === '@zhiman-bj/industrial-domain-packs') return owner;
-          if (request === './distribution.cjs' &&
-              path.dirname(parent.filename) === path.dirname(config.installedFile))
-            return { distributionDomain: config.distributionDomain };
           return originalLoad.call(this, request, parent, isMain);
         };
         const { installedDataLibraries } = require(config.installedFile);
@@ -127,7 +118,6 @@ function readInstalled({
         domains,
         packs,
         directories,
-        distributionDomain,
       }),
       encoding: 'utf8',
       env: environment,
@@ -191,7 +181,7 @@ test('source data libraries use the selected owner directory and ignore resource
   assert.deepEqual(sourceCalls, [pack.id]);
 });
 
-test('source data libraries require a project domain and obey the packaged distribution binding', t => {
+test('source data libraries require and isolate the project domain', t => {
   const directory = setup(t);
   const { library } = writeCatalog(directory);
   const pack = sourcePack('fixture-a', library);
@@ -199,11 +189,7 @@ test('source data libraries require a project domain and obey the packaged distr
   const unbound = readInstalled({ ...options, domains: [null, '', ' ', 'unknown-domain'] });
   assert.deepEqual(unbound.results, Array(4).fill({ bindings: [] }));
   assert.deepEqual(unbound.sourceCalls, []);
-  const excluded = readInstalled({
-    ...options,
-    domains: ['fixture-a'],
-    distributionDomain: 'fixture-b',
-  });
+  const excluded = readInstalled({ ...options, domains: ['fixture-b'] });
   assert.deepEqual(excluded.results, [{ bindings: [] }]);
   assert.deepEqual(excluded.sourceCalls, []);
 });
@@ -223,7 +209,7 @@ test('source catalog tampering and missing catalogs are rejected by the real bin
   assert.ok(readInstalled(options).results[0].error);
 });
 
-test('managed data libraries read the verified bundle root and isolate domains and distributions', async t => {
+test('managed data libraries read the verified bundle root and isolate domains', async t => {
   const directory = setup(t);
   const store = path.join(directory, 'store');
   const sourceA = path.join(directory, 'a');
@@ -244,13 +230,6 @@ test('managed data libraries read the verified bundle root and isolate domains a
   assert.equal(results[1].bindings.length, 1);
   assert.deepEqual(results.slice(2), [{ bindings: [] }, { bindings: [] }]);
   assert.deepEqual(sourceCalls, []);
-  const scoped = readInstalled({
-    store,
-    domains: ['fixture-a', 'fixture-b'],
-    distributionDomain: 'fixture-a',
-  });
-  assert.equal(scoped.results[0].bindings.length, 1);
-  assert.deepEqual(scoped.results[1], { bindings: [] });
 });
 
 test('managed catalog corruption is excluded by PackManager integrity without source fallback', async t => {

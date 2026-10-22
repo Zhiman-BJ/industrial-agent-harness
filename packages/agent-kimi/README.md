@@ -1,6 +1,6 @@
 # Kimi Code integration
 
-Shared Desktop/CLI integration for MIT-licensed `@moonshot-ai/kimi-code@2.1.1`, pinned in the manifest and pnpm lockfile. Harness requires Node.js 24+; upstream requires 22.19+. Workspace and deployed packages include the runtime. `KIMI_EXECUTABLE` may select a compatible JS entry or executable; startup rejects a version mismatch.
+Desktop integration for MIT-licensed `@moonshot-ai/kimi-code@2.1.1`, pinned in the manifest and pnpm lockfile. Harness requires Node.js 24+; upstream requires 22.19+. Workspace and deployed packages include the runtime. `KIMI_EXECUTABLE` may select a compatible JS entry or executable; startup rejects a version mismatch.
 
 `code-session.cjs` launches upstream `kimi web` with a private `KIMI_CODE_HOME`, random token and authenticated REST/WebSocket. Configured MCP failures block prompting. A dead process, stream gap or missing initialized history fails visibly without replaying tasks. Upstream owns its agent loop, tools, skills, compaction and persistence; no SDK or upstream source is copied or forked.
 
@@ -16,13 +16,13 @@ Project root instructions and skills remain mapped into a stable writable sessio
 
 Harness tool output is bounded to 16 KiB UTF-8 JSON, Industrial Context to 8 KiB. Capability details and checkpoint observations are paged. These boundaries do not replace native compaction or imply engineering acceptance. Capability-gated image inputs reach native providers; media payloads and known credentials are redacted from events and snapshots.
 
-`KimiSession` preserves the UI/CLI event interface. Harness identity maps to a native `session_*` in `harness-native-session.json`; compatibility covers kernel version, Scope, model, MCP configuration, plugins and approval mode. Old messages and diagnostics remain readable, while continuing an old Python chat starts a new native context segment. Missing initialized history fails instead of silently creating an empty context.
+`KimiSession` preserves the UI event interface. Harness identity maps to a native `session_*` in `harness-native-session.json`; compatibility covers kernel version, Scope, model, MCP configuration, plugins and approval mode. Old messages and diagnostics remain readable, while continuing an old Python chat starts a new native context segment. Missing initialized history fails instead of silently creating an empty context.
 
 Diagnostics retain original `kimi-code.event` frames and mapped `sdk.event` rows. Messages-API snapshots are saved conversation, not full model context or HTTP requests, and do not reconstruct per-step context. Path/size/hash validation and bounded readers remain. Historical context/wire files use the read-only legacy parser.
 
-Approval policy is handled by Harness while native manual mode retains interactive questions. Single/multiple choices, custom text and dismissal use the native question API. Noninteractive CLI preserves a question and returns `needs_input` with exit code 2. Stop requests native cancellation, then closes only the target session after its bounded timeout. Late events, repeated Stop, failures and cleanup retain existing session isolation.
+Approval policy is handled by Harness while native manual mode retains interactive questions. Single/multiple choices, custom text and dismissal use the native question API. Stop requests native cancellation, then closes only the target session after its bounded timeout. Late events, repeated Stop, failures and cleanup retain existing session isolation.
 
-Desktop/CLI supply `resolveSession` and `sessionInitialized` persistence callbacks. Core's resource manager reserves active/resident capacity before native prompting; idle eviction closes the process without removing persistent storage. Temporary homes are cleaned on close, persistent homes on explicit chat deletion. See [resource guards](../../doc/session-resource-guards.md).
+Desktop supplies `resolveSession` and `sessionInitialized` persistence callbacks. Core's resource manager reserves active/resident capacity before native prompting; idle eviction closes the process without removing persistent storage. Temporary homes are cleaned on close, persistent homes on explicit chat deletion. See [resource guards](../../doc/session-resource-guards.md).
 
 Tests exercise the pinned real runtime against controlled local providers: approvals, Scope revocation, authentication, images, project guidance/search, identity recovery, cancellation, parallel isolation and native auto-compaction. Summary quality is trusted upstream; compaction tests check wrapper event/context/restore compatibility. Desktop release smoke runs the bundled archive through the current-user launcher and checks its reported permissions. Evidence and platform limits: [migration record](../../doc/kimi-code-migration.md).
 

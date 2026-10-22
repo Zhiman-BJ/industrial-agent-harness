@@ -293,30 +293,6 @@
       "decisionNote": "公开 CI 脚手架；#106 生成最终公开 workflow 集。"
     },
     {
-      "id": "internal.apps.cli",
-      "edition": "internal",
-      "kind": "app",
-      "paths": ["apps/cli"],
-      "entry": "apps/cli/src/main.cjs",
-      "dependencyClass": "adapter",
-      "requiredTests": ["apps/cli/tests/cli.test.cjs", "apps/cli/tests/doctor.test.cjs"],
-      "decisionStatus": "decided",
-      "isolation": { "status": "planned", "legacyReferences": 2, "trackingIssue": 102 },
-      "decisionNote": "PD-083：CLI 及其 headless 打包/安装器链为内部交付面，不进入公开导出（原 apps.cli 公开条目与 inspect-log 覆盖条目并入本条）。公开代码残留引用（scripts/qualify-cad-tasks.cjs、packages/harness-application/tests/task-service.test.cjs）记入 #102 只减不增台账。"
-    },
-    {
-      "id": "internal.packages.sdk",
-      "edition": "internal",
-      "kind": "package",
-      "paths": ["packages/sdk"],
-      "entry": "packages/sdk/src/index.cjs",
-      "dependencyClass": "adapter",
-      "requiredTests": ["packages/sdk/tests/client.test.cjs", "packages/sdk/tests/process.test.cjs"],
-      "decisionStatus": "decided",
-      "isolation": { "status": "planned", "legacyReferences": 3, "trackingIssue": 102 },
-      "decisionNote": "PD-083：SDK 的运行契约是驱动内部打包的 headless CLI，随 CLI 一并转入内部版本。benchmark 脚本（benchmark-harness.cjs、benchmark-paired.cjs）的静态引用记入 #102 只减不增台账。"
-    },
-    {
       "id": "internal.diagnostics.agent-kimi-log",
       "edition": "internal",
       "kind": "feature",
@@ -395,8 +371,6 @@
       "paths": [
         ".github/workflows/desktop-package.yml",
         ".github/workflows/release-desktop.yml",
-        ".github/workflows/release-headless.yml",
-        ".github/workflows/release-linux-chip.yml",
         ".github/workflows/release-please.yml",
         "release-please-config.json",
         ".release-please-manifest.json"
@@ -411,8 +385,6 @@
       "edition": "internal",
       "kind": "tooling",
       "paths": [
-        "scripts/package-headless.cjs",
-        "scripts/package-linux-chip-installer.cjs",
         "scripts/stage-desktop.cjs",
         "scripts/desktop-release-env.cjs",
         "scripts/build-pack-distribution.cjs"

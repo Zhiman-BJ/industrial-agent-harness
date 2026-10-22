@@ -1,4 +1,5 @@
 const test = require('node:test');
+const { taskArguments } = require('./fixtures/task-service-process.cjs');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
@@ -10,7 +11,7 @@ const execute = promisify(execFile);
 const root = path.resolve(__dirname, '../..');
 
 test(
-  'Harness preserves native auto compaction, events and persisted context across CLI restarts',
+  'Harness preserves native auto compaction, events and persisted context across application-host restarts',
   { timeout: 90000 },
   async t => {
     const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-native-compaction-'));
@@ -32,32 +33,20 @@ test(
     });
     t.after(model.close);
     async function run(task, chatId) {
-      const args = [
-        path.join(root, 'apps/cli/src/main.cjs'),
-        'run',
-        '--project-dir',
-        project,
-        '--domain',
-        'godot',
-        '--task',
-        task,
-        '--provider',
-        'openai_legacy',
-        '--endpoint',
-        model.endpoint,
-        '--model',
-        'controlled',
-        '--no-thinking',
-        '--context-size',
-        '32768',
-        '--chat-dir',
-        path.join(directory, 'chats'),
-        '--state-dir',
-        path.join(directory, 'state'),
-        '--log-dir',
-        path.join(directory, 'logs'),
-      ];
-      if (chatId) args.push('--chat-id', chatId);
+      const args = taskArguments({
+        projectDir: project,
+        domain: 'godot',
+        task: task,
+        provider: 'openai_legacy',
+        endpoint: model.endpoint,
+        model: 'controlled',
+        thinking: false,
+        contextSize: 32768,
+        chatDir: path.join(directory, 'chats'),
+        stateDir: path.join(directory, 'state'),
+        logDir: path.join(directory, 'logs'),
+        chatId,
+      });
       const { stdout } = await execute(process.execPath, args, {
         cwd: root,
         timeout: 25000,

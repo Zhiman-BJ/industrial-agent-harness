@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const childProcess = require('node:child_process');
-const { signalProcess } = require('../src/process.cjs');
+const { signalProcess } = require('../../scripts/lib/benchmark-process.cjs');
 
 function darwin(t) {
   const original = Object.getOwnPropertyDescriptor(process, 'platform');

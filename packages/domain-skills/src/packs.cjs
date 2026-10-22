@@ -1,6 +1,5 @@
 const fs = require('node:fs');
 const path = require('node:path');
-const { distributionDomain } = require('./distribution.cjs');
 
 // Only repository-owned declarations are loaded. Project files cannot add launch commands.
 function loadDomainPacks() {
@@ -111,6 +110,6 @@ function loadDomainPacks() {
       capabilityIds.add(capability.id);
     }
   }
-  return packs.filter(pack => !distributionDomain || pack.domain === distributionDomain);
+  return packs;
 }
 module.exports = { loadDomainPacks };

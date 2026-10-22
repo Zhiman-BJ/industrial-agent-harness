@@ -15,7 +15,7 @@
 
 ## 验证入口与边界
 
-- `node --test apps/cli/tests/general-project.test.cjs`：空的真实 managed Pack store、Desktop TaskService 与 CLI、基础文件 Action、无专业工具泄露、非法领域拒绝。Agent 内核使用受控测试替身，不调用真实模型。
+- `node --test packages/harness-application/tests/task-service.test.cjs`：空的真实 managed Pack store、Desktop TaskService、基础文件 Action、无专业工具泄露、非法领域拒绝。Agent 内核使用受控测试替身，不调用真实模型。
 - `pnpm --filter @industrial-agent-harness/desktop test:ui`：已有专业领域、通用默认选择、安装入口往返与草稿保留。
 - 构建后运行 `pnpm --filter @industrial-agent-harness/desktop test:project-onboarding`：真实 Electron renderer → preload → IPC，空安装通用创建、失败下载、重试安装、领域回填、深浅色和 640 × 480 布局。使用隔离用户目录和签名测试 Pack，不下载专业软件。可设置 `INDUSTRIAL_UI_SCREENSHOTS` 保存截图。
 

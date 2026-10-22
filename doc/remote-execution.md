@@ -57,7 +57,7 @@
 
 ```mermaid
 flowchart LR
-  UI[Desktop / CLI] --> Host[共享项目配置与聊天会话]
+  UI[Desktop] --> Host[共享项目配置与聊天会话]
   Agent[本地 Kimi / Agent] --> Broker[Broker 与审批]
   Host --> Broker
   Local[本地工程文件] -->|审核后上传| Snapshot[远端不可变 snapshot]
@@ -71,7 +71,7 @@ flowchart LR
   Remote -->|核验后显式下载| Local
 ```
 
-`harness-application` 的共享任务服务供 Desktop/CLI 使用。`RemoteSettings` 管理服务身份、远端项目、不可变审核记录、精确路径同步授权与 snapshot；`RemoteGatewaySessions` 管理聊天到远端会话的持久绑定；`RemoteGatewayClient` 使用官方 MCP SDK 的 Streamable HTTP 与 v1.1 文件/状态接口。`RemoteRuntime` 提供本地工程操作及远程计划/准备工具，按需建立远端执行连接，并将项目事实缓存与聊天连接分开。任务工具授权由共享执行及 Agent 集成层检查，不在 Desktop 另建调度循环。
+`harness-application` 的共享任务服务供 Desktop 使用。`RemoteSettings` 管理服务身份、远端项目、不可变审核记录、精确路径同步授权与 snapshot；`RemoteGatewaySessions` 管理聊天到远端会话的持久绑定；`RemoteGatewayClient` 使用官方 MCP SDK 的 Streamable HTTP 与 v1.1 文件/状态接口。`RemoteRuntime` 提供本地工程操作及远程计划/准备工具，按需建立远端执行连接，并将项目事实缓存与聊天连接分开。任务工具授权由共享执行及 Agent 集成层检查，不在 Desktop 另建调度循环。
 
 远程模式在加载本地领域可执行插件之前分流。本地保留受控工程文件读取/编辑；专业软件的 Runtime、MCP 进程和沙箱由服务部署，不需要客户端本机安装对应软件。Agent 通用 Shell 不迁移到远端，远程 facade 当前不提供 `project.task.run`。普通外部 MCP 仍是未验收观察，不能绕过 Broker 与受保护的 Runtime 入口。
 
@@ -104,36 +104,9 @@ flowchart LR
 
 新客户端要求服务声明 `remoteProtocolVersion: "1.1"`、`canonicalSchemaVersion: "1"`、稳定 `serverId` 和 `sessionModel: "application-session"`。仅有旧 v1 会话 MCP 入口而没有 snapshot、grant、canonical result 和产物下载契约的服务，也不能承担正式远程执行。
 
-## CLI
+## 桌面入口
 
-以下是保留的手工管理命令，属于内部 CLI 高级路径；聊天中的计划/批量准备不要求先运行这些命令。`DOMAIN` 与各 UUID 替换为实际项目及查询得到的身份：
-
-```sh
-industrial-harness remote status
-industrial-harness remote connect
-industrial-harness remote use --project-dir /path/to/project --domain DOMAIN --location remote
-
-# 首次项目由 sync 建立绑定；旧协议或更换服务时先预览并确认创建新远端项目。
-industrial-harness remote rebind --project-dir /path/to/project --domain DOMAIN
-industrial-harness remote rebind --project-dir /path/to/project --domain DOMAIN --confirm-new-project
-
-# 只预览；确认过内容后再加 --confirm-upload 执行上传。
-industrial-harness remote sync --project-dir /path/to/project --domain DOMAIN --file project-file
-industrial-harness remote sync --project-dir /path/to/project --domain DOMAIN --file project-file --confirm-upload
-
-industrial-harness run --project-dir /path/to/project --domain DOMAIN --task '执行已授权的远程领域任务' --approval approve
-industrial-harness chats --project-dir /path/to/project --domain DOMAIN
-industrial-harness remote session --project-dir /path/to/project --domain DOMAIN --chat-id CHAT_UUID
-industrial-harness remote task --project-dir /path/to/project --domain DOMAIN --chat-id CHAT_UUID
-
-industrial-harness remote artifacts --project-dir /path/to/project --domain DOMAIN
-industrial-harness remote download --project-dir /path/to/project --domain DOMAIN --artifact-id ARTIFACT_UUID --destination results/output-file
-industrial-harness remote terminate --project-dir /path/to/project --domain DOMAIN --chat-id CHAT_UUID --session-id APPLICATION_SESSION_UUID
-```
-
-`run --chat-id CHAT_UUID` 用于已有聊天追问，复用该聊天的远端连接身份。`remote session` 只读查询应用会话，`remote task` 查询上次调用的持久结果；显式结束后，该远端会话不再恢复，后续工作需新聊天身份。旧 `remote cancel` 已移除。Ctrl-C/任务停止不会发出未实现的远端取消承诺；用调用查询确认结果，再决定后续操作。
-
-`--scope-only` 继续是静态能力预览，不连接服务或创建执行权限。
+从项目详情选择运行位置，在当前聊天中规划任务、审核批量准备并查看远端状态和成果。手工上传、重绑、下载与结束空闲会话仍通过项目执行设置提供；它们不构成聊天的前置步骤。CLI 产品与命令已按 PD-096 退役。共享应用和 Runtime 的协议回归直接通过测试 API 验证，不能代替 Electron 点击验收。
 
 ## 验证与仍待验收项
 
@@ -145,7 +118,7 @@ industrial-harness remote terminate --project-dir /path/to/project --domain DOMA
 
 Desktop TypeScript 检查、构建及真实 Electron UI 自测通过，覆盖未配置状态、页面切换和无自动上传。客户端远程、Runtime 与共享应用测试通过；全套源码测试中，既有 CLI `stable portable Pack registration` 测试因缺少 `HARNESS_PLATFORM_PROBE_INDEX` 失败，另有 3 项平台相关测试跳过。因此不将本轮描述为全部仓库/平台测试通过，后续新增测试的计数以最终测试输出为准。
 
-仍需分别验收目标部署的 KiCad/Verilator/其他 Pack、实际隔离后端、原生软件依赖与 Linux worker、生产环境持久化/恢复、真实 Desktop/CLI 到服务的专业软件闭环，以及公网认证/登录。本地 PG/S3 集成、新源码测试与历史旧协议 RTL 记录均不代替这些资格。
+仍需分别验收目标部署的 KiCad/Verilator/其他 Pack、实际隔离后端、原生软件依赖与 Linux worker、生产环境持久化/恢复、真实 Desktop 到服务的专业软件闭环，以及公网认证/登录。本地 PG/S3 集成、新源码测试与历史旧协议 RTL 记录均不代替这些资格。
 
 
 ## Current MCP gateway adapter (2026-10-16)

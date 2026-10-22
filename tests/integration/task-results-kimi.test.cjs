@@ -6,6 +6,7 @@ const os = require('node:os');
 const { execFile } = require('node:child_process');
 const { promisify } = require('node:util');
 const { startResultsModel } = require('./fixtures/task-results-model.cjs');
+const { taskArguments } = require('./fixtures/task-service-process.cjs');
 const execute = promisify(execFile);
 if (!process.env.INDUSTRIAL_HARNESS_FREECAD_CMD) throw Error('Pinned native FreeCAD is required.');
 test(
@@ -21,33 +22,20 @@ test(
     const root = path.resolve(__dirname, '../..');
     const { stdout } = await execute(
       process.execPath,
-      [
-        path.join(root, 'apps/cli/src/main.cjs'),
-        'run',
-        '--project-dir',
-        project,
-        '--domain',
-        'cad',
-        '--task',
-        'Create a FreeCAD plate, modify its width twice, then inspect the final model',
-        '--provider',
-        'openai_legacy',
-        '--endpoint',
-        model.endpoint,
-        '--model',
-        'controlled-results',
-        '--no-thinking',
-        '--approval',
-        'approve',
-        '--chat-dir',
-        path.join(directory, 'chats'),
-        '--state-dir',
-        path.join(directory, 'state'),
-        '--log-dir',
-        path.join(directory, 'logs'),
-        '--timeout-ms',
-        '120000',
-      ],
+      taskArguments({
+        projectDir: project,
+        domain: 'cad',
+        task: 'Create a FreeCAD plate, modify its width twice, then inspect the final model',
+        provider: 'openai_legacy',
+        endpoint: model.endpoint,
+        model: 'controlled-results',
+        thinking: false,
+        approval: 'approve',
+        chatDir: path.join(directory, 'chats'),
+        stateDir: path.join(directory, 'state'),
+        logDir: path.join(directory, 'logs'),
+        timeoutMs: 120000,
+      }),
       {
         cwd: root,
         env: {

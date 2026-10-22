@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');
 const { createHash } = require('node:crypto');
-const { run } = require('../apps/cli/src/main.cjs');
+const { runTask: run } = require('../tests/integration/fixtures/task-service-process.cjs');
 const { createProjectRuntime } = require('../packages/harness-core/src/project-runtime.cjs');
 async function qualify({ directory, profile, apiKey }) {
   if (!apiKey) throw Error('Real CAD task qualification requires a model API key.');

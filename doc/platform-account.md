@@ -6,19 +6,19 @@
 
 已通过本机登录的 Chrome 核对 [Obol 账号接入指南](https://github.com/zhimanai/obol/blob/main/docs/account-integration.md)，页面文档最近提交为 `a93bc061767c2929585819f379c033139ff74fed`。按文档要求使用成熟 OIDC 库、Discovery、native/public client、Authorization Code + PKCE S256、随机 state、`openid profile offline_access` 和 Refresh Token 轮换。额外发送 nonce 并验证 ID Token 签名、issuer、audience、nonce 和有效期。
 
-账号协议和会话由 `packages/harness-auth` 统一管理；Desktop 负责系统浏览器、safeStorage、主窗口 IPC 和界面；CLI 负责参数、JSONL、系统浏览器启动入口。Domain Packs、Kimi 原生 loop 和工业事实契约不承担账号职责。
+账号协议和会话由 `packages/harness-auth` 统一管理；Desktop 负责系统浏览器、safeStorage、主窗口 IPC 和界面。Domain Packs、Kimi 原生 loop 和工业事实契约不承担账号职责。
 
 ## 已实现路径
 
-1. 设置 → 平台账号 → 配置平台连接 → 在系统浏览器登录。回调只监听 `127.0.0.1` 临时端口。同步支持文档规定的 `/oauth/code` → `code#state` 粘贴路径；二者共用 PKCE/state/nonce、按各自 redirect URI 兑换，先完成的生效。错误粘贴不消费待登录状态；取消/超时/退出阻止迟到结果重新登录。桌面提供可选中复制的登录链接与密码式授权码输入；CLI 的 `--no-browser`、SSH 和无显示环境使用纯粘贴流程，TTY 输入不回显。浏览器启动失败或卡住不阻塞粘贴、取消或超时；监听不可用时降级到粘贴。
+1. 设置 → 平台账号 → 配置平台连接 → 在系统浏览器登录。回调只监听 `127.0.0.1` 临时端口。同步支持文档规定的 `/oauth/code` → `code#state` 粘贴路径；二者共用 PKCE/state/nonce、按各自 redirect URI 兑换，先完成的生效。错误粘贴不消费待登录状态；取消/超时/退出阻止迟到结果重新登录。桌面提供可选中复制的登录链接与密码式授权码输入。浏览器启动失败或卡住不阻塞粘贴、取消或超时；监听不可用时降级到粘贴。
 2. Desktop 凭证经系统安全存储加密落盘；Linux `basic_text` 或安全存储不可用时仅在内存保存。界面明确显示当前保存方式。安全存储异常不阻塞本地工作台。
 3. 请求前按需刷新；多调用者/多进程共享文件锁，锁内重新读取凭证，原子保存轮换结果。刷新意图先落盘，进程崩溃或网络结果不明时要求重新登录，避免旧 Refresh Token 被再次消费。
 4. 退出尝试撤销 Refresh Token 并清理本机凭证；撤销失败显示提示。退出不关闭远程任务，不清除任务 requestId/jobId，也不清除系统浏览器全局 SSO。
 5. Remote Client 从 `credentialProvider` 按请求取凭证。只有读取请求遇到明确 `invalid_token` challenge 自动刷新后重试一次。变更请求沿用原有幂等日志，不自动重放；403 不触发刷新。
 6. 云端模型采用随机本机 key + 固定上游代理，支持固定 `/v1/chat/completions`、`/v1/messages`、`/v1/models` 路由，保留流式返回。Kimi 子进程只接触本机代理 key；真实平台 Token 由可信代理获取和验证。
-7. 账号 subject 纳入远程绑定身份；已有 Remote Client 固定创建时的 subject。切换账号不自动迁移旧项目和任务。每次获取服务 Token 前后均核对固定 subject（包括 401 刷新重试），共享 CLI 会话被另一终端切换后，旧客户端的第一条请求即拒绝发送。
+7. 账号 subject 纳入远程绑定身份；已有 Remote Client 固定创建时的 subject。切换账号不自动迁移旧项目和任务。每次获取服务 Token 前后均核对固定 subject（包括 401 刷新重试），共享账号会话被另一实例切换后，旧客户端的第一条请求即拒绝发送。
 
-详细配置、CLI 命令和公开说明见 [harness-auth README](../packages/harness-auth/README.md)。
+详细配置和公开说明见 [harness-auth README](../packages/harness-auth/README.md)。
 
 ## 平台部署必须提供的内容
 
@@ -37,7 +37,7 @@
 
 服务 Token 分别缓存，但共享同一刷新家族、同一文件锁和轮换状态；每次刷新都在锁内读取最新 Refresh Token。凭据使用前验证签名、issuer、单一 audience、subject、client_id、有效期和 Token 类型。`invalid_target` 仅拒绝该服务并移除其旧缓存，保留登录和未被消费的 Refresh Token；`invalid_grant` 或结果不明确的刷新清理全部缓存并要求重登。已有主分支单授权会话无需重新登录即可按需获得服务 Token；本实现不导入未合并的双授权试验分支凭据。
 
-直接 API 使用者在 Console 自行创建 Key。CLI/Desktop 的账号模式直接使用登录 Token，不要求也不代建用户 API Key。按 Obol 当前接口，首次模型调用可开通个人计费账户，内部登录计费记录没有可用 Key 秘密。模型 OpenAI base 使用 `https://api.zhiman.cn/v1`；Anthropic 协议使用 `https://api.zhiman.cn/anthropic/v1`。模型名和协议仍在原有模型设置中选择。
+直接 API 使用者在 Console 自行创建 Key。Desktop 的账号模式直接使用登录 Token，不要求也不代建用户 API Key。按 Obol 当前接口，首次模型调用可开通个人计费账户，内部登录计费记录没有可用 Key 秘密。模型 OpenAI base 使用 `https://api.zhiman.cn/v1`；Anthropic 协议使用 `https://api.zhiman.cn/anthropic/v1`。模型名和协议仍在原有模型设置中选择。
 
 模型代理仅在明确的 `401 WWW-Authenticate: Bearer error="invalid_token"` 后刷新并重试一次（包括推理请求）；普通 401、网络中断、402/403/429/5xx 均不自动重放。402/403/429 返回固定、脱敏的余额/权限/限流说明，不转发上游错误正文。远程变更请求仍不自动重放。统一退出等待刷新及迟到的换码完成，撤销最新 Refresh Token 并删除全部服务缓存；失败如实报告。
 
@@ -82,10 +82,9 @@ node scripts/verify-obol-login.cjs \
 
 ```sh
 AUTH_TEST_TRANSPORT=memory node --test packages/harness-auth/tests/*.test.cjs \
-  apps/desktop/electron/account.test.cjs apps/cli/tests/account.test.cjs \
+  apps/desktop/electron/account.test.cjs \
   packages/harness-core/tests/account-remote.test.cjs \
-  apps/desktop/electron/model-config.test.cjs apps/desktop/electron/language.test.cjs \
-  apps/cli/tests/args.test.cjs
+  apps/desktop/electron/model-config.test.cjs apps/desktop/electron/language.test.cjs
 pnpm --filter @industrial-agent-harness/desktop build
 pnpm test:architecture-contract
 pnpm test:architecture

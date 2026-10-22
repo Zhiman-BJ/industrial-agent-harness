@@ -8,7 +8,7 @@
 pnpm test:release
 pnpm --filter @industrial-agent-harness/pack-manager test
 pnpm --filter @industrial-agent-harness/domain-mcp test
-node --test packages/harness-core/tests/resource-settings.test.cjs packages/harness-application/tests/task-service.test.cjs apps/cli/tests/domains.test.cjs
+node --test packages/harness-core/tests/resource-settings.test.cjs packages/harness-application/tests/task-service.test.cjs
 pnpm --filter @industrial-agent-harness/desktop build
 pnpm --filter @industrial-agent-harness/desktop test:mcp
 pnpm --filter @industrial-agent-harness/desktop test:external-mcp
@@ -16,7 +16,7 @@ pnpm --filter @industrial-agent-harness/desktop test:logs
 node apps/desktop/scripts/test-install-experience.cjs
 ```
 
-安装体验 driver 包含正常退出清理，quit 模式仅 macOS。T3 transport 要先准备固定 chip/pcb Python 环境，再持锁执行 `pnpm test:ci -- transport`。T4 native-installed 用独立生产 CLI/Desktop 和官方归档验新安装；T5 验打包 first-run/domains/CAD。安装 UI fixture 成功不等于真实软件下载或工程就绪。
+安装体验 driver 包含正常退出清理，quit 模式仅 macOS。T3 transport 要先准备固定 chip/pcb Python 环境，再持锁执行 `pnpm test:ci -- transport`。T4 native-installed 用独立生产 Desktop 和官方归档验新安装；T5 验打包 first-run/domains/CAD。安装 UI fixture 成功不等于真实软件下载或工程就绪。
 
 Docker Linux engine 就绪后，可另跑真实 release 链路（有大文件下载，目录必须全新）：
 
@@ -24,15 +24,7 @@ Docker Linux engine 就绪后，可另跑真实 release 链路（有大文件下
 node scripts/verify-release-image-installation.cjs dist/ci-reports/release-image-qa-new
 ```
 
-使用既有受信签名目录的 CLI 产品命令：
-
-```sh
-node apps/cli/src/main.cjs domains list
-node apps/cli/src/main.cjs domains install DOMAIN --catalog HTTPS_CATALOG --keys-file KEYS_JSON
-node apps/cli/src/main.cjs domains repair DOMAIN
-```
-
-占位参数必须替换为验收发布物；不能用开发者 acquire-container-image 的锁覆盖当作正式安装通过。
+在桌面能力中心使用既有受信签名目录执行安装、更新、修复和卸载；记录实际发布物身份与就绪状态。不能用开发者 acquire-container-image 的锁覆盖当作正式安装通过。
 
 ## 手工矩阵
 
@@ -41,7 +33,7 @@ node apps/cli/src/main.cjs domains repair DOMAIN
 | DR-01 首装目录 | 全新 profile 展示五域，检查当前平台可安装项、CUDA 实际限制、下载/空间估计；目录不可达时兼容 bundled 项仍可选     | 没发布或平台未资格不能假装 ready；模型连接、Pack 已装和工具就绪分别显示                                                  | 平台、目录/Pack 版本摘要、首屏及断网提示                      |
 | DR-02 原生准备 | 选多个可用域，观察检查空间/下载/校验/解包/版本/激活；成功后运行声明的真实任务                                    | 缺磁盘、错误 hash、取消、关闭、进程中断后重开，journal 与失败状态可见；完成域保留，失败域可重试；不覆盖用户已有应用      | 锁/归档 hash、receipt、journal、真实 Verifications            |
 | DR-03 镜像安装 | 有 Linux engine 时冷装，核对 bytes/SHA/OCI manifest/config/platform、load/tag/live identity；修复后卸载重装复用  | 无 docker、engine 不可达、非 Linux engine 在下载/激活前失败；取消无临时 tar；更新失败保留旧 Pack；卸载不删除 Docker 镜像 | 冷下载/复用标签、Docker 版本/身份、失败 receipt、临时文件检查 |
-| DR-04 维护并发 | 能力中心补装/更新/修复/卸载；并发 CLI 安装，桌面观察进度；损坏真实可执行文件后修复                               | 安装锁串行，其他进程进度可见但取消归持有者；正常版本检查不降级；项目领域绑定不随卸载自动迁移                             | 前后版本、锁归属、修复执行与重启状态                          |
+| DR-04 维护并发 | 能力中心补装/更新/修复/卸载；并发共享安装请求，桌面观察进度；损坏真实可执行文件后修复                               | 安装锁串行，其他进程进度可见但取消归持有者；正常版本检查不降级；项目领域绑定不随卸载自动迁移                             | 前后版本、锁归属、修复执行与重启状态                          |
 | DR-05 工具目录 | 项目详情只看当前领域+外部 MCP，全局看已加载提供方；展开名称/ID/用途/版本/数量并搜索；试空目录/零工具/无结果/失败 | 实际 Runtime 注册与独立 MCP 清单分开；数字不能抄旧文档常数；提供方失败不泄漏环境或隐藏其他域                             | 实际 Pack pin、工具目录、搜索/错误截图                        |
 | DR-06 资源策略 | 全局禁用提供方，项目依次继承/启用/禁用；查看 Broker scope，再通过真正执行入口尝试工具；切换项目/快速保存         | 三态一致，禁用必须执行层拒绝；显示启用不等于依赖就绪；迟到响应不覆盖新项目；忙时修改遵守现有限制                         | 有效策略、Scope/拒绝记录、项目切换结果                        |
 | DR-07 外部 MCP | stdio/HTTP/SSE 各注册可信测试服务；紧凑发现→按需 schema，审批允许/拒绝；添加删除后目录刷新                       | undeclared/out-of-scope 工具拒绝；凭据宿主保管；外部 MCP 输出只是观察，不自动变 canonical 工程通过                       | 传输类型、发现/schema/执行轨迹、审批、脱敏目录                |

@@ -8,7 +8,7 @@
 
 **面向工程项目的 AI 工作台：按范围使用专业工具，保留可核验的结果。**
 
-Industrial Agent Harness 通过桌面工作台，将本地工程、Kimi Code、专业软件与工程证据连接起来。各领域通过 Domain Pack 提供知识、工具和验证方法。
+Industrial Agent Harness 是 GUI 产品，通过桌面工作台，将本地工程、Kimi Code、专业软件与工程证据连接起来。各领域通过 Domain Pack 提供知识、工具和验证方法。
 
 > [!IMPORTANT]
 > **开发者预览版（Developer Preview）。** 当前处于 Workbench MVP 阶段，已接入持久化、受范围约束的工程运行时。API、Pack 接口和运行时行为仍在迭代。本页描述当前源码；已发布的预览归档以各自版本说明为准。
@@ -164,7 +164,7 @@ pnpm run test:release
 pnpm run format:check
 ```
 
-[Harness CI 门禁](.github/workflows/ci.yml)在 Linux x64/arm64、macOS arm64、Windows x64 执行共享包与独立 CLI 包回归，在 macOS/Windows 验证桌面安装，声明 Apple Silicon 与 Linux x86-64 的工业 Core 验收 lane，Linux 还检查实际安装的 Chip CLI。容器化 Mac lane 当前需要具备本地 Docker 的适用 runner；本机验收不代表 GitHub 托管 lane 已通过。[CI 回归说明](doc/ci-regression.md)列出依赖、保留证据与明确的覆盖缺口；跳过不代表支持。安全问题按 [SECURITY.md](SECURITY.md) 的流程报告。
+[Harness CI 门禁](.github/workflows/ci.yml)在 Linux x64/arm64、macOS arm64、Windows x64 执行共享包回归，在 macOS/Windows 验证桌面安装，并通过共享应用层测试验收工业 Core。容器化 Mac lane 当前需要具备本地 Docker 的适用 runner；本机验收不代表 GitHub 托管 lane 已通过。[CI 回归说明](doc/ci-regression.md)列出依赖、保留证据与明确的覆盖缺口；跳过不代表支持。安全问题按 [SECURITY.md](SECURITY.md) 的流程报告。
 
 ## 预览版范围
 
@@ -188,7 +188,7 @@ pnpm run format:check
 
 ### 内置远程运行（内部体验）
 
-远程执行重构为会话式 Gateway v1.1：Kimi/Agent 留在本地，远端提供领域 MCP、专业软件和执行沙箱。Desktop 与内部无界面适配器共用持久聊天绑定、显式不可变文件上传、规范工程证据导入与核验后的产物下载，下载不覆盖既有文件。本地输入变化须再次审核上传；停止本地等待不表示远端计算已取消。服务连接可用与软件/worker 已获资格分别显示。显式重绑创建新远端项目并保留旧绑定历史，不迁移旧 0.2 job 或工程事实。公网与登录配置仍留空；此次重构不构成 KiCad 或生产 Linux worker 资格，历史 H200 RTL 记录仅属于旧协议。见[远程执行与 CLI 命令](doc/remote-execution.md)。
+远程执行重构为会话式 Gateway v1.1：Kimi/Agent 留在本地，远端提供领域 MCP、专业软件和执行沙箱。Desktop 使用持久聊天绑定、显式不可变文件上传、规范工程证据导入与核验后的产物下载，下载不覆盖既有文件。本地输入变化须再次审核上传；停止本地等待不表示远端计算已取消。服务连接可用与软件/worker 已获资格分别显示。显式重绑创建新远端项目并保留旧绑定历史，不迁移旧 0.2 job 或工程事实。公网与登录配置仍留空；此次重构不构成 KiCad 或生产 Linux worker 资格，历史 H200 RTL 记录仅属于旧协议。见[远程执行](doc/remote-execution.md)。
 
 桌面聊天将远程与任务状态合并为可折叠执行卡。聊天栏至少 960 px 宽时为展开卡预留侧边空间，更窄时在消息上方占位并限制滚动高度。任务进度、未完成工作与远程失败分别呈现；项目/设置页隐藏卡片但保留后台轮询。远程未就绪阻塞输入时，输入区显示原因并提供项目执行设置入口；Kimi 运行时缺失仍保留更高优先级提示。展示调整不改变上传确认、任务审批或既有就绪门禁。
 
@@ -205,3 +205,5 @@ MOCK_REMOTE_TOKEN=mock-token node scripts/remote-ui-fixture.cjs
 Harness 任务服务由 Desktop 与内部无界面入口共用；领域声明、Skill 和实现来自一个固定版本的 Domain Packs。见[消费迁移与验收](doc/shared-task-and-pack-consumption.md)。
 
 此前托管版本以不可变提交固定 Domain Packs 0.6.0，由通用 Pack Manager 准备声明中的 Harbor 产物。以下为该版本历史证据。macOS ARM64 验收涵盖声明的 CAD、PCB、Godot profile 与 CUDA 远程客户端；托管 Chip 另已通过 Linux x86-64 安装和原生检查。具体证据与边界见[安装体验](doc/install-experience.md)及各领域验收记录。历史预览归档保留其原有依赖与范围。
+
+本仓库仅交付桌面 GUI 产品；CLI、专用 Node SDK 与 headless 发行链已退役。历史发行物保留原有版本与验收范围，详见 [PD-096](doc/product-decisions.md#pd-096仓库仅交付桌面-gui-产品)。

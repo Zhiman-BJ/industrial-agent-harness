@@ -5,7 +5,7 @@
 ## 自动命令
 
 ```sh
-node --test packages/harness-auth/tests/*.test.cjs apps/cli/tests/account.test.cjs apps/desktop/electron/account.test.cjs packages/harness-core/tests/account-remote.test.cjs apps/desktop/electron/model-config.test.cjs
+node --test packages/harness-auth/tests/*.test.cjs apps/desktop/electron/account.test.cjs packages/harness-core/tests/account-remote.test.cjs apps/desktop/electron/model-config.test.cjs
 pnpm --filter @industrial-agent-harness/desktop build
 pnpm --filter @industrial-agent-harness/desktop test:model-sync
 pnpm --filter @industrial-agent-harness/desktop test:account

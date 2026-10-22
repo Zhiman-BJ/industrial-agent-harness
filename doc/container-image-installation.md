@@ -4,7 +4,7 @@
 匿名 HTTPS release tarball 是主通道，不要求登录镜像仓库。构建器原样封装固定 owner 的
 `provenance/runtime-distribution.json`，只选择当前 Domain 已发布的镜像。
 
-Desktop 的安装／更新／修复和 CLI 的 `domains install|update|repair` 都进入共享 Pack Manager。
+Desktop 的安装／更新／修复统一进入共享 Pack Manager。
 签名目录、包摘要和文件库存校验通过后，先准备原生软件与容器镜像，再原子激活 Pack。
 修复从完整性检查通过的安装目录读取锁；环境变量不能将正式安装重定向到其他锁。
 
@@ -32,10 +32,7 @@ Docker Desktop 中已安装镜像显示在 **Images → Local**。安装不创�
 
 先启动运行 Linux 容器的 Docker engine，再在桌面安装对应 Domain，或使用已有签名 feed：
 
-```sh
-node apps/cli/src/main.cjs domains install <domain> --catalog <https-catalog> --keys-file <keys.json>
-node apps/cli/src/main.cjs domains repair <domain>
-```
+从桌面能力中心安装、更新或修复目标领域。
 
 开发者单独取镜像时可使用：
 
@@ -48,7 +45,7 @@ node scripts/acquire-container-image.cjs <owner-directory> <locked-image-id-or-r
 尚未发布的镜像保持外部依赖状态，现有原生运行环境声明继续生效。
 镜像就绪不代表项目已绑定该镜像；项目的执行配置、主机依赖和领域工程验收仍由 Pack 负责。
 
-Docker 是外部前提，安装器不会自动安装或启动它。没有 `docker` 命令时，Desktop／CLI
+Docker 是外部前提，安装器不会自动安装或启动它。没有 `docker` 命令时，Desktop
 提示安装 Docker Desktop（macOS／Windows）或 Docker Engine（Linux）并确保命令可用；
 命令存在但引擎无法连接时，提示启动 Docker 或检查当前连接；非 Linux 引擎提示切换 Linux
 容器。三种情况都在原生应用和镜像下载前失败，不激活新 Pack，更新时保留旧版本；已有镜像回执也
@@ -65,7 +62,7 @@ pnpm --filter @industrial-agent-harness/desktop build
 node scripts/verify-release-image-installation.cjs dist/release-image-installation
 ```
 
-该入口使用固定 owner 的真实 release URL，建立隔离的签名包 feed 与安装库。CLI 冷安装
+该入口使用固定 owner 的真实 release URL，建立隔离的签名包 feed 与安装库。应用层 API 冷安装
 会实际下载镜像，随后检查容器能启动、修复并卸载 Pack。Desktop 再通过真实 renderer →
 preload → IPC 安装及修复，复用之前验证过的 Docker 镜像。输出包含日志、镜像身份、
 Docker 版本、桌面状态及截图；桌面这一步是镜像复用，不宣称第二次冷下载。

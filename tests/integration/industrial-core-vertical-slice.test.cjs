@@ -12,6 +12,7 @@ const { createRuntimePlugin } = require(
 const { execFile } = require('node:child_process');
 const { promisify } = require('node:util');
 const { startModel } = require('./fixtures/domain-mcp-model.cjs');
+const { taskArguments } = require('./fixtures/task-service-process.cjs');
 const { hostBoundary, boundaryMatches } = require('./fixtures/execution-boundary.cjs');
 const execute = promisify(execFile);
 const root = path.resolve(__dirname, '../..');
@@ -398,7 +399,7 @@ test(
 );
 
 test(
-  'real CLI + pinned Kimi writes a native fixture as the current user and executes approved host RTL tool with a durable engineering result',
+  'shared TaskService and pinned Kimi write a native fixture as the current user and execute an approved host RTL tool with a durable engineering result',
   {
     timeout: 120000,
     skip: process.platform !== 'darwin' && !process.env.HARNESS_REQUIRE_CORE_NATIVE,
@@ -438,35 +439,21 @@ test(
     const before = fs.readFileSync(path.join(project, 'rtl/counter.sv'));
     const result = await execute(
       process.execPath,
-      [
-        path.join(root, 'apps/cli/src/main.cjs'),
-        'run',
-        '--project-dir',
-        project,
-        '--domain',
-        'chip',
-        '--task',
-        'Run RTL simulation verification assertions',
-        '--approval',
-        'approve',
-        '--provider',
-        'openai_legacy',
-        '--endpoint',
-        fixture.endpoint,
-        '--model',
-        'controlled-core',
-        '--no-thinking',
-        '--kimi-executable',
-        native,
-        '--timeout-ms',
-        '60000',
-        '--chat-dir',
-        path.join(directory, 'chats'),
-        '--state-dir',
-        path.join(directory, 'state'),
-        '--log-dir',
-        path.join(directory, 'logs'),
-      ],
+      taskArguments({
+        projectDir: project,
+        domain: 'chip',
+        task: 'Run RTL simulation verification assertions',
+        approval: 'approve',
+        provider: 'openai_legacy',
+        endpoint: fixture.endpoint,
+        model: 'controlled-core',
+        thinking: false,
+        kimiExecutable: native,
+        timeoutMs: 60000,
+        chatDir: path.join(directory, 'chats'),
+        stateDir: path.join(directory, 'state'),
+        logDir: path.join(directory, 'logs'),
+      }),
       {
         cwd: root,
         env: {
@@ -480,8 +467,8 @@ test(
     ).catch(error => {
       // Node's Error inspector truncates large JSONL stdout before the final
       // error row. Keep the useful tail in CI so failures remain diagnosable.
-      t.diagnostic('CLI stdout tail:\n' + String(error.stdout || '').slice(-24000));
-      t.diagnostic('CLI stderr tail:\n' + String(error.stderr || '').slice(-8000));
+      t.diagnostic('TaskService stdout tail:\n' + String(error.stdout || '').slice(-24000));
+      t.diagnostic('TaskService stderr tail:\n' + String(error.stderr || '').slice(-8000));
       throw error;
     });
     const rows = result.stdout.trim().split('\n').map(JSON.parse);
@@ -505,7 +492,7 @@ test(
       assert.match(JSON.stringify(fixture.requests), /CORE_NATIVE_FIXTURE_WRITE_OK/);
     }
     const engineering = rows.find(row => row.type === 'industrial_result');
-    assert.ok(engineering, 'CLI must expose the real canonical runtime result.');
+    assert.ok(engineering, 'TaskService must expose the real canonical runtime result.');
     assert.equal(engineering.verification.status, 'passed', JSON.stringify(engineering));
     assert.equal(engineering.state.id, engineering.checkpoint.state.id);
     assert.equal(rows.at(-1).engineering.checkpointId, engineering.checkpoint.id);

@@ -1,6 +1,6 @@
 # 统一配对评测基线
 
-新增 `scripts/benchmark-paired.cjs` 用于在相同输入、Task、模型配置与实际 wall-time 预算下，顺序运行原生 Kimi 和生产 Harness 两个驱动。现有 `scope-smoke` 仍属于披露协议检查；本基线另设独立工程验收，不使用模型回答中的 PASS 作为结果。
+新增 `scripts/benchmark-paired.cjs` 用于在相同输入、Task、模型配置与实际 wall-time 预算下，顺序运行原生 Kimi 和生产 Harness 两个驱动。本基线设置独立工程验收，不使用模型回答中的 PASS 作为结果。
 
 ## 无凭据工程 smoke
 
@@ -25,7 +25,7 @@ Suite 使用 `schemaVersion:1`，包括：
 | 驱动/Verifier | 固定命令参数、可执行文件 SHA-256 与实现文件 SHA-256；不经过 Shell，执行后复查身份 |
 | 工具/环境 | `platform/toolchainId/tools`，记录实际 OS、架构、Node、工具路径及身份；工具执行前后复查 |
 | 预算 | 相同 `budget.maxMs`；超时先中断、再回收进程组；Verifier 使用单独固定预算 |
-| 次序/种子 | `seeds` 唯一非负整数，奇偶轮换先运行的驱动；当前 SDK/CLI 无模型随机种子控制，驱动明确报告 `seedControl:not-enforced` |
+| 次序/种子 | `seeds` 唯一非负整数，奇偶轮换先运行的驱动；当前驱动无模型随机种子控制，驱动明确报告 `seedControl:not-enforced` |
 | 证据 | 各支 stdout/stderr 轨迹、轨迹 SHA、产物树 SHA、Verifier 输出、逐任务记录与汇总 |
 
 可计算输入身份：`node scripts/benchmark-paired.cjs --hash-input /absolute/project`。修改 fixture、driver 或 testbench 后必须重新生成冻结值；不得沿用旧身份。
@@ -41,7 +41,7 @@ node scripts/benchmark-native-kimi.cjs PROJECT TASK_FILE OUTPUT_DIR PROFILE_FILE
 node scripts/benchmark-harness.cjs PROJECT DOMAIN TASK_FILE OUTPUT_DIR PROFILE_FILE
 ```
 
-原生驱动使用 `agent-kimi` 已声明的精确 Kimi SDK 版本直接建立原生会话，不注入 Harness 工业上下文或工具。Harness 驱动消费 Node SDK、生产 CLI、Broker 与 Runtime。两者加载同一份模型配置，并沿用相同的单次输出 cap、context size、thinking 和批准策略。两者的聊天/资源配置都放在本次隔离结果目录中，首次运行不加载用户历史。
+原生驱动使用 `agent-kimi` 已声明的精确 Kimi SDK 版本直接建立原生会话，不注入 Harness 工业上下文或工具。Harness 驱动直接调用共享 TaskService、Broker 与 Runtime，仅用于开发评测，不交付 CLI 或 SDK 产品。两者加载同一份模型配置，并沿用相同的单次输出 cap、context size、thinking 和批准策略。两者的聊天/资源配置都放在本次隔离结果目录中，首次运行不加载用户历史。
 
 共同 profile 是 JSON，包含 `configurationId/provider/endpoint/model/contextSize/thinking/imageInput/apiKeyEnv/kimiExecutable`。API Key 从 `apiKeyEnv` 指定的环境变量读取，不能写入文件；`kimiExecutable` 相对 profile 所在目录解析。正式 Suite 应冻结 profile、驱动、辅助文件、Runtime/Pack 版本、锁文件、Kimi/Python/验证工具身份。
 

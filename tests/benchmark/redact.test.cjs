@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { StreamRedactor, environmentSecrets } = require('../src/redact.cjs');
+const { StreamRedactor, environmentSecrets } = require('../../scripts/lib/benchmark-redact.cjs');
 
 test('stream redaction handles every byte split, Unicode, repeated and overlapping credential values', () => {
   const secret = '密钥.a+b[$](private)';

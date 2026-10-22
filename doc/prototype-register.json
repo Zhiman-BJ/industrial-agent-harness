@@ -11,12 +11,6 @@
       "replacement": "Persistent Artifact Registry in packages/domain-runtime"
     },
     {
-      "id": "cli-in-memory-artifact-manifest",
-      "path": "apps/cli/src/lib/artifact-manifest.cjs",
-      "signature": "const artifacts = new Map();",
-      "replacement": "Shared Artifact Registry in packages/domain-runtime"
-    },
-    {
       "id": "prompt-keyword-context",
       "path": "packages/capability-broker/src/index.cjs",
       "signature": "const scored = candidates.map(item => {",

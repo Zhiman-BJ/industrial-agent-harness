@@ -66,8 +66,6 @@ function read(config) {
       if (request === '@zhiman-bj/industrial-domain-packs') return { consumerMetadata: () => ({capabilities: [], skills: [], domains: []}) };
       if (request === './packs.cjs' && path.dirname(parent.filename) === path.dirname(config.installed))
         return { loadDomainPacks: () => config.packs || [] };
-      if (request === './distribution.cjs' && path.dirname(parent.filename) === path.dirname(config.installed))
-        return { distributionDomain: config.distributionDomain || null };
       return original.call(this, request, parent, isMain);
     };
     const api = require(config.installed);
@@ -83,7 +81,7 @@ function read(config) {
   return JSON.parse(result.stdout);
 }
 
-test('source Viewer Python declarations require the active domain and respect the distribution binding', t => {
+test('source Viewer Python declarations require and isolate the active domain', t => {
   setup(t);
   const a = declaration(),
     b = declaration('unrelated-python');
@@ -91,12 +89,10 @@ test('source Viewer Python declarations require the active domain and respect th
     { domain: 'alpha', pythonEnvironments: [a] },
     { domain: 'beta', pythonEnvironments: [b] },
   ];
-  const result = read({ packs, domains: [null, '', ' ', 'unknown', 'alpha'] });
+  const result = read({ packs, domains: [null, '', ' ', 'unknown', 'alpha', 'beta'] });
   assert.deepEqual(result.slice(0, 4), Array(4).fill({ declarations: [], resolved: null }));
   assert.deepEqual(result[4], { declarations: [a], resolved: null });
-  assert.deepEqual(read({ packs, domains: ['alpha'], distributionDomain: 'beta' }), [
-    { declarations: [], resolved: null },
-  ]);
+  assert.deepEqual(result[5], { declarations: [b], resolved: null });
 });
 
 test('managed Viewer Python comes only from the integrity-checked installed Pack', async t => {

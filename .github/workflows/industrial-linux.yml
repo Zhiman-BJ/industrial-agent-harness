@@ -1,25 +1,20 @@
-name: Linux Chip installer acceptance
+name: Linux native Runtime acceptance
 
 on:
   workflow_call:
     inputs:
       full:
-        description: 'Include clean installer upgrades and host Docker acceptance'
+        description: 'Include host Docker Runtime acceptance'
         type: boolean
         default: true
-      release_tag:
-        type: string
-        default: chip-linux-installer-v0.1.0-preview.5
 
 permissions:
   contents: read
 
 jobs:
-  native-installed-chip:
+  native-runtime:
     runs-on: ubuntu-22.04
     timeout-minutes: 35
-    env:
-      RELEASE_TAG: ${{ inputs.release_tag }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -34,19 +29,12 @@ jobs:
           python-version: '3.13'
       # The Verilator build takes several minutes from source; its version and
       # pinned tarball SHA live in this workflow file, which keys the cache.
-      # The previous-preview installer is pinned the same way. The chip pack
-      # tarball is pinned by pnpm-lock.yaml, keying its uv environment.
+      # The chip pack tarball is pinned by pnpm-lock.yaml, keying its uv environment.
       - name: Restore compiled Verilator runtime
         uses: actions/cache@v4
         with:
           path: ${{ runner.temp }}/verilator-runtime
           key: verilator-5.026-${{ runner.os }}-${{ hashFiles('.github/workflows/industrial-linux.yml') }}
-      - name: Restore previous chip preview installer
-        if: inputs.full
-        uses: actions/cache@v4
-        with:
-          path: ${{ runner.temp }}/prior-assets
-          key: chip-prior-installer-${{ runner.os }}-${{ hashFiles('.github/workflows/industrial-linux.yml') }}
       - name: Install pinned workspace dependencies
         run: pnpm install --frozen-lockfile
       - name: Resolve chip Domain Pack source
@@ -85,51 +73,13 @@ jobs:
           node apps/desktop/scripts/setup-kimi.cjs
           cd "$(node scripts/pack-source.cjs chip-pack)/eda-harness"
           uv sync --frozen --no-dev --python 3.13
-      - name: Install the previous public preview before upgrading
-        if: inputs.full
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p "$RUNNER_TEMP/prior-assets"
-          cd "$RUNNER_TEMP/prior-assets"
-          if [ ! -f industrial-harness-chip-linux-install.run ]; then
-            old_url='https://github.com/Zhiman-BJ/industrial-agent-harness/releases/download/chip-linux-installer-v0.1.0-preview.4'
-            curl -fL --retry 3 "$old_url/industrial-harness-chip-linux-install.run" -o industrial-harness-chip-linux-install.run
-            curl -fL --retry 3 "$old_url/industrial-harness-chip-linux-install.run.sha256" -o industrial-harness-chip-linux-install.run.sha256
-          else
-            echo "Using restored previous chip preview installer from cache."
-          fi
-          sha256sum -c industrial-harness-chip-linux-install.run.sha256
-          bash industrial-harness-chip-linux-install.run --skip-image --prefix "$RUNNER_TEMP/prior chip" --bin-dir "$RUNNER_TEMP/chip-bin"
       - name: Native Agent, project discovery, real RTL and recovery
         shell: bash
         run: |
           set -euo pipefail
           export KIMI_EXECUTABLE="$(node -p "require('./packages/agent-kimi/src/code-session.cjs').bundledExecutable()")"
           pnpm run test:ci -- native-linux
-          node --test tests/integration/linux-chip-bootstrap.test.cjs
-      - name: Verify packaged headless Agent through its current-user launcher
-        shell: bash
-        run: |
-          set -euo pipefail
-          node --test tests/integration/headless-package-kimi.test.cjs 2>&1 | tee dist/ci-reports/headless-native.log
-      - name: Build clean immutable installer and verify actual installed consumer
-        if: inputs.full
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -f "releases/$RELEASE_TAG.md"
-          node scripts/package-headless.cjs --domain chip
-          mkdir -p dist/linux-chip-release
-          tar -czf dist/chip-cli.tar.gz -C dist headless-chip
-          node scripts/package-linux-chip-installer.cjs dist/chip-cli.tar.gz dist/linux-chip-release/industrial-harness-chip-linux-install.run "$RELEASE_TAG" > dist/linux-chip-release/build-identity.json
-          node scripts/smoke-cli-upgrade.cjs "$RUNNER_TEMP/prior chip" "$PWD/dist/linux-chip-release/industrial-harness-chip-linux-install.run" "$RUNNER_TEMP/installed chip" "$RUNNER_TEMP/chip-bin" "$RUNNER_TEMP/upgrade-user" dist/linux-chip-release/upgrade-verification.json
-          node scripts/smoke-linux-chip-install.cjs "$RUNNER_TEMP/installed chip" "$RUNNER_TEMP/chip-bin/industrial-harness-chip" dist/linux-chip-release/verification.json
-          node scripts/smoke-workspace-cli.cjs "$RUNNER_TEMP/chip-bin/industrial-harness-chip" chip dist/linux-chip-release/workspace-verification.json
-          KIMI_EXECUTABLE="" INDUSTRIAL_HARNESS_TEST_CLI="$RUNNER_TEMP/installed chip/cli/industrial-harness.cjs" node --test tests/integration/external-mcp-kimi.test.cjs
-          bash dist/linux-chip-release/industrial-harness-chip-linux-install.run --skip-image --prefix "$RUNNER_TEMP/installed chip" --bin-dir "$RUNNER_TEMP/chip-bin"
-          cp "$RUNNER_TEMP/installed chip/install-receipt.json" dist/linux-chip-release/install-receipt.json
-      - name: Verify installed host Docker execution alongside the current-user Agent
+      - name: Verify host Docker tasks through the shared Runtime
         if: inputs.full
         shell: bash
         run: |
@@ -149,23 +99,14 @@ jobs:
           docker build -t "$image" "$RUNNER_TEMP/docker-rtl-context" > "$RUNNER_TEMP/docker-rtl-build.log" 2>&1
           docker run --rm "$image" verilator --version
           HARNESS_WORKSPACE_DOCKER_IMAGE="$image" node --test tests/integration/workspace-docker.test.cjs
-          node - "$RUNNER_TEMP/installed chip/install-receipt.json" "$image" <<'JS'
-          const fs = require('node:fs');
-          const [file, image] = process.argv.slice(2);
-          const receipt = JSON.parse(fs.readFileSync(file));
-          receipt.image = image;
-          fs.writeFileSync(file, JSON.stringify(receipt, null, 2) + '\n');
-          JS
-          node scripts/smoke-linux-chip-install.cjs "$RUNNER_TEMP/installed chip" "$RUNNER_TEMP/chip-bin/industrial-harness-chip" dist/linux-chip-release/docker-runtime-verification.json
-          docker image inspect "$image" --format '{{.Id}}' > dist/linux-chip-release/docker-test-image-id.txt
+          mkdir -p dist/ci-reports
+          docker image inspect "$image" --format '{{.Id}}' > dist/ci-reports/docker-test-image-id.txt
           docker image rm "$image"
-      - name: Retain installer and verification evidence
+      - name: Retain native Runtime verification evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: linux-chip-installer
-          path: |
-            dist/linux-chip-release/
-            dist/ci-reports/
+          name: linux-native-runtime
+          path: dist/ci-reports/
           if-no-files-found: warn
           retention-days: 14

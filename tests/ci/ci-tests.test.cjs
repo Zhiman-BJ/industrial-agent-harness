@@ -358,3 +358,12 @@ test('installed lane runs all files serially and reports its complete count', t 
   assert.equal(report.summary.counts.passed, 3);
   assert.equal(report.ok, true);
 });
+
+test('portable CI retains process cleanup and credential redaction coverage after retiring the CLI SDK', () => {
+  const files = portableFiles();
+  assert.ok(files.includes('tests/benchmark/process.test.cjs'));
+  assert.ok(files.includes('tests/benchmark/redact.test.cjs'));
+  assert.ok(
+    files.every(file => !file.startsWith('apps/cli/') && !file.startsWith('packages/sdk/')),
+  );
+});

@@ -85,28 +85,13 @@ jobs:
           done
       - name: Verify prepared archive cache identities
         run: node scripts/prepare-ci-runtime-archives.cjs
-      - name: Build independent CAD CLI for native execution
-        run: node scripts/package-headless.cjs dist/freecad-cli --domain cad
-      - name: Verify common workspace and MCP in packaged CLIs
-        shell: bash
-        run: |
-          unset KIMI_EXECUTABLE
-          for domain in chip pcb godot; do
-            node scripts/package-headless.cjs "dist/workspace-$domain" --domain "$domain"
-            node scripts/smoke-workspace-cli.cjs "$GITHUB_WORKSPACE/dist/workspace-$domain/industrial-harness.cjs" "$domain" "dist/ci-reports/workspace-$domain.json"
-          done
-          INDUSTRIAL_HARNESS_TEST_CLI="$GITHUB_WORKSPACE/dist/workspace-chip/industrial-harness.cjs" node --test tests/integration/external-mcp-kimi.test.cjs
       - name: Verify the real state, action, verification and recovery path
         shell: bash
         run: |
           export KIMI_EXECUTABLE="$(node -p "require('./packages/agent-kimi/src/code-session.cjs').bundledExecutable()")"
-          export HARNESS_FREECAD_TEST_CLI="$GITHUB_WORKSPACE/dist/freecad-cli/industrial-harness.cjs"
           export HARNESS_PROFESSIONAL_EVIDENCE="$RUNNER_TEMP/professional-evidence"
           mkdir -p "$HARNESS_PROFESSIONAL_EVIDENCE"
           pnpm run test:ci -- native 2>&1 | tee dist/ci-reports/native.log
-      - name: Verify packaged headless Agent through its current-user launcher
-        shell: bash
-        run: node --test tests/integration/headless-package-kimi.test.cjs 2>&1 | tee dist/ci-reports/headless-native.log
       - name: Verify real FreeCAD artifacts through the Desktop viewer
         shell: bash
         run: |
@@ -182,13 +167,11 @@ jobs:
       - name: Stage independent production payloads for professional tasks
         run: |
           pnpm --filter @industrial-agent-harness/desktop build
-          node scripts/package-headless.cjs dist/professional-cli
           HARNESS_BOOTSTRAP_DOMAINS='' node scripts/stage-desktop.cjs dist/professional-desktop
       - name: Verify fresh managed installations and real packaged engineering tasks
         shell: bash
         run: |
           export KIMI_EXECUTABLE="$(node -p "require('./packages/agent-kimi/src/code-session.cjs').bundledExecutable()")"
-          export HARNESS_PROFESSIONAL_TEST_CLI="$GITHUB_WORKSPACE/dist/professional-cli/industrial-harness.cjs"
           export HARNESS_PROFESSIONAL_DESKTOP_ENTRY="$GITHUB_WORKSPACE/dist/professional-desktop/electron/main.cjs"
           export HARNESS_PROFESSIONAL_EVIDENCE="$RUNNER_TEMP/professional-evidence"
           mkdir -p "$HARNESS_PROFESSIONAL_EVIDENCE" dist/ci-reports

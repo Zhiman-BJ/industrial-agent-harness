@@ -37,7 +37,7 @@ T4 native 包含 task-results-freecad/kimi；UI 的 test:results 当前不在 wo
 | VR-04 成果自动登记   | 一轮产生模型/报告，失败后部分输出，再生成多方案；不调用 select_result 仍显示成果                    | 成功 Action、文件可用、Verification 分别呈现；无工程检查不能升级 passed；同名结果不合并                    | request/Action/group/Artifact IDs、检查摘要与部分输出 |
 | VR-05 版本/附件      | 明确修改输入后查看旧版折叠、新版、辅助报告；选历史/并列方案；文件列表打开实际附件，定位原生文件     | 只有内容绑定的 supersedes 才替代；changed/missing/unchecked 显式显示；主文件能定位但缺 companion 不可预览  | 旧新 digest、组关系、附件与错误截图                   |
 | VR-06 自动预览       | 前台仅一个支持预览的成功候选，结束最多开一次；分别手动换文件/项目、取消、后台完成、历史回放、多候选 | 这些情形不抢焦点或自动开外部应用；CAD/doc 插件显式 opt-in，其他不暗中加入                                  | 预览次数、当前 tab、抑制原因                          |
-| VR-07 历史与 CLI     | 重启读历史，远程未配置时读缓存成果；同次读取重用校验，改 bytes 后再次读取/打开拒绝；比较 CLI JSONL  | 历史读取不初始化 Runtime/Packs；CLI 同 group/Artifact/revision，无 Electron 依赖；旧工程通过不认证新 bytes | 历史/CLI IDs、变化检测、Runtime 未启动证据            |
+| VR-07 历史与共享事件     | 重启读历史，远程未配置时读缓存成果；同次读取重用校验，改 bytes 后再次读取/打开拒绝；比较共享应用层事件  | 历史读取不初始化 Runtime/Packs；应用层事件同 group/Artifact/revision，无 Electron 依赖；旧工程通过不认证新 bytes | 历史/事件 IDs、变化检测、Runtime 未启动证据            |
 
 ## PCB 官方模型按需下载：本轮待验收
 
