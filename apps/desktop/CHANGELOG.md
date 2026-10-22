@@ -6,21 +6,11 @@
 
 ## [1.1.0-beta.9](https://github.com/Zhiman-BJ/industrial-agent-harness/compare/desktop-v1.0.1-beta.8...desktop-v1.1.0-beta.9) (2026-10-22)
 
+### 本版内容
 
-### Features
-
-* **ci:** adopt release-please for desktop version bumps and release tags ([#250](https://github.com/Zhiman-BJ/industrial-agent-harness/issues/250)) ([5239e03](https://github.com/Zhiman-BJ/industrial-agent-harness/commit/5239e03fbe48492337ae126c1613aa5e24ac318b))
-* **viewer:** stream source-accurate 2.5D layout tiles ([#226](https://github.com/Zhiman-BJ/industrial-agent-harness/issues/226)) ([3f4e002](https://github.com/Zhiman-BJ/industrial-agent-harness/commit/3f4e002350a5d96683dbe2dc10388cdf02f781ac))
-
-
-### Bug Fixes
-
-* **runtime:** repair packaged subprocess startup and validation ([#255](https://github.com/Zhiman-BJ/industrial-agent-harness/issues/255)) ([231fcfa](https://github.com/Zhiman-BJ/industrial-agent-harness/commit/231fcfa5a95e07296554f1dc91e15f73af47ec23))
-
-
-### Miscellaneous Chores
-
-* **release:** record the 1.1.0-beta.N line in the desktop changelog ([#259](https://github.com/Zhiman-BJ/industrial-agent-harness/issues/259)) ([79e73f3](https://github.com/Zhiman-BJ/industrial-agent-harness/commit/79e73f33700c675bcaa584f4af4626aa19c2a964))
+- **发版自动化**（#250）：引入 release-please 管理版本号、更新日志与 `desktop-v*` 标签——合并机器人的 Release PR 即自动打标签、构建并发布安装包；发版流水线接入飞书群通知（发布成功含双平台下载直链、失败告警，#263/#264）。自本版起版本线为 `1.1.0-beta.N`（#259）。
+- **2.5D 布局流式渲染**（#226）：Viewer 按源数据精度流式输出 2.5D 布局瓦片，资源占用有界。
+- **打包版沙箱执行修复**（#255）：修复打包应用在任务沙箱内以 Node 模式启动即崩溃的问题——沙箱按真实路径只读放行应用安装目录、仅为绑定的 Electron 运行时注入 Node 模式、外部 Python 网关脚本移出 ASAR、SDK/桌面解释器选择修复；打包首启冒烟新增真实沙箱任务自检（Node 模式、选中输入可读、未选与沙箱外拒绝、输出可写）。
 
 ## [1.0.1-beta.8](https://github.com/Zhiman-BJ/industrial-agent-harness/compare/desktop-v1.0.1-beta.7...desktop-v1.0.1-beta.8) (2026-10-21)
 
