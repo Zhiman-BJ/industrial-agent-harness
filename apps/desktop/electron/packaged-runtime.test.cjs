@@ -191,21 +191,29 @@ function windowsFixture(t, { diagnosisError, closeError, removalError } = {}) {
   const module = { exports: {} };
   const filesystem = {
     ...fs,
-    rmSync(file, options) {
-      assert.equal(file, directory);
-      assert.equal(closed, true, 'Removal must follow the awaited service close.');
-      assert.deepEqual(
-        { ...options },
-        {
-          recursive: true,
-          force: true,
-          maxRetries: 5,
-          retryDelay: 100,
-        },
-      );
-      calls.push('remove');
-      if (removalError) throw removalError;
-      return fs.rmSync(file, options);
+    rmSync() {
+      assert.fail('Packaged fixture cleanup must use the asynchronous Windows-aware remover.');
+    },
+    promises: {
+      ...fs.promises,
+      async rm(file, options) {
+        assert.equal(file, directory);
+        assert.equal(closed, true, 'Removal must follow the awaited service close.');
+        assert.deepEqual(
+          { ...options },
+          {
+            recursive: true,
+            force: true,
+            maxRetries: 5,
+            retryDelay: 100,
+          },
+        );
+        calls.push('remove');
+        await Promise.resolve();
+        if (removalError) throw removalError;
+        await fs.promises.rm(file, options);
+        calls.push('removed');
+      },
     },
   };
   vm.runInNewContext(
@@ -220,12 +228,19 @@ function windowsFixture(t, { diagnosisError, closeError, removalError } = {}) {
     constructor(options) {
       directory = path.dirname(options.resourceDirectory);
       t.after(() =>
-        fs.rmSync(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }),
+        fs.promises.rm(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }),
       );
     }
     async diagnose() {
       calls.push('diagnose');
       if (diagnosisError) throw diagnosisError;
+      // IndustrialRuntime's CAS writes immutable artifacts with mode 0400.
+      // Exercise the same physical read-only file during fixture removal.
+      const artifacts = path.join(directory, 'state', 'artifacts');
+      fs.mkdirSync(artifacts, { recursive: true });
+      fs.writeFileSync(path.join(artifacts, 'readonly-artifact'), 'fixture evidence', {
+        mode: 0o400,
+      });
       const result = report(
         'unavailable',
         'Protected local task execution is unavailable on this platform.',
@@ -248,10 +263,10 @@ function windowsFixture(t, { diagnosisError, closeError, removalError } = {}) {
   };
 }
 
-test('Windows fixture cleanup requests bounded native EPERM retries after awaited close', async t => {
+test('Windows fixture cleanup awaits removal of read-only CAS files after service close', async t => {
   const instance = windowsFixture(t);
   assert.equal((await instance.run()).actionId, 'environment-action');
-  assert.deepEqual(instance.calls, ['diagnose', 'close', 'remove']);
+  assert.deepEqual(instance.calls, ['diagnose', 'close', 'remove', 'removed']);
   assert.equal(instance.exists(), false);
 });
 
@@ -300,6 +315,6 @@ test('a service-close failure still removes the fixture and cannot become succes
   const closeError = Error('service close failure');
   const instance = windowsFixture(t, { closeError });
   await assert.rejects(instance.run(), error => error === closeError);
-  assert.deepEqual(instance.calls, ['diagnose', 'close', 'remove']);
+  assert.deepEqual(instance.calls, ['diagnose', 'close', 'remove', 'removed']);
   assert.equal(instance.exists(), false);
 });

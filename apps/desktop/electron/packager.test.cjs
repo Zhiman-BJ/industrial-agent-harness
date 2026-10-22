@@ -6,6 +6,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const { createRequire } = require('node:module');
 const { execFileSync } = require('node:child_process');
+const { finished } = require('node:stream/promises');
 
 test('Desktop packaging retains the pinned manager when workspace discovery cannot read its manifest', t => {
   const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'desktop-pm-fallback-'));
@@ -75,7 +76,13 @@ test('the release ASAR rules unpack external Python scripts while retaining ordi
   const patterns = config.asarUnpack.map(pattern =>
     path.join(stage, pattern).split(path.sep).join('/'),
   );
-  await asar.createPackageWithOptions(stage, archive, { unpack: `{${patterns.join(',')}}` });
+  const archiveStream = await asar.createPackageWithOptions(stage, archive, {
+    unpack: `{${patterns.join(',')}}`,
+  });
+  // ASAR 3 resolves after out.end(), before pending archive writes finish.
+  // Wait for that returned stream, including write errors, before inspecting it.
+  await finished(archiveStream, { cleanup: true });
+  assert.equal(archiveStream.writableFinished, true);
   assert.equal(fs.statSync(archive).isFile(), true);
   const external = scripts.map(
     ([name, file]) => `node_modules/@industrial-agent-harness/${name}/${file}`,

@@ -176,9 +176,15 @@ async function run({ TaskService, getRegistry }) {
     errors.push(error);
   }
   try {
-    // Native recursive removal retries transient Windows EPERM with a
-    // bounded backoff; an exhausted cleanup failure still fails the smoke.
-    fs.rmSync(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    // The async remover handles Windows read-only CAS files with chmod/unlink;
+    // the bundled Node's synchronous remove_all can reject them with EPERM.
+    // Retry transient locks within a bound; exhausted cleanup still fails.
+    await fs.promises.rm(directory, {
+      recursive: true,
+      force: true,
+      maxRetries: 5,
+      retryDelay: 100,
+    });
   } catch (error) {
     errors.push(error);
   }
