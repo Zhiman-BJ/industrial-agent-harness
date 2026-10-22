@@ -70,7 +70,9 @@ test('a Docker Desktop user install is found when the PATH misses', t => {
   // their own copy; what matters is that a well-known install answered.
   assert.equal(resolved?.via, 'well-known');
   assert.ok(
-    wellKnownDockerPaths(environment).some(entry => resolved.docker === fs.realpathSync(entry)),
+    wellKnownDockerPaths(environment).some(
+      entry => fs.existsSync(entry) && resolved.docker === fs.realpathSync(entry),
+    ),
     `resolved ${resolved.docker} is not a well-known install`,
   );
 });

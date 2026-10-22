@@ -97,9 +97,73 @@ function filter() {
   });
   return bytes;
 }
-function localCommand(argv, directory, input, work, environment, task) {
+function inside(file, root) {
+  const relative = path.relative(root, file);
+  return (
+    relative === '' ||
+    (!relative.startsWith('..' + path.sep) && relative !== '..' && !path.isAbsolute(relative))
+  );
+}
+
+function runtimeInstallation(target, projectDir, runAsNode) {
+  let root;
+  if (process.platform === 'darwin') {
+    // Embedded interpreters may live under Resources or Frameworks, rather
+    // than MacOS. Resolve only the nearest enclosing canonical application.
+    for (
+      let parent = path.dirname(target);
+      parent !== path.dirname(parent);
+      parent = path.dirname(parent)
+    ) {
+      if (
+        path.basename(parent) === 'Contents' &&
+        path.basename(path.dirname(parent)).toLowerCase().endsWith('.app') &&
+        fs.statSync(path.join(parent, 'Info.plist'), { throwIfNoEntry: false })?.isFile()
+      ) {
+        root = parent;
+        break;
+      }
+    }
+  } else if (process.platform === 'linux' && runAsNode) {
+    // Electron's Linux distribution keeps shared libraries and V8 data beside
+    // the executable. Only the bound host runtime gets this implicit grant.
+    root = path.dirname(target);
+    if (!fs.statSync(path.join(root, 'icudtl.dat'), { throwIfNoEntry: false })?.isFile())
+      return null;
+    const sharedRoots = [
+      '/',
+      '/opt',
+      '/home',
+      '/usr',
+      '/usr/local',
+      '/tmp',
+      '/var/tmp',
+      os.homedir(),
+      os.tmpdir(),
+    ];
+    if (
+      sharedRoots.some(file => {
+        try {
+          return root === fs.realpathSync(file);
+        } catch {
+          return root === path.resolve(file);
+        }
+      })
+    )
+      root = null;
+  }
+  // A project-controlled bundle must not expose unselected source files.
+  // Symlink launch aliases cannot widen this grant: target is already realpath.
+  if (root && projectDir && (inside(root, projectDir) || inside(projectDir, root))) return null;
+  return root;
+}
+
+function localCommand(argv, directory, input, work, environment, task, projectDir) {
   const target = executable(argv[0], environment);
   const launchPath = executable(argv[0], environment, true);
+  const runAsNode = Boolean(
+    process.versions.electron && target === fs.realpathSync(process.execPath),
+  );
   const systemRoots =
     process.platform === 'darwin'
       ? [
@@ -157,6 +221,8 @@ function localCommand(argv, directory, input, work, environment, task) {
       roots.add(prefix);
     else roots.add(file);
   }
+  const installation = runtimeInstallation(target, projectDir, runAsNode);
+  if (installation) roots.add(installation);
   for (const dependency of task.runtime.readOnlyDirs || []) {
     const root = fs.realpathSync(dependency);
     if (!fs.statSync(root).isDirectory()) throw Error('Task dependency is not a directory.');
@@ -168,6 +234,7 @@ function localCommand(argv, directory, input, work, environment, task) {
     launchPath,
     sha256: hash(fs.readFileSync(target)),
     readOnlyRoots: [...roots],
+    ...(runAsNode ? { runAsNode: true } : {}),
   };
   if (process.platform === 'darwin' && fs.existsSync('/usr/bin/sandbox-exec')) {
     const profile = path.join(directory, 'task.sb');
@@ -180,6 +247,7 @@ function localCommand(argv, directory, input, work, environment, task) {
     return {
       argv: ['/usr/bin/sandbox-exec', '-f', profile, launchPath, ...argv.slice(1)],
       identity,
+      runAsNode,
     };
   }
   if (process.platform === 'linux') {
@@ -214,6 +282,7 @@ function localCommand(argv, directory, input, work, environment, task) {
       ],
       identity,
       seccomp,
+      runAsNode,
     };
   }
   throw Error('Protected local task execution is unavailable on this platform.');
@@ -288,7 +357,10 @@ function runProcess(argv, { cwd, env, timeoutMs, signal, seccomp }) {
     }
   });
 }
-async function executeTask(task, { directory, input, work, actionId, environment, signal }) {
+async function executeTask(
+  task,
+  { directory, input, work, actionId, environment, signal, projectDir },
+) {
   const container = task.runtime.kind === 'docker';
   const inputRoot = container ? '/inputs' : input,
     outputRoot = container ? '/work' : work;
@@ -376,10 +448,26 @@ async function executeTask(task, { directory, input, work, actionId, environment
     cleanup = () =>
       spawnSync(docker, ['rm', '--force', name], { env, timeout: 10000, stdio: 'ignore' });
   } else {
-    const local = localCommand(argv, directory, input, work, environment, task);
+    const project =
+      projectDir ||
+      (path.basename(path.dirname(directory)) === '.harness-runs'
+        ? path.resolve(directory, '..', '..')
+        : null);
+    const local = localCommand(
+      argv,
+      directory,
+      input,
+      work,
+      environment,
+      task,
+      project ? fs.realpathSync(project) : null,
+    );
     command = local.argv;
     identity = local.identity;
     seccomp = local.seccomp;
+    // Set this only for the current, bound Electron runtime. Arbitrary task
+    // environment variables remain filtered, including NODE_OPTIONS and secrets.
+    if (local.runAsNode) env.ELECTRON_RUN_AS_NODE = '1';
   }
   try {
     const result = await runProcess(command, {

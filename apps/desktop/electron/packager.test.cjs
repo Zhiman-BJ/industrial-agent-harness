@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { createRequire } = require('node:module');
 const { execFileSync } = require('node:child_process');
 
 test('Desktop packaging retains the pinned manager when workspace discovery cannot read its manifest', t => {
@@ -31,4 +32,77 @@ test('Desktop packaging retains the pinned manager when workspace discovery cann
   const managers = JSON.parse(output.trim().split('\n').at(-1));
   assert.equal(managers.before, 'npm');
   assert.equal(managers.after, require('../../../package.json').packageManager.split('@')[0]);
+});
+
+test('the release ASAR rules unpack external Python scripts while retaining ordinary modules', async t => {
+  const root = path.resolve(__dirname, '../../..');
+  const desktopRequire = createRequire(path.join(root, 'apps/desktop/package.json'));
+  const builderRequire = createRequire(desktopRequire.resolve('electron-builder'));
+  const libRequire = createRequire(builderRequire.resolve('app-builder-lib'));
+  const asar = libRequire('@electron/asar');
+  const config = require('../../../electron-builder.config.cjs');
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'desktop-asar-scripts-'));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const stage = path.join(directory, 'stage');
+  const archive = path.join(directory, 'app.asar');
+  const scripts = [
+    ['viewer-builtin', 'src/layout/layout.py'],
+    ['viewer-builtin', 'src/layout/layout_themes.py'],
+    ['domain-mcp', 'src/gateway.py'],
+  ];
+  const modules = [
+    ['viewer-builtin', 'src/layout/raster.cjs'],
+    ['domain-mcp', 'src/gateway.cjs'],
+  ];
+  const files = new Map(
+    [...scripts, ...modules].map(([name, file]) => [
+      `node_modules/@industrial-agent-harness/${name}/${file}`,
+      fs.readFileSync(path.join(root, 'packages', name, file)),
+    ]),
+  );
+  // Similar filenames outside the declared rules must remain in the archive.
+  files.set(
+    'node_modules/@industrial-agent-harness/domain-mcp/src/other.py',
+    Buffer.from('# unrelated Python script\n'),
+  );
+  files.set('node_modules/other-package/gateway.py', Buffer.from('# another package\n'));
+  for (const [relative, bytes] of files) {
+    const file = path.join(stage, relative);
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, bytes);
+  }
+  const patterns = config.asarUnpack.map(pattern =>
+    path.join(stage, pattern).split(path.sep).join('/'),
+  );
+  await asar.createPackageWithOptions(stage, archive, { unpack: `{${patterns.join(',')}}` });
+  assert.equal(fs.statSync(archive).isFile(), true);
+  const external = scripts.map(
+    ([name, file]) => `node_modules/@industrial-agent-harness/${name}/${file}`,
+  );
+  const physical = [];
+  for (const [relative, bytes] of files) {
+    const file = path.join(archive + '.unpacked', relative);
+    if (external.includes(relative)) {
+      assert.equal(asar.statFile(archive, relative).unpacked, true, relative);
+      assert.deepEqual(fs.readFileSync(file), bytes);
+      physical.push(file);
+    } else {
+      assert.notEqual(asar.statFile(archive, relative).unpacked, true, relative);
+      assert.equal(fs.existsSync(file), false, relative);
+      assert.deepEqual(asar.extractFile(archive, relative), bytes);
+    }
+  }
+  const output = execFileSync(
+    process.execPath,
+    [
+      '-e',
+      'const fs=require("node:fs"); console.log(JSON.stringify(JSON.parse(process.argv[1]).map(file=>fs.readFileSync(file).toString("base64"))));',
+      JSON.stringify(physical),
+    ],
+    { encoding: 'utf8', timeout: 10000, windowsHide: true },
+  );
+  assert.deepEqual(
+    JSON.parse(output),
+    external.map(relative => files.get(relative).toString('base64')),
+  );
 });

@@ -304,6 +304,7 @@ function createWorkspacePlugin({
           let execution;
           try {
             execution = await executeTask(task, {
+              projectDir,
               directory,
               input,
               work,

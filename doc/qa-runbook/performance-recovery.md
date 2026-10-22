@@ -25,6 +25,14 @@ pnpm --filter @industrial-agent-harness/desktop test:parallel
 - T2 parallel 用受控 SDK 会话操作真实 Renderer/IPC，覆盖聊天/项目频繁切换、旧历史延迟、Renderer reload、后台审批与关闭；新增在会话完成后调用 `forcefullyCrashRenderer()`，确认 `render-process-gone` 和原 main 存活，崩溃期间仍能从主进程读取同一历史；再由**测试显式 reload**，检查历史/终态不重复、不复活旧审批或 Stop，恢复后可运行新任务。它验证该隔离场景的手动恢复路径，不证明产品自动检测并自愈，也不覆盖所有在途任务阶段；UI 布局断言不是帧率 benchmark。
 - 不存在本页可直接调用的“全应用崩溃恢复”或“首个可用画面时延”测试脚本；下面这些项须手工采集并明确缺口。
 
+### 打包版受保护本地探针
+
+`node scripts/smoke-packaged-desktop.cjs` 在真实安装包的 Electron main 中，经共享 `TaskService.diagnose` 执行 `project.environment.inspect`，使用独立临时工程、配置和事实存储，关闭 Runtime 后清理。macOS 必须取得带 Action ID 的环境报告，且 `protected local execution` 为 `ready`、含 `HARNESS_PROTECTED_TASK_READY`；不能只看报告顶层 `ready`，因为空工程的本地探针属于可选检查，失败时顶层仍可能为真。该结果写入 `desktop-first-run.json`（`--domains` 模式为 `desktop-domain-install.json`）的 `packagedLocalExecution`。Windows 仍要求正确返回明确的本地任务不可用原因，不扩大平台资格。
+
+同一 macOS smoke 还在临时工程声明固定的 Electron-as-Node 任务，经共享 Runtime 的审批、输入快照、执行、独立 checks-json Verifier 路径完成。必须保留 canonical Action、execution/check artifact 身份与 `passed` 验证；五项断言检查 Node 模式、选中输入可读、未选中项目文件拒读、外部测试文件拒读、输出目录可写。执行身份必须仅开放应用的 `Contents`，不能扩大为 `.app` 根或其父目录。测试不改写安装包文件；普通首页 ready、源码 Node 测试不能代替这条 Framework/Node 模式打包回归。
+
+这两项检查用于覆盖 beta.7 的 DYLD/SIGABRT 启动崩溃及修复后的任务边界。macOS 验收同时保留应用版本/源码 SHA、可执行文件路径、报告及 stderr，确认没有新增对应子进程崩溃报告；若出现崩溃，按 PF-09 保留 OS 报告与父子 PID，分别判断主进程、Renderer 和探针。只读应用依赖的写保护等完整边界仍需独立执行 Runtime 测试。当前 Linux 环境不能证明 macOS 安装包已通过，须在目标平台实际运行命令后记录结果。
+
 展示函数的旧版对照可指定源码目录，该目录必须同时包含 `agent-events.ts` 与 `chat-history.ts`（例如目标版本的 `apps/desktop/src`）；不传参数默认当前工作区这两份源码：
 
 ```sh

@@ -1964,6 +1964,11 @@ async function createWindow() {
   }
   if (process.argv.includes('--packaged-smoke')) {
     if (!app.isPackaged) throw Error('Packaged smoke requires an installed app.');
+    const packagedLocalExecution = await require('./packaged-runtime-selftest.cjs').run({
+      TaskService,
+      getRegistry: currentRegistry,
+    });
+    console.log(JSON.stringify({ packagedLocalExecution }));
     await require('./selftest-language.cjs').setLanguage(window, 'en');
     async function waitFor(script, timeout = 15000) {
       const end = Date.now() + timeout;

@@ -124,7 +124,7 @@ if (process.argv.includes('--domains')) {
 }
 const result = spawnSync(executable, ['--packaged-smoke'], {
   encoding: 'utf8',
-  timeout: process.argv.includes('--domains') ? 30 * 60 * 1000 : 30000,
+  timeout: process.argv.includes('--domains') ? 30 * 60 * 1000 : 60000,
   env: environment,
 });
 if (fixture) fs.rmSync(fixture, { recursive: true, force: true });
@@ -145,6 +145,20 @@ const firstRun = result.stdout.split('\n').flatMap(line => {
     return [];
   }
 })[0];
+const packagedLocalExecution = result.stdout.split('\n').flatMap(line => {
+  try {
+    const value = JSON.parse(line);
+    return value.packagedLocalExecution ? [value.packagedLocalExecution] : [];
+  } catch {
+    return [];
+  }
+})[0];
+require('../apps/desktop/electron/packaged-runtime-selftest.cjs').verify(
+  packagedLocalExecution,
+  process.platform,
+  process.arch,
+  fs.realpathSync(executable),
+);
 require('node:assert/strict').deepEqual(
   firstRun?.firstRunDomains,
   require('@zhiman-bj/industrial-domain-packs')
@@ -163,6 +177,7 @@ fs.writeFileSync(
   JSON.stringify(
     {
       ...firstRun,
+      packagedLocalExecution,
       layout,
       screenshot,
       executable,
@@ -175,6 +190,7 @@ fs.writeFileSync(
     2,
   ),
 );
+process.stdout.write(JSON.stringify({ packagedLocalExecution }) + '\n');
 process.stdout.write(
   `${process.argv.includes('--domains') ? 'Domain installation and prerequisite checks passed' : 'First-run Domain selection passed'}: ${screenshot}\n`,
 );
