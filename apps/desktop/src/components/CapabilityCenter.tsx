@@ -14,6 +14,7 @@ export function CapabilityCenter({
   busy,
   initialSection,
   returnPage,
+  lightsGap = false,
   onDomainsChanged,
   onResourcesChanged,
   onExit,
@@ -22,6 +23,7 @@ export function CapabilityCenter({
   busy: boolean;
   initialSection: CapabilitySection;
   returnPage: 'chat' | 'project';
+  lightsGap?: boolean;
   onDomainsChanged: (domains: DomainOption[]) => void;
   onResourcesChanged: () => void;
   onExit: () => void;
@@ -114,7 +116,7 @@ export function CapabilityCenter({
   ];
   return (
     <div className="ia-capability">
-      <header className="ia-capability-header">
+      <header className={`ia-capability-header${lightsGap ? ' ia-lights-gap' : ''}`}>
         <button
           className="ia-icon"
           onClick={onExit}

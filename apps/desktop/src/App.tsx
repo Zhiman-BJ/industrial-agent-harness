@@ -1888,6 +1888,7 @@ export function App() {
                   busy={runningSessions.some(session => session.running)}
                   initialSection={capabilitySection}
                   returnPage={capabilityReturn}
+                  lightsGap={!sidebarVisible && !tabbed && window.viewerHost?.platform === 'darwin'}
                   onDomainsChanged={items => {
                     setDomains(items);
                     resourcesChanged();
