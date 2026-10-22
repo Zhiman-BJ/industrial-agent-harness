@@ -9,6 +9,8 @@
 * {
   box-sizing: border-box;
 }
+/* Transparent surface strokes preserve layout and hit targets. Content rules,
+   semantic states and keyboard focus keep their own visible feedback. */
 html,
 body,
 #root {
@@ -113,7 +115,7 @@ body,
 .ia-topbar {
   height: 47px;
   flex-shrink: 0;
-  border-bottom: 1px solid var(--ia-border);
+  border-bottom: 1px solid transparent;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -172,7 +174,7 @@ body,
   position: relative;
   flex: 0 0 235px;
   background: var(--ia-panel);
-  border-right: 1px solid var(--ia-border);
+  border-right: 1px solid transparent;
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -243,7 +245,7 @@ body,
   font-size: 11px !important;
 }
 .ia-tree-bottom {
-  border-top: 1px solid var(--ia-border);
+  border-top: 1px solid transparent;
   padding: 9px;
 }
 .ia-settings-button {
@@ -283,7 +285,7 @@ body,
 }
 .ia-settings-group {
   padding-block: 8px;
-  border-top: 1px solid var(--ia-border);
+  border-top: 1px solid transparent;
 }
 .ia-settings-row {
   display: flex;
@@ -302,14 +304,14 @@ body,
   display: flex;
   gap: 6px;
   align-items: center;
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   min-height: 32px;
   padding: 6px 10px;
   font-size: 12px;
   flex-shrink: 0;
 }
 .ia-settings-note {
-  border-top: 1px solid var(--ia-border);
+  border-top: 1px solid transparent;
   padding: 9px 3px 2px;
   font-size: 10px;
   color: var(--ia-muted);
@@ -351,7 +353,7 @@ body,
 }
 .ia-chat-header {
   height: var(--ia-header-height);
-  border-bottom: 1px solid var(--ia-border);
+  border-bottom: 1px solid transparent;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -435,7 +437,7 @@ body,
 }
 .ia-suggestions button {
   font-size: 11px;
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   padding: 7px 10px;
 }
 .ia-user-entry {
@@ -526,7 +528,7 @@ body,
 .ia-agent-flow {
   margin: 0 0 22px;
   padding: 0 0 18px;
-  border-bottom: 1px solid var(--ia-border);
+  border-bottom: 1px solid transparent;
 }
 .ia-broker-message > p,
 .ia-detail-message p {
@@ -548,7 +550,7 @@ body,
 }
 .ia-detail-message {
   background: var(--ia-code);
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   padding: 13px;
   border-radius: 7px;
 }
@@ -585,7 +587,7 @@ body,
   gap: 6px;
 }
 .ia-app .ia-flow-error-actions button {
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   border-radius: 6px;
   padding: 4px 10px;
   font-size: 11px;
@@ -624,9 +626,10 @@ body,
   padding: 3px 0 0;
 }
 .ia-approval {
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   padding: 12px;
   border-radius: 7px;
+  background: var(--ia-panel);
 }
 .ia-approval-preview {
   max-height: 320px;
@@ -637,12 +640,12 @@ body,
   font-size: 12px;
 }
 .ia-approval button {
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   margin-right: 6px;
   padding: 6px 9px;
 }
 .ia-debug-flow details {
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   border-radius: 5px;
   margin: 8px 0;
   font-size: 10px;
@@ -674,12 +677,12 @@ body,
   border-top: 0;
 }
 .ia-composer {
-  border: 1px solid var(--ia-control-border);
+  border: 1px solid transparent;
   border-radius: 14px;
   box-shadow: none;
   background: var(--ia-raised);
   padding: 14px;
-  transition: border-color 160ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition: outline-color 160ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 .ia-composer textarea {
   width: 100%;
@@ -720,7 +723,7 @@ body,
   flex: none;
   color: var(--ia-muted);
   background: var(--ia-panel);
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   border-radius: 6px;
   padding: 4px 6px;
   font: inherit;
@@ -757,7 +760,7 @@ body,
   gap: 5px;
   flex: none;
   color: var(--ia-muted);
-  border-left: 1px solid var(--ia-border);
+  border-left: 1px solid transparent;
   padding-left: 8px;
 }
 .ia-model-pill .ia-model-pill-bar {
@@ -786,7 +789,7 @@ body,
 .ia-context-select select {
   appearance: none;
   background: transparent;
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   border-radius: 5px;
   padding: 5px 9px;
   font-size: 10px;
@@ -850,7 +853,7 @@ body,
   min-width: 420px;
   display: flex;
   flex-direction: column;
-  border-left: 1px solid var(--ia-border);
+  border-left: 1px solid transparent;
   background: var(--ia-bg);
 }
 .ia-viewer-header {
@@ -860,7 +863,7 @@ body,
   align-items: center;
   justify-content: space-between;
   padding: 0 12px 0 16px;
-  border-bottom: 1px solid var(--ia-border);
+  border-bottom: 1px solid transparent;
 }
 .ia-viewer-header > div {
   display: flex;
@@ -886,7 +889,7 @@ body,
   align-items: center;
   gap: 2px;
   padding: 0 10px;
-  border-bottom: 1px solid var(--ia-border);
+  border-bottom: 1px solid transparent;
 }
 .ia-viewer-tabs button {
   height: 42px;
@@ -993,7 +996,7 @@ body,
 .ia-tool-detail {
   margin: 3px 0 8px 12px;
   padding-left: 11px;
-  border-left: 1px solid var(--ia-border);
+  border-left: 1px solid transparent;
 }
 .ia-agent-tool pre {
   margin: 0 0 6px;
@@ -1059,7 +1062,7 @@ body,
   justify-content: space-between;
   align-items: flex-start;
   padding: 20px 22px;
-  border-bottom: 1px solid var(--ia-border);
+  border-bottom: 1px solid transparent;
   flex-shrink: 0;
 }
 .ia-model-modal h2 {
@@ -1099,8 +1102,8 @@ body,
 .ia-model-fields input,
 .ia-model-fields select {
   width: 100%;
-  border: 1px solid var(--ia-border);
-  background: var(--ia-bg);
+  border: 1px solid transparent;
+  background: var(--ia-panel);
   border-radius: 6px;
   padding: 9px 10px;
   min-height: 36px;
@@ -1149,7 +1152,7 @@ body,
   align-items: center;
   gap: 7px;
   padding: 13px 22px 18px;
-  border-top: 1px solid var(--ia-border);
+  border-top: 1px solid transparent;
   flex-shrink: 0;
   flex-wrap: wrap;
 }
@@ -1157,7 +1160,7 @@ body,
   flex: 1;
 }
 .ia-model-modal > footer button {
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   padding: 8px 12px;
   min-height: 34px;
   font-size: 12px;
@@ -1174,7 +1177,7 @@ body,
 .ia-sidebar {
   flex: 0 0 256px;
   background: var(--ia-sidebar);
-  border-right: 1px solid var(--ia-border);
+  border-right: 1px solid transparent;
 }
 .ia-sidebar-chrome {
   height: var(--ia-header-height);
@@ -1242,7 +1245,7 @@ body,
   margin-left: auto;
 }
 .ia-sidebar .ia-tree-bottom {
-  border-top: 1px solid var(--ia-border);
+  border-top: 1px solid transparent;
 }
 .ia-chat {
   min-width: 280px;
@@ -1308,8 +1311,8 @@ body,
   border-radius: 14px;
   box-shadow: none;
   padding: 0;
-  border: 1px solid var(--ia-control-border);
-  transition: border-color 160ms cubic-bezier(0.16, 1, 0.3, 1);
+  border: 1px solid transparent;
+  transition: outline-color 160ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 .ia-composer textarea {
   font-size: var(--ia-font-body);
@@ -1327,11 +1330,12 @@ body,
 }
 .ia-context-override {
   margin: 12px 0;
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   border-radius: 7px;
   padding: 8px 10px;
   font-size: 11px;
   color: var(--ia-muted);
+  background: var(--ia-panel);
 }
 .ia-context-override summary {
   cursor: pointer;
@@ -1343,7 +1347,7 @@ body,
   padding-top: 9px;
 }
 .ia-context-override button {
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   padding: 4px 7px;
   font-size: 10px;
 }
@@ -1351,7 +1355,7 @@ body,
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   border-radius: 999px;
   background: var(--ia-raised);
   padding: 5px 9px;
@@ -1362,11 +1366,11 @@ body,
 .ia-domain-lock {
   font-size: 9px;
   color: var(--ia-muted);
-  border-left: 1px solid var(--ia-border);
+  border-left: 1px solid transparent;
   padding-left: 6px;
 }
 .ia-app .ia-domain-pill {
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   border-radius: 999px;
   background: var(--ia-raised);
   color: var(--ia-text);
@@ -1414,7 +1418,7 @@ body,
   display: flex;
   align-items: center;
   padding: 0 15px;
-  border-bottom: 1px solid var(--ia-border);
+  border-bottom: 1px solid transparent;
   font-size: var(--ia-font-sm);
   color: var(--ia-muted);
   overflow: hidden;
@@ -1463,7 +1467,7 @@ body,
 .ia-workspace-tree {
   width: 176px;
   flex: 0 0 176px;
-  border-left: 1px solid var(--ia-border);
+  border-left: 1px solid transparent;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -1627,7 +1631,7 @@ body,
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   border-radius: 999px;
   padding: 2px 5px;
   background: var(--ia-raised);
@@ -1650,7 +1654,7 @@ body,
   gap: 8px;
   min-height: 37px;
   padding: 8px 10px;
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   border-radius: 6px;
   background: var(--ia-bg);
   text-align: left;
@@ -1685,14 +1689,14 @@ body,
   margin: 0 0 34px;
 }
 .ia-project-properties {
-  border-top: 1px solid var(--ia-border);
+  border-top: 1px solid transparent;
 }
 .ia-project-property {
   display: grid;
   grid-template-columns: 128px minmax(0, 1fr);
   gap: 16px;
   padding: 16px 0;
-  border-bottom: 1px solid var(--ia-border);
+  border-bottom: 1px solid transparent;
   align-items: center;
   font-size: 13px;
 }
@@ -1731,14 +1735,14 @@ body,
   min-width: 0;
   width: 180px;
   max-width: 220px;
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   border-radius: 7px;
   background: var(--ia-raised);
   padding: 8px 10px;
   font-size: 12px;
 }
 .ia-app .ia-project-domain-edit button {
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   padding: 8px 12px;
   min-height: 34px;
   font-size: 12px;
@@ -1790,7 +1794,7 @@ body,
   gap: 12px;
   margin-top: 8px;
   padding-top: 16px;
-  border-top: 1px solid var(--ia-border);
+  border-top: 1px solid transparent;
   font-size: 12px;
 }
 .ia-create-domains-guide > div {
@@ -1808,7 +1812,7 @@ body,
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   padding: 8px 10px;
   font-size: 12px;
 }
@@ -1821,7 +1825,7 @@ body,
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   border-radius: 999px;
   background: var(--ia-raised);
   padding: 7px 12px;
@@ -1856,7 +1860,7 @@ body,
   gap: 6px;
 }
 .ia-app .ia-broker-context button {
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   padding: 5px 8px;
   font-size: 10px;
 }
@@ -1892,7 +1896,7 @@ body,
   margin-bottom: 6px;
 }
 .ia-broker-trace details {
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   border-radius: 5px;
   margin: 5px 0;
 }
@@ -1909,7 +1913,7 @@ body,
 }
 .ia-project-resources {
   margin-top: 28px;
-  border-top: 1px solid var(--ia-border);
+  border-top: 1px solid transparent;
   padding-top: 24px;
 }
 .ia-project-resources h2 {
@@ -1935,7 +1939,7 @@ body,
   justify-content: space-between;
   gap: 12px;
   padding: 10px 0;
-  border-bottom: 1px solid var(--ia-border);
+  border-bottom: 1px solid transparent;
   font-size: 12px;
 }
 .ia-project-resources label span {
@@ -1964,7 +1968,7 @@ body,
   flex-shrink: 0;
 }
 .ia-resource-tools {
-  border-bottom: 1px solid var(--ia-border);
+  border-bottom: 1px solid transparent;
   padding: 8px 0 12px;
 }
 .ia-resource-tools summary {
@@ -1981,7 +1985,7 @@ body,
 }
 .ia-resource-tools li {
   padding: 10px 12px;
-  border-top: 1px solid var(--ia-border);
+  border-top: 1px solid transparent;
   font-size: 11px;
   overflow-wrap: anywhere;
 }
@@ -2077,7 +2081,7 @@ body,
   max-height: none;
   margin: auto;
   padding: 0;
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   border-radius: 14px;
   background: var(--ia-bg);
   color: var(--ia-text);
@@ -2096,7 +2100,7 @@ body,
   align-items: center;
   justify-content: space-between;
   padding: 18px 22px;
-  border-bottom: 1px solid var(--ia-border);
+  border-bottom: 1px solid transparent;
   flex-shrink: 0;
 }
 .ia-agent-log h2 {
@@ -2122,7 +2126,7 @@ body,
 }
 .ia-log-runs {
   overflow: auto;
-  border-right: 1px solid var(--ia-border);
+  border-right: 1px solid transparent;
   background: var(--ia-panel);
 }
 .ia-log-section-title {
@@ -2132,12 +2136,12 @@ body,
   gap: 8px;
   padding: 15px 18px;
   font-size: 13px;
-  border-bottom: 1px solid var(--ia-border);
+  border-bottom: 1px solid transparent;
 }
 .ia-log-section-title button {
   font-size: 11px;
   padding: 4px 7px;
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
 }
 .ia-log-runs > button {
   display: flex;
@@ -2148,7 +2152,7 @@ body,
   width: 100%;
   padding: 16px 14px;
   border-radius: 0;
-  border-bottom: 1px solid var(--ia-border);
+  border-bottom: 1px solid transparent;
 }
 .ia-log-runs time {
   font-size: 11px;
@@ -2179,7 +2183,7 @@ body,
   align-items: center;
   gap: 8px;
   padding: 10px 18px;
-  border-bottom: 1px solid var(--ia-border);
+  border-bottom: 1px solid transparent;
   flex-shrink: 0;
 }
 .ia-log-tabs button {
@@ -2209,7 +2213,7 @@ body,
   gap: 7px;
   padding: 12px 18px;
   font-size: 12px;
-  border-bottom: 1px solid var(--ia-border);
+  border-bottom: 1px solid transparent;
   flex-shrink: 0;
 }
 .ia-log-run-info small {
@@ -2225,7 +2229,7 @@ body,
 .ia-log-events {
   display: flex;
   flex-direction: column;
-  border-right: 1px solid var(--ia-border);
+  border-right: 1px solid transparent;
   min-width: 0;
   min-height: 0;
 }
@@ -2234,7 +2238,7 @@ body,
   display: flex;
   flex-direction: column;
   gap: 10px;
-  border-bottom: 1px solid var(--ia-border);
+  border-bottom: 1px solid transparent;
 }
 .ia-log-filters label {
   font-size: 11px;
@@ -2246,7 +2250,7 @@ body,
 .ia-log-filters input,
 .ia-log-filters select {
   width: 100%;
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   background: var(--ia-raised);
   color: var(--ia-text);
   padding: 9px 10px;
@@ -2264,7 +2268,7 @@ body,
   text-align: left;
   padding: 15px 18px;
   border-radius: 0;
-  border-bottom: 1px solid var(--ia-border);
+  border-bottom: 1px solid transparent;
 }
 .ia-log-records button > span {
   display: flex;
@@ -2289,7 +2293,7 @@ body,
   display: grid;
   place-items: center;
   background: var(--ia-panel);
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   border-radius: 7px;
   font-size: 10px;
   color: var(--ia-muted);
@@ -2348,7 +2352,7 @@ body,
   align-items: center;
   gap: 8px;
   padding: 10px 18px;
-  border-top: 1px solid var(--ia-border);
+  border-top: 1px solid transparent;
   flex-wrap: wrap;
   font-size: 10px;
   color: var(--ia-muted);
@@ -2357,7 +2361,7 @@ body,
   margin-right: auto;
 }
 .ia-agent-log footer button {
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   padding: 5px 8px;
   font-size: 11px;
 }
@@ -2385,7 +2389,7 @@ body,
 }
 .ia-log-detail details {
   margin: 12px 18px;
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   border-radius: 7px;
   overflow: hidden;
 }
@@ -2418,7 +2422,7 @@ body,
 }
 .ia-log-detail > .ia-log-tool-content {
   margin: 15px 18px;
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   border-radius: 7px;
 }
 .ia-log-source-events > summary {
@@ -2451,7 +2455,7 @@ body,
   flex-wrap: wrap;
 }
 .ia-log-related button {
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   padding: 7px 9px;
   font-size: 11px;
   color: var(--rp-blue);
@@ -2461,7 +2465,7 @@ body,
 }
 .ia-log-note {
   padding: 10px 22px;
-  border-top: 1px solid var(--ia-border);
+  border-top: 1px solid transparent;
   flex-shrink: 0;
 }
 .ia-agent-log button:focus-visible,
@@ -2490,7 +2494,7 @@ body,
   width: min(650px, calc(100vw - 48px));
   max-height: calc(100vh - 64px);
   padding: 24px;
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   border-radius: 14px;
   background: var(--ia-raised);
   color: var(--ia-text);
@@ -2518,14 +2522,14 @@ body,
 .ia-project-resources select {
   max-width: 180px;
   padding: 6px 8px;
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   border-radius: 6px;
   color: var(--ia-text);
   background: var(--ia-raised);
 }
 .ia-external-mcp {
   margin-top: 24px;
-  border-top: 1px solid var(--ia-border);
+  border-top: 1px solid transparent;
   padding-top: 4px;
 }
 .ia-external-server {
@@ -2534,7 +2538,7 @@ body,
   align-items: center;
   gap: 12px;
   padding: 12px 0;
-  border-bottom: 1px solid var(--ia-border);
+  border-bottom: 1px solid transparent;
 }
 .ia-external-server > div:first-child {
   display: grid;
@@ -2552,7 +2556,7 @@ body,
   flex-shrink: 0;
 }
 .ia-external-mcp button {
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   border-radius: 6px;
   background: var(--ia-raised);
   color: var(--ia-text);
@@ -2585,9 +2589,9 @@ body,
   width: 100%;
   max-width: none;
   padding: 8px 10px;
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   border-radius: 6px;
-  background: var(--ia-bg);
+  background: var(--ia-panel);
   color: var(--ia-text);
   font: inherit;
   font-size: 12px;
@@ -2608,7 +2612,7 @@ body,
 .ia-project-chats {
   margin: 2px 9px 6px 21px;
   padding-left: 7px;
-  border-left: 1px solid var(--ia-border);
+  border-left: 1px solid transparent;
 }
 .ia-project-list .ia-project-chats button {
   width: calc(100% - 6px);
@@ -2643,7 +2647,7 @@ body,
   position: relative;
   margin: 0;
   width: 95px;
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   border-radius: 7px;
   overflow: hidden;
   background: var(--ia-panel);
@@ -2667,7 +2671,7 @@ body,
   top: 3px;
   padding: 2px;
   background: var(--ia-raised);
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
 }
 .ia-image-model-hint {
   font-size: 11px;
@@ -2720,7 +2724,7 @@ body,
   display: grid;
   gap: 2px;
   background: var(--ia-raised);
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   border-radius: 10px;
   box-shadow: 0 6px 22px rgba(0, 0, 0, 0.18);
 }
@@ -2766,7 +2770,7 @@ body,
   display: block;
   margin: 12px auto;
   padding: 6px 12px;
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   border-radius: 6px;
   background: transparent;
   color: inherit;
@@ -2779,6 +2783,7 @@ body,
   color: var(--ia-accent);
   font-size: 9px;
   white-space: nowrap;
+  background: var(--ia-panel);
 }
 
 .ia-session-running {
@@ -2793,12 +2798,13 @@ body,
 }
 .ia-project-running {
   padding: 1px 4px;
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   border-radius: 7px;
+  background: var(--ia-panel);
 }
 .ia-settings-row select {
   max-width: 145px;
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   background: var(--ia-panel);
   color: var(--ia-text);
   border-radius: 5px;
@@ -2807,11 +2813,12 @@ body,
   font-size: 12px;
 }
 .ia-question {
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   border-radius: 7px;
   padding: 12px;
   margin: 8px 0;
   font-size: 12px;
+  background: var(--ia-panel);
 }
 .ia-question > b {
   display: block;
@@ -2819,7 +2826,7 @@ body,
 }
 .ia-question fieldset {
   border: 0;
-  border-top: 1px solid var(--ia-border);
+  border-top: 1px solid transparent;
   padding: 10px 0;
   margin: 0;
 }
@@ -2850,13 +2857,13 @@ body,
   color: var(--ia-muted);
 }
 .ia-question > button {
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   padding: 6px 10px;
   border-radius: 5px;
 }
 .ia-question > fieldset > input {
   width: 100%;
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   border-radius: 5px;
   background: var(--ia-panel);
   color: var(--ia-text);
@@ -2881,6 +2888,7 @@ body,
 .ia-project-running {
   grid-column: 3;
   grid-row: 1;
+  background: var(--ia-panel);
 }
 .ia-project-list .ia-project-domain-badge {
   grid-column: 2 / -1;
@@ -2962,10 +2970,9 @@ body,
   background: var(--ia-accent);
   opacity: 0.88;
 }
-.ia-composer:focus-within {
-  border-color: var(--ia-accent);
-  outline: 1px solid var(--ia-accent);
-  outline-offset: 3px;
+.ia-composer:has(textarea:focus) {
+  outline: 2px solid var(--ia-control-border);
+  outline-offset: 0;
 }
 .ia-composer-shortcuts {
   display: inline-flex;
@@ -2980,7 +2987,7 @@ body,
   font-family: inherit;
   font-size: 10px;
   padding: 1px 4px;
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   border-radius: 4px;
   line-height: 1.3;
 }
@@ -3201,7 +3208,7 @@ body,
   max-width: 100%;
   margin: 1em 0;
   padding: 12px 14px;
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   border-radius: 8px;
   background: var(--ia-code);
   overflow: auto;
@@ -3217,7 +3224,7 @@ body,
   max-width: 100%;
   overflow: auto;
   margin: 1em 0;
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   border-radius: 8px;
 }
 .ia-markdown table {
@@ -3255,9 +3262,10 @@ body,
   gap: 8px;
 }
 .ia-subagent-card {
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   border-radius: 8px;
   margin: 8px 0;
+  background: var(--ia-panel);
 }
 .ia-subagent-card > summary {
   display: flex;
@@ -3325,7 +3333,7 @@ body,
   border-color: var(--ia-danger);
 }
 .ia-subagent-content {
-  border-top: 1px solid var(--ia-border);
+  border-top: 1px solid transparent;
   padding: 8px 12px;
   overflow-wrap: anywhere;
 }
@@ -3344,10 +3352,13 @@ body,
   content: '';
   position: absolute;
   inset: 0 2px;
-  background: var(--ia-border);
+  background: transparent;
 }
 .ia-workspace-divider:hover::after,
 .ia-workspace-divider:focus-visible::after {
+  background: var(--ia-accent);
+}
+.ia-workspace-divider:active::after {
   background: var(--ia-accent);
 }
 .ia-workspace-divider:focus-visible {
@@ -3398,7 +3409,7 @@ body,
   padding: 6px 10px;
   min-height: 52px;
   background: var(--ia-panel);
-  border-bottom: 1px solid var(--ia-border);
+  border-bottom: 1px solid transparent;
 }
 .ia-tabs {
   display: flex;
@@ -3468,7 +3479,7 @@ body,
   flex-shrink: 0;
 }
 .ia-workspace > .ia-tabs {
-  border-bottom: 1px solid var(--ia-border);
+  border-bottom: 1px solid transparent;
   padding: 4px 8px;
   background: var(--ia-panel);
 }
@@ -3576,10 +3587,11 @@ body,
 /* Built-in remote execution: one project choice, bounded consent, compact task state. */
 .ia-remote-service,
 .ia-project-execution {
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   border-radius: 12px;
   padding: 18px;
   margin: 20px 0;
+  background: var(--ia-panel);
 }
 .ia-remote-heading {
   display: flex;
@@ -3596,7 +3608,7 @@ body,
   min-height: 34px;
   margin: 8px 8px 0 0;
   padding: 6px 12px;
-  border: 1px solid var(--ia-control-border);
+  border: 1px solid transparent;
   border-radius: 7px;
   font-size: 12px;
 }
@@ -3684,7 +3696,7 @@ body,
   min-height: 36px;
   max-width: min(100%, 360px);
   padding: 7px 14px;
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   border-radius: 999px;
   background: var(--ia-raised);
   color: var(--ia-muted);
@@ -3707,8 +3719,8 @@ body,
   width: 100%;
   min-width: 0;
   max-height: min(36vh, 320px);
-  background: var(--ia-raised);
-  border: 1px solid var(--ia-border);
+  background: var(--ia-panel);
+  border: 1px solid transparent;
   border-radius: 12px;
   overflow: hidden;
 }
@@ -3718,7 +3730,7 @@ body,
   gap: 8px;
   flex-shrink: 0;
   padding: 8px 8px 8px 16px;
-  border-bottom: 1px solid var(--ia-border);
+  border-bottom: 1px solid transparent;
 }
 .ia-status-card-head h2 {
   flex: 1;
@@ -3735,7 +3747,7 @@ body,
   scrollbar-color: var(--ia-control-border) transparent;
 }
 .ia-status-block + .ia-status-block {
-  border-top: 1px solid var(--ia-border);
+  border-top: 1px solid transparent;
 }
 .ia-app .ia-status-head {
   display: grid;
@@ -3875,7 +3887,7 @@ body,
   margin: 4px 0 0;
   padding: 8px 10px;
   overflow: auto;
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   border-radius: 6px;
   font-size: 11px;
   line-height: 1.5;
@@ -3971,6 +3983,7 @@ body,
   }
   .ia-status-card {
     max-height: 100%;
+    background: var(--ia-panel);
   }
   .ia-chat:has(.ia-status-dock.open:not([hidden])) .ia-chat-scroll,
   .ia-chat:has(.ia-status-dock.open:not([hidden])) .ia-composer-wrap {
@@ -4060,7 +4073,7 @@ body,
   border-top-color: transparent;
 }
 .ia-chat {
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   border-radius: 14px;
   overflow: hidden;
 }
@@ -4068,7 +4081,7 @@ body,
   border-radius: 14px 0 0 14px;
 }
 .ia-chat-header {
-  border-bottom: 1px solid var(--ia-border);
+  border-bottom: 1px solid transparent;
   padding-inline: 16px;
 }
 .ia-chat-header b {
@@ -4109,16 +4122,18 @@ body,
 }
 .ia-composer {
   background: var(--ia-panel);
-  border-color: var(--ia-border);
+  border-color: transparent;
+  outline: 2px solid transparent;
+  outline-offset: 0;
 }
 .ia-composer-body {
   min-width: 0;
   padding: 14px;
   border-radius: 13px;
-  background: var(--ia-raised);
+  background: var(--ia-panel);
 }
 .ia-chat-empty .ia-composer-body {
-  border-top: 1px solid var(--ia-border);
+  border-top: 1px solid transparent;
 }
 .ia-app .ia-composer-project {
   width: 100%;
@@ -4151,7 +4166,7 @@ body,
 .ia-chat-empty .ia-welcome-actions button {
   padding: 5px 10px;
   min-height: 32px;
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   border-radius: 8px;
   font-size: 12px;
   font-weight: 400;
@@ -4207,6 +4222,7 @@ body,
 @media (max-height: 600px) {
   .ia-status-card {
     max-height: min(28vh, 180px);
+    background: var(--ia-panel);
   }
   .ia-chat-scroll {
     padding-block: 12px;
@@ -4257,7 +4273,7 @@ body,
   align-items: center;
   gap: 10px;
   padding: 0 14px;
-  border-bottom: 1px solid var(--ia-border);
+  border-bottom: 1px solid transparent;
 }
 .ia-capability-header h1 {
   font-size: 15px;
@@ -4274,7 +4290,7 @@ body,
 .ia-capability-nav {
   flex: none;
   width: 168px;
-  border-right: 1px solid var(--ia-border);
+  border-right: 1px solid transparent;
   padding: 12px 8px;
   display: flex;
   flex-direction: column;
@@ -4365,7 +4381,7 @@ body,
   display: inline-flex;
   gap: 2px;
   padding: 2px;
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   border-radius: 8px;
 }
 .ia-scope-switch button {
@@ -4389,7 +4405,7 @@ body,
 .ia-resource-search {
   width: 100%;
   max-width: 340px;
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   border-radius: 8px;
   padding: 7px 10px;
   background: var(--ia-raised);
@@ -4407,7 +4423,7 @@ body,
   gap: 12px;
   align-items: flex-start;
   padding: 14px;
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   border-radius: 10px;
   background: var(--ia-raised);
 }
@@ -4467,7 +4483,7 @@ body,
   flex: none;
 }
 .ia-pack-action {
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   border-radius: 7px;
   padding: 6px 12px;
   background: var(--ia-raised);
@@ -4491,7 +4507,7 @@ body,
   justify-content: space-between;
   gap: 12px;
   padding: 10px 0;
-  border-bottom: 1px solid var(--ia-border);
+  border-bottom: 1px solid transparent;
 }
 .ia-diagnostic-row span {
   display: grid;
@@ -4504,7 +4520,7 @@ body,
 }
 .ia-diagnostic-row button {
   flex: none;
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   border-radius: 7px;
   padding: 6px 12px;
   background: var(--ia-raised);
@@ -4549,7 +4565,7 @@ body,
   gap: 10px;
   margin: 0 24px 10px;
   padding: 9px 14px;
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   border-left: 3px solid var(--ia-warning);
   border-radius: 10px;
   background: var(--ia-code);
@@ -4709,7 +4725,7 @@ body {
   width: max-content;
   max-width: min(340px, calc(100cqw - 48px));
   padding: 10px 14px;
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   border-radius: 10px;
   background: var(--ia-raised);
   box-shadow: 0 6px 22px rgba(0, 0, 0, 0.18);
@@ -4895,7 +4911,7 @@ body {
   justify-content: space-between;
   gap: 12px;
   padding: 10px;
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   border-radius: 6px;
 }
 .ia-runtime-archive[data-present] {
@@ -4919,7 +4935,7 @@ body {
   gap: 8px;
 }
 .ia-runtime-archive-actions button {
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   border-radius: 6px;
   padding: 6px 10px;
   background: transparent;
@@ -4939,7 +4955,7 @@ body {
   gap: 6px;
   padding: 0 0 14px;
   margin: 0 0 8px;
-  border-bottom: 1px solid var(--ia-border);
+  border-bottom: 1px solid transparent;
   font-size: var(--ia-font-sm);
 }
 .ia-domain-progress-heading,
@@ -4952,7 +4968,7 @@ body {
 .ia-domain-progress-heading button,
 .ia-domain-setup button,
 .ia-domains-installed-row button {
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   border-radius: 6px;
   padding: 6px 10px;
   background: transparent;
@@ -4980,7 +4996,7 @@ body {
 .ia-domain-setup {
   padding: 14px 0 0;
   margin: 12px 0 0;
-  border-top: 1px solid var(--ia-border);
+  border-top: 1px solid transparent;
   font-size: var(--ia-font-sm);
 }
 .ia-install-selection {
@@ -4991,7 +5007,7 @@ body {
   padding: 0 0 16px;
   margin: 0 0 10px;
   border-top: 0;
-  border-bottom: 1px solid var(--ia-border);
+  border-bottom: 1px solid transparent;
 }
 .ia-domain-setup h2 {
   font-size: var(--ia-font-body);
@@ -5014,7 +5030,7 @@ body {
 }
 .ia-domains-installed {
   margin-top: 14px;
-  border-top: 1px solid var(--ia-border);
+  border-top: 1px solid transparent;
 }
 .ia-domains-installed h2 {
   margin: 14px 0 6px;
@@ -5079,7 +5095,7 @@ body {
   padding: 14px 0;
   gap: 10px;
   border: 0;
-  border-bottom: 1px solid var(--ia-border);
+  border-bottom: 1px solid transparent;
   border-radius: 0;
   background: transparent;
 }
@@ -5127,9 +5143,10 @@ body {
 
 .ia-task-results {
   margin-block: 12px;
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   border-radius: 8px;
   overflow: hidden;
+  background: var(--ia-panel);
 }
 .ia-result-heading {
   display: flex;
@@ -5153,7 +5170,7 @@ body {
 .ia-result-card {
   min-width: 0;
   padding: 7px 10px;
-  border-top: 1px solid var(--ia-border);
+  border-top: 1px solid transparent;
   display: grid;
   gap: 3px;
 }
@@ -5285,7 +5302,7 @@ body {
 }
 .ia-result-supporting > summary,
 .ia-result-previous > summary {
-  border-top: 1px solid var(--ia-border);
+  border-top: 1px solid transparent;
   padding: 7px 10px;
   color: var(--ia-muted);
   font-size: 11px;
@@ -5326,14 +5343,14 @@ body {
   align-items: center;
   gap: 6px;
   padding: 8px 10px;
-  border-bottom: 1px solid var(--ia-border, #e5e6e3);
+  border-bottom: 1px solid transparent;
   color: var(--ia-muted, #777d80);
   flex-shrink: 0;
 }
 .ia-browser-bar button {
   padding: 5px 8px;
   color: var(--ia-text, #202325);
-  border: 1px solid var(--ia-border, #e5e6e3);
+  border: 1px solid transparent;
   border-radius: 5px;
   background: transparent;
   display: inline-flex;
@@ -5349,7 +5366,7 @@ body {
   padding: 5px 8px;
   background: var(--ia-code, #f4f5f4);
   color: var(--ia-text, #202325);
-  border: 1px solid var(--ia-border, #e5e6e3);
+  border: 1px solid transparent;
   border-radius: 5px;
   font: inherit;
 }
@@ -5368,7 +5385,7 @@ body {
   padding: 9px 12px;
   font-size: 12px;
   background: var(--ia-panel, #f7f7f5);
-  border-bottom: 1px solid var(--ia-border, #e5e6e3);
+  border-bottom: 1px solid transparent;
 }
 
 .ia-model-modal.ia-account-modal {
@@ -5476,7 +5493,7 @@ body {
 }
 .ia-account-manual {
   padding-top: 16px;
-  border-top: 1px solid var(--ia-border);
+  border-top: 1px solid transparent;
 }
 .ia-account-manual label,
 .ia-account-connection label {
@@ -5492,9 +5509,9 @@ body {
   width: 100%;
   min-width: 0;
   padding: 9px 10px;
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   border-radius: 6px;
-  background: var(--ia-bg);
+  background: var(--ia-panel);
   color: var(--ia-text);
   font: inherit;
   font-size: var(--ia-font-sm);
@@ -5514,7 +5531,7 @@ body {
   gap: 7px;
   min-height: var(--ia-control-size);
   padding: 8px 12px;
-  border: 1px solid var(--ia-border);
+  border: 1px solid transparent;
   font-size: var(--ia-font-sm);
 }
 .ia-account-open-browser {
@@ -5547,7 +5564,7 @@ body {
   accent-color: var(--ia-accent);
 }
 .ia-account-connection {
-  border-top: 1px solid var(--ia-border);
+  border-top: 1px solid transparent;
 }
 .ia-account-connection summary {
   display: flex;

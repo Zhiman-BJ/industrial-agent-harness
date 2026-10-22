@@ -247,7 +247,7 @@ The neutral accent controls filled primary actions, Send, caret, and keyboard fo
 
 ### Neutral
 
-Conversation background, panel, raised surface, and sidebar form the ground. Text and muted text supply hierarchy; border separates surfaces, while control-border supplies stronger form and scrollbar definition. Hover, active, sidebar-hover, and sidebar-active distinguish interaction and selection. Code uses its own quiet surface. Success, danger, and warning are semantic state colors; they do not color the general shell.
+Conversation background, panel, raised surface, and sidebar form the ground. Text and muted text supply hierarchy; surfaces use tonal fills and spacing instead of resting strokes. Border remains available for content rules and semantic states; control-border supplies composer focus and scrollbar definition. Hover, active, sidebar-hover, and sidebar-active distinguish interaction and selection. Code uses its own quiet surface. Success, danger, and warning are semantic state colors; they do not color the general shell.
 
 **The Paired Theme Rule.** Resolve foreground, surface, and selection from the same active theme. Preserve the saved theme preference.
 
@@ -271,7 +271,7 @@ Conversation background, panel, raised surface, and sidebar form the ground. Tex
 
 ## Layout
 
-The shell retains project/chat navigation, conversation, and an optional file workspace in either split or tab layout. Settings stays at the lower left. Workspace and file tree start closed; both outer panels remain collapsible. The chat surface has a thin border and rounded outer edge inside a 6 px shell inset. Only split layout with an open workspace squares the chat's adjoining right edge.
+The shell retains project/chat navigation, conversation, and an optional file workspace in either split or tab layout. Settings stays at the lower left. Workspace and file tree start closed; both outer panels remain collapsible. The chat surface has a rounded outer edge inside a 6 px shell inset, separated from the sidebar by tone rather than a visible border. Only split layout with an open workspace squares the chat's adjoining right edge.
 
 The sidebar is 256 px wide, becoming 220 px at 1250 px viewport width and 204 px at 1050 px. Below 760 px content width, it becomes a 248 px overlay drawer opened from the sidebar control; its backdrop dismisses it. Shared headers are 48 px, while the workbench tab bar has a 52 px minimum. Conversation and composer use a 680 px target measure with at least 24 px horizontal padding; compact viewports use 20 px, and below 760 px conversation padding becomes 16 px while the composer wrap uses 12 px. The empty title, introduction, and composer form a centered group, with existing project/file actions below. After a turn exists, the scrolling conversation grows and the composer sits at the bottom.
 
@@ -289,13 +289,13 @@ Current inspected native captures are macOS arm64 in both themes, Chinese/Englis
 
 ## Elevation & Depth
 
-The resting shell, composer, and selected workspace tabs are flat. Tone, thin rules, and selected fills provide separation. Overlays use diffuse shadows: Settings (`0 12px 32px #00000026`), model dialogs (`0 16px 56px #00000033`), agent logs (`0 20px 70px #0005`), and the compact navigation drawer (`4px 0 24px #00000030`). Its full-area backdrop uses the same neutral translucent black (`#00000030`). The sidecar records these extensions.
+The resting shell, composer, and selected workspace tabs are flat. Tone, spacing, and selected fills provide separation. Content tables and semantic warnings retain meaningful rules. Overlays use diffuse shadows: Settings (`0 12px 32px #00000026`), model dialogs (`0 16px 56px #00000033`), agent logs (`0 20px 70px #0005`), and the compact navigation drawer (`4px 0 24px #00000030`). Its full-area backdrop uses the same neutral translucent black (`#00000030`). The sidecar records these extensions.
 
 **The Flat Shell Rule.** Keep ordinary navigation, messages, and the composer free of added shadows; use the existing overlay shadows for floating surfaces.
 
 ## Shapes
 
-Small controls use the control radius; message bubbles, composer, chat frame, and major dialogs use the surface radius. The composer body has its own inset corner. Domain pills are fully rounded. Thin borders and flexible rectangular panels define the workbench; there are no decorative icon tiles.
+Small controls use the control radius; message bubbles, composer, chat frame, and major dialogs use the surface radius. The composer body has its own inset corner. Domain pills are fully rounded. Tonal surfaces and flexible rectangular panels define the workbench; there are no decorative icon tiles.
 
 Lucide shell icons inherit a thin stroke (1.6). Most control icons are 13–18 px inside 32 px targets; Send is 34 px. The sidebar Core mark is 22 px. Domain markers retain their Pack-supplied meaning rather than becoming shell decoration.
 
@@ -303,7 +303,7 @@ Lucide shell icons inherit a thin stroke (1.6). Most control icons are 13–18 p
 
 ### Buttons
 
-Primary project actions use neutral accent against the background. Send uses an upward Lucide arrow and its dedicated shape; hover lowers opacity to 0.82. Other primary project actions lower opacity to 0.85. Empty-state secondary actions use transparent fill, a thin border, and muted labels. Ghost controls gain the hover surface. Disabled shell buttons use opacity (0.42).
+Primary project actions use neutral accent against the background. Send uses an upward Lucide arrow and its dedicated shape; hover lowers opacity to 0.82. Other primary project actions lower opacity to 0.85. Empty-state secondary actions use transparent fill and muted labels, with a quiet hover surface. Ghost controls gain the hover surface. Disabled shell buttons use opacity (0.42).
 
 Keyboard focus uses a 2 px accent outline; inputs and summaries offset it by 3 px, while buttons and selects use 2 px. Button state changes are immediate, preventing mixed colors during theme switches.
 
@@ -317,7 +317,7 @@ accessible name and tooltip when the visual label is hidden.
 ### Domain installation
 
 The first-run domain selector shares the model dialog's neutral surface, 14 px radius,
-shadow, inset and ruled header/footer. Its task title is a compact 16 px medium label;
+shadow and inset, with spacing separating the header and footer. Its task title is a compact 16 px medium label;
 body and metadata use the existing 12 px and 11 px roles. The close control is a 32 px
 Lucide ghost button. Initial focus lands on the title, with normal keyboard focus
 rings preserved on controls.
@@ -326,7 +326,7 @@ Use flat selection rows with a quiet selected fill, not bordered cards. Keep ver
 and download size beside the domain name, with declared prerequisites below. Show
 installed footprint, working-space estimate and available disk space once in the
 selection summary. Estimates warn; the runtime's verified precheck decides whether
-installation can proceed. Progress and completion use ordinary ruled sections, and
+installation can proceed. Progress and completion use ordinary spaced sections, and
 Capability Center uses the same flat rows without decorative icon tiles.
 
 The body scrolls independently from the fixed dialog actions, including at 640 × 480.
@@ -364,7 +364,7 @@ field region scrolls independently while the header, 32 px close control and
 footer actions remain visible. Labels and inputs use the 12 px control role;
 keyboard Tab navigation retains access from Settings into model configuration.
 
-The composer uses panel tone around a raised body, with a thin border. Empty sessions include a project strip above that body. Input starts at 64 px high, or 50 px in short empty sessions, resizes between 50 and 160 px, and uses the conversation role. Focus-within adds an accent border and 1 px outline offset by 3 px. Border motion is 160 ms with `cubic-bezier(0.16, 1, 0.3, 1)`; reduced motion disables it.
+The composer uses one continuous panel-tone surface, with no visible resting border. Empty sessions include a project strip above that body. Input starts at 64 px high, or 50 px in short empty sessions, resizes between 50 and 160 px, and uses the conversation role. Focusing the textarea adds one 2 px control-border outline with no offset; nested controls keep their own keyboard focus indicator. Outline motion is 160 ms with `cubic-bezier(0.16, 1, 0.3, 1)`; reduced motion disables it.
 
 Preserve Enter to send, Shift+Enter for a line, IME composition handling, and the accessible help text. Availability follows actual project/domain, task, image-input, and remote readiness. The approval selector stays explicit.
 
@@ -372,19 +372,19 @@ Preserve Enter to send, Shift+Enter for a line, IME composition handling, and th
 
 The sidebar shows the retained green mark and **Micius Harness** below the native window controls, directly above Projects. Its 20 px left inset aligns with the section label; the collapse control remains in the separate top window strip. This follows the user's 2026-10-16 naming and placement request.
 
-Project names sit above read-only domain metadata. The active project uses sidebar-hover tone; the current chat uses sidebar-active tone. Other chat rows remain quiet at regular weight. Nested chats retain a fine vertical rule. Deletion controls appear on row hover or keyboard focus. Names truncate without pushing out controls.
+Project names sit above read-only domain metadata. The active project uses sidebar-hover tone; the current chat uses sidebar-active tone. Other chat rows remain quiet at regular weight. Nested chats retain their existing indentation without a vertical rule. Deletion controls appear on row hover or keyboard focus. Names truncate without pushing out controls.
 
 The execution-status strip begins 16 px below the conversation toolbar. Its collapsed control has a 36 px minimum height and 10 px internal gaps; the wide expanded card retains the same top inset.
 
 ### Workspace tabs
 
-The workbench keeps one chat tab beside file tabs; split layout uses the same file tabs in its workspace. Tab groups use panel tone, a thin bottom rule, and 4 px gaps. The selected tab uses raised tone, medium weight (500), and no shadow. Tab corners are 9 px; labels use 9 px by 12 px padding and truncate within a 280 px cap, reduced to 220 px below 760 px. Overflow scrolls horizontally.
+The workbench keeps one chat tab beside file tabs; split layout uses the same file tabs in its workspace. Tab groups use panel tone and 4 px gaps, without a bottom rule. The selected tab uses raised tone, medium weight (500), and no shadow. Tab corners are 9 px; labels use 9 px by 12 px padding and truncate within a 280 px cap, reduced to 220 px below 760 px. Overflow scrolls horizontally.
 
 A single-click file preview uses an italic title. Double-click or the Pin control keeps it; the Plus control opens current-project files. Close controls affect the file view only. Preserve tab roles, selected state, keyboard arrows/Home/End/Delete, and focus restoration. Chat status represents actual running, approval, or question state. Layout changes retain the mounted conversation, draft, and Viewer state; they do not change task or permission behavior.
 
 ### Chips / Containers
 
-The domain pill is read-only status, with a thin border, raised fill, and Pack marker or Lucide fallback. Domain selection occurs in its existing creation or project-detail controls. Approvals and questions use compact bordered containers with a 12 px inset; required actions stay visible. Thinking and tool entries retain their existing collapsed presentation and explicit states.
+The domain pill is read-only status, with a raised fill and Pack marker or Lucide fallback, without a visible border. Domain selection occurs in its existing creation or project-detail controls. Approvals and questions use compact panel-tone containers with a 12 px inset; required actions stay visible. Thinking and tool entries retain their existing collapsed presentation and explicit states.
 
 ### Messages and Copy
 
@@ -410,3 +410,13 @@ Time is 24-hour local display with a full date/time tooltip when a valid recorde
 - **Don't** infer readiness, approval, timestamps, or engineering acceptance from visual presentation.
 
 The existing uppercase navigation section labels, specialized Viewer controls, and log-specific styles are not new general typography or icon rules. This record leaves their implementation in place and does not promote them as patterns for new shell surfaces.
+
+### Borderless surfaces
+
+Resting shell panels, settings groups, dialogs, result containers and neutral controls
+use the existing paired theme surfaces and spacing. Transparent one-pixel borders
+preserve the established dimensions and hit targets. Do not set the shared border
+token to transparent: table rows, quotations, errors, warnings, selection, and
+keyboard focus retain their meaningful feedback. The workspace divider keeps its
+six-pixel drag target and shows its rule on hover, active drag, or keyboard focus.
+No execution, permissions, project state, or Viewer navigation behavior changes.

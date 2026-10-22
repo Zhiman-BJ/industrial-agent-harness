@@ -1,0 +1,42 @@
+{
+  "base": "300dbd692b21af9ef6f298c9202ce7354db9be56",
+  "branch": "codex/borderless-desktop-ui-20261022",
+  "scope": "Desktop CSS only; supporting design documentation and renderer selftest assertions. No application behavior changes.",
+  "nativeScreenshots": {
+    "platform": "macOS arm64",
+    "electron": "44.0.0",
+    "data": "Isolated UI selftest projects and model configuration; no model or industrial task execution.",
+    "files": [
+      {
+        "name": "chat-light.png",
+        "sha256": "38abe4dfafdd7c22f9753574e4c7402ac3db25ac6b168a172d1693838cadfb8d"
+      },
+      {
+        "name": "workspace-dark-zh.png",
+        "sha256": "cc6b7d858fd59e02305efc0f43e7c969d78aa0e3e5c8c8f8a27614cb258725b7"
+      },
+      {
+        "name": "settings-compact.png",
+        "sha256": "6e6783aef55f3b8f8ff2f7a68542546312a0d63eeacc4181da7a7d50e06397b3"
+      },
+      {
+        "name": "project-details.png",
+        "sha256": "acd0132776933325d9b26386e4f447a642010af39b3ee702c2b5f69bd2f55c59"
+      }
+    ]
+  },
+  "validation": {
+    "desktopBuild": "passed",
+    "eslintChangedSelftest": "passed",
+    "prettierChangedSources": "passed",
+    "architectureChecker": "passed",
+    "architectureContractTests": "11 passed; candidate-fetch suite 7 passed, 1 failed with spawnSync git ENOBUFS while asserting size limit",
+    "desktopUnitTests": "125 passed, 2 blocked by listen EPERM on 127.0.0.1, 0 skipped",
+    "nativeUIRegression": "Partial: screenshot, theme, layout, contrast and control visibility checks reached workspace minimum/medium; new composer focus assertion failed before animated outline became visible. Added a wait for the visible focus state; rerun blocked by desktop controller disconnect and LaunchServices -10827. Full native regression is not claimed."
+  },
+  "limitations": [
+    "No Windows or Linux runtime was exercised.",
+    "No packaged build, engineering run, release, remote task, or model call was performed.",
+    "Awaiting user visual acceptance."
+  ]
+}
