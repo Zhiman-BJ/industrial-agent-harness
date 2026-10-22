@@ -79,13 +79,12 @@ test('an empty change set fails safe to the full net and entries are validated',
   assert.throws(() => classify(['README.md']));
 });
 
-test('code PRs retain all core platforms while main and requested full runs qualify installations', () => {
+test('code PRs retain all core platforms while nightly, manual and pin-bump runs qualify installations', () => {
   const pr = { eventName: 'pull_request' };
   for (const names of [
     ['apps/desktop/electron/account.test.cjs'],
     ['packages/harness-core/src/index.cjs'],
     ['packages/domain-skills/skills/project-work/SKILL.md'],
-    ['pnpm-lock.yaml'],
     [],
   ])
     assert.deepEqual(plan(files(...names), pr), { core: true, full: false });
@@ -94,8 +93,14 @@ test('code PRs retain all core platforms while main and requested full runs qual
     plan([{ filename: 'doc/old.md', previous_filename: 'apps/desktop/electron/old.cjs' }], pr),
     { core: true, full: false },
   );
+  // Plain main merges repeat the core path their PRs already ran.
+  for (const options of [{ eventName: 'push' }, { eventName: 'workflow_dispatch', full: false }])
+    assert.deepEqual(plan(files('apps/desktop/src/App.tsx'), options), {
+      core: true,
+      full: false,
+    });
   for (const options of [
-    { eventName: 'push' },
+    { eventName: 'schedule' },
     { eventName: 'workflow_dispatch', full: true },
     { eventName: 'pull_request', full: true },
     { eventName: 'unknown' },
@@ -106,6 +111,21 @@ test('code PRs retain all core platforms while main and requested full runs qual
     full: false,
   });
   assert.throws(() => plan([], { eventName: 'workflow_dispatch', full: 'false' }), /boolean/);
+});
+
+test('PRs that bump the pinned Domain Pack lockfile qualify full acceptance before merge', () => {
+  const pr = { eventName: 'pull_request' };
+  assert.deepEqual(plan(files('pnpm-lock.yaml'), pr), { core: true, full: true });
+  assert.deepEqual(plan(files('README.md', 'pnpm-lock.yaml'), pr), { core: true, full: true });
+  assert.deepEqual(
+    plan([{ filename: 'renamed-lock.yaml', previous_filename: 'pnpm-lock.yaml' }], pr),
+    { core: true, full: true },
+  );
+  // A lockfile bump already requested by name on another event stays full.
+  assert.deepEqual(plan(files('pnpm-lock.yaml'), { eventName: 'schedule' }), {
+    core: true,
+    full: true,
+  });
 });
 
 function jobResults(core, full) {
@@ -196,6 +216,10 @@ test('workflow selection handles manual booleans, pagination and file-list error
     ),
     { core: 'true', full: 'true' },
   );
+  assert.deepEqual(await select('pull_request', files('pnpm-lock.yaml')), {
+    core: 'true',
+    full: 'true',
+  });
   for (const full of [true, 'true'])
     assert.deepEqual(await select('workflow_dispatch', [], { full }), {
       core: 'true',
@@ -206,7 +230,8 @@ test('workflow selection handles manual booleans, pagination and file-list error
       core: 'true',
       full: 'false',
     });
-  assert.deepEqual(await select('push', []), { core: 'true', full: 'true' });
+  assert.deepEqual(await select('push', []), { core: 'true', full: 'false' });
+  assert.deepEqual(await select('schedule', []), { core: 'true', full: 'true' });
   await assert.rejects(
     select('pull_request', [], {}, Error('file listing failed')),
     /file listing failed/,
@@ -222,6 +247,12 @@ test('workflow jobs use the selected core/full plan and reusable workflows keep 
   assert.match(job('industrial'), /if: needs.changes.outputs.full == 'true'/);
   for (const name of ['desktop', 'industrial-linux'])
     assert.match(job(name), /full: \$\{\{ needs.changes.outputs.full == 'true' \}\}/);
+  // Only nightly and manual full runs extend the native matrices to macos-26;
+  // pin-bump PRs keep single-version lanes for faster pre-merge feedback.
+  assert.match(
+    job('industrial'),
+    /extended: \$\{\{ github.event_name == 'schedule' \|\| github.event_name == 'workflow_dispatch' \}\}/,
+  );
   assert.match(
     job('all-checks-passed'),
     /require\('\.\/scripts\/ci-areas.cjs'\)\.failedJobs\(jobs\)/,

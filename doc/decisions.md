@@ -115,6 +115,8 @@ Project、Domain 和 Session 的用户交互决定见[产品决策记录](produc
 
 ## ADR-008：核心 PR 检查与完整验收分层
 
+> 2026-10-22 修订：完整验收从 main 推送改为 nightly 计划（20:00 UTC / 北京 04:00）、手动 full=true 以及改动 `pnpm-lock.yaml`（Domain Pack 固定 pin）的 PR 触发；main 合并回到 core 路径（其 PR 已验证过相同层）。macOS 26 前瞻矩阵仅在 nightly 与手动完整运行执行（industrial-core 新增 `extended` 输入，默认 false，pin-bump PR 只跑 macOS 15）。复用 Desktop/Linux 工作流的其他调用者默认仍完整执行；原生用例、严格测试计数及失败断言依旧不删减。动机：近两周实测 main 推送日均 5–6 次全量（每次约 72 macOS 分钟、占全部算力约 56%），完整验收重复验证其 PR 已跑过的层。
+>
 > 2026-10-20 更新：[PD-088](local-agent-execution.md) 取代本条涉及的本机 Agent OS 隔离及写入拒绝契约，验收改为当前用户启动与实际权限；声明式本地任务隔离、远端租户隔离和其余检查分层保持。以下保留原调度决策。
 
 - 日期：2026-10-14

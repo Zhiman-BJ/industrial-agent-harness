@@ -118,7 +118,12 @@ test('both native matrices must succeed; a missing, skipped, cancelled or failed
   );
   for (const name of ['native-vertical-slice', 'native-installed']) {
     const job = workflow.split(`  ${name}:\n`)[1].split(/\n {2}[a-z][\w-]*:/)[0];
-    assert.match(job, /os: \[macos-15, macos-26\]/);
+    // macos-15 always runs; the macos-26 forward-compatibility lane only
+    // joins when the caller requests the extended (nightly/manual) matrix.
+    assert.match(
+      job,
+      /os: \$\{\{ inputs\.extended && fromJSON\('\["macos-15", "macos-26"\]'\) \|\| fromJSON\('\["macos-15"\]'\) \}\}/,
+    );
     assert.match(job, /timeout-minutes: 25/);
     assert.doesNotMatch(job, /continue-on-error:/);
     assert.match(
