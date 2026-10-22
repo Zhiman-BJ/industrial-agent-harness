@@ -8,12 +8,22 @@ The generated Emscripten runtime is Copyright the Emscripten authors under
 MIT or University of Illinois/NCSA terms; the 3.1.69 license is included as
 `EMSCRIPTEN-LICENSE.txt`.
 
-Corresponding source is distributed in:
+Corresponding source is distributed as immutable release assets (kept out of
+the repository tree so checkouts do not carry ~53 MB of archives):
 
-- `source/occt-import-js-c2148e5.tar.gz`: complete upstream wrapper, build
-  scripts, examples, and tests at `c2148e54b456b571238d35cac037d304053d64b2`.
-- `source/OCCT-d2abb6d.tar.gz`: complete, unmodified OCCT submodule source at
+- `occt-import-js-c2148e5.tar.gz`: complete upstream wrapper, build scripts,
+  examples, and tests at `c2148e54b456b571238d35cac037d304053d64b2`.
+  <https://github.com/Zhiman-BJ/industrial-agent-harness/releases/download/vendor-sources-v1/occt-import-js-c2148e5.tar.gz>
+- `OCCT-d2abb6d.tar.gz`: complete, unmodified OCCT submodule source at
   `d2abb6d844231cb8f29be6894440874a4700e4a5`.
+  <https://github.com/Zhiman-BJ/industrial-agent-harness/releases/download/vendor-sources-v1/OCCT-d2abb6d.tar.gz>
+
+`scripts/fetch-vendor-sources.cjs` downloads both archives into
+`dist/vendor-sources/` and verifies the exact size and SHA-256 recorded in
+`manifest.json` (`sourceArchives`). A new upstream revision ships as a new
+release tag; these assets are never replaced in place. The small
+`upstream-fixtures/` STEP sample and its origin note are extracted verbatim
+from the wrapper archive and remain in-tree under the manifest's `files`.
 
 The manifest records the original package integrity and every distributed
 upstream file's SHA-256. Upstream uses Emscripten 3.1.69; its build instructions

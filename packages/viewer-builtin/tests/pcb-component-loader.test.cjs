@@ -4,7 +4,6 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const vm = require('node:vm');
-const zlib = require('node:zlib');
 
 const directory = path.resolve(__dirname, '../src/kicad');
 const vendor = path.join(directory, 'vendor/occt-import');
@@ -40,28 +39,21 @@ test('offline STEP parser and complete corresponding source match pinned fingerp
   assert.equal(manifest.occtRevision, 'd2abb6d844231cb8f29be6894440874a4700e4a5');
   for (const [name, hash] of Object.entries(manifest.files))
     assert.equal(digest(fs.readFileSync(path.join(vendor, name))), hash, name);
-});
-
-function archivedFile(bytes, suffix) {
-  const tar = zlib.gunzipSync(bytes);
-  for (let cursor = 0; cursor + 512 <= tar.length; ) {
-    const name = tar
-      .subarray(cursor, cursor + 100)
-      .toString()
-      .split('\0')[0];
-    const size = parseInt(
-      tar
-        .subarray(cursor + 124, cursor + 136)
-        .toString()
-        .replace(/\0/g, ''),
-      8,
+  // Corresponding source archives live on the immutable vendor-sources
+  // release, not in the tree; scripts/fetch-vendor-sources.cjs verifies their
+  // pinned size and SHA-256 when downloaded.
+  assert.equal(fs.existsSync(path.join(vendor, 'source')), false);
+  const archives = manifest.sourceArchives;
+  assert.equal(archives.length, 2);
+  for (const archive of archives) {
+    assert.equal(
+      archive.url,
+      `https://github.com/Zhiman-BJ/industrial-agent-harness/releases/download/vendor-sources-v1/${archive.file}`,
     );
-    if (!name) break;
-    if (name.endsWith(suffix)) return tar.subarray(cursor + 512, cursor + 512 + size);
-    cursor += 512 + Math.ceil(size / 512) * 512;
+    assert.match(archive.sha256, /^[a-f0-9]{64}$/);
+    assert.ok(Number.isSafeInteger(archive.bytes) && archive.bytes > 0);
   }
-  throw Error('Upstream fixture is not in the corresponding source archive.');
-}
+});
 
 test('bounded real WASM imports a real STEP and rejects growth beyond 256 MiB', async () => {
   const { boundPcbStepWasm, PCB_STEP_WASM_PAGES } = await wasm;
@@ -79,10 +71,7 @@ test('bounded real WASM imports a real STEP and rejects growth beyond 256 MiB', 
     print() {},
     printErr() {},
   });
-  const fixture = archivedFile(
-    fs.readFileSync(path.join(vendor, 'source/occt-import-js-c2148e5.tar.gz')),
-    '/test/testfiles/simple-basic-cube/cube.stp',
-  );
+  const fixture = fs.readFileSync(path.join(vendor, 'upstream-fixtures/cube.stp'));
   const model = occt.ReadStepFile(fixture, { linearUnit: 'millimeter' });
   assert.equal(model.success, true);
   assert.equal(model.meshes.length, 1);
