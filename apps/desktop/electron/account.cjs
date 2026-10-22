@@ -7,6 +7,7 @@ const {
   validateConfig,
   writePrivate,
 } = require('@industrial-agent-harness/harness-auth');
+const { DEFAULT_ACCOUNT_CONFIG } = require('./account-defaults.cjs');
 const { createModelProxy } = require('@industrial-agent-harness/harness-auth/src/model-proxy.cjs');
 
 class DesktopAccount {
@@ -43,7 +44,7 @@ class DesktopAccount {
       this.modelEnabled = false;
     }
     try {
-      this.bind(readConfig(directory, environment));
+      this.bind(readConfig(directory, environment, DEFAULT_ACCOUNT_CONFIG));
     } catch {
       this.bind(validateConfig({}));
       this.auth.error = 'Cannot read platform account configuration.';
@@ -77,36 +78,6 @@ class DesktopAccount {
     } catch {
       this.auth.changed('reauth_required', 'Cannot unlock saved account credentials.');
     }
-    return this.view();
-  }
-  async configure(value) {
-    this.assertIdle();
-    if (this.auth.view().user || this.auth.pending || this.auth.starting)
-      throw Error('Sign out before changing the account platform.');
-    // The service audience is operator configuration, not another account UI field.
-    const config = validateConfig({ ...value, remoteAudience: this.auth.config.remoteAudience });
-    // Environment overrides are controlled by the operator, never silently ignored.
-    for (const [key, name] of Object.entries({
-      issuer: 'ISSUER',
-      clientId: 'CLIENT_ID',
-      audience: 'AUDIENCE',
-      remoteOrigin: 'REMOTE_ORIGIN',
-      modelBaseUrl: 'MODEL_BASE_URL',
-    }))
-      if (
-        this.environment['INDUSTRIAL_AUTH_' + name] !== undefined &&
-        config[key] !== this.auth.config[key]
-      )
-        throw Error('This account setting is managed by the application operator.');
-    writePrivate(path.join(this.directory, 'config.json'), JSON.stringify(config, null, 2));
-    this.modelEnabled = false;
-    writePrivate(
-      path.join(this.directory, 'desktop-preferences.json'),
-      JSON.stringify({ usePlatformModel: false }),
-    );
-    this.auth.close();
-    this.bind(config);
-    this.onChange(this.view());
     return this.view();
   }
   async login() {
@@ -156,7 +127,6 @@ class DesktopAccount {
 function registerAccountHandlers({ ipcMain, getWindow, account }) {
   const handlers = {
     get: () => account.view(),
-    configure: value => account.configure(value),
     login: () => account.login(),
     'open-manual': async () => {
       await account.auth.openManualLogin(url => account.shell.openExternal(url));

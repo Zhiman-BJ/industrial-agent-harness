@@ -4,6 +4,8 @@ const os = require('node:os');
 const fs = require('node:fs');
 const path = require('node:path');
 const { DesktopAccount, registerAccountHandlers } = require('./account.cjs');
+const { DEFAULT_ACCOUNT_CONFIG } = require('./account-defaults.cjs');
+const { readConfig, validateConfig } = require('@industrial-agent-harness/harness-auth');
 test('account IPC denies guest frames and never exposes a token method', async () => {
   const handlers = new Map(),
     mainFrame = {},
@@ -27,6 +29,7 @@ test('account IPC denies guest frames and never exposes a token method', async (
     view,
   );
   assert.ok([...handlers.keys()].every(name => !/token|credential/.test(name)));
+  assert.equal(handlers.has('account:configure'), false);
   for (const name of ['account:open-manual', 'account:submit-code'])
     assert.throws(
       () => handlers.get(name)({ sender: webContents, senderFrame: {} }, 'code#state'),
@@ -44,6 +47,7 @@ test('desktop main-window IPC completes manual login with encrypted storage and 
   t.after(issuer.close);
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'desktop-manual-account-'));
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  fs.writeFileSync(path.join(directory, 'config.json'), JSON.stringify(issuer.config));
   const opened = [],
     views = [];
   const account = new DesktopAccount({
@@ -66,7 +70,6 @@ test('desktop main-window IPC completes manual login with encrypted storage and 
     },
   });
   t.after(() => account.close());
-  await account.configure(issuer.config);
   account.auth.fetch = fetch;
   account.auth.createServer = createServer;
   const handlers = new Map(),
@@ -160,4 +163,109 @@ test('signed-out platform model selection can explicitly return to a personal AP
     JSON.parse(fs.readFileSync(path.join(directory, 'desktop-preferences.json'))).usePlatformModel,
     false,
   );
+});
+
+function fixture(t, saved, environment = {}) {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'desktop-account-defaults-'));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  if (saved !== undefined)
+    fs.writeFileSync(path.join(directory, 'config.json'), JSON.stringify(saved));
+  const account = new DesktopAccount({
+    directory,
+    environment,
+    shell: { openExternal: () => assert.fail('Startup must not open the browser') },
+    safeStorage: { isEncryptionAvailable: () => false },
+  });
+  t.after(() => account.close());
+  return { account, directory };
+}
+
+test('fresh desktop can sign in with the verified registration without editing configuration', async t => {
+  const { account, directory } = fixture(t);
+  const view = await account.restore();
+  assert.equal(view.status, 'signed_out');
+  assert.equal(view.error, null);
+  assert.equal(view.usePlatformModel, false);
+  assert.equal(view.config.clientId, 'harness-desktop-1');
+  assert.equal(view.config.audience, 'harness-desktop');
+  assert.equal(view.config.modelBaseUrl, 'https://api.zhiman.cn/v1');
+  assert.equal(view.config.remoteOrigin, '');
+  assert.equal(fs.existsSync(path.join(directory, 'config.json')), false);
+  assert.equal(account.auth.protocolPromise, undefined);
+  assert.equal(readConfig(directory, {}).clientId, '', 'Shared/CLI callers remain explicit');
+});
+
+test('an old empty default-issuer form receives the desktop registration', t => {
+  const { account } = fixture(t, {
+    issuer: DEFAULT_ACCOUNT_CONFIG.issuer,
+    clientId: '',
+    audience: '',
+    remoteOrigin: '',
+    modelBaseUrl: '',
+  });
+  assert.equal(account.view().status, 'signed_out');
+  assert.equal(account.view().config.clientId, DEFAULT_ACCOUNT_CONFIG.clientId);
+  assert.equal(account.view().config.modelBaseUrl, '', 'An explicit service opt-out is retained');
+});
+
+test('existing complete identity keeps its exact binding and empty services', t => {
+  const saved = { ...DEFAULT_ACCOUNT_CONFIG, modelBaseUrl: '', remoteAudience: 'custom-remote' };
+  const { account } = fixture(t, saved);
+  assert.deepEqual(account.auth.config, saved);
+});
+
+test('custom issuers and same-issuer custom clients never inherit production identity or services', t => {
+  for (const saved of [
+    { issuer: 'https://accounts.example.test' },
+    {
+      issuer: DEFAULT_ACCOUNT_CONFIG.issuer,
+      clientId: 'enterprise-native',
+      audience: 'enterprise',
+    },
+  ]) {
+    const { account } = fixture(t, saved);
+    assert.deepEqual(account.auth.config, validateConfig(saved));
+  }
+});
+
+test('operator environment overrides saved values without mixing custom and production identities', t => {
+  const { account } = fixture(t, DEFAULT_ACCOUNT_CONFIG, {
+    INDUSTRIAL_AUTH_ISSUER: 'https://accounts.example.test',
+    INDUSTRIAL_AUTH_CLIENT_ID: 'enterprise-native',
+    INDUSTRIAL_AUTH_AUDIENCE: 'enterprise',
+    INDUSTRIAL_AUTH_MODEL_BASE_URL: 'https://models.example.test/v1',
+    INDUSTRIAL_AUTH_REMOTE_ORIGIN: 'https://remote.example.test',
+    INDUSTRIAL_AUTH_REMOTE_AUDIENCE: 'enterprise-remote',
+  });
+  assert.deepEqual(account.auth.config, {
+    issuer: 'https://accounts.example.test',
+    clientId: 'enterprise-native',
+    audience: 'enterprise',
+    modelBaseUrl: 'https://models.example.test/v1',
+    remoteOrigin: 'https://remote.example.test',
+    remoteAudience: 'enterprise-remote',
+  });
+});
+
+test('operator service endpoints can accompany the bundled desktop registration', t => {
+  const { account } = fixture(t, undefined, {
+    INDUSTRIAL_AUTH_REMOTE_ORIGIN: 'https://remote.example.test',
+    INDUSTRIAL_AUTH_MODEL_BASE_URL: '',
+  });
+  assert.equal(account.view().config.clientId, DEFAULT_ACCOUNT_CONFIG.clientId);
+  assert.equal(account.view().config.remoteOrigin, 'https://remote.example.test');
+  assert.equal(account.view().config.modelBaseUrl, '');
+});
+
+test('invalid operator configuration fails closed without reverting to the production account', t => {
+  const { account } = fixture(t, undefined, { INDUSTRIAL_AUTH_ISSUER: 'http://example.test' });
+  assert.equal(account.view().status, 'not_configured');
+  assert.equal(account.view().config.clientId, '');
+  assert.match(account.view().error, /configuration/);
+});
+
+test('an explicit empty operator client ID keeps platform sign-in disabled', t => {
+  const { account } = fixture(t, undefined, { INDUSTRIAL_AUTH_CLIENT_ID: '' });
+  assert.equal(account.view().status, 'not_configured');
+  assert.equal(account.view().config.clientId, '');
 });

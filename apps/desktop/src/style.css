@@ -5468,8 +5468,7 @@ body {
 .ia-account-error {
   color: var(--ia-danger);
 }
-.ia-account-manual,
-.ia-account-connection-fields {
+.ia-account-manual {
   display: grid;
   gap: 14px;
   min-width: 0;
@@ -5478,8 +5477,7 @@ body {
   padding-top: 16px;
   border-top: 1px solid var(--ia-border);
 }
-.ia-account-manual label,
-.ia-account-connection label {
+.ia-account-manual label {
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -5502,8 +5500,7 @@ body {
 .ia-account-modal input:disabled {
   opacity: 0.6;
 }
-.ia-account-modal input:focus-visible,
-.ia-account-connection summary:focus-visible {
+.ia-account-modal input:focus-visible {
   outline: 2px solid var(--ia-accent);
   outline-offset: 3px;
 }
@@ -5520,8 +5517,7 @@ body {
 .ia-account-open-browser {
   justify-self: start;
 }
-.ia-account-submit,
-.ia-account-save {
+.ia-account-submit {
   justify-self: end;
 }
 .ia-account-modal button.primary {
@@ -5545,36 +5541,6 @@ body {
   height: 14px;
   margin: 0;
   accent-color: var(--ia-accent);
-}
-.ia-account-connection {
-  border-top: 1px solid var(--ia-border);
-}
-.ia-account-connection summary {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  min-height: var(--ia-control-size);
-  margin-top: 8px;
-  border-radius: 6px;
-  color: var(--ia-muted);
-  list-style: none;
-  cursor: pointer;
-}
-.ia-account-connection summary::-webkit-details-marker {
-  display: none;
-}
-.ia-account-connection summary:hover {
-  color: var(--ia-text);
-}
-.ia-account-connection summary svg {
-  flex: none;
-}
-.ia-account-connection[open] > summary svg {
-  transform: rotate(180deg);
-}
-.ia-account-connection-fields {
-  padding-top: 12px;
 }
 .ia-account-modal > .ia-account-actions {
   flex: none;

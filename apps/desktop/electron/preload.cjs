@@ -150,7 +150,6 @@ contextBridge.exposeInMainWorld('viewerHost', api);
 
 contextBridge.exposeInMainWorld('harnessAccount', {
   get: () => ipcRenderer.invoke('account:get'),
-  configure: config => ipcRenderer.invoke('account:configure', config),
   login: () => ipcRenderer.invoke('account:login'),
   openManual: () => ipcRenderer.invoke('account:open-manual'),
   submitCode: value => ipcRenderer.invoke('account:submit-code', value),

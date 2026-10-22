@@ -4,15 +4,11 @@
   "locales": {
     "zh-CN": {
       "label": "简体中文",
-      "systemLanguages": [
-        "zh"
-      ]
+      "systemLanguages": ["zh"]
     },
     "en": {
       "label": "English",
-      "systemLanguages": [
-        "en"
-      ]
+      "systemLanguages": ["en"]
     }
   },
   "messages": {
@@ -3741,9 +3737,13 @@
       "en": "Sign in to use cloud APIs and remote environments.",
       "zh-CN": "登录后使用云端 API 和远程环境。"
     },
-    "Account setup required": {
-      "en": "Account setup required",
-      "zh-CN": "尚未配置账号接入"
+    "Sign-in unavailable": {
+      "en": "Sign-in unavailable",
+      "zh-CN": "登录暂不可用"
+    },
+    "Platform sign-in is not configured for this installation. Contact your administrator.": {
+      "en": "Platform sign-in is not configured for this installation. Contact your administrator.",
+      "zh-CN": "当前安装的平台登录配置不完整，请联系管理员。"
     },
     "Signed out": {
       "en": "Signed out",

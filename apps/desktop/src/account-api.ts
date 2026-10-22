@@ -26,7 +26,6 @@ declare global {
   interface Window {
     harnessAccount: {
       get(): Promise<AccountView>;
-      configure(config: AccountConfig): Promise<AccountView>;
       login(): Promise<AccountView>;
       openManual(): Promise<AccountView>;
       submitCode(value: string): Promise<AccountView>;
