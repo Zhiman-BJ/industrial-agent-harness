@@ -42,6 +42,7 @@ const PATH_ENV = Object.freeze([
 ]);
 const ENV_ALLOWLIST = Object.freeze(['INDUSTRIAL_DEV_URL', ...PATH_ENV]);
 const SELFTEST_MARKERS = Object.freeze({
+  '--account-selftest': 'Account selftest passed:',
   '--kicad-selftest': 'KiCad selftest passed:',
   '--ui-selftest': 'UI selftest passed:',
   '--language-selftest': 'Language selftest passed:',

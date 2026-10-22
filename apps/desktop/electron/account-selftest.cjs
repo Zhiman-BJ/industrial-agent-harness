@@ -176,6 +176,19 @@ async function run(window, account, fixture) {
     }
   };
   await openAccount();
+  await wait("window.harnessAccount.get().then(view => view.status === 'signed_out')");
+  assert.equal(
+    await evaluate(
+      "document.querySelectorAll('.ia-account-modal input, .ia-account-connection').length",
+    ),
+    0,
+    'Signed-out users can sign in without entering connection or model settings',
+  );
+  assert.equal(await evaluate('typeof window.harnessAccount.configure'), 'undefined');
+  await captureThemes(
+    'account-ready',
+    "Boolean(document.querySelector('.ia-account-actions button:not(:disabled)'))",
+  );
   await clickAction();
   await wait("document.querySelector('.ia-account-modal').textContent.includes('138****1234')");
   const view = await evaluate('window.harnessAccount.get()');
@@ -247,6 +260,7 @@ async function run(window, account, fixture) {
   assert.equal(fixture.issuer.calls.revoke, 2);
   await capture('account-signed-out');
   console.log(
+    'Account selftest passed:',
     JSON.stringify({
       ok: true,
       persistentCredentials: view.persistent,

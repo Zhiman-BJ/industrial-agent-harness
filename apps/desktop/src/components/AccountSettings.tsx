@@ -1,13 +1,12 @@
 import { useModalFocus } from '../use-modal-focus';
 import { useEffect, useState } from 'react';
-import { ChevronDown, ExternalLink, ShieldCheck, X } from 'lucide-react';
+import { ExternalLink, ShieldCheck, X } from 'lucide-react';
 import { useDisplayText } from '@industrial-agent-harness/viewer-builtin/text';
-import type { AccountConfig, AccountView } from '../account-api';
+import type { AccountView } from '../account-api';
 
 export function AccountSettings({ onClose }: { onClose: () => void }) {
   const { t } = useDisplayText();
   const [view, setView] = useState<AccountView>();
-  const [config, setConfig] = useState<AccountConfig>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -25,7 +24,6 @@ export function AccountSettings({ onClose }: { onClose: () => void }) {
       .then(next => {
         if (active) {
           setView(next);
-          setConfig(next.config);
         }
       })
       .catch(() => {
@@ -43,7 +41,6 @@ export function AccountSettings({ onClose }: { onClose: () => void }) {
     try {
       const next = await action();
       setView(next);
-      setConfig(next.config);
       if (next.revoked === false)
         setNotice(
           'Signed out locally. The server session could not be revoked; retry from the account center.',
@@ -64,7 +61,7 @@ export function AccountSettings({ onClose }: { onClose: () => void }) {
     if (!pending) setCode('');
   }, [pending]);
   const labels: Record<string, string> = {
-    not_configured: 'Account setup required',
+    not_configured: 'Sign-in unavailable',
     signed_out: 'Signed out',
     signing_in: 'Waiting for browser sign-in…',
     signed_in: 'Signed in',
@@ -89,7 +86,7 @@ export function AccountSettings({ onClose }: { onClose: () => void }) {
         <header>
           <div>
             <h2>{t('Platform account')}</h2>
-            <p>{t('Manage your sign-in and platform connection.')}</p>
+            <p>{t('Sign in to use cloud APIs and remote environments.')}</p>
           </div>
           <button className="ia-icon" onClick={onClose} aria-label={t('Close settings')}>
             <X size={17} />
@@ -174,7 +171,7 @@ export function AccountSettings({ onClose }: { onClose: () => void }) {
               {t('Secure storage is unavailable. This sign-in lasts only until the app closes.')}
             </p>
           )}
-          {view && (view.config.modelBaseUrl || view.usePlatformModel) && (
+          {view && ((view.user && view.config.modelBaseUrl) || view.usePlatformModel) && (
             <label className="ia-account-model-toggle">
               <input
                 type="checkbox"
@@ -192,47 +189,12 @@ export function AccountSettings({ onClose }: { onClose: () => void }) {
               {t('Local features and your own API keys remain available without signing in.')}
             </p>
           )}
-          {config && (
-            <details className="ia-account-connection" open={view?.status === 'not_configured'}>
-              <summary>
-                {t('Platform connection')}
-                <ChevronDown size={14} aria-hidden="true" />
-              </summary>
-              <div className="ia-account-connection-fields">
-                {view?.user && (
-                  <p className="ia-account-note">
-                    {t('Sign out to change the platform connection.')}
-                  </p>
-                )}
-                {(
-                  [
-                    ['issuer', 'Account issuer'],
-                    ['clientId', 'Native client ID'],
-                    ['audience', 'Application audience'],
-                    ['remoteOrigin', 'Remote service origin'],
-                    ['modelBaseUrl', 'Model API base URL'],
-                  ] as const
-                ).map(([key, label]) => (
-                  <label key={key}>
-                    {t(label)}
-                    <input
-                      value={config[key]}
-                      disabled={busy || pending || Boolean(view?.user)}
-                      autoComplete="off"
-                      spellCheck={false}
-                      onChange={event => setConfig({ ...config, [key]: event.target.value })}
-                    />
-                  </label>
-                ))}
-                <button
-                  className="ia-account-button ia-account-save"
-                  disabled={busy || pending || Boolean(view?.user)}
-                  onClick={() => void act(() => window.harnessAccount.configure(config))}
-                >
-                  {t('Save connection')}
-                </button>
-              </div>
-            </details>
+          {view?.status === 'not_configured' && (
+            <p className="ia-account-note ia-account-warning">
+              {t(
+                'Platform sign-in is not configured for this installation. Contact your administrator.',
+              )}
+            </p>
           )}
           {(error || view?.error) && (
             <p role="alert" className="ia-account-note ia-account-error">

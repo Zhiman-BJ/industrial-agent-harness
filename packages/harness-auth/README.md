@@ -6,18 +6,22 @@ The shared module uses pinned `openid-client` 6.8.8 for discovery, Authorization
 
 ## Configure
 
-Register a **native/public** client in the platform with loopback callbacks enabled. A real client ID is required; this repository does not invent or ship a production registration. Desktop: Settings → Platform account → Platform connection. Environment overrides are supported:
+Desktop ships the previously verified public registration `harness-desktop-1` / `harness-desktop` on `https://auth.zhiman.cn`, with the model endpoint `https://api.zhiman.cn/v1`. Settings → Platform account → Sign in with browser requires no connection form. These are public identifiers, not client secrets. The model source remains an explicit choice after sign-in.
+
+Custom deployments are configured by the operator in `account/config.json` under `INDUSTRIAL_HARNESS_CONFIG_DIR`, or with the environment overrides below; restart the app after changing them. Register a **native/public** client with loopback callbacks enabled and supply its matching application audience. A configured identity is preserved in full, including service URLs and credential binding. Default bootstrap also covers an old settings file containing only the default issuer and empty identity fields; it never fills production identifiers or service endpoints into a custom identity. The renderer cannot edit deployment configuration. CLI configuration remains explicit.
+
+The bundled remote origin is empty: remote deployments supply their trusted origin through the same operator configuration. Platform login itself does not require a remote endpoint.
 
 | Variable | Meaning |
 | --- | --- |
 | `INDUSTRIAL_AUTH_ISSUER` | Issuer origin; defaults to `https://auth.zhiman.cn` |
-| `INDUSTRIAL_AUTH_CLIENT_ID` | Registered native client ID; required |
-| `INDUSTRIAL_AUTH_AUDIENCE` | Application slug the native client belongs to; distinct from client ID |
+| `INDUSTRIAL_AUTH_CLIENT_ID` | Registered native client ID; bundled for Desktop, explicit for CLI |
+| `INDUSTRIAL_AUTH_AUDIENCE` | Application slug the native client belongs to; Desktop defaults to `harness-desktop`, distinct from client ID |
 | `INDUSTRIAL_AUTH_REMOTE_ORIGIN` | Explicit remote service origin; leave empty until deployed |
 | `INDUSTRIAL_AUTH_REMOTE_AUDIENCE` | Operator-only service audience, defaults to `industrial-mcp-remote`; also supported as `remoteAudience` in config.json |
 | `INDUSTRIAL_AUTH_MODEL_BASE_URL` | Explicit model endpoint, including `/v1` when required |
 
-One sign-in, one rotating refresh family, and a separate access token for each service. Login does not request a resource, so lack of remote access cannot prevent sign-in or model use. On demand the shared manager refreshes with RFC 8707 `resource`: the configured model base URL for audience `obol-api`, or the configured remote origin for its service audience. Obol supports matching a registered resource's path prefixes. The remote deployment must register the origin used here, not only a narrower MCP path. No second native client or browser authorization is needed. The account UI remains unchanged; service audiences and caches stay internal.
+One sign-in, one rotating refresh family, and a separate access token for each service. Login does not request a resource, so lack of remote access cannot prevent sign-in or model use. On demand the shared manager refreshes with RFC 8707 `resource`: the configured model base URL for audience `obol-api`, or the configured remote origin for its service audience. Obol supports matching a registered resource's path prefixes. The remote deployment must register the origin used here, not only a narrower MCP path. No second native client or browser authorization is needed. Service audiences and caches stay internal.
 
 Existing main-branch login sessions retain their binding and acquire service tokens lazily. Cache entries bind both resource and audience. Changing the operator's remote audience cannot reuse its old token. Credentials from the unmerged dual-grant experiment are not imported.
 

@@ -53,7 +53,7 @@ function validateConfig(value) {
   return { issuer, clientId, audience, remoteOrigin, modelBaseUrl, remoteAudience };
 }
 
-function readConfig(directory, environment = process.env) {
+function readConfig(directory, environment = process.env, defaults = {}) {
   let saved = {};
   try {
     saved = JSON.parse(fs.readFileSync(path.join(directory, 'config.json'), 'utf8'));
@@ -71,6 +71,23 @@ function readConfig(directory, environment = process.env) {
   for (const [key, name] of Object.entries(names))
     if (environment['INDUSTRIAL_AUTH_' + name] !== undefined)
       saved[key] = environment['INDUSTRIAL_AUTH_' + name];
+  // A configured identity keeps its complete binding, including empty service URLs.
+  // Bootstrap only an unconfigured account for the application's default issuer.
+  if (
+    !saved.clientId &&
+    !saved.audience &&
+    environment.INDUSTRIAL_AUTH_CLIENT_ID === undefined &&
+    environment.INDUSTRIAL_AUTH_AUDIENCE === undefined &&
+    (!saved.issuer || saved.issuer === defaults.issuer)
+  ) {
+    saved = {
+      ...defaults,
+      ...saved,
+      issuer: saved.issuer || defaults.issuer,
+      clientId: defaults.clientId,
+      audience: defaults.audience,
+    };
+  }
   return validateConfig(saved);
 }
 module.exports = { authDirectory, trustedUrl, validateConfig, readConfig };

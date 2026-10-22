@@ -10,7 +10,7 @@
 
 ## 已实现路径
 
-1. 设置 → 平台账号 → 配置平台连接 → 在系统浏览器登录。回调只监听 `127.0.0.1` 临时端口。同步支持文档规定的 `/oauth/code` → `code#state` 粘贴路径；二者共用 PKCE/state/nonce、按各自 redirect URI 兑换，先完成的生效。错误粘贴不消费待登录状态；取消/超时/退出阻止迟到结果重新登录。桌面提供可选中复制的登录链接与密码式授权码输入；CLI 的 `--no-browser`、SSH 和无显示环境使用纯粘贴流程，TTY 输入不回显。浏览器启动失败或卡住不阻塞粘贴、取消或超时；监听不可用时降级到粘贴。
+1. 设置 → 平台账号 → 在系统浏览器登录。桌面内置已验证的生产登录注册及模型端点，不再展示或要求填写平台连接表单。回调只监听 `127.0.0.1` 临时端口。同步支持文档规定的 `/oauth/code` → `code#state` 粘贴路径；二者共用 PKCE/state/nonce、按各自 redirect URI 兑换，先完成的生效。错误粘贴不消费待登录状态；取消/超时/退出阻止迟到结果重新登录。桌面提供可选中复制的登录链接与密码式授权码输入；CLI 的 `--no-browser`、SSH 和无显示环境使用纯粘贴流程，TTY 输入不回显。浏览器启动失败或卡住不阻塞粘贴、取消或超时；监听不可用时降级到粘贴。
 2. Desktop 凭证经系统安全存储加密落盘；Linux `basic_text` 或安全存储不可用时仅在内存保存。界面明确显示当前保存方式。安全存储异常不阻塞本地工作台。
 3. 请求前按需刷新；多调用者/多进程共享文件锁，锁内重新读取凭证，原子保存轮换结果。刷新意图先落盘，进程崩溃或网络结果不明时要求重新登录，避免旧 Refresh Token 被再次消费。
 4. 退出尝试撤销 Refresh Token 并清理本机凭证；撤销失败显示提示。退出不关闭远程任务，不清除任务 requestId/jobId，也不清除系统浏览器全局 SSO。
@@ -20,16 +20,18 @@
 
 详细配置、CLI 命令和公开说明见 [harness-auth README](../packages/harness-auth/README.md)。
 
-## 平台部署必须提供的内容
+## 平台部署配置（由产品或管理员提供）
 
 | 配置 | 约束 |
 | --- | --- |
 | Issuer | 默认生产 `https://auth.zhiman.cn`；可配置 dev/local |
-| Native client ID | 必须真实注册且开启本机回调；不能使用应用 slug 代替 |
+| Native client ID | 桌面内置已验证的 `harness-desktop-1`；自定义部署必须真实注册且开启本机回调，不能使用应用 slug 代替 |
 | Application audience | native client 所属应用，现有登记为 `harness-desktop` |
-| 模型 API base URL | 明确绑定的可信模型服务地址，含服务要求的路径前缀 |
+| 模型 API base URL | 桌面默认 `https://api.zhiman.cn/v1`，可由部署配置覆盖 |
 | 远程服务 origin | 明确绑定的可信服务；未部署时留空，不主动连接 |
 | 远程服务 audience（部署配置） | 默认 `industrial-mcp-remote`；通过文件或环境变量覆盖，不增加 UI 字段 |
+
+2026-10-22：普通账号页仅提供登录、状态和退出；服务端点、client ID、audience 通过部署文件或环境变量配置并在重启后生效。已有配置及会话绑定保持不变；没有账号身份的默认配置自动补齐。自定义 issuer/client/audience 不继承生产注册或端点。新安装可直接发起登录，远程服务 origin 由部署方提供且不作为登录前置条件。
 
 2026-10-15：按 [PR #180](https://github.com/Zhiman-BJ/industrial-agent-harness/pull/180) 的思路独立重做，直接适配 Obol 已实现的 [RFC 8707 接口](https://github.com/zhimanai/obol/blob/main/docs/account-api-access.md)。只修改 Harness，不修改或部署 Obol。
 
@@ -56,6 +58,7 @@ UI 继续只有一个账号入口，未新增服务授权或 audience 输入项�
 | 打包后的安全存储、Windows ACL | 待验收；受控加密适配器通过不能替代真实钥匙串或安装包验证。 |
 | 2026-10-15 按服务 Token 回归 | 88/88 通过，使用真实回环 HTTP、受控 OIDC/JWKS，覆盖一次登录、服务缓存、跨实例串行轮换、拒绝服务不退出、刷新中退出、错误 Token 拒绝、模型重试与错误脱敏；CLI 持久化恢复、Desktop IPC/加密存储及远程 credential provider 共用同一实现。架构契约 20/20、架构回归 48/48、桌面构建通过。 |
 | 2026-10-15 Obol 本地跨仓验证 | 对 Obol 原样主分支 `7137bd8` 运行其已有 `TestPostgresM0/account_api_access/real_harness_client`，开启 race 检查，通过实际 Harness 登录、模型代理调用、服务刷新及退出后旧 Token 401。使用临时 PostgreSQL/Redis 和合成模型；未改 Obol 源码。 |
+| 2026-10-22 登录免配置 | 桌面构建通过；新增配置与 IPC 定向测试 9/9、GUI 启动器 13/13、架构契约策略 11/11。macOS arm64 真实 Electron 自测通过，覆盖未登录无配置输入框、浏览器回调、授权码备用路径、取消、刷新、退出及深浅色/640×480；运行结果 `completed=true, passed=true, exitCode=0`，使用受控 OIDC 服务。本地执行器恢复后，账号协议及桌面 IPC 回归 75/75、完整架构契约检查及回归 20/20，均无跳过；前次受限终端的 `listen EPERM` 和 `spawnSync git ENOBUFS` 阻断已通过重跑消除。未重测生产账号、模型或远程服务。 |
 | 生产模型 / 真实远程服务 | 本轮未验收；按用户要求不连接真实远程 MCP。 |
 
 共享协议测试包含错误 state/nonce/ID Token audience/签名、Access Token audience、刷新轮换与并发、崩溃标记、取消后迟到回调、刷新途中退出撤销最新凭据、模型流式转发和错误脱敏。Desktop IPC 只接受主窗口主 frame，渲染器不能读取 Token。
