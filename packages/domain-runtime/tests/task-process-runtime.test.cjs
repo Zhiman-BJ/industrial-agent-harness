@@ -42,6 +42,7 @@ function fixture(t) {
       filesystem = {},
       readOnlyDirs = [],
       homeDir = os.homedir(),
+      onSpawn = () => {},
     }) {
       const directory = path.join(projectDir, '.harness-runs', 'runtime-check');
       const input = path.join(directory, 'input');
@@ -68,6 +69,7 @@ function fixture(t) {
         'node:child_process': {
           spawnSync: () => assert.fail('Local execution must not probe a Docker subprocess.'),
           spawn(command, args, options) {
+            onSpawn();
             calls.push({ command, args: Array.from(args), options });
             const child = new EventEmitter();
             child.stdout = new EventEmitter();
@@ -397,6 +399,345 @@ function assertNotGranted(result, directory) {
     );
   }
 }
+
+// Model volume-specific lookup using real files. Unlike a symlink, realpath
+// can preserve the caller's casing on a case-insensitive macOS volume.
+function aliasedFilesystem(actual, alias) {
+  actual = fs.realpathSync(actual);
+  alias = path.resolve(alias);
+  const lookup = file => {
+    if (file === alias) return actual;
+    return file.startsWith(alias + path.sep)
+      ? path.join(actual, file.slice(alias.length + 1))
+      : file;
+  };
+  const filesystem = {
+    accessSync: (file, ...args) => fs.accessSync(lookup(file), ...args),
+    readFileSync: (file, ...args) => fs.readFileSync(lookup(file), ...args),
+    lstatSync: (file, ...args) => fs.lstatSync(lookup(file), ...args),
+    statSync: (file, ...args) =>
+      file === '/dev'
+        ? { isDirectory: () => true, isFile: () => false }
+        : fs.statSync(lookup(file), ...args),
+    existsSync: file => file === '/usr/bin/sandbox-exec' || fs.existsSync(lookup(file)),
+    realpathSync(file) {
+      const target = lookup(file);
+      const resolved = fs.realpathSync(target);
+      return target === file ? resolved : path.join(alias, path.relative(actual, resolved));
+    },
+  };
+  return { filesystem, actual, alias };
+}
+
+function assertNoDirectoryGrant(result, directories) {
+  for (const directory of directories) {
+    assert.equal(result.roots.includes(directory), false, directory);
+    assert.equal(
+      result.profile.includes(`(subpath ${JSON.stringify(directory)})`),
+      false,
+      directory,
+    );
+  }
+}
+
+async function verifyNativeCaseBoundary(t, { projectDir, executable, alias, secret }) {
+  const { executeTask } = require('../src/task-process.cjs');
+  const directory = path.join(projectDir, '.harness-runs', 'native-case-boundary');
+  const input = path.join(directory, 'input');
+  const work = path.join(directory, 'work');
+  fs.mkdirSync(input, { recursive: true });
+  fs.mkdirSync(work, { recursive: true });
+  fs.writeFileSync(path.join(input, 'selected.txt'), 'HARNESS_SELECTED_READ_READY\n');
+  fs.writeFileSync(
+    executable,
+    `#!/bin/sh
+set -eu
+/bin/cat "$HARNESS_INPUT_DIR/selected.txt"
+printf 'started' > "$HARNESS_OUTPUT_DIR/started.txt"
+if /bin/cat "$1"; then exit 41; fi
+printf '%s\\n' HARNESS_UNSELECTED_READ_DENIED
+`,
+  );
+  const run = () =>
+    executeTask(
+      { command: [alias, secret], runtime: { kind: 'local' }, timeoutMs: 5000 },
+      {
+        projectDir,
+        directory,
+        input,
+        work,
+        actionId: 'native-case-boundary',
+        environment: process.env,
+      },
+    );
+  if (!fs.existsSync(alias)) {
+    await assert.rejects(run(), /Task executable is unavailable/);
+    t.diagnostic('Native case-sensitive volume rejected the nonexistent executable alias.');
+  } else {
+    assert.equal(
+      fs.statSync(alias, { bigint: true }).ino,
+      fs.statSync(executable, { bigint: true }).ino,
+    );
+    const result = await run();
+    assert.equal(result.status, 'COMPLETED', result.log);
+    assert.equal(result.exitCode, 0, result.log);
+    assert.match(result.log, /HARNESS_SELECTED_READ_READY/);
+    assert.match(result.log, /Permission denied|Operation not permitted/);
+    assert.match(result.log, /HARNESS_UNSELECTED_READ_DENIED/);
+    assert.equal(fs.readFileSync(path.join(work, 'started.txt'), 'utf8'), 'started');
+    t.diagnostic(
+      'Native Seatbelt case-alias task read selected input, wrote work, and denied unselected source.',
+    );
+  }
+}
+
+test('a case alias of a project bundle cannot expose unselected Contents', async t => {
+  const instance = fixture(t);
+  const bundle = instance.bundle('Project Tool', instance.project);
+  const secret = path.join(bundle.contents, 'unselected.txt');
+  fs.writeFileSync(secret, 'private source');
+  const model = aliasedFilesystem(
+    instance.project,
+    path.join(path.dirname(fs.realpathSync(instance.project)), 'SELECTED'),
+  );
+  const target = path.join(
+    model.alias,
+    path.relative(model.actual, fs.realpathSync(bundle.executable)),
+  );
+  const contents = path.join(
+    model.alias,
+    path.relative(model.actual, fs.realpathSync(bundle.contents)),
+  );
+  assert.equal(model.filesystem.realpathSync(target), target);
+  assert.equal(
+    model.filesystem.statSync(target, { bigint: true }).ino,
+    fs.statSync(bundle.executable, { bigint: true }).ino,
+  );
+  const result = await instance.run({ target, filesystem: model.filesystem });
+  assertNoDirectoryGrant(result, [
+    model.actual,
+    model.alias,
+    contents,
+    fs.realpathSync(bundle.contents),
+  ]);
+  assert.equal(
+    fs.existsSync(path.join(instance.project, '.harness-runs/runtime-check/input/unselected.txt')),
+    false,
+  );
+  if (process.platform === 'darwin')
+    await verifyNativeCaseBoundary(t, {
+      projectDir: instance.project,
+      executable: bundle.executable,
+      alias: target,
+      secret,
+    });
+});
+
+test('a case-aliased bundle containing the project cannot expose its Contents', async t => {
+  const instance = fixture(t);
+  const bundle = instance.bundle('Runtime');
+  const projectDir = path.join(bundle.contents, 'Resources', 'project');
+  fs.mkdirSync(projectDir, { recursive: true });
+  const model = aliasedFilesystem(bundle.app, path.join(path.dirname(bundle.app), 'RUNTIME.app'));
+  const target = path.join(
+    model.alias,
+    path.relative(model.actual, fs.realpathSync(bundle.executable)),
+  );
+  const result = await instance.run({ target, projectDir, filesystem: model.filesystem });
+  assertNoDirectoryGrant(result, [
+    fs.realpathSync(bundle.contents),
+    path.join(model.alias, 'Contents'),
+  ]);
+});
+
+for (const bin of ['bin', 'sbin']) {
+  test(`a project ${bin} case alias cannot grant the whole original project`, async t => {
+    const instance = fixture(t);
+    const executable = writeExecutable(path.join(instance.project, bin, 'tool'));
+    const secret = path.join(instance.project, 'unselected.txt');
+    fs.writeFileSync(secret, 'private source');
+    const model = aliasedFilesystem(
+      instance.project,
+      path.join(path.dirname(fs.realpathSync(instance.project)), 'SELECTED'),
+    );
+    const target = path.join(model.alias, bin, 'tool');
+    assert.equal(
+      model.filesystem.statSync(target, { bigint: true }).ino,
+      fs.statSync(executable, { bigint: true }).ino,
+    );
+    const result = await instance.run({ target, filesystem: model.filesystem });
+    assertNoDirectoryGrant(result, [model.actual, model.alias]);
+    if (process.platform === 'darwin')
+      await verifyNativeCaseBoundary(t, {
+        projectDir: instance.project,
+        executable,
+        alias: target,
+        secret,
+      });
+  });
+}
+
+test('a case-aliased installation prefix containing the project stays private', async t => {
+  const instance = fixture(t);
+  const installation = path.join(instance.root, 'Installation');
+  writeExecutable(path.join(installation, 'bin', 'tool'));
+  const projectDir = path.join(installation, 'project');
+  fs.mkdirSync(projectDir);
+  const model = aliasedFilesystem(installation, path.join(instance.root, 'INSTALLATION'));
+  const result = await instance.run({
+    target: path.join(model.alias, 'bin', 'tool'),
+    projectDir,
+    filesystem: model.filesystem,
+  });
+  assertNoDirectoryGrant(result, [model.actual, model.alias]);
+});
+
+test('a home-directory case alias cannot bypass the shared-prefix exclusion', async t => {
+  const instance = fixture(t);
+  const homeDir = path.join(instance.root, 'Home');
+  writeExecutable(path.join(homeDir, 'bin', 'tool'));
+  const model = aliasedFilesystem(homeDir, path.join(instance.root, 'HOME'));
+  const result = await instance.run({
+    target: path.join(model.alias, 'bin', 'tool'),
+    homeDir,
+    filesystem: model.filesystem,
+  });
+  assertNoDirectoryGrant(result, [model.actual, model.alias]);
+});
+
+for (const kind of ['bundle', 'prefix']) {
+  test(`a distinct case-sensitive ${kind} remains a readable external runtime`, async t => {
+    const instance = fixture(t);
+    const installation = path.join(instance.root, 'independent-runtime');
+    let executable, runtime;
+    if (kind === 'bundle') {
+      const bundle = instance.bundle('Runtime', installation);
+      executable = bundle.executable;
+      runtime = bundle.contents;
+    } else {
+      executable = writeExecutable(path.join(installation, 'bin', 'tool'));
+      runtime = installation;
+    }
+    // Distinct physical identities model a case-sensitive volume on every host.
+    const model = aliasedFilesystem(
+      installation,
+      path.join(path.dirname(fs.realpathSync(instance.project)), 'SELECTED'),
+    );
+    assert.notEqual(
+      model.filesystem.statSync(model.alias, { bigint: true }).ino,
+      fs.statSync(instance.project, { bigint: true }).ino,
+    );
+    const target = path.join(model.alias, path.relative(model.actual, fs.realpathSync(executable)));
+    const granted = path.join(model.alias, path.relative(model.actual, fs.realpathSync(runtime)));
+    const result = await instance.run({ target, filesystem: model.filesystem });
+    assert.ok(result.roots.includes(granted));
+    assert.ok(result.profile.includes(`(subpath ${JSON.stringify(granted)})`));
+    assertNoDirectoryGrant(result, [fs.realpathSync(instance.project)]);
+  });
+}
+
+test('a similar project-name prefix is not mistaken for an overlapping installation', async t => {
+  const instance = fixture(t);
+  const installation = instance.project + '-runtime';
+  const target = writeExecutable(path.join(installation, 'bin', 'tool'));
+  const result = await instance.run({ target });
+  assert.ok(result.roots.includes(fs.realpathSync(installation)));
+  assertNoDirectoryGrant(result, [fs.realpathSync(instance.project)]);
+});
+
+test('unreadable project identity fails before any local process is started', async t => {
+  const instance = fixture(t);
+  const bundle = instance.bundle();
+  const project = fs.realpathSync(instance.project);
+  const failure = Object.assign(Error('Cannot inspect project directory identity.'), {
+    code: 'EACCES',
+  });
+  let started = 0;
+  await assert.rejects(
+    instance.run({
+      target: bundle.executable,
+      onSpawn: () => started++,
+      filesystem: {
+        statSync: (file, ...args) => {
+          if (file === project) throw failure;
+          return fs.statSync(file, ...args);
+        },
+      },
+    }),
+    error => error === failure,
+  );
+  assert.equal(started, 0);
+});
+
+test('a zero inode cannot establish a runtime directory identity', async t => {
+  const instance = fixture(t);
+  const bundle = instance.bundle();
+  const project = fs.realpathSync(instance.project);
+  let started = 0;
+  await assert.rejects(
+    instance.run({
+      target: bundle.executable,
+      onSpawn: () => started++,
+      filesystem: {
+        statSync: (file, ...args) => {
+          const stat = fs.statSync(file, ...args);
+          if (file === project && args[0]?.bigint) stat.ino = 0n;
+          return stat;
+        },
+      },
+    }),
+    /directory identity is unavailable/,
+  );
+  assert.equal(started, 0);
+});
+
+test('an unreadable optional shared-root identity cannot be ignored', async t => {
+  const instance = fixture(t);
+  const target = writeExecutable(path.join(instance.root, 'installation', 'bin', 'tool'));
+  const failure = Object.assign(Error('Cannot inspect excluded shared root.'), { code: 'EACCES' });
+  let started = 0;
+  await assert.rejects(
+    instance.run({
+      target,
+      onSpawn: () => started++,
+      filesystem: {
+        statSync: (file, ...args) => {
+          if (file === '/opt') throw failure;
+          return fs.statSync(file, ...args);
+        },
+      },
+    }),
+    error => error === failure,
+  );
+  assert.equal(started, 0);
+});
+
+test('equal inode numbers on different devices remain separate directories', async t => {
+  const instance = fixture(t);
+  const bundle = instance.bundle();
+  const project = fs.realpathSync(instance.project);
+  const projectIdentity = fs.statSync(project, { bigint: true });
+  const contents = fs.realpathSync(bundle.contents);
+  const result = await instance.run({
+    target: bundle.executable,
+    filesystem: {
+      statSync: (file, ...args) => {
+        const stat =
+          file === '/dev'
+            ? { isDirectory: () => true, isFile: () => false }
+            : fs.statSync(file, ...args);
+        if (file === contents && args[0]?.bigint) {
+          stat.ino = projectIdentity.ino;
+          stat.dev = projectIdentity.dev + 1n;
+        }
+        return stat;
+      },
+    },
+  });
+  assert.ok(result.roots.includes(contents));
+  assert.ok(result.profile.includes(`(subpath ${JSON.stringify(contents)})`));
+  assertNoDirectoryGrant(result, [project]);
+});
 
 test('an embedded project interpreter does not auto-expose unselected Resources', async t => {
   const instance = fixture(t);
