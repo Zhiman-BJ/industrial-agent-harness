@@ -41,6 +41,14 @@ function prepare(config) {
     path.join(directory, 'sub/child.kicad_sch'),
   );
   fs.writeFileSync(path.join(directory, 'invalid.kicad_pcb'), '(kicad_pcb broken');
+  // Regression: minimal sources may omit the (layers ...) block; the viewer
+  // must synthesize it instead of crashing on load.
+  fs.writeFileSync(
+    path.join(directory, 'minimal.kicad_pcb'),
+    '(kicad_pcb (version 20240108) (generator pcbnew) ' +
+      '(footprint "Contract:ExplicitModel" (layer "F.Cu") (at 10 10 0)) ' +
+      '(footprint "Contract:ExplicitModel" (layer "B.Cu") (at 15 10 90)))',
+  );
   fs.writeFileSync(path.join(directory, 'README.md'), 'KiCad Viewer desktop integration test');
   saveBindings(config, {
     activeId: 'kicad-test',
@@ -136,6 +144,7 @@ async function run(window) {
       ['hierarchy.kicad_sch', 'kc-schematic-viewer'],
       ['led.kicad_pcb', 'kc-board-viewer'],
       ['led.kicad_sch', 'kc-schematic-viewer'],
+      ['minimal.kicad_pcb', 'kc-board-viewer'],
     ]) {
       await waitFor(() =>
         evaluate(`Boolean(document.querySelector('.ia-file-list button[title="${file}"]'))`),
@@ -308,6 +317,30 @@ async function run(window) {
         );
       }
     }
+    // The minimal fixture has no outline or copper, so its 3D scene is
+    // expected to fail gracefully ("no supported 3D display geometry") and
+    // fall back to 2D instead of producing a scene.
+    await evaluate(
+      `document.querySelector('.ia-file-list button[title="minimal.kicad_pcb"]').click()`,
+    );
+    await waitFor(() =>
+      evaluate(
+        `document.querySelector('.ia-file-view:not([hidden])')?.querySelector('.rp-kicad-toolbar strong')?.innerText === 'minimal.kicad_pcb' && document.querySelector('.ia-file-view:not([hidden])')?.querySelector('button[aria-label="3D PCB"]')?.disabled === false`,
+      ),
+    );
+    const minimalUrl = await evaluate(
+      `document.querySelector('.ia-file-view:not([hidden]) iframe').src`,
+    );
+    const minimalFrame = window.webContents.mainFrame.frames.find(item => item.url === minimalUrl);
+    assert.ok(minimalFrame, 'minimal board reuses the registered KiCad iframe');
+    await evaluate(
+      `document.querySelector('.ia-file-view:not([hidden])')?.querySelector('button[aria-label="3D PCB"]').click()`,
+    );
+    await waitFor(() =>
+      minimalFrame.executeJavaScript(
+        `document.body.dataset.pcb3d === 'error' && document.body.dataset.pcbMode === '2d'`,
+      ),
+    );
     const pcb3dReports = [];
     for (const file of ['led.kicad_pcb', ...(complexFixture ? ['complex.kicad_pcb'] : [])]) {
       await evaluate(`document.querySelector('.ia-file-list button[title="${file}"]').click()`);
