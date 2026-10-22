@@ -1,0 +1,31 @@
+$ tsc --noEmit && vite build
+vite v8.2.2 building client environment for production...
+transforming...
+✓ 2148 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                              0.97 kB │ gzip:     0.50 kB
+dist/assets/ibm-plex-sans-latin-variable-IvpUvPa2.woff2     45.71 kB
+dist/assets/harness-occt-CxdVwTKt.wasm                   8,723.29 kB │ gzip: 2,877.44 kB
+dist/assets/CadViewport-DchzvxI6.css                         3.10 kB │ gzip:     1.05 kB
+dist/assets/index-lb8ZWuTp.css                             137.05 kB │ gzip:    25.57 kB
+dist/assets/MarkdownView-CdkbpJBY.js                         0.88 kB │ gzip:     0.54 kB
+dist/assets/TextView-FgTKyUvi.js                             1.52 kB │ gzip:     0.72 kB
+dist/assets/WaveformViewport-BNMZxWmL.js                     3.97 kB │ gzip:     1.75 kB
+dist/assets/GodotViewport-CPgv0tSi.js                        5.43 kB │ gzip:     2.20 kB
+dist/assets/NetlistViewport-BDnVP9mf.js                      5.91 kB │ gzip:     2.55 kB
+dist/assets/DocumentViewport-D6HrvIGc.js                     6.71 kB │ gzip:     2.66 kB
+dist/assets/text-D4Ts-FJp.js                                 8.83 kB │ gzip:     3.39 kB
+dist/assets/EngineeringViewport-CticumTf.js                  8.98 kB │ gzip:     3.43 kB
+dist/assets/KiCadViewport-CefrdhaW.js                       10.14 kB │ gzip:     3.58 kB
+dist/assets/AssetViewport-DiJrKvWc.js                       10.61 kB │ gzip:     3.69 kB
+dist/assets/LayoutViewport-DhKWCZmy.js                      38.14 kB │ gzip:    13.55 kB
+dist/assets/CadViewport-ZcX71St3.js                        195.52 kB │ gzip:    56.41 kB
+dist/assets/index-CyVAxtW2.js                              676.65 kB │ gzip:   197.35 kB
+
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 701ms

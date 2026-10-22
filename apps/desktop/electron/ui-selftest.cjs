@@ -80,6 +80,19 @@ async function run(window, dialog) {
       return rect.width > 0 && (rect.left < -1 || rect.right > innerWidth + 1 || rect.bottom > innerHeight + 1);
     }).map(node => node.getAttribute('aria-label') || node.title || node.textContent)`);
     assert.deepEqual(clipped, [], `${name}: essential controls must remain visible`);
+    const strokes = await evaluate(`(() => {
+      const selectors = ['.ia-chat', '.ia-chat-header', '.ia-composer', '.ia-domain-pill',
+        '.ia-workspace-tree', '.ia-workbench-tabbar', '.ia-settings-group'];
+      return selectors.flatMap(selector => Array.from(document.querySelectorAll(selector)).flatMap(node => {
+        const style = getComputedStyle(node);
+        return ['Top', 'Right', 'Bottom', 'Left'].flatMap(side => {
+          const width = parseFloat(style['border' + side + 'Width']);
+          const color = style['border' + side + 'Color'];
+          return width > 0 && color !== 'rgba(0, 0, 0, 0)' ? [{selector, side, color}] : [];
+        });
+      }));
+    })()`);
+    assert.deepEqual(strokes, [], `${name}: shell surfaces use tone instead of resting strokes`);
   }
   async function capture(name) {
     const directory = process.env.INDUSTRIAL_UI_SCREENSHOTS;
@@ -468,10 +481,22 @@ async function run(window, dialog) {
     node.focus();
     node.setSelectionRange(node.value.length, node.value.length);
   })()`);
+  await wait(
+    `getComputedStyle(document.querySelector('.ia-composer')).outlineColor !== 'rgba(0, 0, 0, 0)'`,
+  );
   assert.equal(
     await evaluate(`getComputedStyle(document.querySelector('.ia-composer')).outlineStyle`),
     'solid',
     'The focused input must have a visible focus indicator',
+  );
+  assert.equal(
+    await evaluate(`(() => {
+      const style = getComputedStyle(document.querySelector('.ia-composer'));
+      return parseFloat(style.outlineWidth) >= 2 && style.outlineColor !== 'rgba(0, 0, 0, 0)' &&
+        style.borderTopColor === 'rgba(0, 0, 0, 0)';
+    })()`),
+    true,
+    'The composer has one visible focus ring without an additional border',
   );
   window.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'Enter', modifiers: ['shift'] });
   window.webContents.sendInputEvent({ type: 'char', keyCode: '\r', modifiers: ['shift'] });

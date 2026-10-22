@@ -1,0 +1,231 @@
+{
+  "base": "300dbd692b21af9ef6f298c9202ce7354db9be56",
+  "branch": "codex/borderless-desktop-ui-20261022",
+  "scope": "Desktop CSS only; supporting design documentation and renderer selftest assertions. No application behavior changes.",
+  "nativeScreenshots": {
+    "platform": "macOS arm64",
+    "electron": "44.0.0",
+    "data": "Isolated UI selftest projects and model configuration; no model or industrial task execution.",
+    "files": [
+      {
+        "name": "builtin-remote-service-zh.png",
+        "sha256": "7e9e6296acdc328ead4c6748237d937edf4ed3538742da73188ab9a17df29ad8",
+        "pixelWidth": 2880,
+        "pixelHeight": 1800
+      },
+      {
+        "name": "builtin-remote-service.png",
+        "sha256": "8f935fcf68dc232d25ae9fe5cefa1291d8bdccb39d770bf11b483bf7bff811d2",
+        "pixelWidth": 2880,
+        "pixelHeight": 1800
+      },
+      {
+        "name": "chat-dark.png",
+        "sha256": "86fe317792630809b742406f115e75ff461d904b8dfb9d5a68452705ec4b56f8",
+        "pixelWidth": 2880,
+        "pixelHeight": 1800
+      },
+      {
+        "name": "chat-light.png",
+        "sha256": "38abe4dfafdd7c22f9753574e4c7402ac3db25ac6b168a172d1693838cadfb8d",
+        "pixelWidth": 2880,
+        "pixelHeight": 1800
+      },
+      {
+        "name": "chat-minimum.png",
+        "sha256": "ba1a40761807c70cb1cfda27f284f2f4b00d118cf5ea9132fd1bd2095598bc13",
+        "pixelWidth": 1280,
+        "pixelHeight": 960
+      },
+      {
+        "name": "create-project.png",
+        "sha256": "989b11037793a1bd29b6b9b18675a6b5f9626bec34cdaaa13253bd8d7816f4da",
+        "pixelWidth": 2880,
+        "pixelHeight": 1800
+      },
+      {
+        "name": "empty-dark-zh.png",
+        "sha256": "539dc18c3fd7f0d1b5e8481bd941200c513a88c5ff2b64666247e03ec73b47d6",
+        "pixelWidth": 2880,
+        "pixelHeight": 1800
+      },
+      {
+        "name": "empty-light.png",
+        "sha256": "06418064e6ac96d6c12c9dd1fa596def3048ebcd55dcbd086aae3035f2038139",
+        "pixelWidth": 2880,
+        "pixelHeight": 1800
+      },
+      {
+        "name": "project-details.png",
+        "sha256": "f1eab5ef0467d5f360e4e7eac0357c3c53054b9b9a700b442898981551f358ce",
+        "pixelWidth": 2880,
+        "pixelHeight": 1800
+      },
+      {
+        "name": "rail-long-hover.png",
+        "sha256": "1e3f5a7397ae638e398f2b3598cde4bde15a20ab87027a22790a2825b10aa19e",
+        "pixelWidth": 2560,
+        "pixelHeight": 1440
+      },
+      {
+        "name": "rail-long-idle.png",
+        "sha256": "f11cfa5e18281fb6f9cb18a3dc2535c9dc11ff53bde198af3d00ababf6c517bf",
+        "pixelWidth": 2560,
+        "pixelHeight": 1440
+      },
+      {
+        "name": "rail-long-other-theme.png",
+        "sha256": "3447997fd7c9f692eb416b649cef4bb822dfad8d07ed15f953ca27db9c6f00b1",
+        "pixelWidth": 2560,
+        "pixelHeight": 1440
+      },
+      {
+        "name": "rail-sampled-minimum.png",
+        "sha256": "e0df7d36eee18aaf25bae2ef1d9808cf386f337b96b612f10ecfd7af097c7990",
+        "pixelWidth": 1280,
+        "pixelHeight": 960
+      },
+      {
+        "name": "rail-short.png",
+        "sha256": "8195faf7b05cdfada8f772aa3be6bdf05c0116096ff665b74744da6bf6e18ec5",
+        "pixelWidth": 2560,
+        "pixelHeight": 1440
+      },
+      {
+        "name": "remote-unconfigured-zh.png",
+        "sha256": "f6269136987d9dd1b358b18d80ed746c926a2a1c687f4867e532a9961e620ae6",
+        "pixelWidth": 2880,
+        "pixelHeight": 1800
+      },
+      {
+        "name": "remote-unconfigured.png",
+        "sha256": "cb4ec051b3e562e50a477850e42dd2afbfb95166215a225db983b7f19754fafb",
+        "pixelWidth": 2880,
+        "pixelHeight": 1800
+      },
+      {
+        "name": "settings-compact.png",
+        "sha256": "6e6783aef55f3b8f8ff2f7a68542546312a0d63eeacc4181da7a7d50e06397b3",
+        "pixelWidth": 2000,
+        "pixelHeight": 1440
+      },
+      {
+        "name": "tabs-800.png",
+        "sha256": "b43ed05362789e4b343b5d9ad10056c2ceb517bfb0cc67cc1b4a1402fc7b16aa",
+        "pixelWidth": 1600,
+        "pixelHeight": 1200
+      },
+      {
+        "name": "tabs-dark-zh.png",
+        "sha256": "ef0e2edf5c9a32d8580684588868f365f1a6334401acc1a9b5251155ed0eb4f9",
+        "pixelWidth": 2880,
+        "pixelHeight": 1800
+      },
+      {
+        "name": "tabs-markdown.png",
+        "sha256": "9a6132d9185a189292ba73355ee6ad56e56cfcd6d9efc5a0063ffd74e0419986",
+        "pixelWidth": 2880,
+        "pixelHeight": 1800
+      },
+      {
+        "name": "tabs-minimum.png",
+        "sha256": "bd74fb8a0f3cb2fd74a6bb8bb1ca4ff5b6d8d512a2a2c250c4104ae867bd0d32",
+        "pixelWidth": 1280,
+        "pixelHeight": 960
+      },
+      {
+        "name": "tabs-settings-minimum.png",
+        "sha256": "5c419c19c4edea57c7ca6631df1ab91aed52604e77ea27176f9b6949298fc473",
+        "pixelWidth": 1280,
+        "pixelHeight": 960
+      },
+      {
+        "name": "workspace-compact.png",
+        "sha256": "e6eeef78de038b932255914ba25d2b55992dd2de5b65b77f2c0d10d99801a6b1",
+        "pixelWidth": 2000,
+        "pixelHeight": 1440
+      },
+      {
+        "name": "workspace-dark-zh.png",
+        "sha256": "cc6b7d858fd59e02305efc0f43e7c969d78aa0e3e5c8c8f8a27614cb258725b7",
+        "pixelWidth": 2880,
+        "pixelHeight": 1800
+      },
+      {
+        "name": "workspace-light.png",
+        "sha256": "c2a6dbb5f50eff7d5d207fcc2727a06db1a36dd436dd0822c2acc9dca9345352",
+        "pixelWidth": 2880,
+        "pixelHeight": 1800
+      }
+    ],
+    "runId": "a1f2e6b3-27ba-4fe7-887d-1137d5709e49",
+    "finishedAt": "2026-10-22T05:59:40.383Z",
+    "captureCount": 25,
+    "resolutionNote": "Capture dimensions are physical pixels. Minimum-window assertions use a 640 by 480 logical-pixel window."
+  },
+  "validation": {
+    "desktopBuild": "passed",
+    "eslintChangedSelftest": "passed",
+    "prettierChangedSources": "passed: CSS, renderer selftest, DESIGN.md, product-decisions.md and validation.json",
+    "architectureChecker": "passed; no policy or checker modifications",
+    "architectureContractTests": "11 passed; candidate-fetch suite 7 passed, 1 failed with spawnSync git ENOBUFS while asserting size limit",
+    "desktopUnitTests": "125 passed, 2 blocked by listen EPERM on 127.0.0.1, 0 skipped",
+    "nativeUIRegression": {
+      "status": "passed",
+      "resultFile": "native-result.json",
+      "logFile": "native-startup.txt",
+      "runId": "a1f2e6b3-27ba-4fe7-887d-1137d5709e49",
+      "attemptId": "b6ac251a-a4bd-44e6-bea8-02c5f3b66c0f",
+      "completed": true,
+      "exitCode": 0,
+      "finishedAt": "2026-10-22T05:59:40.383Z",
+      "coverage": [
+        "light and dark themes",
+        "Chinese and English",
+        "resting shell borders remain transparent",
+        "body and selected text contrast",
+        "essential controls fit the viewport",
+        "composer single focus indicator",
+        "keyboard focus and modal dismissal",
+        "Shift+Enter preserves a new line",
+        "project creation and execution-location controls",
+        "source preview and mounted document retention",
+        "file tabs and layout persistence",
+        "minimum 640 by 480 logical-pixel window",
+        "draft retention across themes and layouts",
+        "native mouse hover/click and keyboard message navigation",
+        "120-turn history sampling and first/last jumps",
+        "reduced-motion behavior"
+      ],
+      "launch": "Prepared isolated source GUI app, opened by the user from their terminal with --ui-selftest."
+    },
+    "architectureTests": "47 passed, 1 failed: unchanged candidate-fetch size-limit regression receives spawnSync git ENOBUFS; see architecture.txt",
+    "scopeConclusion": "Source-build macOS UI regression passed. Repository-wide checks are not all green; existing unit and candidate-fetch failures are retained without widening this UI-only change."
+  },
+  "limitations": [
+    "No Windows or Linux runtime was exercised.",
+    "No packaged build, engineering run, release, remote task, or model call was performed.",
+    "Desktop unit tests remain 125 passed and 2 blocked by loopback listen EPERM in the restricted shell. The native UI pass does not resolve those independent tests.",
+    "Architecture suite retains one unchanged Git ENOBUFS failure; this is not a fully green repository validation.",
+    "Awaiting user visual acceptance."
+  ],
+  "sourceCommit": "72c1e7a026795c4abb8d864b8a1004d96d598ebf",
+  "sourceSha256": {
+    "apps/desktop/src/style.css": "dd4ed924da268a756dac4c7e80ecfa1ff2ca1365b72745dbf505a392382402f6",
+    "apps/desktop/electron/ui-selftest.cjs": "500f9c40c798f4463122c39fb79c64794001159f84f160ad97d958bf7feee813"
+  },
+  "logs": {
+    "desktopBuild": "desktop-build.txt",
+    "desktopUnitTests": "desktop-unit.txt",
+    "architectureTests": "architecture.txt"
+  },
+  "mainSynchronization": {
+    "mainCommit": "3f4e002350a5d96683dbe2dc10388cdf02f781ac",
+    "resolution": "Preserved main PD-095 and appended the borderless UI decision as PD-096. The tested CSS and UI selftest source hashes are unchanged.",
+    "desktopBuild": "passed; TypeScript check and Vite bundle completed",
+    "desktopBuildLog": "main-sync-build.txt",
+    "architectureChecker": "passed",
+    "prettierChangedFiles": "passed",
+    "nativeAcceptance": "The recorded native pass and screenshots were produced on sourceCommit before main synchronization; the native selftest was not rerun after synchronization."
+  }
+}

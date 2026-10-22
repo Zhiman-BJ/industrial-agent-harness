@@ -1,0 +1,171 @@
+$ node --test electron/*.test.cjs
+✔ account IPC denies guest frames and never exposes a token method (1.955125ms)
+✖ desktop main-window IPC completes manual login with encrypted storage and safe views (172.369917ms)
+✔ corrupt account storage cannot prevent local application startup (19.081125ms)
+✔ signed-out platform model selection can explicitly return to a personal API key (19.615042ms)
+✔ batched display events preserve streamed content, activity boundaries and the previous render (88.744291ms)
+✔ subagent lifecycle updates replace only the matching child and retain surrounding activity (2.709833ms)
+✔ batch boundaries do not change the displayed stream or cross approval and result boundaries (1.075125ms)
+✔ streamed text keeps its first receipt time across later chunks and a restored history (0.478542ms)
+✔ subagent replacement uses the first child with that ID and does not replace a same-ID tool (0.867708ms)
+✔ packaged apps claim the product identity for their profile (0.843958ms)
+✔ late history cannot restore expired approval, duplicate text or resurrect running state (160.624125ms)
+✔ stale, unversioned and other-chat deliveries leave the snapshot untouched (1.280625ms)
+✔ late events are routed to their own turn and applying the same delivery twice is idempotent (0.232417ms)
+✔ legacy snapshots merge versioned recovery events and keep terminal state authoritative (0.50525ms)
+✔ a history page never creates a phantom turn from events outside that page (4.60225ms)
+✔ interleaved turn buckets preserve arrival order, repeated chunks and unmatched-event revision (0.405875ms)
+✔ pending and interrupted task lists never claim completion (3.352417ms)
+✔ task summaries preserve supplied titles and count only completed work (1.107666ms)
+✔ remote query errors override stale healthy state, including the first failed load (0.332709ms)
+✔ configuration, qualification and file-sync prerequisites remain distinct (0.234ms)
+✔ failed, unknown and ended remote work cannot appear healthy (0.239667ms)
+✔ status-card summaries and accessible progress text have both UI translations (4.586791ms)
+✔ unimported remote results never appear completed or suggest starting another chat (0.380583ms)
+✔ automatic sandbox release is visible without turning the chat into an ended session (0.295292ms)
+✔ desktop authorization reads both OS permissions without prompting (2.331916ms)
+✔ failed permission reads remain unknown; other platforms do not claim macOS authorization (0.552125ms)
+✔ system settings navigation only accepts the two desktop permission pages (1.126167ms)
+✔ GUI lookup distinguishes an explicit denial, unknown service and successful lookup (33.064791ms)
+✔ probe executes without AppKit, uses a private fresh directory and cleans up on success/failure (3.103042ms)
+✔ a denied preflight stops before Electron resolution or spawn and gives the desktop entry (3.584417ms)
+✔ normal launches preserve argument boundaries, environment and process lifecycle (0.440625ms)
+✔ an inconclusive diagnostic stops safely without claiming a permission denial (1.641083ms)
+✔ language follows the primary system language, with a safe English fallback (1.547833ms)
+✔ preferences persist and unavailable storage does not prevent switching (0.405708ms)
+✔ translations preserve data, interpolate once, and fall back for unknown messages (0.404417ms)
+✔ configuration translations use registered locales and matching interpolation parameters (36.502167ms)
+✔ a third language needs only configuration for options, detection, persistence and fallback (0.986375ms)
+✔ configured regional languages take precedence and the fallback is configurable (0.467459ms)
+✔ turn-end statuses translate instead of leaking English next to a translated label (0.315ms)
+✔ GUI launcher rejects unsupported platforms, injected flags and unsafe environments before creating output (29.138167ms)
+✔ preparation copies the pinned Electron into unique private bundles without changing upstream files (56.334166ms)
+✔ source app identities separate checkouts, interactive modes and selftest suites (59.461041ms)
+✔ missing build, wrong Electron version and signing errors never report a prepared success (27.72125ms)
+✔ escaping bundle links are rejected before signing rather than following upstream paths (25.729583ms)
+✔ GUI bootstrap synchronously loads the exact real main with curated argv and environment (36.141208ms)
+✔ zero exit alone and a different selftest marker do not establish UI selftest completion (90.448792ms)
+✔ a synchronous source main failure is logged and records a failed result (14.074084ms)
+✔ direct startup fd writes are mirrored with native signatures, byte counts and errors preserved (12.804375ms)
+✔ a failed log mirror preserves the successful native write and marks evidence incomplete (24.985833ms)
+✔ reopening the same prepared app removes stale results and records a new launch attempt (18.045834ms)
+✔ packaged or late bootstrap refuses the source entry and records failure (48.679917ms)
+✔ normal open invokes LaunchServices once with literal arguments and never retries failure (5.431042ms)
+✔ leading provider reasoning stays separate from Markdown, including partial streamed tags and literal code (50.503916ms)
+✔ closing a streamed reasoning tag releases the answer without consuming its Markdown (0.368709ms)
+✔ only consecutive leading thoughts are extracted, including an unfinished second thought (0.1565ms)
+✔ ordinary empty, whitespace and literal-tag messages preserve their body exactly (0.203208ms)
+✔ modal initial focus, forward/reverse entry, wrapping and cleanup (49.995125ms)
+✔ modal recalculates disabled, hidden and negative-tabindex controls on every key (0.413542ms)
+✔ Escape respects IME composition and consumed events; detached opener is not focused (0.309084ms)
+✔ model config keeps the key out of files and passes it only to the session (9.623416ms)
+✔ the session caps requested completion tokens instead of the remaining window (0.516834ms)
+✔ endpoint validation rejects remote plaintext and embedded credentials (0.530334ms)
+✔ model image capability is conservative in Auto and explicitly overridable (0.466125ms)
+✔ HARNESS_TRUSTED_PLAINTEXT_HOSTS allows explicit self-hosted plaintext endpoints (0.425584ms)
+✔ official MiniMax Chat Completions repairs a saved Moonshot protocol without changing its destination or key (10.017042ms)
+✔ thinking defaults follow the selected API instead of forcing high on every vendor (0.549625ms)
+(node:56949) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/roger/.codex/.chatgpt-projects/g-p-6a97bb9a4c6c8191a842ad700c51e704/implementation/industrial-agent-harness-borderless-ui-20261022/packages/viewer-builtin/src/kicad/vendor/three/three.module.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/roger/.codex/.chatgpt-projects/g-p-6a97bb9a4c6c8191a842ad700c51e704/implementation/industrial-agent-harness-borderless-ui-20261022/packages/viewer-builtin/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ PCB 3D wheel input exceeds the unchanged visible zoom threshold using real OrbitControls (454.781667ms)
+✔ Fit baseline refits when canvas resizes without changing the previous zoom (0.897667ms)
+✔ unstable layout times out within the same deadline instead of retrying indefinitely (2.092625ms)
+✔ a not-ready viewport is refitted before it can establish a stable baseline (0.338042ms)
+✔ Desktop packaging retains the pinned manager when workspace discovery cannot read its manifest (386.248708ms)
+✔ projects keep distinct directory bindings across restarts (3.462958ms)
+✔ existing sample bindings acquire a domain while legacy unset values remain editable (7.27875ms)
+✔ the sample name no longer duplicates its domain badge (5.732291ms)
+✔ project file access rejects sibling paths and escaping symlinks (5.824083ms)
+✔ project tree retains ordering, visibility and bounded depth and size (78.398209ms)
+✔ source previews bound text reads, preserve binary detection and defer Viewer content (4.008791ms)
+✔ execution-location reset awaits cleanup, leaves other projects intact and preserves cleanup failure (0.574125ms)
+✔ shutdown awaits retired runtime cleanup and all current disposers before reporting failure (12.942458ms)
+✔ desktop chats share one actual persistent project runtime and reopen its facts after disposal (15.876667ms)
+✔ external MCP changes made by another client renew an idle project Runtime and preserve its facts (276.747208ms)
+✖ connection-only UI fixture binds loopback, authenticates and rejects every mutation (10.226917ms)
+✔ loadTurns groups records by turn in recording order and tolerates a torn tail (4.504125ms)
+✔ replay emits each turn in order through the emit it was constructed with (78.738125ms)
+✔ a long recorded wait compresses to the display cap (1511.00925ms)
+✔ interrupt stops emission mid-turn (62.507625ms)
+✔ freshness refresh merges by canonical identity without replaying results or changing historical verdicts (70.385084ms)
+✔ explicitly attached reports fold together while final models and version history stay separate (8.253125ms)
+✔ equal titles do not collapse unrelated results and mutual attachments retain a main entry (2.430584ms)
+✔ selected, failed, uncertain, changed and unavailable attachments remain visible (0.748292ms)
+✔ an explicitly selected superseded result is promoted out of the closed history section (0.454208ms)
+✔ reset reserves all targeted chats; failed cleanup waits for slower siblings and remains retryable (5.110917ms)
+✔ shutdown waits for every actor despite an early failure and blocks new sessions (2.578125ms)
+✔ failed history finalization still releases both execution and pack leases (0.664334ms)
+✔ running chats remain bound to their own project and scope across navigation; settings affect only their project (1.3965ms)
+✔ shutdown closes and releases every session even when one close fails (0.470334ms)
+✔ deleting an idle chat reserves it until its native session has closed (0.495917ms)
+✔ native background work keeps admission and Pack leases until its terminal event (0.676167ms)
+✔ Core update waits for a ready download and an idle task before restart (0.782ms)
+✔ local installed builds without an update feed never contact a placeholder endpoint (0.291291ms)
+✔ an explicit interpreter is authoritative, including invalid explicit overrides (68.639625ms)
+✔ managed dependencies precede legacy environments; packaged callers cannot use legacy (0.633709ms)
+✔ service replacement, repair and missing dependencies close the previous worker (8.830542ms)
+✔ production preload keeps viewer repair on the existing repair IPC and preserves full repair (1.6115ms)
+✔ installed viewer readiness stays independent of external engineering tools (0.834ms)
+✔ dependency IPC diagnostics recover translatable product messages in both languages (35.96925ms)
+✔ closing before open resolves releases its late token exactly once (2.1195ms)
+✔ a fulfilled response closed before a lazy Viewport mounts is still released (0.814875ms)
+✔ a committed Viewer keeps ownership through hidden tabs and parent cleanup (0.098583ms)
+✔ StrictMode replacement ignores the first result without cancelling the second (0.191084ms)
+✔ cancelled open errors never update the replacement view (0.331084ms)
+✔ missing tokens and hosts without release support remain compatible (0.394791ms)
+✔ synchronous open errors and rejected disposal do not escape the lifecycle (4.964208ms)
+✔ repeated immediate tab closes free real host bindings before its view limit is reached (0.382084ms)
+✔ opening and binding a Viewer does not download; explicit prepare checks its artifact twice (1.910083ms)
+✔ unbound tokens, extra renderer paths and changed projects cannot trigger a download (0.487416ms)
+✔ replacement artifact bytes or paths are rejected before downloading (0.667083ms)
+✔ releasing the Viewer cancels its in-flight work and rejects its stale result (3.42375ms)
+✔ retained Viewer tabs keep independent bindings and release only their own resources (0.23925ms)
+✔ cancel is scoped to the current token and permits a later retry (2.038292ms)
+✔ a project or artifact replacement during a transfer cannot publish success (1.02525ms)
+✔ startup fits usable desktop space, including small displays and taskbar offsets (0.691459ms)
+✔ monitor removal and resolution changes bring the current window back into usable bounds (0.101792ms)
+✔ browsing replaces one preview while explicitly retained files keep their identity (35.196875ms)
+✔ pinning a second file retains the active preview and browsing replaces only that preview (0.428ms)
+✔ source-only previews refresh their content without silently pinning or duplicating the tab (0.187958ms)
+✔ equal artifact hashes at different paths remain separate retained views (0.14125ms)
+ℹ tests 127
+ℹ suites 0
+ℹ pass 125
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2191.338
+
+✖ failing tests:
+
+test at electron/account.test.cjs:37:1
+✖ desktop main-window IPC completes manual login with encrypted storage and safe views (172.369917ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:2368:21)
+      at listenInCluster (node:net:2499:12)
+      at node:net:2728:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at electron/remote-connection-selftest.test.cjs:5:1
+✖ connection-only UI fixture binds loopback, authenticates and rejects every mutation (10.226917ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:2368:21)
+      at listenInCluster (node:net:2499:12)
+      at node:net:2728:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+/Users/roger/.codex/.chatgpt-projects/g-p-6a97bb9a4c6c8191a842ad700c51e704/implementation/industrial-agent-harness-borderless-ui-20261022/apps/desktop:
+[ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] @industrial-agent-harness/desktop@1.0.1-beta.8 test: `node --test electron/*.test.cjs`
+Exit status 1
