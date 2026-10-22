@@ -28,6 +28,54 @@ async function run(window, controller, calls) {
   assert.ok(initial.totalEvents > 0);
   assert.equal(await evaluate(`Boolean(window.viewerHost || window.harnessAccount)`), false);
   assert.equal(await evaluate(`document.querySelectorAll('textarea, form, iframe').length`), 0);
+  const stageCoverage = [];
+  if (initial.replayStages.length) {
+    assert.equal(await evaluate(`document.querySelector('.ia-replay-ledger').open`), false);
+    if (initial.manifest.demo?.constructed || initial.manifest.source?.kind === 'constructed-demo')
+      assert.equal(
+        await evaluate(`Boolean(document.querySelector('[data-constructed-demo="true"]'))`),
+        true,
+      );
+    for (const [index, stage] of initial.replayStages.entries()) {
+      await evaluate(
+        `document.querySelector('[data-stage-control=${JSON.stringify(stage.id)}]').click()`,
+      );
+      await wait(
+        `document.querySelector('.ia-replay-progress').dataset.position === '${stage.position}' && document.querySelector('.ia-replay-stage-canvas').dataset.stageId === ${JSON.stringify(stage.id)} && document.querySelector('.ia-replay-stage-canvas').dataset.imageLoaded === 'true'`,
+      );
+      const image = await evaluate(`window.replayHost.image(${JSON.stringify(stage.assetId)})`);
+      await wait(
+        `Boolean(document.querySelector('.ia-replay-stage-canvas .rp-asset-canvas canvas')) && document.querySelector('.ia-chat-scroll').dataset.flowPosition === '${stage.position}'`,
+      );
+      assert.equal(
+        await evaluate(
+          `(() => {const canvas=document.querySelector('.rp-asset-canvas canvas'); return canvas.width > 0 && canvas.height > 0;})()`,
+        ),
+        true,
+      );
+      assert.ok(image.bytes > 0 && /^[0-9a-f]{64}$/.test(image.sha256));
+      stageCoverage.push({
+        id: stage.id,
+        atSeq: stage.atSeq,
+        assetId: stage.assetId,
+        width: image.width,
+        height: image.height,
+      });
+      await shot(`replay-stage-${String(index + 1).padStart(2, '0')}`);
+    }
+    assert.equal(
+      await evaluate(`window.replayHost.image('../outside.png').then(() => false, () => true)`),
+      true,
+    );
+    await evaluate(`document.querySelector('.ia-view-navigation button:nth-of-type(2)').click()`);
+    await wait(`document.querySelector('.ia-view-navigation output').textContent === '125%'`);
+    await evaluate(`document.querySelector('.ia-view-navigation button:nth-of-type(3)').click()`);
+    await wait(`document.querySelector('.ia-view-navigation output').textContent === '100%'`);
+    await evaluate(`document.querySelector('[data-control="reset"]').click()`);
+    await wait(
+      `document.querySelector('.ia-replay-progress').dataset.position === '0' && document.querySelector('.ia-replay-stage-canvas').dataset.stageId === ''`,
+    );
+  }
   await evaluate(`document.querySelector('[data-control="play"]').click()`);
   await wait(`document.querySelector('.ia-replay-progress').dataset.position !== '0'`);
   await evaluate(`document.querySelector('[data-control="play"]').click()`);
@@ -59,8 +107,21 @@ async function run(window, controller, calls) {
   await wait(
     `document.querySelector('.ia-replay-progress').dataset.position === '${initial.totalEvents}'`,
   );
+  await wait(
+    `document.querySelector('.ia-chat-scroll').dataset.flowPosition === '${initial.totalEvents}'`,
+  );
+  if (initial.replayStages.length) {
+    const finalStage = initial.replayStages.at(-1);
+    await wait(
+      `document.querySelector('.ia-replay-stage-canvas').dataset.stageId === ${JSON.stringify(finalStage.id)} && document.querySelector('.ia-replay-stage-canvas').dataset.imageLoaded === 'true'`,
+    );
+  }
   await shot('replay-complete');
+  await evaluate(
+    `document.querySelector('.ia-replay-diagnostics').open = true; document.querySelector('.ia-replay-ledger').open = true`,
+  );
   const coverage = [];
+  const flowCoverage = [];
   for (const agent of end.agents) {
     await evaluate(
       `document.querySelector('[data-agent-filter=${JSON.stringify(agent.id)}]').click()`,
@@ -84,6 +145,32 @@ async function run(window, controller, calls) {
     }
     assert.equal(count, agent.totalEvents);
     coverage.push({ id: agent.id, events: count, reached: agent.reachedEvents });
+    const firstFlow = await evaluate(
+      `window.replayHost.flow({agentId:${JSON.stringify(agent.id)},turnOffset:0,blockOffset:0})`,
+    );
+    let blocks = 0;
+    let pages = 0;
+    for (let turnOffset = 0; turnOffset < firstFlow.totalTurns; turnOffset++) {
+      let totalBlocks = 1;
+      for (let blockOffset = 0; blockOffset < totalBlocks; blockOffset += 40) {
+        const flow = await evaluate(
+          `window.replayHost.flow({agentId:${JSON.stringify(agent.id)},turnOffset:${turnOffset},blockOffset:${blockOffset}})`,
+        );
+        totalBlocks = flow.turn.totalBlocks;
+        pages++;
+        blocks += Math.min(40, totalBlocks - blockOffset);
+        const tools = new Set(
+          flow.turn.events.filter(event => event.type === 'tool').map(event => event.id),
+        );
+        for (const event of flow.turn.events) {
+          assert.notEqual(event.type, 'status');
+          assert.notEqual(event.replayRole, 'user');
+          if (event.type === 'tool-result')
+            assert.ok(tools.has(event.id), `Flow page orphaned ${event.id}`);
+        }
+      }
+    }
+    flowCoverage.push({ id: agent.id, turns: firstFlow.totalTurns, pages, blocks });
   }
   const finalAgent = end.agents.at(-1);
   if (finalAgent.totalEvents > 100) {
@@ -94,12 +181,16 @@ async function run(window, controller, calls) {
   }
   await evaluate(`document.querySelector('.ia-replay-source').open = true`);
   await wait(`Boolean(document.querySelector('.ia-replay-source pre'))`);
+  if (initial.replayStages.length)
+    await evaluate(`document.querySelector('.ia-replay-ledger').scrollIntoView({block:'start'})`);
   await shot('replay-agent-source');
   const report = {
     recordingId: initial.manifest.recordingId,
     totalEvents: initial.totalEvents,
     reachedEvents: end.position,
     agents: coverage,
+    conversation: flowCoverage,
+    stages: stageCoverage,
     ...calls,
     checks: [
       'renderer-controls',
@@ -110,6 +201,11 @@ async function run(window, controller, calls) {
       'full-engine-playback',
       'all-agent-pages',
       'source-record-inspection',
+      'production-AgentFlow',
+      'bounded-conversation-pages',
+      ...(stageCoverage.length
+        ? ['production-ViewerCanvas', 'viewer-zoom-fit', 'all-stage-images']
+        : []),
       'no-live-preload',
       'fail-on-call-live-dependencies',
     ],

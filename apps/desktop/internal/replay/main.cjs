@@ -11,7 +11,10 @@ app.setPath(
 const guard = process.argv.includes('--replay-selftest')
   ? require('./safety-guard.cjs').installReplaySafetyGuard()
   : null;
-const { loadReplayInput } = require('../../../../packages/harness-recording/src/index.cjs');
+const {
+  loadReplayInput,
+  readReplayImage,
+} = require('../../../../packages/harness-recording/src/index.cjs');
 const { createReplayController } = require('./controller.cjs');
 
 const argument = process.argv.indexOf('--replay');
@@ -62,6 +65,8 @@ app
     bind('replay:metadata', () => controller.metadata());
     bind('replay:page', request => controller.page(request));
     bind('replay:control', request => controller.control(request));
+    bind('replay:flow', request => controller.flow(request));
+    bind('replay:image', assetId => controller.image(assetId, readReplayImage));
     let previousMs = Date.now();
     const timer = setInterval(() => {
       const now = Date.now();
@@ -71,7 +76,8 @@ app
     }, 100);
     window.on('closed', () => {
       clearInterval(timer);
-      for (const name of ['metadata', 'page', 'control']) ipcMain.removeHandler(`replay:${name}`);
+      for (const name of ['metadata', 'page', 'control', 'image', 'flow'])
+        ipcMain.removeHandler(`replay:${name}`);
     });
     await window.loadFile(path.join(__dirname, 'dist', 'index.html'));
     if (process.argv.includes('--replay-selftest')) {

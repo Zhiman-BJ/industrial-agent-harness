@@ -9,6 +9,7 @@ const zlib = require('node:zlib');
 const { isSafeRelativePath } = require('./manifest.cjs');
 const { loadBundle, RecordingError } = require('./loader.cjs');
 const { projectNativeTrajectory } = require('./native-trajectory.cjs');
+const { validateReplayStages } = require('./replay-assets.cjs');
 
 const INPUT_LIMITS = Object.freeze({
   maxArchiveBytes: 256 * 1024 * 1024,
@@ -269,8 +270,13 @@ async function loadReplayInput(input, options = {}) {
   const limits = { ...INPUT_LIMITS, ...options.limits };
   const stat = await fs.promises.lstat(input);
   if (stat.isSymbolicLink()) fail('unsafe-link', 'Replay input must not be a link');
-  if (stat.isDirectory() && fs.existsSync(path.join(input, 'recording.json')))
-    return loadBundle(input);
+  if (stat.isDirectory() && fs.existsSync(path.join(input, 'recording.json'))) {
+    const bundle = loadBundle(input);
+    const errors = validateReplayStages(bundle.manifest);
+    if (errors.length) throw new RecordingError(errors[0], 'Invalid replay snapshot stages');
+    bundle.sourceDirectory = path.resolve(input);
+    return bundle;
+  }
   const data = stat.isDirectory()
     ? await readDirectory(input, limits)
     : await readArchive(input, limits);

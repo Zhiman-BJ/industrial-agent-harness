@@ -117,3 +117,140 @@ test('the integration safety guard fails on live model, tool, script and network
     guard.restore();
   }
 });
+
+function stagedFixture() {
+  const bundle = fixture(5);
+  bundle.events.forEach((record, index) => {
+    record.seq = (index + 1) * 10;
+  });
+  bundle.manifest.assets = [
+    { id: 'board-outline' },
+    { id: 'board-placed' },
+    { id: 'other-source' },
+  ];
+  bundle.manifest.replayStages = [
+    { id: 'outline', title: 'Board outline', atSeq: 10, assetId: 'board-outline' },
+    { id: 'placed', title: 'Placed components', atSeq: 30, assetId: 'board-placed' },
+  ];
+  bundle.manifest.source = { kind: 'constructed-demo' };
+  bundle.manifest.demo = { constructed: true, note: 'A constructed presentation example.' };
+  return bundle;
+}
+
+test('stage snapshots follow reached source sequences and restore on backward seek/reset', () => {
+  const controller = createReplayController(stagedFixture());
+  assert.equal(controller.snapshot().activeStageId, null);
+  assert.deepEqual(
+    controller.metadata().replayStages.map(stage => stage.position),
+    [1, 3],
+  );
+  assert.equal(controller.control({ action: 'seek', value: 1 }).activeStageId, 'outline');
+  assert.equal(controller.control({ action: 'seek', value: 2 }).activeStageId, 'outline');
+  assert.equal(controller.control({ action: 'seek', value: 3 }).activeStageId, 'placed');
+  assert.equal(controller.control({ action: 'seek', value: 1 }).activeStageId, 'outline');
+  assert.equal(controller.control({ action: 'reset' }).activeStageId, null);
+  controller.control({ action: 'play' });
+  assert.equal(controller.tick(1000).activeStageId, 'placed');
+  assert.equal(controller.page().total, 5, 'stage display does not replace source events');
+});
+
+test('image IPC adapter accepts only declared stage asset IDs and propagates provider failures', () => {
+  const bundle = stagedFixture();
+  const controller = createReplayController(bundle);
+  const calls = [];
+  const provider = (input, id) => {
+    calls.push({ input, id });
+    return { mime: 'image/png', dataUrl: 'data:image/png;base64,png' };
+  };
+  assert.equal(controller.image('board-outline', provider).mime, 'image/png');
+  assert.equal(calls[0].input, bundle);
+  assert.equal(calls[0].id, 'board-outline');
+  for (const unsafe of [
+    '../board-outline',
+    '/tmp/board.png',
+    'file:///tmp/board.png',
+    'other-source',
+    'undeclared',
+    { assetId: 'board-outline' },
+  ])
+    assert.throws(() => controller.image(unsafe, provider), /declared stage asset ID/);
+  assert.equal(calls.length, 1, 'invalid references never reach the reader');
+  assert.throws(
+    () =>
+      controller.image('board-placed', () => {
+        throw Error('Hash changed');
+      }),
+    /Hash changed/,
+  );
+});
+
+test('a stage cannot silently reference undeclared assets or unavailable source sequences', () => {
+  const bundle = stagedFixture();
+  bundle.manifest.replayStages[0].assetId = 'undeclared';
+  assert.throws(() => createReplayController(bundle), /declared asset/);
+  bundle.manifest.replayStages[0].assetId = 'board-outline';
+  bundle.manifest.replayStages[0].atSeq = 99;
+  assert.throws(() => createReplayController(bundle), /outside the recording/);
+});
+
+test('product flow separates user input, merges exact streamed content and filters metadata', () => {
+  const bundle = fixture(0);
+  const events = [
+    { type: 'text', text: 'Historical user request', replayRole: 'user' },
+    { type: 'text', text: 'First ', replayRole: 'assistant' },
+    { type: 'status', message: 'native metadata' },
+    { type: 'text', text: 'answer.', replayRole: 'assistant' },
+    { type: 'thinking', text: 'Recorded thought.' },
+  ];
+  bundle.events = events.map((event, index) => ({
+    seq: index + 1,
+    relMs: index,
+    origin: { agentId: 'main', turnId: 'turn-1' },
+    event,
+  }));
+  const controller = createReplayController(bundle);
+  controller.control({ action: 'seek', value: events.length });
+  const flow = controller.flow();
+  assert.equal(flow.turn.task, 'Historical user request');
+  assert.deepEqual(
+    flow.turn.events.map(event => event.text),
+    ['First answer.', 'Recorded thought.'],
+  );
+  assert.equal(flow.position, events.length);
+});
+
+test('bounded product flow pages never orphan tool results across block boundaries', () => {
+  const bundle = fixture(0);
+  const events = [];
+  for (let index = 0; index < 45; index++)
+    events.push({
+      type: 'tool',
+      id: `call-${index}`,
+      name: 'HistoricalTool',
+      arguments: `${index}`,
+    });
+  for (let index = 0; index < 45; index++)
+    events.push({ type: 'tool-result', id: `call-${index}`, output: `result-${index}` });
+  bundle.events = events.map((event, index) => ({
+    seq: index + 1,
+    relMs: index,
+    origin: { agentId: 'agent-1', turnId: 'turn-2' },
+    event,
+  }));
+  const controller = createReplayController(bundle);
+  controller.control({ action: 'seek', value: events.length });
+  const ids = new Set();
+  for (const blockOffset of [0, 40]) {
+    const flow = controller.flow({ agentId: 'agent-1', blockOffset });
+    assert.equal(flow.turn.totalBlocks, 45);
+    const calls = flow.turn.events.filter(event => event.type === 'tool');
+    const results = flow.turn.events.filter(event => event.type === 'tool-result');
+    assert.deepEqual(
+      calls.map(event => event.id),
+      results.map(event => event.id),
+    );
+    calls.forEach(call => ids.add(call.id));
+  }
+  assert.equal(ids.size, 45);
+  assert.equal(controller.flow({ agentId: 'missing' }).turn, null);
+});

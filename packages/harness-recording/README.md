@@ -66,3 +66,13 @@ are documented in [Native trajectory replay](../../doc/native-trajectory-replay.
 
 See `fixtures/README.md`. Regenerate with `node scripts/build-fixtures.cjs`;
 `tests/fixtures.test.cjs` pins each bundle's documented behavior.
+
+## Constructed artifact demonstrations
+
+`createStagedDemo` authors a new, visibly identified constructed demonstration
+from pre-rendered PNG stages. `manifest.replayStages` binds each Viewer snapshot
+to a source position. `readReplayImage` supplies only declared PNGs after fresh
+path, size, hash and dimension checks. The source remains unchanged; no
+industrial result or tool execution is fabricated. See
+[Staged artifact replay](../../doc/staged-artifact-replay.md) for the input format
+and production AgentFlow + ViewerCanvas consumer.

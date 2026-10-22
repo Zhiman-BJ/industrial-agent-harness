@@ -476,7 +476,9 @@
         "packages/harness-recording/tests/fixtures.test.cjs",
         "packages/harness-recording/tests/redact.test.cjs",
         "packages/harness-recording/tests/demo-export.test.cjs",
-        "packages/harness-recording/tests/native-trajectory.test.cjs"
+        "packages/harness-recording/tests/native-trajectory.test.cjs",
+        "packages/harness-recording/tests/replay-assets.test.cjs",
+        "packages/harness-recording/tests/staged-demo.test.cjs"
       ],
       "decisionStatus": "decided",
       "isolation": { "status": "enforced", "legacyReferences": 0 },
@@ -490,6 +492,7 @@
         "packages/harness-replay",
         "apps/desktop/internal/replay",
         "scripts/verify-native-replay.cjs",
+        "scripts/build-staged-demo.cjs",
         "tests/integration/native-replay.test.cjs"
       ],
       "dependencyClass": "replay-internal",

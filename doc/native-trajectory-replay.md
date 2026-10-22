@@ -17,6 +17,8 @@ isolated internal Electron composition. It is not a flag on the public applicati
 or an installed-package feature. The public desktop entry does not import it.
 
 The header identifies historical replay, source coverage and per-agent counts.
+The main layout reuses the production AgentFlow conversation renderer and
+ViewerCanvas next to it; the complete source ledger is a diagnostic view.
 Play, pause, speed, timeline position and reset operate on the shared deterministic
 engine. Agent filters and 100-record pages expose every reached source record;
 source JSON is expanded on demand. Text, thinking, tool arguments, tool results,
