@@ -176,6 +176,7 @@ const headers = {
 };
 const assets = {
   'bridge.js': ['bridge.js', 'text/javascript'],
+  'board-normalize.js': ['board-normalize.js', 'text/javascript'],
   'embed.css': ['embed.css', 'text/css'],
   'kicanvas.js': ['vendor/kicanvas.js', 'text/javascript'],
   'symbols.ttf': ['vendor/symbols.ttf', 'font/ttf'],

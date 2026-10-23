@@ -501,6 +501,7 @@ window.addEventListener('unhandledrejection', event =>
 );
 
 try {
+  const { ensurePcbLayersBlock } = await import('./board-normalize.js');
   await import('./kicanvas.js');
   const response = await fetch('./manifest.json');
   if (!response.ok) throw Error(await response.text());
@@ -515,7 +516,9 @@ try {
     if (!sourceResponse.ok) throw Error(await sourceResponse.text());
     const source = document.createElement('kicanvas-source');
     source.setAttribute('name', file.name);
-    source.textContent = await sourceResponse.text();
+    // Minimal board sources may omit the (layers ...) declaration; the pinned
+    // renderer cannot resolve referenced layers then and crashes on load.
+    source.textContent = ensurePcbLayersBlock(await sourceResponse.text());
     embed.appendChild(source);
   }
   document.body.appendChild(embed);
