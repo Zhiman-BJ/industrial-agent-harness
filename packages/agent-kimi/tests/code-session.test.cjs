@@ -299,6 +299,14 @@ test(
         if (event.type === 'ApprovalRequest') await turn.approve(event.payload.id, decision);
       });
       assert.ok(events.some(event => event.type === 'ApprovalRequest'));
+      const calls = events.filter(
+        event => event.type === 'ToolCall' && event.payload.function.name === 'Bash',
+      );
+      assert.equal(calls.length, 1);
+      assert.deepEqual(JSON.parse(calls[0].payload.function.arguments), {
+        command: 'printf CODE_BASH_OK > approved.txt',
+        description: 'Write the controlled marker',
+      });
       assert.equal(
         f.model.requests[0].max_completion_tokens ?? f.model.requests[0].max_tokens,
         8192,

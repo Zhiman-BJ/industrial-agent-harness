@@ -184,14 +184,34 @@ function externalTools(getScope, lookupArtifact, disclose, readContextPage) {
     createExternalTool({
       name: 'industrial_capability_detail',
       description:
-        'Read a selected industrial capability. Use section to request only skills, tools, or verification when the full detail is large.',
+        'Read a selected industrial capability using an exact capabilityId from the current Broker scope or industrial_state_inspect.capabilityIds. Out-of-scope requests return the current allowed IDs. Use section to request only skills, tools, or verification when the full detail is large.',
       parameters: z.object({
         capabilityId: z.string(),
         section: z.enum(['all', 'skills', 'tools', 'verification']).optional(),
       }),
       handler: async ({ capabilityId, section = 'all' }) => {
-        if (!getScope()?.capabilityIds.includes(capabilityId))
-          throw Error('Capability is outside the current Broker scope.');
+        const currentScope = getScope();
+        if (!currentScope?.capabilityIds.includes(capabilityId)) {
+          const message = 'Capability is outside the current Broker scope.';
+          const allowedCapabilityIds = [...(currentScope?.capabilityIds || [])];
+          return {
+            isError: true,
+            message,
+            output: boundedJson(
+              {
+                code: 'CAPABILITY_OUT_OF_SCOPE',
+                message,
+                requestedCapabilityId: capabilityId,
+                allowedCapabilityIds,
+                scopeVersion: currentScope?.version ?? null,
+                nextStep: allowedCapabilityIds.length
+                  ? 'Select an exact ID from allowedCapabilityIds and retry. Tool IDs and domain names are not capability IDs.'
+                  : 'No capabilities are currently allowed. Stop capability detail lookup until the host resolves a new scope.',
+              },
+              'Capability scope error',
+            ),
+          };
+        }
         const detail = disclose(capabilityId);
         const selected =
           section === 'all'
@@ -288,11 +308,11 @@ class KimiSession {
       throw Error('Managed session resources require persistent native session callbacks.');
     this.resourceId = crypto.randomUUID();
     this.plugins = plugins;
-    // ToolCall arrives with arguments:null; the real arguments stream in as
-    // ToolCallPart frames (carrying no id) before the ToolResult lands. Track
-    // them so the ToolResult event can carry the complete arguments. This is
-    // per-turn state: run() clears it in its finally block so an interrupted
-    // call cannot leak a phantom event into the next turn.
+    // Native ToolCall events carry complete arguments. Legacy adapters start
+    // with arguments:null and stream id-less ToolCallPart frames instead.
+    // Retain either form per call until its result, including concurrent calls
+    // whose results arrive out of order. run() clears per-turn state so an
+    // interrupted call cannot leak a phantom event into the next turn.
     this.pendingToolArgs = new Map();
     this.toolNames = new Map();
     this.lastToolCall = null;
@@ -905,22 +925,24 @@ class KimiSession {
     } else if (event.type === 'ApprovalResponse')
       this.resolveApproval(event.payload.request_id, event.payload.response);
     else if (event.type === 'ToolCall') {
-      if (this.lastToolCall && this.pendingToolArgs.has(this.lastToolCall.id)) {
+      const previousArgs = this.lastToolCall && this.pendingToolArgs.get(this.lastToolCall.id);
+      if (previousArgs) {
         this.emitAgent({
           type: 'tool',
           id: this.lastToolCall.id,
           name: this.toolNames.get(this.lastToolCall.id) || this.lastToolCall.name,
-          arguments: this.pendingToolArgs.get(this.lastToolCall.id),
+          arguments: previousArgs,
         });
       }
-      this.pendingToolArgs.set(event.payload.id, '');
+      const args = event.payload.function.arguments || '';
+      this.pendingToolArgs.set(event.payload.id, args);
       this.toolNames.set(event.payload.id, event.payload.function.name);
       this.lastToolCall = { id: event.payload.id, name: event.payload.function.name };
       this.emitAgent({
         type: 'tool',
         id: event.payload.id,
         name: event.payload.function.name,
-        arguments: event.payload.function.arguments || '',
+        arguments: args,
       });
     } else if (event.type === 'ToolCallPart') {
       if (this.lastToolCall)
