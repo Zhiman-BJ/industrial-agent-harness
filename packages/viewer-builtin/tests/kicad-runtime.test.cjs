@@ -246,13 +246,13 @@ test('PCB 3D serves pinned local workers and WASM while excluding JavaScript eva
     assert.match(response.headers.get('Content-Type'), /javascript/);
     assert.match(
       response.headers.get('Content-Security-Policy'),
-      /script-src 'self' 'wasm-unsafe-eval';/,
+      /script-src 'self' 'wasm-unsafe-eval' 'unsafe-eval';/,
     );
     assert.match(response.headers.get('Content-Security-Policy'), /worker-src 'self';/);
-    assert.doesNotMatch(
-      response.headers.get('Content-Security-Policy'),
-      /(?:^|\s)'unsafe-eval'(?:\s|;)/,
-    );
+    // 'unsafe-eval' is required by the pinned occt-import-js glue: Emscripten
+    // embind builds invoker functions with the Function constructor, and
+    // without it all STEP meshing fails in the packaged viewer.
+    assert.match(response.headers.get('Content-Security-Policy'), /(?:^|\s)'unsafe-eval'(?:\s|;)/);
     assert.match(response.headers.get('Content-Security-Policy'), /connect-src 'self';/);
   }
   const wasm = await request(
