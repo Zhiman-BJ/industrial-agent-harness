@@ -31,6 +31,63 @@ test('general project tasks receive no industrial tools', () => {
   assert.deepEqual(tools, []);
 });
 
+test('capability scope errors disclose current IDs for recovery without reading rejected details', async () => {
+  let scope = {
+    version: 'initial-scope',
+    capabilityIds: ['allowed.initial'],
+    tools: [],
+  };
+  const disclosed = [];
+  const [tool] = externalTools(
+    () => scope,
+    async () => null,
+    id => {
+      disclosed.push(id);
+      return { capability: id, tools: [] };
+    },
+  );
+  // A call may wait for approval while the host replaces its Broker scope.
+  scope = { version: 'current-scope', capabilityIds: ['allowed.current'], tools: [] };
+  for (const capabilityId of ['unknown.capability', 'allowed.initial']) {
+    const result = await tool.handler({ capabilityId });
+    assert.equal(result.isError, true);
+    const error = JSON.parse(result.output);
+    assert.equal(error.code, 'CAPABILITY_OUT_OF_SCOPE');
+    assert.equal(error.requestedCapabilityId, capabilityId);
+    assert.deepEqual(error.allowedCapabilityIds, ['allowed.current']);
+    assert.equal(error.scopeVersion, 'current-scope');
+    assert.match(error.message, /outside the current Broker scope/);
+    assert.match(error.nextStep, /allowedCapabilityIds/);
+    assert.deepEqual(disclosed, []);
+    assert.deepEqual(scope.capabilityIds, ['allowed.current']);
+  }
+  const allowed = await tool.handler({ capabilityId: 'allowed.current', section: 'tools' });
+  assert.ok(!allowed.isError);
+  assert.deepEqual(JSON.parse(allowed.output), { capability: 'allowed.current', tools: [] });
+  assert.deepEqual(disclosed, ['allowed.current']);
+
+  // Revocation, including removal of the scope itself, remains fail-closed.
+  for (const revoked of [{ version: 'revoked-scope', capabilityIds: [], tools: [] }, undefined]) {
+    scope = revoked;
+    const result = await tool.handler({ capabilityId: 'allowed.current' });
+    assert.equal(result.isError, true);
+    const error = JSON.parse(result.output);
+    assert.deepEqual(error.allowedCapabilityIds, []);
+    assert.equal(error.scopeVersion, scope?.version ?? null);
+    assert.deepEqual(disclosed, ['allowed.current']);
+  }
+});
+
+test('capability detail still validates required IDs and section before scope recovery', async () => {
+  const [tool] = externalTools(
+    () => ({ capabilityIds: ['allowed'], tools: [] }),
+    async () => null,
+    () => assert.fail('invalid parameters must not reach disclosure'),
+  );
+  for (const args of [{}, { capabilityId: 1 }, { capabilityId: 'allowed', section: 'unknown' }])
+    await assert.rejects(tool.handler(args), error => Array.isArray(error.issues));
+});
+
 test('agent context reports current-user permissions without promising OS write isolation', () => {
   const context = industrialContext({
     domain: 'general',
@@ -70,7 +127,10 @@ test('capability detail can be narrowed and stale capability calls are rejected'
     { capability: 'chip.rtl.netlist.inspect', tools: [{ id: 'tool' }] },
   );
   scope = { capabilityIds: [], tools: [] };
-  await assert.rejects(tools[0].handler({ capabilityId: 'chip.rtl.netlist.inspect' }), /outside/);
+  const revoked = await tools[0].handler({ capabilityId: 'chip.rtl.netlist.inspect' });
+  assert.equal(revoked.isError, true);
+  assert.equal(JSON.parse(revoked.output).code, 'CAPABILITY_OUT_OF_SCOPE');
+  assert.deepEqual(JSON.parse(revoked.output).allowedCapabilityIds, []);
 });
 
 test('artifact metadata and injected scope reject oversized responses without silent truncation', async () => {

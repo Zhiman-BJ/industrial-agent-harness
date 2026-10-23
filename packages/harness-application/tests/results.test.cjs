@@ -129,6 +129,77 @@ test('native edits require an explicit fresh scope before a tracked action can r
   await f.run('inspect native changes and record an edit');
 });
 
+test('state inspection returns replacement capabilities without relaxing Action scope or state checks', async t => {
+  const f = setup(t, async ({ kernel, tools, context }) => {
+    const previous = structuredClone(kernel.getScope());
+    assert.ok(previous.capabilityIds.includes('fixture.before'));
+    fs.writeFileSync(path.join(f.project.path, 'native.txt'), 'changed stage');
+    const fresh = JSON.parse(
+      (await tools.find(tool => tool.name === 'industrial_state_inspect').handler({})).output,
+    );
+    assert.ok(fresh.capabilityIds.includes('fixture.after'));
+    assert.ok(!fresh.capabilityIds.includes('fixture.before'));
+    assert.deepEqual(fresh.capabilityIds, kernel.getScope().capabilityIds);
+    assert.equal(fresh.scopeVersion, kernel.getScope().version);
+    assert.notEqual(fresh.scopeVersion, previous.version);
+    assert.notEqual(fresh.state.id, previous.stateId);
+    assert.ok(fresh.allowedTools.includes('fixture.after'));
+    assert.ok(!fresh.allowedTools.includes('fixture.before'));
+    const snapshot = await context.refreshState();
+    snapshot.capabilityIds.push('forged.capability');
+    assert.ok(!kernel.getScope().capabilityIds.includes('forged.capability'));
+    const call = tools.find(tool => tool.name === 'industrial_action_call');
+    const execute = async (toolId, expectedStateId) =>
+      JSON.parse((await call.handler({ toolId, inputs: {}, expectedStateId })).output);
+    const outsideScope = await execute('fixture.before', fresh.state.id);
+    assert.equal(outsideScope.actionStatus, 'failed');
+    assert.match(outsideScope.diagnostics.join('\n'), /outside the current Broker scope/);
+    const staleState = await execute('fixture.after', previous.stateId);
+    assert.equal(staleState.actionStatus, 'failed');
+    assert.match(staleState.diagnostics.join('\n'), /state.*changed|stale/i);
+    const accepted = await execute('fixture.after', fresh.state.id);
+    assert.equal(accepted.actionStatus, 'completed');
+  });
+  const directory = path.join(path.dirname(f.project.path), 'fixture-pack');
+  fs.mkdirSync(directory);
+  fs.writeFileSync(
+    path.join(directory, 'runtime.cjs'),
+    `const fs = require('node:fs');
+    const path = require('node:path');
+    module.exports.createRuntimePlugin = () => ({
+      stateProvider: ({ projectDir }) => ({
+        stage: fs.existsSync(path.join(projectDir, 'native.txt')) ? 'after' : 'before',
+        inputHashes: {},
+      }),
+      tools: ['before', 'after'].map(stage => ({
+        descriptor: {schemaVersion: '1', id: 'fixture.' + stage, version: '1', risk: 'read-only', verification: []},
+        execute: () => ({executionSucceeded: true, artifacts: [], diagnostics: []}),
+      })),
+      capabilities: ['before', 'after'].map(stage => ({
+        id: 'fixture.' + stage, domain: 'chip', title: 'Inspect ' + stage,
+        stages: [stage], keywords: ['inspect'], priority: 100, skills: [],
+        tools: [{id: 'fixture.' + stage, summary: 'Inspect current fixture'}], verification: [],
+      })),
+    });`,
+  );
+  f.tasks.options.getRegistry = () => ({
+    domains: [{ id: f.project.domain }],
+    skills: [],
+    capabilities: [],
+    providerPacks: [],
+    runtimePacks: [
+      {
+        id: 'fixture-pack',
+        domain: f.project.domain,
+        version: '1',
+        directory,
+        runtime: { entry: 'runtime.cjs' },
+      },
+    ],
+  });
+  assert.equal((await f.run('inspect current fixture')).status, 'completed');
+});
+
 test('offline history and evidence refresh detect changed inputs without changing canonical verdicts or permitting current selection', async t => {
   const f = setup(t, async () => {});
   const file = path.join(f.project.path, 'source');

@@ -29,6 +29,14 @@ L0 领域索引 → L1 能力索引 → L2 Skill Batch 与 Tool Scope
 
 V1 的 Resolver 建议使用确定性流程：领域和阶段硬过滤，产物条件检查，任务意图匹配与优先级排序，最后处理依赖、冲突与去重。意图匹配不能越过领域和权限约束。V1 不依赖额外 LLM 进行路由。
 
+### 已实现：能力详情查询的拒绝与恢复
+
+Agent adapter 动态注册 `industrial_capability_detail`，内部 MCP 审批名带 `mcp__harness_adapter__` 前缀；它不是领域原生 Tool，也不属于领域工具目录。参数 `capabilityId` 必须来自执行时的 `scope.capabilityIds`，人工批准该调用不会扩大 Scope。
+
+越界查询保留工具错误状态，返回有界 JSON：`code: CAPABILITY_OUT_OF_SCOPE`、`message`、`requestedCapabilityId`、`allowedCapabilityIds`、`scopeVersion` 和 `nextStep`。错误只披露当前允许的能力 ID，不读取被拒能力的详情、不进行别名猜测或自动授权；允许列表为空时停止详情查询，等待宿主重新解析 Scope。Kimi 原生工具循环可以根据错误返回的有效 ID 纠正调用。
+
+`industrial_state_inspect` 重新检查状态并解析 Scope 后，返回 `state`、`allowedTools`、`capabilityIds` 和 `scopeVersion`。能力 ID 与 Tool ID 分开，版本用于关联本次观察；它们不替代实际执行时的 Scope 和 expected State 检查。工具事件按调用 ID 保留完整参数或旧分片参数，避免交错调用时空事件覆盖已有参数，支持诊断无效能力 ID。
+
 ## 声明与工具身份
 
 Capability 声明建议采用 YAML，字段至少覆盖稳定 ID、版本、领域、适用状态、skills、canonical tool IDs、验证要求、依赖、冲突和优先级。示意：

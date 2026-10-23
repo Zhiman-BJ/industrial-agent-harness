@@ -354,7 +354,12 @@ class TaskService {
         const state = await entry.runtimeBundle.runtime.inspect();
         if (entry.resultContext !== resultContext) throw Error('Request is no longer current.');
         synchronizeScope(state);
-        return { state, allowedTools: entry.scope.tools };
+        return {
+          state,
+          allowedTools: entry.scope.tools,
+          capabilityIds: [...entry.scope.capabilityIds],
+          scopeVersion: entry.scope.version,
+        };
       };
       const synchronizeScope = state => {
         const refreshed = resolveProjectTask(

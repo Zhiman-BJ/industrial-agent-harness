@@ -384,6 +384,67 @@ test('streamed ToolCallPart arguments are assembled and replayed with the tool r
   assert.match(imageResult.output, /window/);
 });
 
+test('complete native tool arguments survive concurrent calls and out-of-order results alongside legacy fragments', async t => {
+  const { session, events } = startSession(t);
+  const first = { capabilityId: 'not-selected', section: 'all' };
+  const last = { capabilityId: 'selected', section: 'tools' };
+  const call = (id, name, args) => ({
+    type: 'ToolCall',
+    payload: { id, function: { name, arguments: args === null ? null : JSON.stringify(args) } },
+  });
+  const result = (id, error = false) => ({
+    type: 'ToolResult',
+    payload: {
+      tool_call_id: id,
+      return_value: { is_error: error, output: error ? 'outside scope' : 'ok', message: '' },
+    },
+  });
+  session.sessionFactory = () => ({
+    async close() {},
+    prompt: () => ({
+      result: Promise.resolve({ status: 'completed' }),
+      async *[Symbol.asyncIterator]() {
+        yield call('full-first', 'industrial_capability_detail', first);
+        yield call('legacy', 'legacy_tool', null);
+        yield { type: 'ToolCallPart', payload: { arguments_part: '{"text":"leg' } };
+        yield { type: 'ToolCallPart', payload: { arguments_part: 'acy"}' } };
+        yield call('full-last', 'industrial_capability_detail', last);
+        yield { type: 'ToolCallPart', payload: { arguments_part: '' } };
+        yield result('full-last');
+        yield result('full-first', true);
+        yield result('legacy');
+      },
+    }),
+  });
+  await session.run('parallel capability inspection');
+  for (const [id, expected] of [
+    ['full-first', first],
+    ['full-last', last],
+  ]) {
+    const calls = events.filter(event => event.type === 'tool' && event.id === id);
+    assert.ok(calls.length, `Missing ${id} tool event`);
+    for (const event of calls) {
+      assert.equal(event.name, 'industrial_capability_detail');
+      assert.ok(event.arguments, `${id} arguments must never be overwritten with an empty update`);
+      assert.deepEqual(JSON.parse(event.arguments), expected);
+    }
+  }
+  const legacy = events.filter(event => event.type === 'tool' && event.id === 'legacy').at(-1);
+  assert.equal(legacy.name, 'legacy_tool');
+  assert.deepEqual(JSON.parse(legacy.arguments), { text: 'legacy' });
+  assert.deepEqual(
+    events.filter(event => event.type === 'tool-result').map(event => [event.id, event.error]),
+    [
+      ['full-last', false],
+      ['full-first', true],
+      ['legacy', false],
+    ],
+  );
+  assert.equal(session.pendingToolArgs.size, 0);
+  assert.equal(session.toolNames.size, 0);
+  assert.equal(session.lastToolCall, null);
+});
+
 test('a turn interrupted mid-tool-call does not leak a phantom event into the next turn', async t => {
   const shareDir = fs.mkdtempSync(path.join(os.tmpdir(), 'industrial-kimi-plugin-'));
   t.after(() => fs.rmSync(shareDir, { recursive: true, force: true }));

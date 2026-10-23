@@ -4,6 +4,8 @@
 
 Use `resume(project, chatId)`, `prepare(entry, request)`, `start(entry, task, interactionOptions)`, `approve`, `answer`, `cancel`, `history`, `evidence`, and `close`. Start returns a completion promise separately from its IPC-safe identity. `diagnose(project)` performs the common read-only environment Action. A preview resolves metadata without starting a Runtime or writing chat turns. Start rechecks current state and policy after obtaining leases, so a prepared scope never becomes permanent execution permission.
 
+During an active task, `industrial_state_inspect` refreshes observed inputs and re-resolves the Broker scope. Its result includes `state`, `allowedTools`, the current `capabilityIds`, and `scopeVersion`, so the agent can recover after native edits change the available capabilities. Detail reads and industrial Actions still check the current scope; Actions also require the current `expectedStateId`.
+
 Adapters provide model/configuration settings, prompt images, event presentation and approval/question responses. CLI chooses JSONL and process-signal behavior and waits for native background work; Desktop presents live events and keeps a chat busy while background work holds its leases. Both use the same service lifecycle. Project/runtime caches and session read models are exposed for existing read-only UI and setting invalidation.
 
 Tests exercise real file Actions and verification records through both the CLI and desktop-facing task API, failed kernel cleanup, ownership checks and background lease retention. Existing native Kimi and Electron acceptance suites exercise production adapters; injected kernel tests alone do not establish native/platform qualification.
