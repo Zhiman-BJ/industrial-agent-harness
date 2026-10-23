@@ -128,6 +128,7 @@ function portableFiles() {
       'tests/ci/smoke-packaged-cad-fixture.test.cjs',
       'tests/ci/release-desktop.test.cjs',
       'tests/ci/pack-distribution-native-only.test.cjs',
+      'tests/ci/vendor-sources.test.cjs',
     ]),
   ]
     .filter(

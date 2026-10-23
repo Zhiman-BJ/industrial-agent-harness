@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "package": "occt-import-js",
   "version": "0.0.23",
   "repository": "https://github.com/kovacsv/occt-import-js",
@@ -16,8 +16,24 @@
     "license.occt.txt": "090f8eb6ba63e72887c1f89b009fb1656cfda02d83b6e9805b20468520a5d77f",
     "license.occt-import-js.txt": "7ffe1954587c77dfba1cf8eb9b2ea743671fa6e63f9e7a2f258119d42e14eefe",
     "occt-import-js.wasm": "33391fc9d94ea5c869a6718488bf0a9a464222bac9bdc764dfe1690cef281952",
-    "source/OCCT-d2abb6d.tar.gz": "2715d89a1bc44dfd34dab88f729c445ea93f6b57d6539b0c89614a80ae144a6c",
-    "source/occt-import-js-c2148e5.tar.gz": "2bd3799b2ac56cbf3f0df6300a51c8890e137bd001462702b356f621e33ff192",
-    "EMSCRIPTEN-LICENSE.txt": "620a78084fc7ca97c0b5dea9abf891f3ffcadfdbf305276f099c9c4e12fc1d86"
-  }
+    "EMSCRIPTEN-LICENSE.txt": "620a78084fc7ca97c0b5dea9abf891f3ffcadfdbf305276f099c9c4e12fc1d86",
+    "upstream-fixtures/cube.stp": "cfa52db7eab6fe6a73986a87aff8702d24431bdb7da6382afdd94234deb3f648",
+    "upstream-fixtures/source.txt": "7ebad4e6b7cd26fcb4b971dbc8fdbc4f1d86acc8a3203fb0d4ffa534856a826e"
+  },
+  "sourceArchives": [
+    {
+      "file": "OCCT-d2abb6d.tar.gz",
+      "url": "https://github.com/Zhiman-BJ/industrial-agent-harness/releases/download/vendor-sources-v1/OCCT-d2abb6d.tar.gz",
+      "sha256": "2715d89a1bc44dfd34dab88f729c445ea93f6b57d6539b0c89614a80ae144a6c",
+      "bytes": 48218968,
+      "origin": "Complete, unmodified OCCT submodule source at revision d2abb6d844231cb8f29be6894440874a4700e4a5"
+    },
+    {
+      "file": "occt-import-js-c2148e5.tar.gz",
+      "url": "https://github.com/Zhiman-BJ/industrial-agent-harness/releases/download/vendor-sources-v1/occt-import-js-c2148e5.tar.gz",
+      "sha256": "2bd3799b2ac56cbf3f0df6300a51c8890e137bd001462702b356f621e33ff192",
+      "bytes": 4399573,
+      "origin": "Complete occt-import-js wrapper, build scripts, examples and tests at revision c2148e54b456b571238d35cac037d304053d64b2"
+    }
+  ]
 }

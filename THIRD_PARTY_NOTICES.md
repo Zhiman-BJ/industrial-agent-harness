@@ -4,7 +4,7 @@ The root MIT license covers original Industrial Agent Harness contributions. Exi
 
 PCB component-model loading additionally includes:
 
-- **occt-import-js 0.0.23** and its fixed Open CASCADE dependency under LGPL-2.1, with the OCCT exception. Original JS/WASM, complete corresponding wrapper/OCCT source archives, licenses, Emscripten notices, hashes and the documented linear-memory adaptation are retained in `packages/viewer-builtin/src/kicad/vendor/occt-import/`.
+- **occt-import-js 0.0.23** and its fixed Open CASCADE dependency under LGPL-2.1, with the OCCT exception. Original JS/WASM, licenses, Emscripten notices, hashes and the documented linear-memory adaptation are retained in `packages/viewer-builtin/src/kicad/vendor/occt-import/`; the complete corresponding wrapper/OCCT source archives are distributed as immutable release assets pinned by the same manifest (`vendor-sources-v1`, fetched by `scripts/fetch-vendor-sources.cjs`).
 - **Three.js r160 VRMLLoader** under MIT and its **Chevrotain 9.0.1** dependency under Apache-2.0 (including retained MIT dependency notices). Original code, local import adaptations, fingerprints and licenses are retained in `packages/viewer-builtin/src/kicad/vendor/three/`.
 
 These are separately loaded, offline display parsers. Project component models retain their own terms; models used for local acceptance are not implicitly licensed or bundled with the application.
