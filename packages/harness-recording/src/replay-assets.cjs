@@ -1,7 +1,7 @@
 'use strict';
 
-// Passive, hash-bound replay snapshots only. An asset reference never resolves
-// a historical project path or activates a document/browser/industrial runtime.
+// Hash-bound replay stage references. Native stages only identify declared
+// artifacts; the owning read-only Viewer decides how to open their format.
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
@@ -21,6 +21,16 @@ function validateReplayStages(manifest) {
   for (const stage of manifest.replayStages) {
     if (!stage || !uuidLike(stage.id)) return ['replay-asset:stage'];
     const asset = manifest.assets?.find(asset => asset.id === stage.assetId);
+    const imageStage =
+      (stage.kind === undefined || stage.kind === 'image') && asset?.type === 'image';
+    const nativeStage =
+      stage.kind === 'native-artifact' &&
+      asset?.type === 'artifact-snapshot' &&
+      uuidLike(stage.provenance?.snapshotId) &&
+      /^[a-f0-9]{64}$/.test(stage.provenance?.sourceSha256) &&
+      stage.provenance.sourceSha256 === asset.sha256 &&
+      isSafeRelativePath(asset.relativePath) &&
+      asset.relativePath.startsWith(`assets/source/snapshots/${stage.provenance.snapshotId}/`);
     if (
       ids.has(stage.id) ||
       !Number.isInteger(stage.atSeq) ||
@@ -31,7 +41,7 @@ function validateReplayStages(manifest) {
       (stage.description !== undefined &&
         (typeof stage.description !== 'string' || stage.description.length > 4000)) ||
       !asset ||
-      asset.type !== 'image' ||
+      (!imageStage && !nativeStage) ||
       asset.status !== 'present'
     )
       return ['replay-asset:stage'];

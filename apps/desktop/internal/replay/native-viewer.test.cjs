@@ -89,6 +89,49 @@ test('recorded native sources open through the real Registry and KiCad runtime u
   assert.equal((await resource('source/0')).status, 404);
 });
 
+test('a zero-component board opens with zero model resources before native component growth', async t => {
+  const { bundle, directory } = fixture(t);
+  const content = `(kicad_pcb (version 20240108) (generator recorded)
+    (general (thickness 1.6))
+    (layers (0 "F.Cu" signal) (31 "B.Cu" signal) (44 "Edge.Cuts" user))
+    (gr_rect (start 0 0) (end 100 75) (stroke (width 0.1) (type default))
+      (fill none) (layer "Edge.Cuts")))`;
+  const relativePath = 'assets/source/snapshots/empty/board.kicad_pcb';
+  fs.mkdirSync(path.dirname(path.join(directory, relativePath)), { recursive: true });
+  fs.writeFileSync(path.join(directory, relativePath), content);
+  bundle.manifest.assets.push({
+    id: 'empty-board',
+    relativePath,
+    type: 'artifact-snapshot',
+    status: 'present',
+    bytes: Buffer.byteLength(content),
+    sha256: hash(content),
+  });
+  bundle.manifest.replayStages.push({
+    id: 'empty',
+    title: 'Empty board',
+    provenance: { snapshotId: 'empty', sourceBoardSha256: hash(content) },
+  });
+  const host = createRecordedViewerHost(bundle);
+  t.after(() => host.close());
+  host.activateStage('empty');
+  const first = await host.openArtifact({ artifactId: host.openProjectFile('board.kicad_pcb').id });
+  const manifest = await (
+    await host.handleProtocol(new Request(first.data.url.replace('index.html', 'manifest.json')))
+  ).json();
+  assert.equal(manifest.boardSha256, hash(content));
+  assert.deepEqual(manifest.models, []);
+  assert.equal((await host.handleProtocol(new Request(first.data.url))).status, 200);
+  host.activateStage('initial');
+  assert.equal((await host.handleProtocol(new Request(first.data.url))).status, 404);
+  const next = await host.openArtifact({ artifactId: host.openProjectFile('board.kicad_pcb').id });
+  const grown = await (
+    await host.handleProtocol(new Request(next.data.url.replace('index.html', 'manifest.json')))
+  ).json();
+  assert.equal(grown.models.length, 1);
+  assert.equal(grown.models[0].status, 'ready');
+});
+
 test('historical stage changes and reset invalidate old artifacts and native sessions', async t => {
   const { host } = fixture(t);
   host.activateStage('initial');

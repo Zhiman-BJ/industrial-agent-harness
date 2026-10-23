@@ -6,6 +6,7 @@ const path = require('node:path');
 const os = require('node:os');
 const crypto = require('node:crypto');
 const { loadReplayInput, readReplayImage } = require('../src/index.cjs');
+const { validateReplayStages } = require('../src/replay-assets.cjs');
 const PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO/aDQAAAABJRU5ErkJggg==',
   'base64',
@@ -87,4 +88,52 @@ test('stages must be ordered source positions and declared present images', asyn
     fs.writeFileSync(path.join(dir, 'recording.json'), JSON.stringify(manifest));
     await assert.rejects(loadReplayInput(dir), { code: 'replay-asset:stage' });
   }
+});
+
+test('native stages reference declared snapshot bytes without requiring or accepting an image', async t => {
+  const { dir, manifest } = stagedBundle(t);
+  const bytes = Buffer.from('Native document snapshot; opening belongs to its Viewer.\n');
+  const asset = manifest.assets.find(asset => asset.id === 'stage-image');
+  Object.assign(asset, {
+    id: 'native-source',
+    type: 'artifact-snapshot',
+    relativePath: 'assets/source/snapshots/initial/document.native',
+    bytes: bytes.length,
+    sha256: crypto.createHash('sha256').update(bytes).digest('hex'),
+  });
+  fs.mkdirSync(path.dirname(path.join(dir, asset.relativePath)), { recursive: true });
+  fs.writeFileSync(path.join(dir, asset.relativePath), bytes);
+  Object.assign(manifest.replayStages[0], {
+    kind: 'native-artifact',
+    assetId: asset.id,
+    provenance: { snapshotId: 'initial', sourceSha256: asset.sha256 },
+  });
+  fs.writeFileSync(path.join(dir, 'recording.json'), JSON.stringify(manifest));
+  const bundle = await loadReplayInput(dir);
+  assert.equal(bundle.manifest.replayStages[0].kind, 'native-artifact');
+  assert.throws(() => readReplayImage(bundle, asset.id), { code: 'replay-asset:unknown' });
+  for (const mutate of [
+    stage => {
+      stage.provenance.sourceSha256 = '0'.repeat(64);
+    },
+    stage => {
+      stage.provenance.snapshotId = '../initial';
+    },
+    stage => {
+      stage.provenance.snapshotId = 'another-snapshot';
+    },
+    stage => {
+      delete stage.provenance.sourceSha256;
+    },
+    stage => {
+      delete stage.kind;
+    },
+  ]) {
+    const copy = structuredClone(manifest);
+    mutate(copy.replayStages[0]);
+    assert.deepEqual(validateReplayStages(copy), ['replay-asset:stage']);
+  }
+  const wrongType = structuredClone(manifest);
+  wrongType.assets.find(entry => entry.id === asset.id).type = 'image';
+  assert.deepEqual(validateReplayStages(wrongType), ['replay-asset:stage']);
 });
