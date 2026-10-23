@@ -4,6 +4,15 @@
 每版的完整验证范围、发布条件与已知问题见 `doc/releases/<版本>.md`。
 自 1.1.0-beta.9 起版本线为 `1.1.0-beta.N`：feat/fix 只递增 beta 序号；特殊版本（如转正式版）用提交 footer `Release-As: <版本>` 指定。
 
+## [1.1.0-beta.10](https://github.com/Zhiman-BJ/industrial-agent-harness/compare/desktop-v1.1.0-beta.9...desktop-v1.1.0-beta.10) (2026-10-23)
+
+
+### Bug Fixes
+
+* **desktop:** guard context-usage tokens against missing provider fields ([#277](https://github.com/Zhiman-BJ/industrial-agent-harness/issues/277)) ([d5bfea6](https://github.com/Zhiman-BJ/industrial-agent-harness/commit/d5bfea6b4c1a0033050e21ae9e9fcbb3255ee3a1))
+* **desktop:** keep capability center header clear of macOS traffic lights ([#273](https://github.com/Zhiman-BJ/industrial-agent-harness/issues/273)) ([c5cf779](https://github.com/Zhiman-BJ/industrial-agent-harness/commit/c5cf779f1da376bfd795eec9736d5027a91b512d))
+* **desktop:** reopen macOS windows from the Dock ([#274](https://github.com/Zhiman-BJ/industrial-agent-harness/issues/274)) ([2a49233](https://github.com/Zhiman-BJ/industrial-agent-harness/commit/2a492335bcb1d168483f393ee0cd074fb53ca532))
+
 ## [1.1.0-beta.9](https://github.com/Zhiman-BJ/industrial-agent-harness/compare/desktop-v1.0.1-beta.8...desktop-v1.1.0-beta.9) (2026-10-22)
 
 ### 本版内容
