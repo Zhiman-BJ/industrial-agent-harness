@@ -65,7 +65,24 @@ function createRecordedViewerHost(bundle, { projectId = 'recorded-project' } = {
     }
     if (files.size > SNAPSHOT_FILES || totalBytes > SNAPSHOT_BYTES)
       throw Error('Recorded native snapshot exceeds Viewer limits.');
-    stages.set(stage.id, { stage, prefix, files, board });
+    const knownMissing = new Map();
+    for (const missing of stage.provenance?.modelAvailability?.missing || []) {
+      const evidence = [...assets.values()].find(asset => asset.id === missing.evidenceAssetId);
+      if (
+        typeof missing.sourceRef !== 'string' ||
+        knownMissing.has(missing.sourceRef) ||
+        missing.reason !== 'missing-file' ||
+        !HASH.test(missing.evidenceSha256) ||
+        !evidence ||
+        evidence.status !== 'present' ||
+        evidence.type !== 'artifact-snapshot' ||
+        evidence.sha256 !== missing.evidenceSha256 ||
+        evidence.bytes > 256 * 1024
+      )
+        throw Error('Historical missing models require exact, hash-bound negative evidence.');
+      knownMissing.set(missing.sourceRef, { ...missing, evidence });
+    }
+    stages.set(stage.id, { stage, prefix, files, board, knownMissing });
   }
   if (stages.size && !bundle.sourceDirectory)
     throw Error('Recorded native snapshots require a bounded bundle directory.');
@@ -140,9 +157,30 @@ function createRecordedViewerHost(bundle, { projectId = 'recorded-project' } = {
           throw Error('Viewer source differs from its recorded snapshot hash.');
         checked(declared);
       }
+      const missingSeen = new Set();
       for (const model of manifest.models) {
-        if (model.status !== 'ready')
-          throw Error(`Recorded component model is unavailable: ${model.sourceRef}`);
+        if (model.status !== 'ready') {
+          const missing = snapshot.knownMissing.get(model.sourceRef);
+          if (!missing || model.status !== 'missing' || model.reason !== 'missing-file')
+            throw Error(`Recorded component model is unavailable: ${model.sourceRef}`);
+          resolveModelReference(model.sourceRef, file, snapshot.root);
+          const evidence = JSON.parse(checked(missing.evidence).bytes);
+          const major = /^\$\{KICAD(\d+)_3DMODEL_DIR\}\//.exec(model.sourceRef)?.[1];
+          if (
+            evidence.kind !== 'official-model-not-found' ||
+            evidence.sourceRef !== model.sourceRef ||
+            !major ||
+            evidence.requestedTag?.split('.')[0] !== major ||
+            !/^[a-f0-9]{40}$/.test(evidence.commit) ||
+            !Array.isArray(evidence.checks) ||
+            !evidence.checks.length ||
+            evidence.checks.length > 16 ||
+            evidence.checks.some(check => check.status !== 404)
+          )
+            throw Error('Historical missing-model evidence does not match this source reference.');
+          missingSeen.add(model.sourceRef);
+          continue;
+        }
         const modelFile = resolveModelReference(model.sourceRef, file, snapshot.root);
         const relative = path.relative(snapshot.root, modelFile).split(path.sep).join('/');
         const declared = snapshot.files.get(relative);
@@ -150,6 +188,8 @@ function createRecordedViewerHost(bundle, { projectId = 'recorded-project' } = {
           throw Error('Viewer component model differs from its recorded snapshot hash.');
         checked(declared);
       }
+      if (missingSeen.size !== snapshot.knownMissing.size)
+        throw Error('Declared historical missing resources differ from the native snapshot.');
       if (generation !== epoch || snapshot !== active)
         throw Error('Recorded snapshot changed while opening the Viewer.');
       tokens.add(data.token);

@@ -132,6 +132,84 @@ test('a zero-component board opens with zero model resources before native compo
   assert.equal(grown.models[0].status, 'ready');
 });
 
+test('a historical missing model needs exact negative evidence and retains the native missing state', async t => {
+  const { bundle, directory } = fixture(t);
+  const sourceRef = '${KICAD10_3DMODEL_DIR}/Recorded.3dshapes/assigned.step';
+  const content = `(kicad_pcb (version 20240108) (generator recorded)
+    (footprint "Ready" (model "\${KIPRJMOD}/models/part.wrl"))
+    (footprint "Missing" (model "${sourceRef}")))`;
+  const boardAsset = bundle.manifest.assets.find(
+    asset => asset.relativePath === 'assets/source/snapshots/initial/board.kicad_pcb',
+  );
+  Object.assign(boardAsset, { sha256: hash(content), bytes: Buffer.byteLength(content) });
+  fs.writeFileSync(path.join(directory, boardAsset.relativePath), content);
+  const stage = bundle.manifest.replayStages[0];
+  stage.provenance.sourceBoardSha256 = hash(content);
+  let host = createRecordedViewerHost(bundle);
+  t.after(() => host.close());
+  host.activateStage('initial');
+  await assert.rejects(
+    host.openArtifact({ artifactId: host.openProjectFile('board.kicad_pcb').id }),
+    /unavailable/,
+  );
+  host.close();
+  const receipt = {
+    kind: 'official-model-not-found',
+    sourceRef,
+    requestedTag: '10.0.6',
+    commit: 'a'.repeat(40),
+    checks: [{ status: 404 }],
+  };
+  const bytes = JSON.stringify(receipt),
+    relativePath = 'assets/missing-model-evidence.json';
+  fs.writeFileSync(path.join(directory, relativePath), bytes);
+  const evidence = {
+    id: 'missing-evidence',
+    relativePath,
+    type: 'artifact-snapshot',
+    status: 'present',
+    bytes: Buffer.byteLength(bytes),
+    sha256: hash(bytes),
+  };
+  bundle.manifest.assets.push(evidence);
+  stage.provenance.modelAvailability = {
+    missing: [
+      {
+        sourceRef,
+        reason: 'missing-file',
+        evidenceAssetId: evidence.id,
+        evidenceSha256: evidence.sha256,
+      },
+    ],
+  };
+  host = createRecordedViewerHost(bundle);
+  host.activateStage('initial');
+  const opened = await host.openArtifact({
+    artifactId: host.openProjectFile('board.kicad_pcb').id,
+  });
+  const manifest = await (
+    await host.handleProtocol(new Request(opened.data.url.replace('index.html', 'manifest.json')))
+  ).json();
+  assert.deepEqual(
+    manifest.models.map(model => model.status),
+    ['ready', 'missing'],
+  );
+  assert.equal(manifest.models[1].reason, 'missing-file');
+  assert.equal(
+    (await host.handleProtocol(new Request(opened.data.url.replace('index.html', 'models/1'))))
+      .status,
+    404,
+  );
+  host.close();
+  fs.writeFileSync(path.join(directory, relativePath), bytes.replace('404', '200'));
+  host = createRecordedViewerHost(bundle);
+  host.activateStage('initial');
+  await assert.rejects(
+    host.openArtifact({ artifactId: host.openProjectFile('board.kicad_pcb').id }),
+    /hash changed/,
+  );
+});
+
 test('historical stage changes and reset invalidate old artifacts and native sessions', async t => {
   const { host } = fixture(t);
   host.activateStage('initial');
