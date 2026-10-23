@@ -116,6 +116,8 @@ Owner 已整理[全部五领域、六个 Pack 的声明草案与扩展计划](ht
 
 ## 已接入的 Viewer
 
+内部历史回放复用完整已发布桌面 UI 和现有原生 KiCad Viewer。只读快照宿主校验明确声明的 `.kicad_pcb` 与本地 STEP/WRL 配套，沿用导航与全屏，不下载缺失模型。该原生路径已在 macOS Apple Silicon 验证；这是内部组合，不代表 beta.9 安装包已发布回放功能。见[回放范围与验收](doc/native-trajectory-replay.md)。
+
 Harness 自有 Viewer 控件跟随 **设置 → 语言**（简体中文 / English），切换保留缩放、选择等显示状态；上游嵌入界面保留自身语言。语言声明与 Desktop/Viewer 译文统一维护在一个[配置文件](apps/desktop/i18n.config.json)，详见[语言范围与维护方式](doc/desktop-languages.md)。
 
 从当前工程的文件树打开产物，自动选择对应 Viewer。查看器共用缩放、Fit 与全屏操作，查看不改变源码或验证结果。

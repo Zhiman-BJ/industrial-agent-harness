@@ -116,6 +116,8 @@ The owner maintains [proposed declarations and an expansion plan for all five do
 
 ## Viewers
 
+Internal historical replay reuses the complete released Desktop UI and the existing native KiCad Viewer. Its read-only snapshot host validates declared `.kicad_pcb` sources and local STEP/WRL companions, uses the same navigation and fullscreen controls, and cannot download missing models. The native path is verified on macOS Apple Silicon; it is an internal composition, not a replay feature shipped in beta.9. See [replay scope and acceptance](doc/native-trajectory-replay.md).
+
 Viewers open from the active project's file tree. They share zoom, Fit and fullscreen controls and leave source files and verification results unchanged. Drag the workspace divider or use its arrow/Home/End keys to resize the panels; double-click to reset. OCCT retains model proportions during resizing and fullscreen. [Local release acceptance](doc/release-readiness-20261007.md).
 
 Harness-owned Viewer controls follow **Settings → Language** (English / 简体中文). Switching keeps zoom, selection and other view state; embedded upstream interfaces keep their own language. Languages and Desktop/Viewer translations share one [configuration](apps/desktop/i18n.config.json); see [language scope and maintenance](doc/desktop-languages.md).

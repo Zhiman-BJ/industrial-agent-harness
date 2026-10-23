@@ -75,3 +75,7 @@ PCB 三维预览复用固定 KiCanvas parser/painter 与本地 Three.js；元件
 KLayout Python 已接入共享依赖管理器：Chip Pack 声明固定解释器、wheel、哈希和真实 PNG 探针；Viewer-only 安装/修复无需宿主 Python 或 Docker。新文件打开重新解析就绪解释器，连续渲染复用 worker，修复后清理旧进程。Viewer 就绪不替代完整 EDA 工具链或工程验收。源码 `setup:layout` 使用同一私有安装器；显式 `KLAYOUT_PYTHON` 仍优先。见[托管 Viewer Python](../../doc/managed-viewer-python.md)。
 
 Electron 打包必须将 `src/layout/*.py` 解包到 `app.asar.unpacked`。RasterService 将完整 `app.asar` 路径段转换为真实解包目录，并在启动前检查 `layout.py` 与相邻 `layout_themes.py`；源码目录直接使用原路径。外部解释器退出时，等待 stdio 关闭再报告退出码/信号和最多 4096 字节的 stderr 尾部；既有超时/关闭原因保留。
+
+## Internal recorded sources
+
+`src/kicad/recorded-plugin.cjs` is an internal-only Registry plugin around the unchanged production `KiCadRuntimeManager`. It accepts a host-validated recorded source/root and permits post-open validation of the native source/model manifest. It has no data-library provider and cannot download or repair missing models. The internal replay host checks declared source/companion paths, sizes and hashes and expires tokens when the selected historical snapshot changes. Production App, Viewer components, parsers and navigation are reused; no PNG is presented as an interactive PCB. See [replay scope and acceptance](../../doc/native-trajectory-replay.md).

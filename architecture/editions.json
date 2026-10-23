@@ -491,6 +491,7 @@
       "paths": [
         "packages/harness-replay",
         "apps/desktop/internal/replay",
+        "packages/viewer-builtin/src/kicad/recorded-plugin.cjs",
         "scripts/verify-native-replay.cjs",
         "scripts/build-staged-demo.cjs",
         "tests/integration/native-replay.test.cjs"
@@ -502,11 +503,14 @@
         "packages/harness-replay/tests/describe.test.cjs",
         "packages/harness-replay/tests/closure.test.cjs",
         "apps/desktop/internal/replay/controller.test.cjs",
+        "apps/desktop/internal/replay/native-viewer.test.cjs",
+        "apps/desktop/internal/replay/product-backend.test.cjs",
+        "apps/desktop/internal/replay/product-protocol.test.cjs",
         "tests/integration/native-replay.test.cjs"
       ],
       "decisionStatus": "decided",
       "isolation": { "status": "enforced", "legacyReferences": 0 },
-      "decisionNote": "#105/#275：PD-070 许可的内部只读引擎、原生轨迹验收脚本和独立 Desktop 重放入口。零公共组合引用，不构造 TaskService 或 live session；普通桌面组合拆分仍属 #102。"
+      "decisionNote": "#105/#275：PD-070/PD-097 许可的内部只读引擎、原生轨迹验收与完整生产 App 的记录后端。原生快照插件仅供内部组合；零公共组合引用，不构造 TaskService 或 live session；普通桌面组合拆分仍属 #102。"
     },
     {
       "id": "internal.docs-center",

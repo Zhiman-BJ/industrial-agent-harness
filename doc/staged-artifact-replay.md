@@ -1,5 +1,7 @@
 # Constructed artifact demonstrations (internal)
 
+> Legacy passive-snapshot demonstration. PD-097 supersedes this separate presentation shell for final user-experience recordings. These PNG stages remain valid explicitly constructed visual assets; native interactive replay must use complete production App and declared source/model snapshots as described in [native replay](native-trajectory-replay.md).
+
 The replay composition presents the production `AgentFlow` conversation renderer
 next to the production `ViewerCanvas`. Its task is read-only presentation of
 recorded or explicitly authored events. It never creates the live application's
