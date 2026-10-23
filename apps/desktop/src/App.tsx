@@ -89,6 +89,7 @@ type ContextUsageInfo = { fraction: number; usedTokens: number | null };
 
 // Kimi-style token counts: 25k means 25 × 1024 tokens.
 function formatContextTokens(value: number) {
+  if (!Number.isFinite(value)) return '—';
   if (value >= 10240) return `${Math.round(value / 1024)}k`;
   if (value >= 1024) return `${(value / 1024).toFixed(1).replace(/\.0$/, '')}k`;
   return String(value);
@@ -120,9 +121,13 @@ function latestContextUsage(
       const event = events[index];
       if (event.type !== 'status') continue;
       const tokenUsage = event.tokenUsage;
-      const usedTokens = tokenUsage
-        ? tokenUsage.input_other + tokenUsage.input_cache_read + tokenUsage.input_cache_creation
-        : null;
+      // Providers may omit individual usage fields (e.g. MiniMax reports no
+      // cache breakdown); summing undefined values would yield NaN.
+      const usageKeys = ['input_other', 'input_cache_read', 'input_cache_creation'] as const;
+      const usedTokens =
+        tokenUsage && usageKeys.some(key => tokenUsage[key] != null)
+          ? usageKeys.reduce((sum, key) => sum + (tokenUsage[key] ?? 0), 0)
+          : null;
       const fraction =
         event.contextUsage ??
         (usedTokens != null && usedTokens > 0 && contextSize ? usedTokens / contextSize : null);
