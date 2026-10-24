@@ -1,5 +1,10 @@
 'use strict';
 
+// These names resolve in the pinned vendor scope when the static closures are
+// served as part of its script, rather than when this host module is loaded.
+/* global throwBindingError, usesDestructorStack, runDestructors, createNamedFunction,
+          emval_lookupTypes, reflectConstruct, emval_returnValue, emval_addMethodCaller */
+
 const { createHash } = require('node:crypto');
 
 const OCCT_GLUE_SHA256 = '3fb44ce11d00611f9b3f3c5775d520ebab48930c1f08279b7b1316f05f0d3379';
@@ -11,6 +16,7 @@ const OCCT_GLUE_SHA256 = '3fb44ce11d00611f9b3f3c5775d520ebab48930c1f08279b7b1316
 // https://github.com/emscripten-core/emscripten/blob/3.1.69/src/embind/emval.js
 // The pinned build has ASSERTIONS=0, ASYNCIFY=0 and EMBIND_AOT=0. These are
 // ordinary closures, not an evaluator for generated strings or model data.
+/* eslint-disable no-redeclare -- Preserve the pinned static invoker's function-scoped var reuse. */
 function craftInvokerFunction(
   humanName,
   argTypes,
@@ -54,6 +60,8 @@ function craftInvokerFunction(
   };
   return createNamedFunction(humanName, invokerFn);
 }
+
+/* eslint-enable no-redeclare */
 
 function staticMethodCaller(argCount, argTypes, kind) {
   var types = emval_lookupTypes(argCount, argTypes);

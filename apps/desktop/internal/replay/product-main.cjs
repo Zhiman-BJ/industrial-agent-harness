@@ -130,32 +130,62 @@ app
         return;
       }
       refreshing = true;
+      let restoreCollapsedSidebar = false;
       try {
         // Reopen through the existing product handler. No React state, HTML or
         // Viewer state is replaced by the replay host.
         for (let attempt = 0; attempt < 50 && !window.isDestroyed(); attempt++) {
-          const clicked = await window.webContents.executeJavaScript(
+          const outcome = await window.webContents.executeJavaScript(
             `(() => {
           const button = document.querySelector('.ia-sidebar-chat[aria-current="page"]');
-          if (!button || button.disabled) return false;
-          button.click(); return true;
+          if (!button) {
+            const show = document.querySelector('button[aria-label="Show sidebar"],button[aria-label="展开侧栏"]');
+            if (show && !show.disabled) { show.click(); return 'expanded'; }
+            return 'waiting';
+          }
+          if (button.disabled) return 'waiting';
+          button.click(); return 'selected';
         })()`,
             true,
           );
-          if (clicked) break;
+          if (outcome === 'expanded') restoreCollapsedSidebar = true;
+          if (outcome === 'selected') {
+            // The product disables navigation while selectChat/readHistory is
+            // pending. Keep the sidebar mounted until that normal adoption ends.
+            for (let ready = 0; ready < 50 && !window.isDestroyed(); ready++) {
+              await new Promise(resolve => setTimeout(resolve, 100));
+              if (
+                await window.webContents.executeJavaScript(
+                  `(() => {const button=document.querySelector('.ia-sidebar-chat[aria-current="page"]');return Boolean(button && !button.disabled);})()`,
+                  true,
+                )
+              )
+                break;
+            }
+            break;
+          }
           await new Promise(resolve => setTimeout(resolve, 100));
         }
       } finally {
-        refreshing = false;
-        if (refreshAgain) {
-          refreshAgain = false;
-          void refreshProductHistory();
+        try {
+          if (restoreCollapsedSidebar && !window.isDestroyed())
+            await window.webContents.executeJavaScript(
+              `document.querySelector('.ia-sidebar button[aria-label="Hide sidebar"],.ia-sidebar button[aria-label="收起侧栏"]')?.click()`,
+              true,
+            );
+        } finally {
+          refreshing = false;
+          if (refreshAgain) {
+            refreshAgain = false;
+            void refreshProductHistory().catch(error => uiErrors.push(String(error)));
+          }
         }
       }
     }
     const unsubscribe = backend.subscribe(({ channel, payload }) => {
       if (window.isDestroyed()) return;
-      if (channel === 'replay:history-invalidated') void refreshProductHistory();
+      if (channel === 'replay:history-invalidated')
+        void refreshProductHistory().catch(error => uiErrors.push(String(error)));
       else if (
         channel === 'replay:snapshot-changed' &&
         !selftest &&
