@@ -492,6 +492,7 @@
         "packages/harness-replay",
         "apps/desktop/internal/replay",
         "packages/viewer-builtin/src/kicad/recorded-plugin.cjs",
+        "packages/viewer-builtin/src/kicad/recorded-occt.cjs",
         "scripts/verify-native-replay.cjs",
         "scripts/build-staged-demo.cjs",
         "tests/integration/native-replay.test.cjs"
@@ -506,6 +507,7 @@
         "apps/desktop/internal/replay/native-viewer.test.cjs",
         "apps/desktop/internal/replay/product-backend.test.cjs",
         "apps/desktop/internal/replay/product-protocol.test.cjs",
+        "apps/desktop/internal/replay/recorded-occt.test.cjs",
         "tests/integration/native-replay.test.cjs"
       ],
       "decisionStatus": "decided",
