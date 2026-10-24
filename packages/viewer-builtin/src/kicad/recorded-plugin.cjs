@@ -1,6 +1,7 @@
 'use strict';
 
 const { KiCadRuntimeManager, isKiCadFile } = require('./runtime.cjs');
+const { recordedOcctGlue } = require('./recorded-occt.cjs');
 
 // Historical documents use the production parser, model loader and renderer.
 // No resource provider is installed: opening recorded data cannot download or
@@ -24,7 +25,28 @@ function createReadOnlyKiCadViewer({ validateOpened } = {}) {
         }
       },
     },
-    handle: request => runtime.handle(request),
+    async handle(request) {
+      // Let the production runtime authorize the token, method, source hashes
+      // and exact asset path before adapting the one pinned JavaScript asset.
+      const response = await runtime.handle(request);
+      if (
+        response.ok &&
+        new URL(request.url).pathname.endsWith('/vendor/occt-import/occt-import-js.js')
+      ) {
+        try {
+          return new Response(recordedOcctGlue(Buffer.from(await response.arrayBuffer())), {
+            status: response.status,
+            headers: response.headers,
+          });
+        } catch {
+          return new Response('Recorded STEP parser unavailable.', {
+            status: 409,
+            headers: response.headers,
+          });
+        }
+      }
+      return response;
+    },
     close: token => runtime.close(token),
   };
 }
