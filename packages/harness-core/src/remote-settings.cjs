@@ -95,12 +95,8 @@ function validateServiceInfo(info) {
   if (info.sessionModel !== 'application-session')
     invalidFields.push('sessionModel (application-session)');
   if (info.remoteProtocolVersion === undefined) {
-    // Verified product releases 1.1.x–1.3.x share the MCP v1 application-session
-    // envelope. Keep this bounded: a product release is not a protocol version.
-    if (typeof info.version !== 'string' || !/^1\.[123]\.(?:0|[1-9]\d*)$/.test(info.version))
-      throw Error(
-        'Unsupported MCP gateway product version: expected stable 1.1.x, 1.2.x or 1.3.x.',
-      );
+    // Product versions are metadata, not protocol identifiers. Recognize the
+    // MCP v1 application-session contract by its required discovery fields.
     if (!Array.isArray(info.domainCatalog)) invalidFields.push('domainCatalog (array)');
     if (!/^[a-f0-9]{64}$/.test(info.capabilitySnapshotHash || ''))
       invalidFields.push('capabilitySnapshotHash (lowercase SHA-256)');

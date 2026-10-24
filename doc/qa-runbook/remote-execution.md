@@ -8,7 +8,9 @@
 
 **2026-10-21 连接检查修复：** beta.7 标签 `e114016` 对真实服务产品 `1.3.1` 返回“协议 1.1 不支持”；原因是客户端产品版本白名单仅到 `1.2.x`。同一现有账号、同一服务的前后对照已复现失败并验证修复后连接成功；本机原生 Electron 也通过设置页实际点击验证“已连接”。本次仅验证发现接口，未上传文件、创建远程工程或执行工具，不能覆盖下述完整 RE-E01–11 的既有 blocked 状态。[证据与验收缺口](../evidence/remote-discovery-20261021/README.md)。
 
-`pnpm --filter @industrial-agent-harness/desktop test:remote-connection` 单独执行隔离的 Electron 连接回归：canonical 成功、MCP 产品 `1.3.1` 成功、`1.4.0` 拒绝、错误 hash 字段失败、恢复连接；只允许 loopback fixture 的 `GET /v1/service-info`。现有 `test:mcp` 在原测试成功后继续运行此检查，因而进入现有 macOS 原生 CI 的 MCP 步骤。受控 fixture 不能证明当前真实部署可连接。
+客户端已移除产品版本白名单，按发现响应结构识别 MCP v1；`version` 的升级或格式不影响连接。显式协议、服务身份、发现字段与执行权限仍须通过验证。
+
+`pnpm --filter @industrial-agent-harness/desktop test:remote-connection` 单独执行隔离的 Electron 连接回归：canonical 成功、MCP 产品 `1.3.1`、未来 `1.4.0` 和 `2.0.0` 成功、显式协议 `2.0` 失败、错误 hash 字段失败、恢复连接；只允许 loopback fixture 的 `GET /v1/service-info`。现有 `test:mcp` 在原测试成功后继续运行此检查，因而进入现有 macOS 原生 CI 的 MCP 步骤。受控 fixture 不能证明当前真实部署可连接。
 
 发布验收须另外用**本次候选提交、实际发布账号配置、当前测试部署**在能力中心点击“检查连接”，记录候选 SHA、检查时间、HTTP 状态、服务产品版本/会话字段及界面结果。真实部署不可达或未授权时将该项记 `blocked`，不能用历史 headless 或本地 fixture 的通过覆盖。记录不得包含令牌或账号标识。
 
