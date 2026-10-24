@@ -103,7 +103,10 @@
       "entry": "packages/harness-auth/src/index.cjs",
       "dependencyClass": "cross-cutting-plugin",
       "publicStatementSource": "packages/harness-auth/README.md",
-      "requiredTests": ["packages/harness-auth/tests/auth.test.cjs", "packages/harness-auth/tests/store.test.cjs"],
+      "requiredTests": [
+        "packages/harness-auth/tests/auth.test.cjs",
+        "packages/harness-auth/tests/store.test.cjs"
+      ],
       "decisionStatus": "decided",
       "decisionNote": "Optional standard platform sign-in, explicitly requested for the open-source client on 2026-10-14."
     },
@@ -311,7 +314,10 @@
       "paths": ["packages/sdk"],
       "entry": "packages/sdk/src/index.cjs",
       "dependencyClass": "adapter",
-      "requiredTests": ["packages/sdk/tests/client.test.cjs", "packages/sdk/tests/process.test.cjs"],
+      "requiredTests": [
+        "packages/sdk/tests/client.test.cjs",
+        "packages/sdk/tests/process.test.cjs"
+      ],
       "decisionStatus": "decided",
       "isolation": { "status": "planned", "legacyReferences": 3, "trackingIssue": 102 },
       "decisionNote": "PD-083：SDK 的运行契约是驱动内部打包的 headless CLI，随 CLI 一并转入内部版本。benchmark 脚本（benchmark-harness.cjs、benchmark-paired.cjs）的静态引用记入 #102 只减不增台账。"
@@ -469,7 +475,10 @@
         "packages/harness-recording/tests/validate.test.cjs",
         "packages/harness-recording/tests/fixtures.test.cjs",
         "packages/harness-recording/tests/redact.test.cjs",
-        "packages/harness-recording/tests/demo-export.test.cjs"
+        "packages/harness-recording/tests/demo-export.test.cjs",
+        "packages/harness-recording/tests/native-trajectory.test.cjs",
+        "packages/harness-recording/tests/replay-assets.test.cjs",
+        "packages/harness-recording/tests/staged-demo.test.cjs"
       ],
       "decisionStatus": "decided",
       "isolation": { "status": "enforced", "legacyReferences": 0 },
@@ -479,17 +488,32 @@
       "id": "internal.replay",
       "edition": "internal",
       "kind": "feature",
-      "paths": ["packages/harness-replay"],
+      "paths": [
+        "packages/harness-replay",
+        "apps/desktop/internal/replay",
+        "packages/viewer-builtin/src/kicad/recorded-plugin.cjs",
+        "packages/viewer-builtin/src/kicad/recorded-occt.cjs",
+        "scripts/verify-native-replay.cjs",
+        "scripts/build-staged-demo.cjs",
+        "tests/integration/native-replay.test.cjs"
+      ],
       "dependencyClass": "replay-internal",
       "requiredTests": [
         "packages/harness-replay/tests/display-reducer.test.cjs",
         "packages/harness-replay/tests/engine.test.cjs",
         "packages/harness-replay/tests/describe.test.cjs",
-        "packages/harness-replay/tests/closure.test.cjs"
+        "packages/harness-replay/tests/closure.test.cjs",
+        "apps/desktop/internal/replay/controller.test.cjs",
+        "apps/desktop/internal/replay/native-viewer.test.cjs",
+        "apps/desktop/internal/replay/product-backend.test.cjs",
+        "apps/desktop/internal/replay/product-history.test.cjs",
+        "apps/desktop/internal/replay/product-protocol.test.cjs",
+        "apps/desktop/internal/replay/recorded-occt.test.cjs",
+        "tests/integration/native-replay.test.cjs"
       ],
       "decisionStatus": "decided",
       "isolation": { "status": "enforced", "legacyReferences": 0 },
-      "decisionNote": "#105 重放引擎核心（display reducer/timeline/engine/clock/describe），PD-070 许可的内部能力。运行时仅依赖 node 内建、闭包测试钉死；零公共引用，UI 接线待 #102。"
+      "decisionNote": "#105/#275：PD-070/PD-097 许可的内部只读引擎、原生轨迹验收与完整生产 App 的记录后端。原生快照插件仅供内部组合；零公共组合引用，不构造 TaskService 或 live session；普通桌面组合拆分仍属 #102。"
     },
     {
       "id": "internal.docs-center",

@@ -23,6 +23,20 @@ can be copied between machines with no access to the original project.
   for replay (#105). Crashed recordings (status `recording`) load as explicit
   interrupted evidence; structural corruption throws `RecordingError` with a
   stable code; missing assets surface as gaps, never silent holes.
+- **Replay input** (`await loadReplayInput(path)`): accepts existing recording
+  directories and native `agent-trajectory-export/1.0` directories or `.tar.gz`
+  exports. Native imports verify every `SHA256SUMS` member, reject links,
+  traversal, duplicates and resource-limit violations, and stream archives
+  without extraction or executing bundled scripts. Defaults cap compressed
+  input at 256 MiB, total contents at 1 GiB, individual members at 128 MiB,
+  10,000 entries and a 200:1 expansion ratio.
+- **Native projection**: retains every raw event with its source identity and
+  original timestamp, restores each agent's source-line order, and derives
+  monotonic display time without claiming cross-agent causality. Canonical
+  `context.append_*` events provide messages, thinking and tools; mirror
+  messages remain inspectable metadata rather than duplicate output. Historical
+  tool errors stay errors. Completion is based on recorded turn terminals,
+  never on RTL acceptance or the exporter's process exit code.
 - **Redaction** (`src/redact.cjs`): deterministic text rules for demo copies —
   secret-sounding keys lose their values (including inside JSON-encoded tool
   arguments), home paths drop the username, credential-carrying URLs, bearer
@@ -41,11 +55,24 @@ can be copied between machines with no access to the original project.
 
 - Any composition into apps/desktop or the CLI — that wiring belongs to the
   internal extension surface defined by #102.
-- Archive (zip) import — bundles are directories for now; if compression is
-  added later it must validate path traversal, entry counts, compression
-  ratio, and decompression totals before extraction.
+- Zip imports, project snapshots and executable artifact previews. Native
+  exports preserve observations and externalized-result references, not a
+  reconstructed project or inferred engineering verification.
+
+The isolated internal Desktop consumer and the full-corpus acceptance command
+are documented in [Native trajectory replay](../../doc/native-trajectory-replay.md).
 
 ## Fixtures
 
 See `fixtures/README.md`. Regenerate with `node scripts/build-fixtures.cjs`;
 `tests/fixtures.test.cjs` pins each bundle's documented behavior.
+
+## Constructed artifact demonstrations
+
+`createStagedDemo` authors a new, visibly identified constructed demonstration
+from pre-rendered PNG stages. `manifest.replayStages` binds each Viewer snapshot
+to a source position. `readReplayImage` supplies only declared PNGs after fresh
+path, size, hash and dimension checks. The source remains unchanged; no
+industrial result or tool execution is fabricated. See
+[Staged artifact replay](../../doc/staged-artifact-replay.md) for the input format
+and production AgentFlow + ViewerCanvas consumer.

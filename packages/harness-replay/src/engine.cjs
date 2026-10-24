@@ -7,12 +7,7 @@
 // tests pin incremental == full-fold at every position.
 
 const { buildTimeline } = require('./timeline.cjs');
-const {
-  appendDisplayEvents,
-  foldDisplay,
-  runningAt,
-  terminalAt,
-} = require('./display-reducer.cjs');
+const { appendDisplayEvents, foldDisplay, createLifecycleIndex } = require('./display-reducer.cjs');
 
 const SPEEDS = [0.5, 1, 2, 4];
 
@@ -23,6 +18,7 @@ function createReplayEngine(records, options = {}) {
       throw Error('engine records must be loaded bundle records (seq/relMs/event)');
   }
   const timeline = buildTimeline(records, options.compression);
+  const lifecycle = createLifecycleIndex(records);
 
   const state = {
     phase: 'paused', // paused | playing
@@ -36,7 +32,7 @@ function createReplayEngine(records, options = {}) {
 
   function recompute() {
     state.display = foldDisplay(records, state.position);
-    state.running = runningAt(records, state.position);
+    state.running = lifecycle.runningAt(state.position);
     state.atEnd = state.position >= records.length;
   }
 
@@ -74,7 +70,7 @@ function createReplayEngine(records, options = {}) {
       const incoming = records.slice(state.position, targetPosition).map(record => record.event);
       state.display = appendDisplayEvents(state.display, incoming);
       state.position = targetPosition;
-      state.running = runningAt(records, state.position);
+      state.running = lifecycle.runningAt(state.position);
       state.atEnd = state.position >= records.length;
     }
     state.displayMs = target;
@@ -123,7 +119,7 @@ function createReplayEngine(records, options = {}) {
       atEnd: state.atEnd,
       // Read-only by convention: consumers must not mutate the display list.
       display: state.display,
-      terminal: terminalAt(records, state.position),
+      terminal: lifecycle.terminalAt(state.position),
       sourceMs: timeline.sourceAt(state.displayMs),
     };
   }

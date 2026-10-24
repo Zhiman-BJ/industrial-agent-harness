@@ -45,9 +45,16 @@ function buildTimeline(records, compression) {
     durationMs: points.length ? points[points.length - 1].displayMs : 0,
     // How many records are revealed at a display time.
     positionAt(displayTime) {
-      let position = 0;
-      while (position < points.length && points[position].displayMs <= displayTime) position++;
-      return position;
+      // Upper bound preserves all equal-timestamp events while avoiding a
+      // scan from zero on every playback tick and source-clock lookup.
+      let low = 0;
+      let high = points.length;
+      while (low < high) {
+        const middle = low + Math.floor((high - low) / 2);
+        if (points[middle].displayMs <= displayTime) low = middle + 1;
+        else high = middle;
+      }
+      return low;
     },
     // Original (source) time of the newest revealed record; 0 when none.
     sourceAt(displayTime) {

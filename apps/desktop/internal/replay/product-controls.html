@@ -1,0 +1,75 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'"
+    />
+    <title>Recorded session controls</title>
+    <style>
+      body {
+        font: 14px system-ui;
+        margin: 24px;
+        color: #172b38;
+        background: #f5f7fa;
+      }
+      button,
+      select,
+      input {
+        font: inherit;
+        padding: 8px;
+        margin: 4px;
+      }
+      input[type='range'] {
+        width: 90%;
+      }
+      pre {
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        max-height: 240px;
+        overflow: auto;
+      }
+      small {
+        color: #526674;
+      }
+      section {
+        margin: 16px 0;
+      }
+      label {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>历史回放 · 内部控制</h2>
+    <small>主窗口加载完整产品 App。此控制窗口不进入录制画面。回放不运行模型或工程工具。</small>
+    <p id="title"></p>
+    <section>
+      <button id="play">播放</button><button id="reset">重置</button
+      ><select id="speed">
+        <option value="1">1×</option>
+        <option value="2">2×</option>
+        <option value="4">4×</option>
+        <option value="8">8×</option>
+        <option value="32">32×</option></select
+      ><label><input type="range" min="0" value="0" id="position" /></label>
+      <p id="state"></p>
+    </section>
+    <section>
+      <label
+        >历史产物阶段
+        <select id="stages">
+          <option value="0">起点</option>
+        </select></label
+      >
+    </section>
+    <details>
+      <summary>原始事件诊断</summary>
+      <button id="previous">上一页</button><button id="next">下一页</button>
+      <pre id="ledger"></pre>
+    </details>
+    <p id="error" role="alert"></p>
+    <script src="product-controls.js"></script>
+  </body>
+</html>
